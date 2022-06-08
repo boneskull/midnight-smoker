@@ -1,0 +1,26 @@
+{
+  "extends": ["config:base", ":semanticCommitTypeAll(chore)"],
+  "packageRules": [
+    {
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "matchDepTypes": ["devDependencies"],
+      "automerge": true
+    },
+    {
+      "matchPackageNames": [
+        "find-up",
+        "globby",
+        "log-symbols",
+        "read-pkg",
+        "term-size",
+        "wrap-ansi",
+        "write-pkg",
+        "@types/wrap-ansi",
+        "execa"
+      ],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
+    }
+  ],
+  "semanticCommits": "enabled"
+}

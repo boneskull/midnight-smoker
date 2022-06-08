@@ -1,0 +1,22 @@
+name: Node CI
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    name: Test on node ${{ matrix.node_version }} and ${{ matrix.os }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node_version: [14, 16, 18]
+        os: [ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Use Node.js ${{ matrix.node_version }}
+        uses: actions/setup-node@v3
+        with:
+          version: ${{ matrix.node_version }}
+      - name: npm install
+        uses: bahmutov/npm-install@v1
+      - name: test
+        run: npm test

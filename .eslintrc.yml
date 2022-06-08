@@ -1,0 +1,17 @@
+root: true
+extends:
+  - standard
+  - plugin:prettier/recommended
+parserOptions:
+  sourceType: script
+rules:
+  standard/computed-property-even-spacing: off
+  semi:
+    - error
+    - always
+  no-extra-semi: error
+overrides:
+  - files:
+      - test/**/*.spec.js
+    env:
+      mocha: true
