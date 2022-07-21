@@ -4,6 +4,7 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const {tmpdir} = require('node:os');
 const {node: execa} = require('execa');
+const console = require('node:console');
 
 const TMP_DIR_PREFIX = 'midnight-smoker-';
 
@@ -46,7 +47,7 @@ class Smoker {
   #force = false;
 
   /**
-   * @type {SmokerOptions}
+   * @type {Readonly<SmokerOptions>}
    */
   opts;
 
@@ -83,23 +84,25 @@ class Smoker {
       scripts = [scripts];
     }
     this.scripts = scripts.map((s) => s.trim());
-    this.opts = opts;
+    opts = {...opts};
 
     this.#force = Boolean(opts.force);
     this.#clean = Boolean(opts.clean);
     this.#quiet = Boolean(opts.quiet);
-    this.#allWorkspaces = Boolean(opts.all);
     this.#includeWorkspaceRoot = Boolean(opts.includeRoot);
     if (this.#includeWorkspaceRoot) {
-      this.#allWorkspaces = true;
+      opts.all = true;
     }
+    this.#allWorkspaces = Boolean(opts.all);
     this.#workspaces = normalizeArray(opts.workspace);
     if (this.#allWorkspaces && this.#workspaces.length) {
       throw new Error(
-        'Option "workspaces" is mutually exclusive with "allWorkspaces" and/or "includeWorkspaceRoot"'
+        'Option "workspace" is mutually exclusive with "all" and/or "includeRoot"'
       );
     }
     this.#extraNpmInstallArgs = normalizeArray(opts.installArgs);
+
+    this.opts = Object.freeze(opts);
   }
 
   async smoke() {
@@ -219,7 +222,7 @@ class Smoker {
       '--json',
       `--pack-destination=${cwd}`,
       '--foreground-scripts=false', // suppress output of lifecycle scripts so json can be parsed
-      '--silent',
+      '--silent', // XXX needed?
     ];
     if (this.#workspaces.length) {
       packArgs = [
@@ -253,23 +256,22 @@ class Smoker {
       parsed = JSON.parse(packOutput);
     } catch (err) {
       debug('(pack) Failed to parse JSON: %s', packOutput);
-      throw err;
-    }
-    try {
-      const result = parsed.map(({filename, name}) => {
-        // workaround for https://github.com/npm/cli/issues/3405
-        filename = filename.replace(/^@(.+?)\//, '$1-');
-        return {
-          tarballFilepath: path.join(cwd, filename),
-          installPath: path.join(cwd, 'node_modules', name),
-        };
-      });
-      debug('(pack) Packed %d packages', result.length);
-      return result;
-    } catch (err) {
       const {message} = /** @type {SyntaxError} */ (err);
-      throw new Error(`Failed to parse JSON output from npm pack: ${message}`);
+      throw new Error(
+        `Failed to parse JSON output from "npm pack": ${message}`
+      );
     }
+
+    const result = parsed.map(({filename, name}) => {
+      // workaround for https://github.com/npm/cli/issues/3405
+      filename = filename.replace(/^@(.+?)\//, '$1-');
+      return {
+        tarballFilepath: path.join(cwd, filename),
+        installPath: path.join(cwd, 'node_modules', name),
+      };
+    });
+    debug('(pack) Packed %d packages', result.length);
+    return result;
   }
 
   /**
@@ -278,10 +280,13 @@ class Smoker {
    * @returns {Promise<void>}
    */
   async install(packItems) {
-    const extraArgs = this.#extraNpmInstallArgs;
-    const npmPath = await this.findNpm();
-    const cwd = await this.createWorkingDirectory();
+    if (!packItems) {
+      throw new TypeError('(install) "packItems" is required');
+    }
     if (packItems.length) {
+      const extraArgs = this.#extraNpmInstallArgs;
+      const npmPath = await this.findNpm();
+      const cwd = await this.createWorkingDirectory();
       const installArgs = [
         'install',
         ...extraArgs,
@@ -318,6 +323,9 @@ class Smoker {
    * @returns {Promise<void>}
    */
   async runScript(packItems) {
+    if (!packItems) {
+      throw new TypeError('(install) "packItems" is required');
+    }
     if (packItems.length) {
       const scripts = this.scripts;
       const npmPath = await this.findNpm();
@@ -330,38 +338,37 @@ class Smoker {
           const proc = execa(npmPath, execArgs, {
             cwd,
           });
+          const pkgName = pathToPackageName(cwd);
 
           if (!this.#quiet) {
             proc.stdout?.on('data', (data) => {
               console.error(String(data));
             });
           }
-          try {
-            const {exitCode} = await proc;
 
-            if (exitCode) {
+          const {exitCode, stderr} = await proc;
+          if (exitCode) {
+            if (/missing script:/i.test(stderr)) {
               throw new Error(
-                `npm script "${script}" failed with exit code ${exitCode}`
+                `npm was unable to find script "${script}" in package "${pkgName}"`
               );
             }
-          } catch (err) {
-            const error = /** @type {import('execa').ExecaError} */ (err);
 
-            if (/missing script:/i.test(error.stderr)) {
-              const pkgName = pathToPackageName(cwd);
-              throw new Error(
-                `npm unable to find script "${script}" in package "${pkgName}"`
-              );
-            }
             throw new Error(
-              `npm script "${script}" failed with exit code ${error.exitCode}`
+              `npm script "${script}" failed with exit code ${exitCode}: ${stderr}`
+            );
+          } else {
+            debug(
+              '(runScript) Successfully executed script %s in package %s',
+              script,
+              pkgName
             );
           }
         }
       }
       return;
     }
-    debug('(pack) No packed items; no scripts to run');
+    debug('(runScript) No packed items; no scripts to run');
   }
 
   /**
@@ -369,7 +376,7 @@ class Smoker {
    */
   async cleanup() {
     if (this.#cwd) {
-      await fs.rm(this.#cwd, {recursive: true});
+      return this.#cleanWorkingDirectory(this.#cwd);
     }
   }
 }

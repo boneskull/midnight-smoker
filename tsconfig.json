@@ -12,6 +12,11 @@
     "declarationDir": "types",
     "emitDeclarationOnly": true,
     "moduleResolution": "node",
+    "types": ["node", "sinon", "mocha"],
+    "paths": {
+      "midnight-smoker": ["./src/index"]
+    },
+    "resolveJsonModule": true
   },
-  "include": ["src"],
+  "include": ["src", "test"]
 }
