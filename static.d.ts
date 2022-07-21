@@ -81,8 +81,17 @@ export interface SmokerOptions {
    */
   npm?: string;
   /**
-   * If `true`, suppress output from `npm`
+   * If `true`, show output from `npm`
    */
-  quiet?: boolean;
+  verbose?: boolean;
   
+}
+
+export interface RunScriptResult {
+  pkgName: string;
+  script: string;
+  exitCode: number;
+  stdout: string;
+  stderr: string;
+  error?: Error;
 }

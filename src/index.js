@@ -3,8 +3,9 @@ const debug = require('debug')('midnight-smoker');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const {tmpdir} = require('node:os');
-const {node: execa} = require('execa');
+const execa = require('execa');
 const console = require('node:console');
+const {EventEmitter} = require('node:events');
 
 const TMP_DIR_PREFIX = 'midnight-smoker-';
 
@@ -34,7 +35,7 @@ function pathToPackageName(dirpath) {
   return dirs[dirs.length - 1];
 }
 
-class Smoker {
+class Smoker extends EventEmitter {
   /**
    * @type {string[]}
    */
@@ -57,7 +58,7 @@ class Smoker {
   /**
    * @type {boolean}
    */
-  #quiet = false;
+  #verbose = false;
 
   /** @type {boolean} */
   #clean = false;
@@ -80,6 +81,7 @@ class Smoker {
    * @param {SmokerOptions} [opts]
    */
   constructor(scripts, opts = {}) {
+    super();
     if (typeof scripts === 'string') {
       scripts = [scripts];
     }
@@ -88,7 +90,7 @@ class Smoker {
 
     this.#force = Boolean(opts.force);
     this.#clean = Boolean(opts.clean);
-    this.#quiet = Boolean(opts.quiet);
+    this.#verbose = Boolean(opts.verbose);
     this.#includeWorkspaceRoot = Boolean(opts.includeRoot);
     if (this.#includeWorkspaceRoot) {
       opts.all = true;
@@ -106,13 +108,15 @@ class Smoker {
   }
 
   async smoke() {
+    this.emit('smoke-begin');
     try {
       const packItems = await this.pack();
       debug('(smoke) Received %d packed packages', packItems.length);
       await this.install(packItems);
-      await this.runScript(packItems);
+      await this.runScripts(packItems);
     } finally {
       await this.cleanup();
+      this.emit('smoke-end');
     }
   }
 
@@ -128,9 +132,11 @@ class Smoker {
       this.#npmPath = this.opts.npm.trim();
       return this.#npmPath;
     }
+    this.emit('find-npm-begin');
     const npmPath = await which('npm');
     debug('(findNpm) Found npm at %s', npmPath);
     this.#npmPath = npmPath;
+    this.emit('find-npm-end', npmPath);
     return npmPath;
   }
 
@@ -214,6 +220,8 @@ class Smoker {
    * @returns {Promise<PackItem[]>}
    */
   async pack() {
+    this.emit('pack-begin');
+
     const npmPath = await this.findNpm();
     const cwd = await this.createWorkingDirectory();
 
@@ -222,7 +230,6 @@ class Smoker {
       '--json',
       `--pack-destination=${cwd}`,
       '--foreground-scripts=false', // suppress output of lifecycle scripts so json can be parsed
-      '--silent', // XXX needed?
     ];
     if (this.#workspaces.length) {
       packArgs = [
@@ -237,14 +244,7 @@ class Smoker {
     }
 
     debug('(pack) Executing: %s %s', npmPath, packArgs.join(' '));
-    const proc = execa(npmPath, packArgs);
-
-    if (!this.#quiet) {
-      proc.stdout?.on('data', (data) => {
-        console.error(String(data));
-      });
-    }
-    const {exitCode, stdout: packOutput} = await proc;
+    const {exitCode, stdout: packOutput} = await this.#runNpm(packArgs);
 
     if (exitCode) {
       throw new Error(`"npm pack" failed with exit code ${exitCode}`);
@@ -271,7 +271,47 @@ class Smoker {
       };
     });
     debug('(pack) Packed %d packages', result.length);
+
+    this.emit('pack-end', result);
     return result;
+  }
+
+  /**
+   *
+   * @param {string[]} args
+   * @param {import('execa').Options} [options]
+   * @returns
+   */
+  async #runNpm(args, options = {}) {
+    this.emit('run-npm-begin', {args, options});
+    const npmPath = await this.findNpm();
+    const opts = {...options};
+    const proc = execa(process.execPath, [npmPath, ...args], opts);
+
+    if (this.#verbose) {
+      proc.stdout?.pipe(process.stdout);
+      proc.stderr?.pipe(process.stderr);
+    }
+
+    /**
+     * @type {import('execa').ExecaReturnValue|undefined}
+     */
+    let value;
+    /** @type {import('execa').ExecaError & NodeJS.ErrnoException|undefined} */
+    let error;
+    try {
+      value = await proc;
+      return value;
+    } catch (e) {
+      error =
+        /** @type {import('execa').ExecaError & NodeJS.ErrnoException} */ (e);
+      if (error.code === 'ENOENT') {
+        throw new Error(`Could not find "node" at ${process.execPath}`);
+      }
+      throw error;
+    } finally {
+      this.emit('run-npm-end', {args, options, value, error});
+    }
   }
 
   /**
@@ -280,12 +320,12 @@ class Smoker {
    * @returns {Promise<void>}
    */
   async install(packItems) {
+    this.emit('install-begin', packItems);
     if (!packItems) {
       throw new TypeError('(install) "packItems" is required');
     }
     if (packItems.length) {
       const extraArgs = this.#extraNpmInstallArgs;
-      const npmPath = await this.findNpm();
       const cwd = await this.createWorkingDirectory();
       const installArgs = [
         'install',
@@ -293,17 +333,9 @@ class Smoker {
         ...packItems.map(({tarballFilepath}) => tarballFilepath),
       ];
 
-      const proc = execa(npmPath, installArgs, {
+      const {exitCode: installExitCode} = await this.#runNpm(installArgs, {
         cwd,
       });
-
-      if (!this.#quiet) {
-        proc.stdout?.on('data', (data) => {
-          console.error(String(data));
-        });
-      }
-
-      const {exitCode: installExitCode} = await proc;
 
       if (installExitCode) {
         throw new Error(
@@ -311,64 +343,121 @@ class Smoker {
         );
       }
       debug('(install) Installed %d packages', packItems.length);
-      return;
+    } else {
+      debug('(install) No packed items; no packages to install');
     }
-
-    debug('(install) No packed items; no packages to install');
+    this.emit('install-end', packItems);
   }
 
   /**
    * Runs the script for each package in `packItems`
    * @param {PackItem[]} packItems
-   * @returns {Promise<void>}
+   * @returns {Promise<RunScriptResult[]>}
    */
-  async runScript(packItems) {
+  async runScripts(packItems) {
     if (!packItems) {
       throw new TypeError('(install) "packItems" is required');
     }
-    if (packItems.length) {
-      const scripts = this.scripts;
+    const scripts = this.scripts;
+    this.emit('run-scripts-begin', {scripts, packItems});
+    const packItemsCount = packItems.length;
+    /** @type {RunScriptResult[]} */
+    const results = [];
+    if (packItemsCount) {
       const npmPath = await this.findNpm();
-
-      for (const script of scripts) {
-        const execArgs = ['run-script', script];
-
-        for await (const {installPath: cwd} of packItems) {
-          debug('(pack) Executing: %s %s', npmPath, execArgs.join(' '));
-          const proc = execa(npmPath, execArgs, {
-            cwd,
-          });
-          const pkgName = pathToPackageName(cwd);
-
-          if (!this.#quiet) {
-            proc.stdout?.on('data', (data) => {
-              console.error(String(data));
-            });
-          }
-
-          const {exitCode, stderr} = await proc;
-          if (exitCode) {
-            if (/missing script:/i.test(stderr)) {
-              throw new Error(
-                `npm was unable to find script "${script}" in package "${pkgName}"`
-              );
-            }
-
-            throw new Error(
-              `npm script "${script}" failed with exit code ${exitCode}: ${stderr}`
-            );
-          } else {
-            debug(
-              '(runScript) Successfully executed script %s in package %s',
+      const scriptCount = scripts.length;
+      const totalScriptCount = packItemsCount * scriptCount;
+      let failures = 0;
+      for (const [scriptIdx, script] of Object.entries(scripts)) {
+        this.emit('run-script-begin', {
+          script,
+          scriptCount,
+          currentScriptIndex: scriptIdx,
+        });
+        const npmArgs = ['run-script', script];
+        try {
+          for await (const [pkgIdx, {installPath: cwd}] of Object.entries(
+            packItems
+          )) {
+            const pkgName = pathToPackageName(cwd);
+            const current = Number(pkgIdx) + Number(scriptIdx);
+            this.emit('run-script-pkg-begin', {
               script,
-              pkgName
-            );
+              cwd,
+              npmArgs,
+              pkgName,
+              total: totalScriptCount,
+              current,
+            });
+            debug('(pack) Executing: %s %s', npmPath, npmArgs.join(' '));
+
+            // if (failed) {
+            //   if (/missing script:/i.test(stderr)) {
+            //     throw new Error(
+            //       `npm was unable to find script "${script}" in package "${pkgName}"`
+            //     );
+            //   }
+
+            //   throw new Error(
+            //     `npm script "${script}" failed with exit code ${exitCode}: ${stderr}`
+            //   );
+            // } else {
+            //   debug(
+            //     '(runScripts) Successfully executed script %s in package %s',
+            //     script,
+            //     pkgName
+            //   );
+            // }
+            /** @type {import('execa').ExecaReturnValue|undefined} */
+            let value;
+            try {
+              value = await this.#runNpm(npmArgs, {cwd});
+              if (value.failed || value.exitCode) {
+                failures++;
+              }
+              results.push({
+                pkgName,
+                script,
+                stdout: value.stdout,
+                stderr: value.stderr,
+                exitCode: value.exitCode,
+              });
+            } catch (err) {
+              value = /** @type {import('execa').ExecaError} */ (err);
+              failures++;
+              results.push({
+                pkgName,
+                script,
+                stdout: value.stdout,
+                stderr: value.stderr,
+                exitCode: value.exitCode,
+                error: /** @type {import('execa').ExecaError} */ (err),
+              });
+            } finally {
+              this.emit('run-script-pkg-end', {
+                script,
+                cwd,
+                npmArgs,
+                pkgName,
+                total: totalScriptCount,
+                current,
+                result: value,
+              });
+            }
           }
+        } finally {
+          this.emit('run-script-end', {
+            script,
+            scriptCount,
+            current: Number(scriptIdx),
+          });
         }
       }
-      return;
+      this.emit('run-scripts-end', {total: totalScriptCount, failures});
+    } else {
+      debug('(runScripts) No packed items; no scripts to run');
     }
-    debug('(runScript) No packed items; no scripts to run');
+    return results;
   }
 
   /**
@@ -397,4 +486,5 @@ exports.smoke = async function smoke(scripts, opts = {}) {
  * @typedef {import('../static').SmokerOptions} SmokerOptions
  * @typedef {import('../static').PackItem} PackItem
  * @typedef {import('../static').PackOptions} PackOptions
+ * @typedef {import('../static').RunScriptResult} RunScriptResult
  */

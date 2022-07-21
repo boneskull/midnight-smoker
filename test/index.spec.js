@@ -4,6 +4,7 @@ const expect = unexpected.clone().use(require('unexpected-sinon'));
 const rewiremock = require('rewiremock/node');
 const EventEmitter = require('events');
 const path = require('path');
+const {Readable} = require('node:stream');
 
 describe('midnight-smoker', function () {
   /** @type {sinon.SinonSandbox} */
@@ -22,6 +23,11 @@ describe('midnight-smoker', function () {
   const MOCK_TMPROOT = '/some/tmp';
   const MOCK_TMPDIR = path.join(MOCK_TMPROOT, 'midnight-smoker-');
 
+  /** @type {sinon.SinonStubbedInstance<Readable>} */
+  let stderr;
+  /** @type {sinon.SinonStubbedInstance<Readable>} */
+  let stdout;
+
   beforeEach(function () {
     sandbox = createSandbox();
 
@@ -33,24 +39,21 @@ describe('midnight-smoker', function () {
         stat: sandbox.stub().rejects(),
       },
       which: sandbox.stub().resolves(MOCK_NPM),
-      execa: {
-        node: sandbox.stub().callsFake(() => {
-          const stdout = new EventEmitter();
-          const promise = new Promise((resolve) => {
-            setImmediate(() => {
-              stdout.emit('data', 'output from npm');
-              resolve({
-                exitCode: 0,
-                stdout: JSON.stringify([
-                  {filename: 'tarball.tgz', name: 'bar'},
-                ]),
-              });
+      execa: sandbox.stub().callsFake(() => {
+        stdout = sandbox.createStubInstance(Readable);
+        stderr = sandbox.createStubInstance(Readable);
+        const promise = new Promise((resolve) => {
+          setImmediate(() => {
+            stdout.emit('data', 'output from npm');
+            resolve({
+              exitCode: 0,
+              stdout: JSON.stringify([{filename: 'tarball.tgz', name: 'bar'}]),
             });
           });
-          Object.assign(promise, {stdout});
-          return promise;
-        }),
-      },
+        });
+        Object.assign(promise, {stdout, stderr});
+        return promise;
+      }),
       'node:console': sandbox.stub(console),
       'node:os': {
         tmpdir: sandbox.stub().returns(MOCK_TMPROOT),
@@ -298,12 +301,12 @@ describe('midnight-smoker', function () {
 
           it('should append the "--workspace" flag to "npm pack"', async function () {
             await smoker.pack();
-            expect(mocks.execa.node, 'was called with', MOCK_NPM, [
+            expect(mocks.execa, 'was called with', process.execPath, [
+              MOCK_NPM,
               'pack',
               '--json',
               `--pack-destination=${MOCK_TMPDIR}`,
               '--foreground-scripts=false',
-              '--silent',
               '--workspace=/some/path/to/workspace',
             ]);
           });
@@ -318,12 +321,12 @@ describe('midnight-smoker', function () {
 
           it('should append the "--workspaces" flag to "npm pack"', async function () {
             await smoker.pack();
-            expect(mocks.execa.node, 'was called with', MOCK_NPM, [
+            expect(mocks.execa, 'was called with', process.execPath, [
+              MOCK_NPM,
               'pack',
               '--json',
               `--pack-destination=${MOCK_TMPDIR}`,
               '--foreground-scripts=false',
-              '--silent',
               '--workspaces',
             ]);
           });
@@ -338,12 +341,12 @@ describe('midnight-smoker', function () {
 
             it('should append the "--include-workspace-root" flag to "npm pack"', async function () {
               await smoker.pack();
-              expect(mocks.execa.node, 'was called with', MOCK_NPM, [
+              expect(mocks.execa, 'was called with', process.execPath, [
+                MOCK_NPM,
                 'pack',
                 '--json',
                 `--pack-destination=${MOCK_TMPDIR}`,
                 '--foreground-scripts=false',
-                '--silent',
                 '--workspaces',
                 '--include-workspace-root',
               ]);
@@ -353,7 +356,7 @@ describe('midnight-smoker', function () {
 
         describe('when `npm pack` fails', function () {
           beforeEach(async function () {
-            mocks.execa.node.resolves({exitCode: 1, stdout: ''});
+            mocks.execa.resolves({exitCode: 1, stdout: ''});
           });
 
           it('should reject', async function () {
@@ -365,30 +368,35 @@ describe('midnight-smoker', function () {
           });
         });
 
-        describe('when in "quiet" mode', function () {
-          beforeEach(function () {
-            smoker = new Smoker('foo', {quiet: true});
-          });
-          it('should not log "npm" output to STDERR', async function () {
+        describe('when in "verbose" mode', function () {
+          beforeEach(async function () {
+            smoker = new Smoker('foo', {verbose: true});
             await smoker.pack();
-            expect(mocks['node:console'].error, 'was not called');
+          });
+          it('should pipe to STDOUT', function () {
+            expect(stdout.pipe, 'was called once');
+          });
+          it('should pipe to STDERR', function () {
+            expect(stderr.pipe, 'was called once');
           });
         });
 
-        describe('when not in "quiet" mode', function () {
-          it('should log "npm" output to STDERR', async function () {
+        describe('when not in "verbose" mode', function () {
+          beforeEach(async function () {
             await smoker.pack();
-            expect(
-              mocks['node:console'].error,
-              'was called with',
-              'output from npm'
-            );
+          });
+          it('should not pipe to STDERR', function () {
+            expect(stderr.pipe, 'was not called');
+          });
+
+          it('should not pipe to STDOUT', function () {
+            expect(stdout.pipe, 'was not called');
           });
         });
 
         describe('when "npm pack" returns invalid JSON', function () {
           beforeEach(function () {
-            mocks.execa.node.resolves({exitCode: 0, stdout: '[invalid'});
+            mocks.execa.resolves({exitCode: 0, stdout: '[invalid'});
           });
           it('should reject', async function () {
             return expect(
@@ -415,7 +423,8 @@ describe('midnight-smoker', function () {
 
         it('should execute "npm install" with a list of tarball filepaths', async function () {
           await smoker.install(packItems);
-          expect(mocks.execa.node, 'was called with', MOCK_NPM, [
+          expect(mocks.execa, 'was called with', process.execPath, [
+            MOCK_NPM,
             'install',
             ...packItems.map((item) => item.tarballFilepath),
           ]);
@@ -434,7 +443,7 @@ describe('midnight-smoker', function () {
 
         describe('when "npm install" returns a non-zero exit code', function () {
           beforeEach(function () {
-            mocks.execa.node.resolves({exitCode: 1, stdout: 'oh noes'});
+            mocks.execa.resolves({exitCode: 1, stdout: 'oh noes'});
           });
 
           it('should reject', async function () {
@@ -449,33 +458,37 @@ describe('midnight-smoker', function () {
         describe('when "packItems" argument is empty', function () {
           it('should not execute "npm install"', async function () {
             await smoker.install([]);
-            expect(mocks.execa.node, 'was not called');
+            expect(mocks.execa, 'was not called');
+          });
+        });
+        describe('when in "verbose" mode', function () {
+          beforeEach(async function () {
+            smoker = new Smoker('foo', {verbose: true});
+            await smoker.install(packItems);
+          });
+          it('should pipe to STDOUT', function () {
+            expect(stdout.pipe, 'was called once');
+          });
+          it('should pipe to STDERR', function () {
+            expect(stderr.pipe, 'was called once');
           });
         });
 
-        describe('when in "quiet" mode', function () {
-          beforeEach(function () {
-            smoker = new Smoker('foo', {quiet: true});
-          });
-          it('should not log "npm" output to STDERR', async function () {
+        describe('when not in "verbose" mode', function () {
+          beforeEach(async function () {
             await smoker.install(packItems);
-            expect(mocks['node:console'].error, 'was not called');
           });
-        });
+          it('should not pipe to STDERR', function () {
+            expect(stderr.pipe, 'was not called');
+          });
 
-        describe('when not in "quiet" mode', function () {
-          it('should log "npm" output to STDERR', async function () {
-            await smoker.install(packItems);
-            expect(
-              mocks['node:console'].error,
-              'was called with',
-              'output from npm'
-            );
+          it('should not pipe to STDOUT', function () {
+            expect(stdout.pipe, 'was not called');
           });
         });
       });
 
-      describe('runScript()', function () {
+      describe('runScripts()', function () {
         /** @type {import('midnight-smoker').PackItem[]} */
         const packItems = [
           {
@@ -492,7 +505,7 @@ describe('midnight-smoker', function () {
           it('should reject', async function () {
             return expect(
               // @ts-expect-error
-              smoker.runScript(),
+              smoker.runScripts(),
               'to be rejected with error satisfying',
               new TypeError('(install) "packItems" is required')
             );
@@ -501,47 +514,61 @@ describe('midnight-smoker', function () {
 
         describe('when "packItems" argument is empty', function () {
           it('should not execute "npm run-script"', async function () {
-            await smoker.runScript([]);
-            expect(mocks.execa.node, 'was not called');
+            await smoker.runScripts([]);
+            expect(mocks.execa, 'was not called');
           });
         });
 
-        describe('when in "quiet" mode', function () {
-          beforeEach(function () {
-            smoker = new Smoker('foo', {quiet: true});
+        describe('when in "verbose" mode', function () {
+          beforeEach(async function () {
+            smoker = new Smoker('foo', {verbose: true});
+            await smoker.runScripts(packItems);
           });
-          it('should not log "npm" output to STDERR', async function () {
-            await smoker.runScript(packItems);
-            expect(mocks['node:console'].error, 'was not called');
+          it('should pipe to STDOUT', async function () {
+            expect(stdout.pipe, 'was called once');
+          });
+          it('should pipe to STDERR', async function () {
+            expect(stderr.pipe, 'was called once');
           });
         });
 
-        describe('when not in "quiet" mode', function () {
-          it('should log "npm" output to STDERR', async function () {
-            await smoker.runScript(packItems);
-            expect(
-              mocks['node:console'].error,
-              'was called with',
-              'output from npm'
-            );
+        describe('when not in "verbose" mode', function () {
+          beforeEach(async function () {
+            await smoker.runScripts(packItems);
+          });
+
+          it('should not pipe to STDERR', async function () {
+            expect(stderr.pipe, 'was not called');
+          });
+
+          it('should not pipe to STDOUT', async function () {
+            expect(stdout.pipe, 'was not called');
           });
         });
 
         it('should call "npm run-script" within each "installPath" in "packItems"', async function () {
-          await smoker.runScript(packItems);
-          expect(mocks.execa.node, 'to have calls satisfying', [
-            [MOCK_NPM, ['run-script', 'foo'], {cwd: packItems[0].installPath}],
-            [MOCK_NPM, ['run-script', 'foo'], {cwd: packItems[1].installPath}],
+          await smoker.runScripts(packItems);
+          expect(mocks.execa, 'to have calls satisfying', [
+            [
+              process.execPath,
+              [MOCK_NPM, 'run-script', 'foo'],
+              {cwd: packItems[0].installPath},
+            ],
+            [
+              process.execPath,
+              [MOCK_NPM, 'run-script', 'foo'],
+              {cwd: packItems[1].installPath},
+            ],
           ]);
         });
 
-        describe('when "npm install" fails', function () {
+        describe('when "npm run-script" fails', function () {
           beforeEach(function () {
-            mocks.execa.node.resolves({exitCode: 1, stderr: 'oh noes'});
+            mocks.execa.resolves({exitCode: 1, stderr: 'oh noes'});
           });
           it('should reject', async function () {
             return expect(
-              smoker.runScript(packItems),
+              smoker.runScripts(packItems),
               'to be rejected with error satisfying',
               /npm script "foo" failed with exit code 1/
             );
@@ -549,7 +576,7 @@ describe('midnight-smoker', function () {
 
           describe('when the script does not exist', function () {
             beforeEach(function () {
-              mocks.execa.node.resolves({
+              mocks.execa.resolves({
                 exitCode: 1,
                 stderr: 'Missing script: "foo"',
               });
@@ -557,7 +584,7 @@ describe('midnight-smoker', function () {
 
             it('should reject', async function () {
               return expect(
-                smoker.runScript(packItems),
+                smoker.runScripts(packItems),
                 'to be rejected with error satisfying',
                 /npm was unable to find script "foo" in package "bar"/
               );
@@ -571,25 +598,25 @@ describe('midnight-smoker', function () {
   describe('smoke()', function () {
     it('should pack, install, and run scripts', async function () {
       await smoke('foo');
-      expect(mocks.execa.node, 'to have calls satisfying', [
+      expect(mocks.execa, 'to have calls satisfying', [
         [
-          MOCK_NPM,
+          process.execPath,
           [
+            MOCK_NPM,
             'pack',
             '--json',
             `--pack-destination=${MOCK_TMPDIR}`,
             '--foreground-scripts=false',
-            '--silent',
           ],
         ],
         [
-          MOCK_NPM,
-          ['install', `${MOCK_TMPDIR}/tarball.tgz`],
+          process.execPath,
+          [MOCK_NPM, 'install', `${MOCK_TMPDIR}/tarball.tgz`],
           {cwd: MOCK_TMPDIR},
         ],
         [
-          MOCK_NPM,
-          ['run-script', 'foo'],
+          process.execPath,
+          [MOCK_NPM, 'run-script', 'foo'],
           {cwd: `${MOCK_TMPDIR}/node_modules/bar`},
         ],
       ]);
@@ -612,5 +639,5 @@ describe('midnight-smoker', function () {
  */
 
 /**
- * @typedef { {'node:fs/promises': NodeFsPromisesMocks, which: AsyncStub<any,string>, execa: {node: AsyncStub<any,Partial<import('execa').ExecaReturnValue>>}, 'node:console': sinon.SinonStubbedInstance<console>, debug: sinon.SinonStub<any,sinon.SinonStub>, 'node:os': {tmpdir: sinon.SinonStub<any,string>} } } Mocks
+ * @typedef { {'node:fs/promises': NodeFsPromisesMocks, which: AsyncStub<any,string>, execa: AsyncStub<any,Partial<import('execa').ExecaReturnValue>>, 'node:console': sinon.SinonStubbedInstance<console>, debug: sinon.SinonStub<any,sinon.SinonStub>, 'node:os': {tmpdir: sinon.SinonStub<any,string>} } } Mocks
  */

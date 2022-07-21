@@ -73,9 +73,9 @@ async function main(args) {
               group: BEHAVIOR_GROUP,
               normalize: true,
             },
-            quiet: {
+            verbose: {
               type: 'boolean',
-              describe: 'Suppress output from `npm`',
+              describe: 'Print output from npm',
               group: BEHAVIOR_GROUP,
             },
             linger: {

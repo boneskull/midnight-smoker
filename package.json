@@ -84,6 +84,7 @@
   "dependencies": {
     "debug": "4.3.4",
     "execa": "5.1.1",
+    "ora": "5.4.1",
     "which": "2.0.2",
     "yargs": "17.5.1"
   },
