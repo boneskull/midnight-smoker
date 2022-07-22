@@ -1,8 +1,11 @@
 #!/usr/bin/env node
 
+const pluralize = require('pluralize');
 const yargs = require('yargs/yargs');
-const {smoke} = require('./index.js');
-
+const {version} = require('../package.json');
+const {Smoker, events} = require('./index.js');
+const ora = require('ora');
+const {blue, white} = require('chalk');
 const BEHAVIOR_GROUP = 'Behavior:';
 
 /**
@@ -73,9 +76,14 @@ async function main(args) {
               group: BEHAVIOR_GROUP,
               normalize: true,
             },
-            quiet: {
+            verbose: {
               type: 'boolean',
-              describe: 'Suppress output from `npm`',
+              describe: 'Print output from npm',
+              group: BEHAVIOR_GROUP,
+            },
+            bail: {
+              type: 'boolean',
+              describe: 'When running scripts, halt on first error',
               group: BEHAVIOR_GROUP,
             },
             linger: {
@@ -100,7 +108,97 @@ async function main(args) {
           ...(argv.scripts ?? []),
         ];
 
-        await smoke(scripts, argv);
+        const smoker = new Smoker(scripts, argv);
+
+        const spinner = ora();
+
+        smoker
+          .on(events.SMOKE_BEGIN, () => {
+            console.error(
+              `💨 ${blue('midnight-smoker')} ${white(`v${version}`)}`
+            );
+          })
+          .on(events.FIND_NPM_BEGIN, () => {
+            spinner.start('Looking for npm...');
+          })
+          .on(events.FIND_NPM_OK, (path) => {
+            spinner.succeed(`Found npm at ${path}`);
+          })
+          .on(events.FIND_NPM_FAILED, (err) => {
+            spinner.fail(`Could not find npm: ${err.message}`);
+            process.exitCode = 1;
+          })
+          .on(events.PACK_BEGIN, () => {
+            /** @type {string} */
+            let what;
+            if (argv.workspace?.length) {
+              what = pluralize('workspace', argv.workspace.length, true);
+            } else if (argv.all) {
+              what = 'all workspaces';
+              if (argv.includeRoot) {
+                what += ' (and the workspace root)';
+              }
+            } else {
+              what = 'current project';
+            }
+            spinner.start(`Packing ${what}...`);
+          })
+          .on(events.PACK_OK, (packItems) => {
+            spinner.succeed(
+              `Packed ${pluralize('package', packItems.length, true)}`
+            );
+          })
+          .on(events.PACK_FAILED, (err) => {
+            spinner.fail(err.message);
+            process.exitCode = 1;
+          })
+          .on(events.INSTALL_BEGIN, (packItems) => {
+            spinner.start(
+              `Installing from ${pluralize(
+                'tarball',
+                packItems.length,
+                true
+              )}...`
+            );
+          })
+          .on(events.INSTALL_FAILED, (err) => {
+            spinner.fail(err.message);
+            process.exitCode = 1;
+          })
+          .on(events.INSTALL_OK, (packItems) => {
+            spinner.succeed(
+              `Installed ${pluralize('package', packItems.length, true)}`
+            );
+          })
+          .on(events.RUN_SCRIPTS_BEGIN, ({total}) => {
+            spinner.start(`Running script 0/${total}...`);
+          })
+          .on(events.RUN_SCRIPT_BEGIN, ({current, total}) => {
+            spinner.text = `Running script ${current}/${total}...`;
+          })
+          .on(events.RUN_SCRIPT_FAILED, () => {
+            process.exitCode = 1;
+          })
+          .on(events.RUN_SCRIPTS_OK, ({total}) => {
+            spinner.succeed(
+              `Successfully ran ${pluralize('script', total, true)}`
+            );
+          })
+          .on(events.RUN_SCRIPTS_FAILED, ({total, executed, failures}) => {
+            spinner.fail(
+              `${failures} of ${total} ${pluralize('script', total)} failed`
+            );
+            process.exitCode = 1;
+          })
+          .on(events.SMOKE_FAILED, (err) => {
+            spinner.fail(err.message);
+            process.exitCode = 1;
+          })
+          .on(events.SMOKE_OK, () => {
+            spinner.succeed('Lovey-dovey! 💖');
+          });
+
+        await smoker.smoke();
       }
     )
     .help()

@@ -33,7 +33,8 @@
     "prepare": "husky install && npm run build",
     "test:smoke": "node ./src/cli.js --version",
     "test": "mocha \"test/**/*.spec.js\"",
-    "posttest": "markdownlint-cli2 \"*.md\" && eslint ."
+    "posttest": "markdownlint-cli2 \"*.md\" && eslint .",
+    "update-snapshots": "cross-env UNEXPECTED_SNAPSHOT=1 npm test"
   },
   "lint-staged": {
     "*.js": [
@@ -56,9 +57,11 @@
     "@types/debug": "4.1.7",
     "@types/mocha": "9.1.1",
     "@types/node": "18.0.4",
+    "@types/pluralize": "0.0.29",
     "@types/sinon": "10.0.13",
     "@types/which": "2.0.1",
     "@types/yargs": "17.0.10",
+    "cross-env": "7.0.3",
     "eslint": "8.13.0",
     "eslint-config-prettier": "8.5.0",
     "eslint-config-standard": "17.0.0-1",
@@ -73,6 +76,7 @@
     "prettier": "2.6.2",
     "rewiremock": "3.14.3",
     "sinon": "14.0.0",
+    "strict-event-emitter-types": "2.0.0",
     "typescript": "4.7.4",
     "unexpected": "12.0.4",
     "unexpected-sinon": "11.1.0",
@@ -82,8 +86,11 @@
     "node": ">=14"
   },
   "dependencies": {
+    "chalk": "4.1.2",
     "debug": "4.3.4",
     "execa": "5.1.1",
+    "ora": "5.4.1",
+    "pluralize": "8.0.0",
     "which": "2.0.2",
     "yargs": "17.5.1"
   },

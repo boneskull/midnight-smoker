@@ -1,4 +1,6 @@
-import type {Smoker} from './src';
+import {ExecaError, ExecaReturnValue, Options} from 'execa';
+import {StrictEventEmitter} from 'strict-event-emitter-types';
+import {EventEmitter} from 'events';
 
 /**
  * JSON output of `npm pack`
@@ -36,7 +38,6 @@ export interface PackOptions {
   allWorkspaces?: boolean;
   includeWorkspaceRoot?: boolean;
   silent?: boolean;
-
 }
 
 /**
@@ -81,8 +82,48 @@ export interface SmokerOptions {
    */
   npm?: string;
   /**
-   * If `true`, suppress output from `npm`
+   * If `true`, show output from `npm`
    */
-  quiet?: boolean;
-  
+  verbose?: boolean;
+  /**
+   * If `true`, leave temp dir intact after exit
+   */
+  linger?: boolean;
+  /**
+   * If `true`, halt at first failure
+   */
+  bail?: boolean;
 }
+
+export interface RunScriptResult extends ExecaReturnValue<string> {
+  pkgName: string;
+  script: string;
+}
+
+export interface Events {
+  SmokeBegin: void;
+  SmokeOk: void;
+  SmokeFailed: (err: Error) => void;
+  FindNpmBegin: void;
+  FindNpmOk: string;
+  FindNpmFailed: (err: Error) => void;
+
+  PackBegin: void;
+  PackFailed: SyntaxError|ExecaError|Error;
+  PackOk: PackItem[];
+  RunNpmBegin: {command: string; options: Options};
+  RunNpmFailed: ExecaError
+  RunNpmOk: {command: string, options: Options, value: ExecaReturnValue<string>};
+  InstallBegin: PackItem[];
+  InstallFailed: ExecaError|Error;
+  InstallOk: PackItem[];
+  RunScriptsBegin: {scripts: string[], packItems: PackItem[], total: number} 
+  RunScriptsFailed: {total: number, executed: number, failures: number, results: ExecaReturnValue<string|ExecaError>[]};
+  RunScriptsOk: {total: number, executed: number, failures: number, results: ExecaReturnValue<string>[]};
+  RunScriptBegin: {script: string, cwd: string, npmArgs: string[], pkgName: string, total: number, current: number};
+  RunScriptFailed: {error: ExecaReturnValue<string>|ExecaError; total: number, current: number}
+  RunScriptOk: {value: ExecaReturnValue<string>, current: number, total: number}
+
+}
+
+export type TSmokerEmitter = StrictEventEmitter<EventEmitter, Events>;

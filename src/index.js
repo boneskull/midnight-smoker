@@ -3,10 +3,56 @@ const debug = require('debug')('midnight-smoker');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const {tmpdir} = require('node:os');
-const {node: execa} = require('execa');
-const console = require('node:console');
+const execa = require('execa');
+const {EventEmitter} = require('node:events');
 
 const TMP_DIR_PREFIX = 'midnight-smoker-';
+
+const {
+  SMOKE_BEGIN,
+  SMOKE_OK,
+  SMOKE_FAILED,
+  FIND_NPM_BEGIN,
+  FIND_NPM_FAILED,
+  FIND_NPM_OK,
+  PACK_BEGIN,
+  PACK_FAILED,
+  PACK_OK,
+  INSTALL_BEGIN,
+  INSTALL_FAILED,
+  INSTALL_OK,
+  RUN_NPM_BEGIN,
+  RUN_NPM_FAILED,
+  RUN_NPM_OK,
+  RUN_SCRIPTS_BEGIN,
+  RUN_SCRIPTS_FAILED,
+  RUN_SCRIPTS_OK,
+  RUN_SCRIPT_BEGIN,
+  RUN_SCRIPT_FAILED,
+  RUN_SCRIPT_OK,
+} = (exports.events = /** @type {const} */ ({
+  SMOKE_BEGIN: 'SmokeBegin',
+  SMOKE_OK: 'SmokeOk',
+  SMOKE_FAILED: 'SmokeFailed',
+  FIND_NPM_BEGIN: 'FindNpmBegin',
+  FIND_NPM_FAILED: 'FindNpmFailed',
+  FIND_NPM_OK: 'FindNpmOk',
+  PACK_BEGIN: 'PackBegin',
+  PACK_FAILED: 'PackFailed',
+  PACK_OK: 'PackOk',
+  INSTALL_BEGIN: 'InstallBegin',
+  INSTALL_FAILED: 'InstallFailed',
+  INSTALL_OK: 'InstallOk',
+  RUN_NPM_BEGIN: 'RunNpmBegin',
+  RUN_NPM_OK: 'RunNpmOk',
+  RUN_NPM_FAILED: 'RunNpmFailed',
+  RUN_SCRIPTS_BEGIN: 'RunScriptsBegin',
+  RUN_SCRIPTS_FAILED: 'RunScriptsFailed',
+  RUN_SCRIPTS_OK: 'RunScriptsOk',
+  RUN_SCRIPT_BEGIN: 'RunScriptBegin',
+  RUN_SCRIPT_FAILED: 'RunScriptFailed',
+  RUN_SCRIPT_OK: 'RunScriptOk',
+}));
 
 /**
  * Trims all strings in an array and removes empty strings.
@@ -34,7 +80,14 @@ function pathToPackageName(dirpath) {
   return dirs[dirs.length - 1];
 }
 
-class Smoker {
+function createStrictEventEmitterClass() {
+  const TypedEmitter = /** @type { {new(): TSmokerEmitter} } */ (
+    /** @type {unknown} */ (EventEmitter)
+  );
+  return TypedEmitter;
+}
+
+class Smoker extends createStrictEventEmitterClass() {
   /**
    * @type {string[]}
    */
@@ -57,7 +110,7 @@ class Smoker {
   /**
    * @type {boolean}
    */
-  #quiet = false;
+  #verbose = false;
 
   /** @type {boolean} */
   #clean = false;
@@ -74,12 +127,16 @@ class Smoker {
   /** @type {string[]} */
   #extraNpmInstallArgs;
 
+  /** @type {boolean} */
+  #bail = false;
+
   /**
    *
    * @param {string|string[]} scripts
    * @param {SmokerOptions} [opts]
    */
   constructor(scripts, opts = {}) {
+    super();
     if (typeof scripts === 'string') {
       scripts = [scripts];
     }
@@ -88,11 +145,12 @@ class Smoker {
 
     this.#force = Boolean(opts.force);
     this.#clean = Boolean(opts.clean);
-    this.#quiet = Boolean(opts.quiet);
+    this.#verbose = Boolean(opts.verbose);
     this.#includeWorkspaceRoot = Boolean(opts.includeRoot);
     if (this.#includeWorkspaceRoot) {
       opts.all = true;
     }
+    this.#bail = Boolean(opts.bail);
     this.#allWorkspaces = Boolean(opts.all);
     this.#workspaces = normalizeArray(opts.workspace);
     if (this.#allWorkspaces && this.#workspaces.length) {
@@ -101,16 +159,20 @@ class Smoker {
       );
     }
     this.#extraNpmInstallArgs = normalizeArray(opts.installArgs);
-
     this.opts = Object.freeze(opts);
   }
 
   async smoke() {
+    this.emit(SMOKE_BEGIN);
     try {
       const packItems = await this.pack();
       debug('(smoke) Received %d packed packages', packItems.length);
       await this.install(packItems);
-      await this.runScript(packItems);
+      await this.runScripts(packItems);
+      this.emit(SMOKE_OK);
+    } catch (err) {
+      this.emit(SMOKE_FAILED, /** @type {Error} */ (err));
+      throw err;
     } finally {
       await this.cleanup();
     }
@@ -128,10 +190,22 @@ class Smoker {
       this.#npmPath = this.opts.npm.trim();
       return this.#npmPath;
     }
-    const npmPath = await which('npm');
-    debug('(findNpm) Found npm at %s', npmPath);
-    this.#npmPath = npmPath;
-    return npmPath;
+    this.emit(FIND_NPM_BEGIN);
+    try {
+      const npmPath = await which('npm');
+      // using #runNpm here would be recursive
+      const {stdout: version} = await execa(process.execPath, [
+        npmPath,
+        '--version',
+      ]);
+      debug('(findNpm) Found npm %s at %s', version, npmPath);
+      this.#npmPath = npmPath;
+      this.emit(FIND_NPM_OK, npmPath);
+      return npmPath;
+    } catch (err) {
+      this.emit(FIND_NPM_FAILED, /** @type {Error} */ (err));
+      throw err;
+    }
   }
 
   /**
@@ -140,6 +214,7 @@ class Smoker {
    * @returns {Promise<void>}
    */
   async #cleanWorkingDirectory(wd) {
+    // TODO EMIT
     try {
       await fs.rm(wd, {recursive: true});
     } catch (e) {
@@ -156,6 +231,7 @@ class Smoker {
    * @returns {Promise<void>}
    */
   async #assertNoWorkingDirectory(wd) {
+    // TODO EMIT
     try {
       await fs.stat(wd);
     } catch {
@@ -170,6 +246,7 @@ class Smoker {
    * @returns {Promise<string>}
    */
   async #createTempDirectory() {
+    // TODO EMIT
     try {
       const prefix = path.join(tmpdir(), TMP_DIR_PREFIX);
       return await fs.mkdtemp(prefix);
@@ -183,6 +260,7 @@ class Smoker {
    * @returns {Promise<string>}
    */
   async createWorkingDirectory() {
+    // TODO EMIT
     if (this.#cwd) {
       return this.#cwd;
     }
@@ -215,6 +293,7 @@ class Smoker {
    */
   async pack() {
     const npmPath = await this.findNpm();
+    this.emit(PACK_BEGIN);
     const cwd = await this.createWorkingDirectory();
 
     let packArgs = [
@@ -222,7 +301,6 @@ class Smoker {
       '--json',
       `--pack-destination=${cwd}`,
       '--foreground-scripts=false', // suppress output of lifecycle scripts so json can be parsed
-      '--silent', // XXX needed?
     ];
     if (this.#workspaces.length) {
       packArgs = [
@@ -236,33 +314,40 @@ class Smoker {
       }
     }
 
-    debug('(pack) Executing: %s %s', npmPath, packArgs.join(' '));
-    const proc = execa(npmPath, packArgs);
-
-    if (!this.#quiet) {
-      proc.stdout?.on('data', (data) => {
-        console.error(String(data));
-      });
+    /** @type {execa.ExecaReturnValue<string>} */
+    let value;
+    try {
+      debug('(pack) Executing: %s %s', npmPath, packArgs.join(' '));
+      value = await this.#runNpm(packArgs);
+    } catch (err) {
+      this.emit(PACK_FAILED, /** @type {execa.ExecaError} */ (err));
+      throw err;
     }
-    const {exitCode, stdout: packOutput} = await proc;
 
-    if (exitCode) {
-      throw new Error(`"npm pack" failed with exit code ${exitCode}`);
+    if (value.exitCode) {
+      debug('(pack) Failed: %O', value);
+      const error = new Error(
+        `"npm pack" failed with exit code ${value.exitCode}`
+      );
+      this.emit(PACK_FAILED, error);
+      throw error;
     }
     /** @type {import('../static').NpmPackItem[]} */
     let parsed;
 
+    const {stdout: packOutput} = value;
     try {
       parsed = JSON.parse(packOutput);
-    } catch (err) {
+    } catch {
       debug('(pack) Failed to parse JSON: %s', packOutput);
-      const {message} = /** @type {SyntaxError} */ (err);
-      throw new Error(
-        `Failed to parse JSON output from "npm pack": ${message}`
+      const error = new SyntaxError(
+        `Failed to parse JSON output from "npm pack": ${packOutput}`
       );
+      this.emit(PACK_FAILED, error);
+      throw error;
     }
 
-    const result = parsed.map(({filename, name}) => {
+    const packItems = parsed.map(({filename, name}) => {
       // workaround for https://github.com/npm/cli/issues/3405
       filename = filename.replace(/^@(.+?)\//, '$1-');
       return {
@@ -270,8 +355,59 @@ class Smoker {
         installPath: path.join(cwd, 'node_modules', name),
       };
     });
-    debug('(pack) Packed %d packages', result.length);
-    return result;
+    debug('(pack) Packed %d packages', packItems.length);
+
+    this.emit(PACK_OK, packItems);
+    return packItems;
+  }
+
+  /**
+   *
+   * @param {string[]} args
+   * @param {execa.Options} [options]
+   */
+  async #runNpm(args, options = {}) {
+    const npmPath = await this.findNpm();
+    const command = `${process.execPath} ${npmPath} ${args.join(' ')}`;
+    this.emit(RUN_NPM_BEGIN, {
+      command,
+      options,
+    });
+    const opts = {...options};
+
+    /** @type {execa.ExecaChildProcess} */
+    let proc;
+
+    try {
+      proc = execa(process.execPath, [npmPath, ...args], opts);
+    } catch (err) {
+      this.emit(RUN_NPM_FAILED, /** @type {execa.ExecaError} */ (err));
+      throw err;
+    }
+
+    if (this.#verbose) {
+      proc.stdout?.pipe(process.stdout);
+      proc.stderr?.pipe(process.stderr);
+    }
+
+    /**
+     * @type {execa.ExecaReturnValue|undefined}
+     */
+    let value;
+    /** @type {execa.ExecaError & NodeJS.ErrnoException|undefined} */
+    let error;
+    try {
+      value = await proc;
+      this.emit(RUN_NPM_OK, {command, options, value});
+      return value;
+    } catch (e) {
+      error = /** @type {execa.ExecaError & NodeJS.ErrnoException} */ (e);
+      if (error.code === 'ENOENT') {
+        throw new Error(`Could not find "node" at ${process.execPath}`);
+      }
+      this.emit(RUN_NPM_FAILED, error);
+      throw error;
+    }
   }
 
   /**
@@ -280,12 +416,12 @@ class Smoker {
    * @returns {Promise<void>}
    */
   async install(packItems) {
+    this.emit(INSTALL_BEGIN, packItems);
     if (!packItems) {
       throw new TypeError('(install) "packItems" is required');
     }
     if (packItems.length) {
       const extraArgs = this.#extraNpmInstallArgs;
-      const npmPath = await this.findNpm();
       const cwd = await this.createWorkingDirectory();
       const installArgs = [
         'install',
@@ -293,82 +429,173 @@ class Smoker {
         ...packItems.map(({tarballFilepath}) => tarballFilepath),
       ];
 
-      const proc = execa(npmPath, installArgs, {
-        cwd,
-      });
-
-      if (!this.#quiet) {
-        proc.stdout?.on('data', (data) => {
-          console.error(String(data));
+      /** @type {execa.ExecaReturnValue} */
+      let value;
+      try {
+        value = await this.#runNpm(installArgs, {
+          cwd,
         });
+      } catch (err) {
+        this.emit(INSTALL_FAILED, /** @type {execa.ExecaError} */ (err));
+        throw err;
       }
-
-      const {exitCode: installExitCode} = await proc;
-
-      if (installExitCode) {
-        throw new Error(
-          `"npm install" failed with exit code ${installExitCode}`
+      if (value.exitCode) {
+        debug('(install) Failed: %O', value);
+        const error = new Error(
+          `"npm install" failed with exit code ${value.exitCode}: ${value.stdout}`
         );
+        this.emit(INSTALL_FAILED, error);
+        throw error;
       }
-      debug('(install) Installed %d packages', packItems.length);
-      return;
-    }
+      this.emit(INSTALL_OK, packItems);
 
-    debug('(install) No packed items; no packages to install');
+      debug('(install) Installed %d packages', packItems.length);
+    } else {
+      debug('(install) No packed items; no packages to install');
+    }
   }
 
   /**
    * Runs the script for each package in `packItems`
    * @param {PackItem[]} packItems
-   * @returns {Promise<void>}
+   * @returns {Promise<RunScriptResult[]>}
    */
-  async runScript(packItems) {
+  async runScripts(packItems) {
     if (!packItems) {
       throw new TypeError('(install) "packItems" is required');
     }
-    if (packItems.length) {
-      const scripts = this.scripts;
-      const npmPath = await this.findNpm();
 
-      for (const script of scripts) {
-        const execArgs = ['run-script', script];
+    const scripts = this.scripts;
+    const npmPath = await this.findNpm();
+    const scriptCount = scripts.length;
+    const total = packItems.length * scriptCount;
+    this.emit(RUN_SCRIPTS_BEGIN, {scripts, packItems, total});
+    /** @type {RunScriptResult[]} */
+    const results = [];
 
-        for await (const {installPath: cwd} of packItems) {
-          debug('(pack) Executing: %s %s', npmPath, execArgs.join(' '));
-          const proc = execa(npmPath, execArgs, {
-            cwd,
-          });
-          const pkgName = pathToPackageName(cwd);
+    /**
+     *
+     * @param {string} pkgName
+     * @param {string} script
+     * @param {execa.ExecaReturnValue|execa.ExecaError} value
+     * @param {number} current
+     * @param {number} total
+     */
+    const handleScriptReturnValue = (
+      pkgName,
+      script,
+      value,
+      current,
+      total
+    ) => {
+      const result = {
+        pkgName,
+        script,
+        ...value,
+      };
+      results.push(result);
+      if (value.failed && this.#bail) {
+        if (/missing script:/i.test(value.stderr)) {
+          this.emit(RUN_SCRIPT_FAILED, {error: value, current, total});
+          return new Error(
+            `Script "${script}" in package "${pkgName}" failed; npm was unable to find this script`
+          );
+        }
 
-          if (!this.#quiet) {
-            proc.stdout?.on('data', (data) => {
-              console.error(String(data));
+        return new Error(
+          `Script "${script}" in package "${pkgName}" failed with exit code ${value.exitCode}: ${value.all}`
+        );
+      } else if (value.failed) {
+        this.emit(RUN_SCRIPT_FAILED, {error: value, current, total});
+        debug(
+          `(runScripts) Script "%s" in package "%s" failed; continuing...`,
+          script,
+          pkgName
+        );
+      } else {
+        this.emit(RUN_SCRIPT_OK, {
+          value,
+          current,
+          total,
+        });
+        debug(
+          '(runScripts) Successfully executed script %s in package %s',
+          script,
+          pkgName
+        );
+      }
+    };
+    if (total) {
+      for (const [currentScriptIdx, script] of Object.entries(scripts)) {
+        const npmArgs = ['run-script', script];
+        try {
+          for await (const [pkgIdx, {installPath: cwd}] of Object.entries(
+            packItems
+          )) {
+            const pkgName = pathToPackageName(cwd);
+            const current = Number(pkgIdx) + Number(currentScriptIdx);
+            this.emit(RUN_SCRIPT_BEGIN, {
+              script,
+              cwd,
+              npmArgs,
+              pkgName,
+              total,
+              current,
             });
-          }
+            debug('(pack) Executing: %s %s', npmPath, npmArgs.join(' '));
 
-          const {exitCode, stderr} = await proc;
-          if (exitCode) {
-            if (/missing script:/i.test(stderr)) {
-              throw new Error(
-                `npm was unable to find script "${script}" in package "${pkgName}"`
+            /** @type {execa.ExecaReturnValue<string>} */
+            let value;
+
+            try {
+              value = await this.#runNpm(npmArgs, {cwd});
+            } catch (err) {
+              throw handleScriptReturnValue(
+                pkgName,
+                script,
+                /** @type {execa.ExecaError} */ (err),
+                current,
+                total
               );
             }
 
-            throw new Error(
-              `npm script "${script}" failed with exit code ${exitCode}: ${stderr}`
-            );
-          } else {
-            debug(
-              '(runScript) Successfully executed script %s in package %s',
+            const err = handleScriptReturnValue(
+              pkgName,
               script,
-              pkgName
+              value,
+              current,
+              total
             );
+            if (err) {
+              throw err;
+            }
+          }
+        } finally {
+          const failures = results.reduce(
+            (acc, {failed}) => acc + Number(failed),
+            0
+          );
+          if (failures) {
+            this.emit(RUN_SCRIPTS_FAILED, {
+              total,
+              executed: results.length,
+              failures,
+              results,
+            });
+          } else {
+            this.emit(RUN_SCRIPTS_OK, {
+              total,
+              executed: results.length,
+              failures,
+              results,
+            });
           }
         }
       }
-      return;
+    } else {
+      debug('(runScripts) No packed items; no scripts to run');
     }
-    debug('(runScript) No packed items; no scripts to run');
+    return results;
   }
 
   /**
@@ -397,4 +624,7 @@ exports.smoke = async function smoke(scripts, opts = {}) {
  * @typedef {import('../static').SmokerOptions} SmokerOptions
  * @typedef {import('../static').PackItem} PackItem
  * @typedef {import('../static').PackOptions} PackOptions
+ * @typedef {import('../static').RunScriptResult} RunScriptResult
+ * @typedef {import('../static').Events} Events
+ * @typedef {import('../static').TSmokerEmitter} TSmokerEmitter
  */
