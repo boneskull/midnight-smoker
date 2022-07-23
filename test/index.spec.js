@@ -1,6 +1,9 @@
 const unexpected = require('unexpected');
 const {createSandbox} = require('sinon');
-const expect = unexpected.clone().use(require('unexpected-sinon'));
+const expect = unexpected
+  .clone()
+  .use(require('unexpected-sinon'))
+  .use(require('unexpected-eventemitter'));
 const rewiremock = require('rewiremock/node');
 const path = require('path');
 const {Readable} = require('node:stream');
@@ -11,6 +14,9 @@ describe('midnight-smoker', function () {
 
   /** @type {typeof import('midnight-smoker').Smoker} */
   let Smoker;
+
+  /** @type {typeof import('midnight-smoker').events} */
+  let events;
 
   /** @type {typeof import('midnight-smoker').smoke} */
   let smoke;
@@ -60,7 +66,10 @@ describe('midnight-smoker', function () {
       debug: sandbox.stub().returns(sandbox.stub()),
     };
 
-    ({Smoker, smoke} = rewiremock.proxy(() => require('../src/index'), mocks));
+    ({Smoker, smoke, events} = rewiremock.proxy(
+      () => require('../src/index'),
+      mocks
+    ));
   });
 
   afterEach(function () {
@@ -152,6 +161,16 @@ describe('midnight-smoker', function () {
           it('should return the trimmed value of the "npm" option', async function () {
             const smoker = new Smoker('foo', {npm: 'npm-path '});
             return expect(await smoker.findNpm(), 'to be', 'npm-path');
+          });
+
+          it('should not emit the "FindNpmBegin" event', async function () {
+            const smoker = new Smoker('foo', {npm: 'npm-path '});
+            return expect(
+              () => smoker.findNpm(),
+              'not to emit from',
+              smoker,
+              events.FIND_NPM_BEGIN
+            );
           });
         });
 
@@ -281,6 +300,19 @@ describe('midnight-smoker', function () {
       });
 
       describe('pack()', function () {
+        it('should emit the "PackBegin" event', async function () {
+          return expect(
+            smoker.pack(),
+            'to emit from',
+            smoker,
+            events.PACK_BEGIN
+          );
+        });
+
+        it('should emit the "PackOk" event', async function () {
+          return expect(smoker.pack(), 'to emit from', smoker, events.PACK_OK);
+        });
+
         it('should return an array of PackItem objects', async function () {
           const packItems = await smoker.pack();
           return expect(packItems, 'to equal', [
@@ -365,6 +397,20 @@ describe('midnight-smoker', function () {
               /"npm pack" failed/
             );
           });
+
+          it('should emit the "PackFailed" event', async function () {
+            return expect(
+              async () => {
+                try {
+                  await smoker.pack();
+                } catch {}
+              },
+              'to emit from',
+              smoker,
+              events.PACK_FAILED,
+              /"npm pack" failed/
+            );
+          });
         });
 
         describe('when in "verbose" mode', function () {
@@ -404,6 +450,20 @@ describe('midnight-smoker', function () {
               /Failed to parse JSON output/
             );
           });
+
+          it('should emit the "PackFailed" event', async function () {
+            return expect(
+              async () => {
+                try {
+                  await smoker.pack();
+                } catch {}
+              },
+              'to emit from',
+              smoker,
+              events.PACK_FAILED,
+              /Failed to parse JSON output/
+            );
+          });
         });
       });
 
@@ -433,6 +493,26 @@ describe('midnight-smoker', function () {
           ]);
         });
 
+        it('should emit the "InstallBegin" event', async function () {
+          return expect(
+            smoker.install(packItems),
+            'to emit from',
+            smoker,
+            events.INSTALL_BEGIN,
+            packItems
+          );
+        });
+
+        it('should emit the "InstallOk" event', async function () {
+          return expect(
+            smoker.install(packItems),
+            'to emit from',
+            smoker,
+            events.INSTALL_OK,
+            packItems
+          );
+        });
+
         describe('when called without "packItems" argument', function () {
           it('should reject', async function () {
             return expect(
@@ -458,12 +538,27 @@ describe('midnight-smoker', function () {
           });
         });
 
+        describe('when "npm" cannot be executed', function () {
+          beforeEach(function () {
+            mocks.execa.rejects({exitCode: 1, stdout: 'oh noes'});
+          });
+
+          it('should reject', async function () {
+            return expect(
+              smoker.install(packItems),
+              'to be rejected with error satisfying',
+              /"npm install" failed to spawn/
+            );
+          });
+        });
+
         describe('when "packItems" argument is empty', function () {
           it('should not execute "npm install"', async function () {
             await smoker.install([]);
             expect(mocks.execa, 'was not called');
           });
         });
+
         describe('when in "verbose" mode', function () {
           beforeEach(async function () {
             smoker = new Smoker('foo', {verbose: true});
@@ -503,6 +598,32 @@ describe('midnight-smoker', function () {
             installPath: `${MOCK_TMPDIR}/node_modules/baz`,
           },
         ];
+
+        it('should emit the "RunScriptsBegin" event', async function () {
+          return expect(
+            smoker.runScripts(packItems),
+            'to emit from',
+            smoker,
+            events.RUN_SCRIPTS_BEGIN,
+            {scripts: ['foo'], packItems, total: 2}
+          );
+        });
+
+        it('should emit the "RunScriptsOk" event', async function () {
+          return expect(
+            smoker.runScripts(packItems),
+            'to emit from',
+            smoker,
+            events.RUN_SCRIPTS_OK,
+            expect.it('to satisfy', {
+              scripts: ['foo'],
+              total: 2,
+              executed: 2,
+              failures: 0,
+              results: expect.it('to be an array'),
+            })
+          );
+        });
 
         describe('when called without "packItems" argument', function () {
           it('should reject', async function () {
@@ -564,6 +685,10 @@ describe('midnight-smoker', function () {
               {cwd: packItems[1].installPath},
             ],
           ]);
+        });
+
+        describe('when a script fails', function () {
+          it('should emit the "RunScriptsFailed" event');
         });
 
         describe('when constructor provided "bail" option', function () {

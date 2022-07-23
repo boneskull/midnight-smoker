@@ -109,21 +109,50 @@ export interface Events {
   FindNpmFailed: (err: Error) => void;
 
   PackBegin: void;
-  PackFailed: SyntaxError|ExecaError|Error;
+  PackFailed: SyntaxError | ExecaError | Error;
   PackOk: PackItem[];
   RunNpmBegin: {command: string; options: Options};
-  RunNpmFailed: ExecaError
-  RunNpmOk: {command: string, options: Options, value: ExecaReturnValue<string>};
+  RunNpmFailed: ExecaError;
+  RunNpmOk: {
+    command: string;
+    options: Options;
+    value: ExecaReturnValue<string>;
+  };
   InstallBegin: PackItem[];
-  InstallFailed: ExecaError|Error;
+  InstallFailed: ExecaError | Error;
   InstallOk: PackItem[];
-  RunScriptsBegin: {scripts: string[], packItems: PackItem[], total: number} 
-  RunScriptsFailed: {total: number, executed: number, failures: number, results: ExecaReturnValue<string|ExecaError>[]};
-  RunScriptsOk: {total: number, executed: number, failures: number, results: ExecaReturnValue<string>[]};
-  RunScriptBegin: {script: string, cwd: string, npmArgs: string[], pkgName: string, total: number, current: number};
-  RunScriptFailed: {error: ExecaReturnValue<string>|ExecaError; total: number, current: number}
-  RunScriptOk: {value: ExecaReturnValue<string>, current: number, total: number}
-
+  RunScriptsBegin: {scripts: string[]; packItems: PackItem[]; total: number};
+  RunScriptsFailed: {
+    total: number;
+    executed: number;
+    failures: number;
+    results: ExecaReturnValue<string | ExecaError>[];
+  };
+  RunScriptsOk: {
+    total: number;
+    executed: number;
+    failures: number;
+    results: ExecaReturnValue<string>[];
+    scripts: string[];
+  };
+  RunScriptBegin: {
+    script: string;
+    cwd: string;
+    npmArgs: string[];
+    pkgName: string;
+    total: number;
+    current: number;
+  };
+  RunScriptFailed: {
+    error: ExecaReturnValue<string> | ExecaError;
+    total: number;
+    current: number;
+  };
+  RunScriptOk: {
+    value: ExecaReturnValue<string>;
+    current: number;
+    total: number;
+  };
 }
 
 export type TSmokerEmitter = StrictEventEmitter<EventEmitter, Events>;

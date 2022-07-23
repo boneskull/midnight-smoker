@@ -416,11 +416,13 @@ class Smoker extends createStrictEventEmitterClass() {
    * @returns {Promise<void>}
    */
   async install(packItems) {
-    this.emit(INSTALL_BEGIN, packItems);
     if (!packItems) {
       throw new TypeError('(install) "packItems" is required');
     }
     if (packItems.length) {
+      // ensure we emit asynchronously
+      await Promise.resolve();
+      this.emit(INSTALL_BEGIN, packItems);
       const extraArgs = this.#extraNpmInstallArgs;
       const cwd = await this.createWorkingDirectory();
       const installArgs = [
@@ -436,8 +438,9 @@ class Smoker extends createStrictEventEmitterClass() {
           cwd,
         });
       } catch (err) {
-        this.emit(INSTALL_FAILED, /** @type {execa.ExecaError} */ (err));
-        throw err;
+        const error = /** @type {execa.ExecaError} */ (err);
+        this.emit(INSTALL_FAILED, error);
+        throw new Error(`"npm install" failed to spawn: ${error.message}`);
       }
       if (value.exitCode) {
         debug('(install) Failed: %O', value);
@@ -572,7 +575,7 @@ class Smoker extends createStrictEventEmitterClass() {
           }
         } finally {
           const failures = results.reduce(
-            (acc, {failed}) => acc + Number(failed),
+            (acc, {failed = false}) => acc + Number(failed),
             0
           );
           if (failures) {
@@ -584,6 +587,7 @@ class Smoker extends createStrictEventEmitterClass() {
             });
           } else {
             this.emit(RUN_SCRIPTS_OK, {
+              scripts,
               total,
               executed: results.length,
               failures,
