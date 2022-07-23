@@ -40,7 +40,7 @@
     "*.js": [
       "eslint --fix"
     ],
-    "*.{yml,md}": [
+    "*.{yml,md,d.ts}": [
       "prettier --write"
     ],
     "*.md": [
