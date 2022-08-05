@@ -17,9 +17,6 @@
     "workspace",
     "workspaces"
   ],
-  "bin": {
-    "smoker": "src/cli.js"
-  },
   "repository": {
     "type": "git",
     "url": "https://github.com/boneskull/midnight-smoker"
@@ -27,13 +24,22 @@
   "license": "Apache-2.0",
   "author": "Christopher Hiller <boneskull@boneskull.com> (https://boneskull.com/)",
   "main": "src/index.js",
+  "types": "./types/src/index.d.ts",
+  "bin": {
+    "smoker": "src/cli.js"
+  },
+  "files": [
+    "src",
+    "types",
+    "static.d.ts"
+  ],
   "scripts": {
     "build": "tsc -b",
     "lint-staged": "lint-staged",
     "prepare": "husky install && npm run build",
-    "test:smoke": "node ./src/cli.js --version",
     "test": "mocha \"test/**/*.spec.js\"",
     "posttest": "markdownlint-cli2 \"README.md\" && eslint .",
+    "test:smoke": "node ./src/cli.js --version",
     "update-snapshots": "cross-env UNEXPECTED_SNAPSHOT=1 npm test"
   },
   "lint-staged": {
@@ -52,7 +58,16 @@
     "endOfLine": "auto",
     "singleQuote": true
   },
-  "types": "./types/src/index.d.ts",
+  "dependencies": {
+    "chalk": "4.1.2",
+    "debug": "4.3.4",
+    "execa": "5.1.1",
+    "ora": "5.4.1",
+    "pluralize": "8.0.0",
+    "strict-event-emitter-types": "2.0.0",
+    "which": "2.0.2",
+    "yargs": "17.5.1"
+  },
   "devDependencies": {
     "@types/debug": "4.1.7",
     "@types/mocha": "9.1.1",
@@ -76,7 +91,6 @@
     "prettier": "2.6.2",
     "rewiremock": "3.14.3",
     "sinon": "14.0.0",
-    "strict-event-emitter-types": "2.0.0",
     "typescript": "4.7.4",
     "unexpected": "12.0.4",
     "unexpected-eventemitter": "2.4.0",
@@ -85,19 +99,5 @@
   },
   "engines": {
     "node": ">=14"
-  },
-  "dependencies": {
-    "chalk": "4.1.2",
-    "debug": "4.3.4",
-    "execa": "5.1.1",
-    "ora": "5.4.1",
-    "pluralize": "8.0.0",
-    "which": "2.0.2",
-    "yargs": "17.5.1"
-  },
-  "files": [
-    "src",
-    "types",
-    "static.d.ts"
-  ]
+  }
 }
