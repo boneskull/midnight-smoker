@@ -36,7 +36,7 @@ describe('midnight-smoker CLI', function () {
       this.timeout('5s');
       const actual = await run(['--version']);
       expect(actual, 'to equal snapshot', {
-        stdout: '0.1.0',
+        stdout: '1.0.1',
         stderr: '',
         exitCode: 0,
       });
@@ -68,7 +68,7 @@ describe('midnight-smoker CLI', function () {
     expect(actual, 'to equal snapshot', {
       stdout: '',
       stderr:
-        '💨 midnight-smoker v0.1.0\n- Looking for npm...\n✔ Found npm at /Users/boneskull/.nvm/versions/node/v18.4.0/bin/npm\n- Packing current project...\n✔ Packed 1 package\n- Installing from 1 tarball...\n✔ Installed 1 package\n- Running script 0/1...\n✔ Successfully ran 1 script\n✔ Lovey-dovey! 💖',
+        '💨 midnight-smoker v1.0.1\n- Looking for npm...\n✔ Found npm at /Users/boneskull/.nvm/versions/node/v18.4.0/bin/npm\n- Packing current project...\n✔ Packed 1 package\n- Installing from 1 tarball...\n✔ Installed 1 package\n- Running script 0/1...\n✔ Successfully ran 1 script\n✔ Lovey-dovey! 💖',
       exitCode: 0,
     });
   });

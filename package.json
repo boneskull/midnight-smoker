@@ -33,7 +33,7 @@
     "prepare": "husky install && npm run build",
     "test:smoke": "node ./src/cli.js --version",
     "test": "mocha \"test/**/*.spec.js\"",
-    "posttest": "markdownlint-cli2 \"*.md\" && eslint .",
+    "posttest": "markdownlint-cli2 \"README.md\" && eslint .",
     "update-snapshots": "cross-env UNEXPECTED_SNAPSHOT=1 npm test"
   },
   "lint-staged": {
