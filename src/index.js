@@ -332,7 +332,7 @@ class Smoker extends createStrictEventEmitterClass() {
       this.emit(PACK_FAILED, error);
       throw error;
     }
-    /** @type {import('../static').NpmPackItem[]} */
+    /** @type {import('./static').NpmPackItem[]} */
     let parsed;
 
     const {stdout: packOutput} = value;
@@ -625,10 +625,10 @@ exports.smoke = async function smoke(scripts, opts = {}) {
 };
 
 /**
- * @typedef {import('../static').SmokerOptions} SmokerOptions
- * @typedef {import('../static').PackItem} PackItem
- * @typedef {import('../static').PackOptions} PackOptions
- * @typedef {import('../static').RunScriptResult} RunScriptResult
- * @typedef {import('../static').Events} Events
- * @typedef {import('../static').TSmokerEmitter} TSmokerEmitter
+ * @typedef {import('./static').SmokerOptions} SmokerOptions
+ * @typedef {import('./static').PackItem} PackItem
+ * @typedef {import('./static').PackOptions} PackOptions
+ * @typedef {import('./static').RunScriptResult} RunScriptResult
+ * @typedef {import('./static').Events} Events
+ * @typedef {import('./static').TSmokerEmitter} TSmokerEmitter
  */

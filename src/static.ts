@@ -1,6 +1,6 @@
-import {ExecaError, ExecaReturnValue, Options} from 'execa';
-import {StrictEventEmitter} from 'strict-event-emitter-types';
-import {EventEmitter} from 'events';
+import type {ExecaError, ExecaReturnValue, Options} from 'execa';
+import type {StrictEventEmitter} from 'strict-event-emitter-types';
+import type {EventEmitter} from 'events';
 
 /**
  * JSON output of `npm pack`
