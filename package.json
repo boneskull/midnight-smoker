@@ -52,7 +52,7 @@
     "endOfLine": "auto",
     "singleQuote": true
   },
-  "types": "./types/index.d.ts",
+  "types": "./types/src/index.d.ts",
   "devDependencies": {
     "@types/debug": "4.1.7",
     "@types/mocha": "9.1.1",
