@@ -615,7 +615,7 @@ class Smoker extends createStrictEventEmitterClass() {
 exports.Smoker = Smoker;
 
 /**
- *
+ * Run the smoke test scripts!
  * @param {string|string[]} scripts - One or more npm scripts to run
  * @param {SmokerOptions} [opts] - Options
  */
