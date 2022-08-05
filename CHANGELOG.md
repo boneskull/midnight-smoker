@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/boneskull/midnight-smoker/compare/v1.1.0...v1.1.1) (2022-08-05)
+
+
+### Bug Fixes
+
+* **types:** include necessary types ([1cfb550](https://github.com/boneskull/midnight-smoker/commit/1cfb550d28b7d13fd27cb089c7dfe1d2dab8bce5))
+
 ## [1.1.0](https://github.com/boneskull/midnight-smoker/compare/v1.0.1...v1.1.0) (2022-08-05)
 
 
