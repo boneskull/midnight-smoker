@@ -93,6 +93,11 @@ export interface SmokerOptions {
    * If `true`, halt at first failure
    */
   bail?: boolean;
+
+  /**
+   * If `true`, output JSON instead of human-readable text
+   */
+  json?: boolean;
 }
 
 export interface RunScriptResult extends ExecaReturnValue<string> {
@@ -126,7 +131,8 @@ export interface Events {
     total: number;
     executed: number;
     failures: number;
-    results: ExecaReturnValue<string | ExecaError>[];
+    results: Array<ExecaReturnValue<string>|ExecaError<string>>;
+    scripts: string[];
   };
   RunScriptsOk: {
     total: number;

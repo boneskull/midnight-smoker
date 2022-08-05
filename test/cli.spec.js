@@ -49,27 +49,44 @@ describe('midnight-smoker CLI', function () {
     const actual = await run(['test:smoke', '--help']);
     expect(actual, 'to equal snapshot', {
       stdout:
-        "smoker <script> [scripts..]\n\nRun tests against a package as it would be published\n\nPositionals:\n  script                                                                [string]\n  scripts                                                               [string]\n\nBehavior:\n  --workspace     One or more npm workspaces to test                     [array]\n  --all           Test all workspaces                                  [boolean]\n  --include-root  Include the workspace root; must provide '--all'     [boolean]\n  --install-args  Extra arguments to pass to `npm install`               [array]\n  --dir           Working directory to use      [string] [default: new temp dir]\n  --force         Overwrite working directory if it exists             [boolean]\n  --clean         Truncate working directory; must provide '--force'   [boolean]\n  --npm           Path to `npm` executable     [string] [default: `npm` in PATH]\n  --verbose       Print output from npm                                [boolean]\n  --bail          When running scripts, halt on first error            [boolean]\n\nOptions:\n  --version  Show version number                                       [boolean]\n  --help     Show help                                                 [boolean]",
+        "smoker <script> [scripts..]\n\nRun tests against a package as it would be published\n\nPositionals:\n  script                                                                [string]\n  scripts                                                               [string]\n\nBehavior:\n  --workspace     One or more npm workspaces to test                     [array]\n  --all           Test all workspaces                                  [boolean]\n  --include-root  Include the workspace root; must provide '--all'     [boolean]\n  --install-args  Extra arguments to pass to `npm install`               [array]\n  --dir           Working directory to use      [string] [default: new temp dir]\n  --force         Overwrite working directory if it exists             [boolean]\n  --clean         Truncate working directory; must provide '--force'   [boolean]\n  --npm           Path to `npm` executable     [string] [default: `npm` in PATH]\n  --verbose       Print output from npm                                [boolean]\n  --bail          When running scripts, halt on first error            [boolean]\n  --json          Output JSON only                                     [boolean]\n\nOptions:\n  --version  Show version number                                       [boolean]\n  --help     Show help                                                 [boolean]",
       stderr: '',
       exitCode: 0,
     });
   });
 
-  it('should smoke test this package', async function () {
+  it('should smoke test this and produce JSON output', async function () {
     this.timeout('5s');
 
-    const {stdout, stderr, exitCode} = await execa(CLI_PATH, ['test:smoke'], {
-      cwd: CWD,
-      env: {
-        DEBUG: '',
-      },
-    });
+    const {stdout, stderr, exitCode} = await execa(
+      CLI_PATH,
+      ['test:smoke', '--json'],
+      {
+        cwd: CWD,
+        env: {
+          DEBUG: '',
+        },
+      }
+    );
     const actual = {stdout, stderr, exitCode};
+    actual.stdout = actual.stdout
+      // strip the path to npm from the `command` & `escapedCommand` since it could differ depending where this is run
+      .replace(
+        /(?<="(escaped)?[cC]ommand":\s*?")(.+?)(?=\/bin\/npm)/g,
+        '<path/to>'
+      )
+      // strip the versions since it could change
+      .replace(/midnight-smoker@\d+\.\d+\.\d+/, 'midnight-smoker@<version>')
+      .replace(/--version\\n\\n\d+\.\d+\.\d+/, '--version\\n\\n<version>')
+      // strip the path to `cli.js` since it differs per platform
+      .replace(/node(\.cmd)?\s+.+?cli\.js/, '<path/to/>cli.js');
+
     expect(actual, 'to equal snapshot', {
-      stdout: '',
-      stderr:
-        '💨 midnight-smoker v1.0.1\n- Looking for npm...\n✔ Found npm at /Users/boneskull/.nvm/versions/node/v18.4.0/bin/npm\n- Packing current project...\n✔ Packed 1 package\n- Installing from 1 tarball...\n✔ Installed 1 package\n- Running script 0/1...\n✔ Successfully ran 1 script\n✔ Lovey-dovey! 💖',
+      stdout:
+        '{\n  "scripts": [\n    "test:smoke"\n  ],\n  "total": 1,\n  "executed": 1,\n  "failures": 0,\n  "results": [\n    {\n      "pkgName": "midnight-smoker",\n      "script": "test:smoke",\n      "command": "<path/to>/bin/npm run-script test:smoke",\n      "escapedCommand": "<path/to>/bin/npm\\" run-script \\"test:smoke\\"",\n      "exitCode": 0,\n      "stdout": "\\n> midnight-smoker@<version> test:smoke\\n> <path/to/>cli.js --version\\n\\n<version>",\n      "stderr": "",\n      "failed": false,\n      "timedOut": false,\n      "isCanceled": false,\n      "killed": false\n    }\n  ]\n}',
+      stderr: '',
       exitCode: 0,
     });
+    expect(() => JSON.parse(actual.stdout), 'not to throw');
   });
 });

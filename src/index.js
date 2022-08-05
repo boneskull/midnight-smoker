@@ -93,16 +93,19 @@ class Smoker extends createStrictEventEmitterClass() {
    */
   scripts;
 
+  /**
+   * @type {Readonly<SmokerOptions>}
+   */
+  opts;
+
   /** @type {string|undefined} */
   #npmPath;
 
   /** @type {boolean} */
   #force = false;
 
-  /**
-   * @type {Readonly<SmokerOptions>}
-   */
-  opts;
+  /** @type {boolean} */
+  #linger = false;
 
   /** @type {string|undefined} */
   #cwd;
@@ -143,6 +146,7 @@ class Smoker extends createStrictEventEmitterClass() {
     this.scripts = scripts.map((s) => s.trim());
     opts = {...opts};
 
+    this.#linger = Boolean(opts.linger);
     this.#force = Boolean(opts.force);
     this.#clean = Boolean(opts.clean);
     this.#verbose = Boolean(opts.verbose);
@@ -214,13 +218,14 @@ class Smoker extends createStrictEventEmitterClass() {
    * @returns {Promise<void>}
    */
   async #cleanWorkingDirectory(wd) {
-    // TODO EMIT
-    try {
-      await fs.rm(wd, {recursive: true});
-    } catch (e) {
-      const err = /** @type {NodeJS.ErrnoException} */ (e);
-      if (err.code !== 'ENOENT') {
-        throw new Error(`Failed to clean working directory ${wd}: ${e}`);
+    if (!this.#linger) {
+      try {
+        await fs.rm(wd, {recursive: true});
+      } catch (e) {
+        const err = /** @type {NodeJS.ErrnoException} */ (e);
+        if (err.code !== 'ENOENT') {
+          throw new Error(`Failed to clean working directory ${wd}: ${e}`);
+        }
       }
     }
   }
@@ -580,6 +585,7 @@ class Smoker extends createStrictEventEmitterClass() {
           );
           if (failures) {
             this.emit(RUN_SCRIPTS_FAILED, {
+              scripts,
               total,
               executed: results.length,
               failures,
