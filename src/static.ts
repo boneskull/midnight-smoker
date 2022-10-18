@@ -151,6 +151,7 @@ export interface Events {
   };
   RunScriptFailed: {
     error: ExecaReturnValue<string> | ExecaError;
+    pkgName: string;
     total: number;
     current: number;
   };

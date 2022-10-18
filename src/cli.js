@@ -5,7 +5,7 @@ const yargs = require('yargs/yargs');
 const {version} = require('../package.json');
 const {Smoker, events} = require('./index.js');
 const ora = require('ora');
-const {blue, white} = require('chalk');
+const {blue, white, red, yellow} = require('chalk');
 const BEHAVIOR_GROUP = 'Behavior:';
 
 /**
@@ -142,7 +142,8 @@ async function main(args) {
           await smoker.smoke();
         } else {
           const spinner = ora();
-
+          /** @type {Events['RunScriptFailed'][]} */
+          const scriptFailedEvts = [];
           smoker
             .on(events.SMOKE_BEGIN, () => {
               console.error(
@@ -207,7 +208,8 @@ async function main(args) {
             .on(events.RUN_SCRIPT_BEGIN, ({current, total}) => {
               spinner.text = `Running script ${current}/${total}...`;
             })
-            .on(events.RUN_SCRIPT_FAILED, () => {
+            .on(events.RUN_SCRIPT_FAILED, (evt) => {
+              scriptFailedEvts.push(evt);
               process.exitCode = 1;
             })
             .on(events.RUN_SCRIPTS_OK, ({total}) => {
@@ -222,7 +224,18 @@ async function main(args) {
               process.exitCode = 1;
             })
             .on(events.SMOKE_FAILED, (err) => {
-              spinner.fail(err.message);
+              spinner.fail(err?.message ?? err);
+
+              if (scriptFailedEvts.length) {
+                for (const evt of scriptFailedEvts) {
+                  console.error(
+                    `\n${red('Error details')} for failed package ${yellow(
+                      evt.pkgName
+                    )}:\n`
+                  );
+                  console.error(evt.error.stderr);
+                }
+              }
               process.exitCode = 1;
             })
             .on(events.SMOKE_OK, () => {
@@ -232,6 +245,7 @@ async function main(args) {
         }
       }
     )
+    .showHelpOnFail(false)
     .help()
     .strict()
     .parseAsync();
