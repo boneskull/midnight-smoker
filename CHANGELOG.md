@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.2](https://github.com/boneskull/midnight-smoker/compare/v1.1.1...v1.1.2) (2022-10-18)
+
+
+### Bug Fixes
+
+* **cli:** handle non-Error errors better ([00a094e](https://github.com/boneskull/midnight-smoker/commit/00a094e62cf8ee6bcb4642812573143f183a862e))
+
 ## [1.1.1](https://github.com/boneskull/midnight-smoker/compare/v1.1.0...v1.1.1) (2022-08-05)
 
 
