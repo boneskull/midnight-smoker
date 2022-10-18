@@ -175,7 +175,7 @@ class Smoker extends createStrictEventEmitterClass() {
       await this.runScripts(packItems);
       this.emit(SMOKE_OK);
     } catch (err) {
-      this.emit(SMOKE_FAILED, /** @type {Error} */ (err));
+      this.emit(SMOKE_FAILED, /** @type {any} */ (err));
       throw err;
     } finally {
       await this.cleanup();
@@ -504,7 +504,7 @@ class Smoker extends createStrictEventEmitterClass() {
       results.push(result);
       if (value.failed && this.#bail) {
         if (/missing script:/i.test(value.stderr)) {
-          this.emit(RUN_SCRIPT_FAILED, {error: value, current, total});
+          this.emit(RUN_SCRIPT_FAILED, {error: value, current, total, pkgName});
           return new Error(
             `Script "${script}" in package "${pkgName}" failed; npm was unable to find this script`
           );
@@ -514,7 +514,7 @@ class Smoker extends createStrictEventEmitterClass() {
           `Script "${script}" in package "${pkgName}" failed with exit code ${value.exitCode}: ${value.all}`
         );
       } else if (value.failed) {
-        this.emit(RUN_SCRIPT_FAILED, {error: value, current, total});
+        this.emit(RUN_SCRIPT_FAILED, {error: value, current, total, pkgName});
         debug(
           `(runScripts) Script "%s" in package "%s" failed; continuing...`,
           script,
