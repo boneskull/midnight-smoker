@@ -36,7 +36,7 @@ describe('midnight-smoker CLI', function () {
       this.timeout('5s');
       const actual = await run(['--version']);
       expect(actual, 'to equal snapshot', {
-        stdout: '1.1.1',
+        stdout: '1.2.1',
         stderr: '',
         exitCode: 0,
       });
