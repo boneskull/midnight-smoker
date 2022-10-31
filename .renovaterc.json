@@ -7,8 +7,7 @@
     ":enableVulnerabilityAlerts",
     ":rebaseStalePrs",
     "group:definitelyTyped",
-    "workarounds:typesNodeVersioning",
-    "packages:eslint"
+    "workarounds:typesNodeVersioning"
   ],
   "packageRules": [
     {
@@ -34,6 +33,7 @@
         "globby",
         "got",
         "log-symbols",
+        "ora",
         "p-retry",
         "read-pkg",
         "strip-ansi",
@@ -44,6 +44,11 @@
       ],
       "matchUpdateTypes": ["major"],
       "enabled": false
+    },
+    {
+      "extends": ["packages:eslint"],
+      "groupName": "ESLint-related packages",
+      "groupSlug": "eslint"
     }
   ],
   "semanticCommits": "enabled",
