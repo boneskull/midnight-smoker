@@ -1,26 +1,52 @@
 {
-  "extends": ["config:base", ":semanticCommitTypeAll(chore)"],
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:js-app",
+    ":semanticPrefixChore",
+    "helpers:pinGitHubActionDigests",
+    ":enableVulnerabilityAlerts",
+    ":rebaseStalePrs",
+    "group:definitelyTyped",
+    "workarounds:typesNodeVersioning",
+    "packages:eslint"
+  ],
   "packageRules": [
     {
-      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
-      "matchDepTypes": ["devDependencies"],
-      "automerge": true
+      "automerge": true,
+      "matchDepTypes": [
+        "devDependencies"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "pin",
+        "digest"
+      ]
     },
     {
       "matchPackageNames": [
+        "@types/wrap-ansi",
+        "delay",
+        "env-paths",
+        "execa",
         "find-up",
+        "get-port",
         "globby",
+        "got",
         "log-symbols",
+        "p-retry",
         "read-pkg",
+        "strip-ansi",
+        "supports-color",
         "term-size",
         "wrap-ansi",
-        "write-pkg",
-        "@types/wrap-ansi",
-        "execa"
+        "write-pkg"
       ],
       "matchUpdateTypes": ["major"],
       "enabled": false
     }
   ],
-  "semanticCommits": "enabled"
+  "semanticCommits": "enabled",
+  "transitiveRemediation": true,
+  "baseBranches": ["main"]
 }
