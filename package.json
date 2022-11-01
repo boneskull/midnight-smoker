@@ -71,7 +71,7 @@
   "devDependencies": {
     "@types/debug": "4.1.7",
     "@types/mocha": "9.1.1",
-    "@types/node": "18.11.8",
+    "@types/node": "18.11.9",
     "@types/pluralize": "0.0.29",
     "@types/sinon": "10.0.13",
     "@types/which": "2.0.1",
