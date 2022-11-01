@@ -56,7 +56,7 @@ describe('midnight-smoker CLI', function () {
   });
 
   it('should smoke test this and produce JSON output', async function () {
-    this.timeout('10s');
+    this.timeout('20s');
 
     const {stdout, stderr, exitCode} = await execa(
       CLI_PATH,
@@ -87,6 +87,5 @@ describe('midnight-smoker CLI', function () {
       stderr: '',
       exitCode: 0,
     });
-    expect(() => JSON.parse(actual.stdout), 'not to throw');
   });
 });
