@@ -25,6 +25,7 @@
     {
       "matchPackageNames": [
         "@types/wrap-ansi",
+        "chalk",
         "delay",
         "env-paths",
         "execa",
