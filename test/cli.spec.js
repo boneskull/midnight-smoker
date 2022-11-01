@@ -33,7 +33,7 @@ async function run(args, opts = {}) {
 describe('midnight-smoker CLI', function () {
   describe('--version', function () {
     it('should print version and exit', async function () {
-      this.timeout('5s');
+      this.timeout('10s');
       const actual = await run(['--version']);
       expect(actual, 'to equal snapshot', {
         stdout: '1.2.1',
@@ -44,7 +44,7 @@ describe('midnight-smoker CLI', function () {
   });
 
   it('should show help text', async function () {
-    this.timeout('5s');
+    this.timeout('10s');
 
     const actual = await run(['test:smoke', '--help']);
     expect(actual, 'to equal snapshot', {
@@ -56,7 +56,7 @@ describe('midnight-smoker CLI', function () {
   });
 
   it('should smoke test this and produce JSON output', async function () {
-    this.timeout('5s');
+    this.timeout('10s');
 
     const {stdout, stderr, exitCode} = await execa(
       CLI_PATH,
