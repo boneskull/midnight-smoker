@@ -89,7 +89,7 @@
     "markdownlint-cli2": "0.5.1",
     "mocha": "10.1.0",
     "prettier": "2.7.1",
-    "rewiremock": "3.14.3",
+    "rewiremock": "3.14.4",
     "sinon": "14.0.2",
     "typescript": "4.8.4",
     "unexpected": "13.0.1",
