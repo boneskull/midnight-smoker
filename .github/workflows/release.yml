@@ -7,7 +7,7 @@ jobs:
   release-please:
     runs-on: ubuntu-latest
     steps:
-      - uses: google-github-actions/release-please-action@2a4590f9c1d322790253d997de5cad7f7ad4bc1b # tag=v3
+      - uses: google-github-actions/release-please-action@44c30b36230f7335e5da53e297d931807ccea116 # v3
         with:
           release-type: node
           package-name: boneskull-template
