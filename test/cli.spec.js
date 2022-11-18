@@ -1,4 +1,5 @@
 const {node: execa} = require('execa');
+const {version} = require('../package.json');
 const path = require('path');
 const expect = require('unexpected')
   .clone()
@@ -35,8 +36,8 @@ describe('midnight-smoker CLI', function () {
     it('should print version and exit', async function () {
       this.timeout('10s');
       const actual = await run(['--version']);
-      expect(actual, 'to equal snapshot', {
-        stdout: '1.2.1',
+      expect(actual, 'to equal', {
+        stdout: version,
         stderr: '',
         exitCode: 0,
       });
