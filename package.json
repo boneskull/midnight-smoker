@@ -90,7 +90,7 @@
     "mocha": "10.1.0",
     "prettier": "2.8.0",
     "rewiremock": "3.14.4",
-    "sinon": "14.0.2",
+    "sinon": "15.0.0",
     "typescript": "4.9.3",
     "unexpected": "13.0.1",
     "unexpected-eventemitter": "2.4.0",
