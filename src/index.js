@@ -1,36 +1,17 @@
-const which = require('which');
+const glob = require('fast-glob');
 const debug = require('debug')('midnight-smoker');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const {tmpdir} = require('node:os');
 const execa = require('execa');
 const {EventEmitter} = require('node:events');
+const readPkg = require('read-pkg');
+const {promisify} = require('node:util');
+const resolveBin = promisify(require('resolve-bin'));
 
 const TMP_DIR_PREFIX = 'midnight-smoker-';
 
-const {
-  SMOKE_BEGIN,
-  SMOKE_OK,
-  SMOKE_FAILED,
-  FIND_NPM_BEGIN,
-  FIND_NPM_FAILED,
-  FIND_NPM_OK,
-  PACK_BEGIN,
-  PACK_FAILED,
-  PACK_OK,
-  INSTALL_BEGIN,
-  INSTALL_FAILED,
-  INSTALL_OK,
-  RUN_NPM_BEGIN,
-  RUN_NPM_FAILED,
-  RUN_NPM_OK,
-  RUN_SCRIPTS_BEGIN,
-  RUN_SCRIPTS_FAILED,
-  RUN_SCRIPTS_OK,
-  RUN_SCRIPT_BEGIN,
-  RUN_SCRIPT_FAILED,
-  RUN_SCRIPT_OK,
-} = (exports.events = /** @type {const} */ ({
+const SmokerEvents = (exports.events = /** @type {const} */ ({
   SMOKE_BEGIN: 'SmokeBegin',
   SMOKE_OK: 'SmokeOk',
   SMOKE_FAILED: 'SmokeFailed',
@@ -52,16 +33,23 @@ const {
   RUN_SCRIPT_BEGIN: 'RunScriptBegin',
   RUN_SCRIPT_FAILED: 'RunScriptFailed',
   RUN_SCRIPT_OK: 'RunScriptOk',
+  READ_WORKSPACES_BEGIN: 'ReadWorkspacesBegin',
+  READ_WORKSPACES_SKIPPED: 'ReadWorkspacesSkipped',
+  READ_WORKSPACES_OK: 'ReadWorkspacesOk',
 }));
 
 /**
  * Trims all strings in an array and removes empty strings.
- * Returns empty array if input is falsy.
- * @param {string[]} [array]
- * @returns {string[]}
+ * @param {string[]|string} [value]
+ * @returns {string[]|undefined} `undefined` if input is `undefined` or if `value` results in an empty array or array of empty strings.
  */
-function normalizeArray(array) {
-  return array ? array.map((item) => item.trim()).filter(Boolean) : [];
+function normalizeArray(value) {
+  const isArray = Array.isArray(value);
+  if (isArray || typeof value === 'string') {
+    const newArr = isArray ? value.map((item) => item.trim()) : [value.trim()];
+    const compacted = newArr.filter(Boolean);
+    return compacted.length ? compacted : undefined;
+  }
 }
 
 /**
@@ -89,45 +77,75 @@ function createStrictEventEmitterClass() {
 
 class Smoker extends createStrictEventEmitterClass() {
   /**
+   * List of npm script names to run
    * @type {string[]}
    */
   scripts;
 
   /**
+   * Frozen options object
    * @type {Readonly<SmokerOptions>}
    */
   opts;
 
-  /** @type {string|undefined} */
+  /**
+   * Path to `npm` executable
+   * @type {string|undefined}
+   */
   #npmPath;
 
-  /** @type {boolean} */
+  /**
+   * If `true`, will overwrite existing files in the temporary directory.
+   * @type {boolean}
+   */
   #force = false;
 
-  /** @type {boolean} */
+  /**
+   * If `true`, will leave its temp directory behind after running.
+   * @type {boolean}
+   */
   #linger = false;
 
-  /** @type {string|undefined} */
-  #cwd;
+  /**
+   * This is the temp directory where all the packages will be installed
+   * @type {string|undefined}
+   */
+  #tempdir;
 
   /**
+   * If `true`, output extra stuff from npm.  Does _not_ enable debug messages
    * @type {boolean}
    */
   #verbose = false;
 
-  /** @type {boolean} */
+  /**
+   * If `force` is `true` _and_ this is `true`, then the working directory will be truncated instead of overwritten in-place.
+   * @type {boolean}
+   */
   #clean = false;
 
-  /** @type {string[]} */
+  /**
+   * List of workspace dirs to test
+   * @type {string[]|undefined}
+   */
   #workspaces;
 
-  /** @type {boolean} */
+  /**
+   * If `true`, operate on all workspaces in the current project.
+   * @type {boolean}
+   */
   #allWorkspaces = false;
 
-  /** @type {boolean} */
+  /**
+   * If `true`, include the (monorepo) root package in the list of workspaces.
+   * @type {boolean}
+   */
   #includeWorkspaceRoot = false;
 
-  /** @type {string[]} */
+  /**
+   * Extra args to `npm install`, if any
+   * @type {string[]|undefined}
+   */
   #extraNpmInstallArgs;
 
   /** @type {boolean} */
@@ -156,26 +174,97 @@ class Smoker extends createStrictEventEmitterClass() {
     }
     this.#bail = Boolean(opts.bail);
     this.#allWorkspaces = Boolean(opts.all);
-    this.#workspaces = normalizeArray(opts.workspace);
-    if (this.#allWorkspaces && this.#workspaces.length) {
+    this.#workspaces = normalizeArray(opts.workspace)?.map((workspacePath) =>
+      path.resolve(workspacePath)
+    );
+    if (this.#allWorkspaces && this.#workspaces) {
       throw new Error(
         'Option "workspace" is mutually exclusive with "all" and/or "includeRoot"'
       );
     }
     this.#extraNpmInstallArgs = normalizeArray(opts.installArgs);
     this.opts = Object.freeze(opts);
+
+    debug('Instantiated midnight-smoker with options: %o', opts);
+  }
+
+  /**
+   *
+   * @param {PackItem[]} packItems
+   * @returns {Promise<Workspace[]|undefined>}
+   */
+  async #readWorkspaces(packItems) {
+    this.emit(SmokerEvents.READ_WORKSPACES_BEGIN, packItems);
+    const rootPkgJson = await readPkg({
+      normalize: false,
+    });
+
+    /** @type {Workspace[]} */
+    let workspaces = [];
+    if (rootPkgJson) {
+      const packageJson = rootPkgJson;
+      if (Array.isArray(packageJson.workspaces)) {
+        const pkgWorkspaces =
+          /** @type {string[]} */ (packageJson.workspaces) ?? [];
+        const workspaceDirs = (
+          await Promise.all(
+            pkgWorkspaces.map(async (ws) => {
+              /** @type {string[]} */
+              let paths = [];
+              try {
+                paths = await glob(ws, {onlyDirectories: true});
+              } catch {}
+              return paths;
+            })
+          )
+        ).flat();
+
+        debug(
+          'Found %d workspace dir(s) from %d glob(s)',
+          workspaceDirs.length,
+          pkgWorkspaces.length
+        );
+
+        workspaces = /** @type {Workspace[]} */ (
+          (
+            await Promise.all(
+              workspaceDirs.map(async (cwd) => {
+                try {
+                  const {name} = await readPkg({cwd, normalize: false});
+                  return {name, path: cwd};
+                } catch {}
+              })
+            )
+          ).filter(Boolean)
+        );
+
+        const packItemsByName = packItems.map((item) => item.name);
+        workspaces = workspaces.filter((ws) =>
+          packItemsByName.includes(ws.name)
+        );
+
+        debug('Install order: %s', workspaces.map((ws) => ws.name).join(', '));
+
+        this.emit(SmokerEvents.READ_WORKSPACES_OK, workspaces);
+
+        return workspaces;
+      }
+    } else {
+      debug('No root package.json found; skipping workspace check');
+      this.emit(SmokerEvents.READ_WORKSPACES_SKIPPED);
+    }
   }
 
   async smoke() {
-    this.emit(SMOKE_BEGIN);
+    this.emit(SmokerEvents.SMOKE_BEGIN);
     try {
       const packItems = await this.pack();
       debug('(smoke) Received %d packed packages', packItems.length);
       await this.install(packItems);
       await this.runScripts(packItems);
-      this.emit(SMOKE_OK);
+      this.emit(SmokerEvents.SMOKE_OK);
     } catch (err) {
-      this.emit(SMOKE_FAILED, /** @type {any} */ (err));
+      this.emit(SmokerEvents.SMOKE_FAILED, /** @type {any} */ (err));
       throw err;
     } finally {
       await this.cleanup();
@@ -194,22 +283,16 @@ class Smoker extends createStrictEventEmitterClass() {
       this.#npmPath = this.opts.npm.trim();
       return this.#npmPath;
     }
-    this.emit(FIND_NPM_BEGIN);
-    try {
-      const npmPath = await which('npm');
-      // using #runNpm here would be recursive
-      const {stdout: version} = await execa(process.execPath, [
-        npmPath,
-        '--version',
-      ]);
-      debug('(findNpm) Found npm %s at %s', version, npmPath);
-      this.#npmPath = npmPath;
-      this.emit(FIND_NPM_OK, npmPath);
-      return npmPath;
-    } catch (err) {
-      this.emit(FIND_NPM_FAILED, /** @type {Error} */ (err));
+    this.emit(SmokerEvents.FIND_NPM_BEGIN);
+
+    this.#npmPath = /** @type {string} */ (await resolveBin('npm'));
+    if (this.#npmPath === undefined) {
+      const err = new Error('Unable to resolve builtin npm executable!');
+      this.emit(SmokerEvents.FIND_NPM_FAILED, err);
       throw err;
     }
+    this.emit(SmokerEvents.FIND_NPM_OK, this.#npmPath);
+    return this.#npmPath;
   }
 
   /**
@@ -266,8 +349,8 @@ class Smoker extends createStrictEventEmitterClass() {
    */
   async createWorkingDirectory() {
     // TODO EMIT
-    if (this.#cwd) {
-      return this.#cwd;
+    if (this.#tempdir) {
+      return this.#tempdir;
     }
     let wd = this.opts.dir;
     if (wd) {
@@ -285,7 +368,7 @@ class Smoker extends createStrictEventEmitterClass() {
       wd = await this.#createTempDirectory();
     }
 
-    this.#cwd = wd;
+    this.#tempdir = wd;
 
     debug('(createWorkingDirectory) Using working directory %s', wd);
 
@@ -298,7 +381,7 @@ class Smoker extends createStrictEventEmitterClass() {
    */
   async pack() {
     const npmPath = await this.findNpm();
-    this.emit(PACK_BEGIN);
+    this.emit(SmokerEvents.PACK_BEGIN);
     const cwd = await this.createWorkingDirectory();
 
     let packArgs = [
@@ -307,7 +390,7 @@ class Smoker extends createStrictEventEmitterClass() {
       `--pack-destination=${cwd}`,
       '--foreground-scripts=false', // suppress output of lifecycle scripts so json can be parsed
     ];
-    if (this.#workspaces.length) {
+    if (this.#workspaces) {
       packArgs = [
         ...packArgs,
         ...this.#workspaces.map((w) => `--workspace=${w}`),
@@ -325,7 +408,10 @@ class Smoker extends createStrictEventEmitterClass() {
       debug('(pack) Executing: %s %s', npmPath, packArgs.join(' '));
       value = await this.#runNpm(packArgs);
     } catch (err) {
-      this.emit(PACK_FAILED, /** @type {execa.ExecaError} */ (err));
+      this.emit(
+        SmokerEvents.PACK_FAILED,
+        /** @type {execa.ExecaError} */ (err)
+      );
       throw err;
     }
 
@@ -334,7 +420,7 @@ class Smoker extends createStrictEventEmitterClass() {
       const error = new Error(
         `"npm pack" failed with exit code ${value.exitCode}`
       );
-      this.emit(PACK_FAILED, error);
+      this.emit(SmokerEvents.PACK_FAILED, error);
       throw error;
     }
     /** @type {import('./static').NpmPackItem[]} */
@@ -348,7 +434,7 @@ class Smoker extends createStrictEventEmitterClass() {
       const error = new SyntaxError(
         `Failed to parse JSON output from "npm pack": ${packOutput}`
       );
-      this.emit(PACK_FAILED, error);
+      this.emit(SmokerEvents.PACK_FAILED, error);
       throw error;
     }
 
@@ -358,11 +444,12 @@ class Smoker extends createStrictEventEmitterClass() {
       return {
         tarballFilepath: path.join(cwd, filename),
         installPath: path.join(cwd, 'node_modules', name),
+        name,
       };
     });
     debug('(pack) Packed %d packages', packItems.length);
 
-    this.emit(PACK_OK, packItems);
+    this.emit(SmokerEvents.PACK_OK, packItems);
     return packItems;
   }
 
@@ -374,7 +461,7 @@ class Smoker extends createStrictEventEmitterClass() {
   async #runNpm(args, options = {}) {
     const npmPath = await this.findNpm();
     const command = `${process.execPath} ${npmPath} ${args.join(' ')}`;
-    this.emit(RUN_NPM_BEGIN, {
+    this.emit(SmokerEvents.RUN_NPM_BEGIN, {
       command,
       options,
     });
@@ -386,7 +473,10 @@ class Smoker extends createStrictEventEmitterClass() {
     try {
       proc = execa(process.execPath, [npmPath, ...args], opts);
     } catch (err) {
-      this.emit(RUN_NPM_FAILED, /** @type {execa.ExecaError} */ (err));
+      this.emit(
+        SmokerEvents.RUN_NPM_FAILED,
+        /** @type {execa.ExecaError} */ (err)
+      );
       throw err;
     }
 
@@ -403,14 +493,14 @@ class Smoker extends createStrictEventEmitterClass() {
     let error;
     try {
       value = await proc;
-      this.emit(RUN_NPM_OK, {command, options, value});
+      this.emit(SmokerEvents.RUN_NPM_OK, {command, options, value});
       return value;
     } catch (e) {
       error = /** @type {execa.ExecaError & NodeJS.ErrnoException} */ (e);
       if (error.code === 'ENOENT') {
         throw new Error(`Could not find "node" at ${process.execPath}`);
       }
-      this.emit(RUN_NPM_FAILED, error);
+      this.emit(SmokerEvents.RUN_NPM_FAILED, error);
       throw error;
     }
   }
@@ -427,14 +517,24 @@ class Smoker extends createStrictEventEmitterClass() {
     if (packItems.length) {
       // ensure we emit asynchronously
       await Promise.resolve();
-      this.emit(INSTALL_BEGIN, packItems);
-      const extraArgs = this.#extraNpmInstallArgs;
+      this.emit(SmokerEvents.INSTALL_BEGIN, packItems);
+      const extraArgs = this.#extraNpmInstallArgs ?? [];
       const cwd = await this.createWorkingDirectory();
-      const installArgs = [
-        'install',
-        ...extraArgs,
-        ...packItems.map(({tarballFilepath}) => tarballFilepath),
-      ];
+
+      const orderedWorkspaces = await this.#readWorkspaces(packItems);
+
+      /** @type {string[]} */
+      let tarballs;
+      if (orderedWorkspaces) {
+        const packItemMap = new Map(packItems.map((p) => [p.name, p]));
+        tarballs = /** @type {string[]} */ (
+          orderedWorkspaces.map((w) => packItemMap.get(w.name)?.tarballFilepath)
+        );
+      } else {
+        tarballs = packItems.map(({tarballFilepath}) => tarballFilepath);
+      }
+
+      const installArgs = ['install', ...extraArgs, ...tarballs];
 
       /** @type {execa.ExecaReturnValue} */
       let value;
@@ -444,7 +544,7 @@ class Smoker extends createStrictEventEmitterClass() {
         });
       } catch (err) {
         const error = /** @type {execa.ExecaError} */ (err);
-        this.emit(INSTALL_FAILED, error);
+        this.emit(SmokerEvents.INSTALL_FAILED, error);
         throw new Error(`"npm install" failed to spawn: ${error.message}`);
       }
       if (value.exitCode) {
@@ -452,10 +552,10 @@ class Smoker extends createStrictEventEmitterClass() {
         const error = new Error(
           `"npm install" failed with exit code ${value.exitCode}: ${value.stdout}`
         );
-        this.emit(INSTALL_FAILED, error);
+        this.emit(SmokerEvents.INSTALL_FAILED, error);
         throw error;
       }
-      this.emit(INSTALL_OK, packItems);
+      this.emit(SmokerEvents.INSTALL_OK, packItems);
 
       debug('(install) Installed %d packages', packItems.length);
     } else {
@@ -477,7 +577,7 @@ class Smoker extends createStrictEventEmitterClass() {
     const npmPath = await this.findNpm();
     const scriptCount = scripts.length;
     const total = packItems.length * scriptCount;
-    this.emit(RUN_SCRIPTS_BEGIN, {scripts, packItems, total});
+    this.emit(SmokerEvents.RUN_SCRIPTS_BEGIN, {scripts, packItems, total});
     /** @type {RunScriptResult[]} */
     const results = [];
 
@@ -504,7 +604,12 @@ class Smoker extends createStrictEventEmitterClass() {
       results.push(result);
       if (value.failed && this.#bail) {
         if (/missing script:/i.test(value.stderr)) {
-          this.emit(RUN_SCRIPT_FAILED, {error: value, current, total, pkgName});
+          this.emit(SmokerEvents.RUN_SCRIPT_FAILED, {
+            error: value,
+            current,
+            total,
+            pkgName,
+          });
           return new Error(
             `Script "${script}" in package "${pkgName}" failed; npm was unable to find this script`
           );
@@ -514,14 +619,19 @@ class Smoker extends createStrictEventEmitterClass() {
           `Script "${script}" in package "${pkgName}" failed with exit code ${value.exitCode}: ${value.all}`
         );
       } else if (value.failed) {
-        this.emit(RUN_SCRIPT_FAILED, {error: value, current, total, pkgName});
+        this.emit(SmokerEvents.RUN_SCRIPT_FAILED, {
+          error: value,
+          current,
+          total,
+          pkgName,
+        });
         debug(
           `(runScripts) Script "%s" in package "%s" failed; continuing...`,
           script,
           pkgName
         );
       } else {
-        this.emit(RUN_SCRIPT_OK, {
+        this.emit(SmokerEvents.RUN_SCRIPT_OK, {
           value,
           current,
           total,
@@ -542,7 +652,7 @@ class Smoker extends createStrictEventEmitterClass() {
           )) {
             const pkgName = pathToPackageName(cwd);
             const current = Number(pkgIdx) + Number(currentScriptIdx);
-            this.emit(RUN_SCRIPT_BEGIN, {
+            this.emit(SmokerEvents.RUN_SCRIPT_BEGIN, {
               script,
               cwd,
               npmArgs,
@@ -584,7 +694,7 @@ class Smoker extends createStrictEventEmitterClass() {
             0
           );
           if (failures) {
-            this.emit(RUN_SCRIPTS_FAILED, {
+            this.emit(SmokerEvents.RUN_SCRIPTS_FAILED, {
               scripts,
               total,
               executed: results.length,
@@ -592,7 +702,7 @@ class Smoker extends createStrictEventEmitterClass() {
               results,
             });
           } else {
-            this.emit(RUN_SCRIPTS_OK, {
+            this.emit(SmokerEvents.RUN_SCRIPTS_OK, {
               scripts,
               total,
               executed: results.length,
@@ -612,8 +722,8 @@ class Smoker extends createStrictEventEmitterClass() {
    * Cleans up; called by {@linkcode Smoker.smoke}.
    */
   async cleanup() {
-    if (this.#cwd) {
-      return this.#cleanWorkingDirectory(this.#cwd);
+    if (this.#tempdir) {
+      return this.#cleanWorkingDirectory(this.#tempdir);
     }
   }
 }
@@ -637,4 +747,5 @@ exports.smoke = async function smoke(scripts, opts = {}) {
  * @typedef {import('./static').RunScriptResult} RunScriptResult
  * @typedef {import('./static').Events} Events
  * @typedef {import('./static').TSmokerEmitter} TSmokerEmitter
+ * @typedef {import('./static').Workspace} Workspace
  */

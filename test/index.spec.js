@@ -43,7 +43,9 @@ describe('midnight-smoker', function () {
         mkdir: sandbox.stub().resolves(),
         stat: sandbox.stub().rejects(),
       },
-      which: sandbox.stub().resolves(MOCK_NPM),
+      'resolve-bin': sandbox.stub().callsArgWithAsync(1, null, MOCK_NPM),
+      'read-pkg': sandbox.stub().resolves({}),
+      'fast-glob': sandbox.stub().resolves([]),
       execa: sandbox.stub().callsFake(() => {
         stdout = sandbox.createStubInstance(Readable);
         stderr = sandbox.createStubInstance(Readable);
@@ -319,6 +321,7 @@ describe('midnight-smoker', function () {
             {
               tarballFilepath: `${MOCK_TMPDIR}/tarball.tgz`,
               installPath: `${MOCK_TMPDIR}/node_modules/bar`,
+              name: 'bar',
             },
           ]);
         });
@@ -473,10 +476,12 @@ describe('midnight-smoker', function () {
           {
             tarballFilepath: `${MOCK_TMPDIR}/bar.tgz`,
             installPath: `${MOCK_TMPDIR}/node_modules/bar`,
+            name: 'bar',
           },
           {
             tarballFilepath: `${MOCK_TMPDIR}/baz.tgz`,
             installPath: `${MOCK_TMPDIR}/node_modules/baz`,
+            name: 'baz',
           },
         ];
 
@@ -584,6 +589,56 @@ describe('midnight-smoker', function () {
             expect(stdout.pipe, 'was not called');
           });
         });
+
+        describe('when the root project has a "workspaces" field', function () {
+          /** @type {import('midnight-smoker').PackItem[]} */
+          const packItems = [
+            {
+              tarballFilepath: `${MOCK_TMPDIR}/midnight-smoker-a.tgz`,
+              installPath: `${MOCK_TMPDIR}/node_modules/midnight-smoker-a`,
+              name: 'midnight-smoker-a',
+            },
+            {
+              tarballFilepath: `${MOCK_TMPDIR}/midnight-smoker-b.tgz`,
+              installPath: `${MOCK_TMPDIR}/node_modules/midnight-smoker-b`,
+              name: 'midnight-smoker-b',
+            },
+          ];
+
+          it('should respect the order of the workspaces when installing', async function () {
+            mocks['read-pkg'].withArgs({normalize: false}).resolves({
+              workspaces: [
+                '/path/to/midnight-smoker-b',
+                '/path/to/midnight-smoker-a',
+              ],
+            });
+            mocks['read-pkg']
+              .withArgs({normalize: false, cwd: '/path/to/midnight-smoker-a'})
+              .resolves({name: 'midnight-smoker-a'});
+            mocks['read-pkg']
+              .withArgs({normalize: false, cwd: '/path/to/midnight-smoker-b'})
+              .resolves({name: 'midnight-smoker-b'});
+            mocks['fast-glob']
+              .withArgs('/path/to/midnight-smoker-a', {onlyDirectories: true})
+              .resolves(['/path/to/midnight-smoker-a']);
+            mocks['fast-glob']
+              .withArgs('/path/to/midnight-smoker-b', {onlyDirectories: true})
+              .resolves(['/path/to/midnight-smoker-b']);
+            await smoker.install(packItems);
+            expect(mocks.execa, 'to have calls satisfying', [
+              [
+                process.execPath,
+                [
+                  MOCK_NPM,
+                  'install',
+                  `${MOCK_TMPDIR}/midnight-smoker-b.tgz`,
+                  `${MOCK_TMPDIR}/midnight-smoker-a.tgz`,
+                ],
+                {cwd: MOCK_TMPDIR},
+              ],
+            ]);
+          });
+        });
       });
 
       describe('runScripts()', function () {
@@ -592,10 +647,12 @@ describe('midnight-smoker', function () {
           {
             tarballFilepath: `${MOCK_TMPDIR}/bar.tgz`,
             installPath: `${MOCK_TMPDIR}/node_modules/bar`,
+            name: 'bar',
           },
           {
             tarballFilepath: `${MOCK_TMPDIR}/baz.tgz`,
             installPath: `${MOCK_TMPDIR}/node_modules/baz`,
+            name: 'baz',
           },
         ];
 
@@ -639,7 +696,7 @@ describe('midnight-smoker', function () {
         describe('when "packItems" argument is empty', function () {
           it('should not execute "npm run-script"', async function () {
             await smoker.runScripts([]);
-            expect(mocks.execa, 'was called once'); // version check
+            expect(mocks.execa, 'was not called');
           });
         });
 
@@ -673,7 +730,6 @@ describe('midnight-smoker', function () {
         it('should call "npm run-script" within each "installPath" in "packItems"', async function () {
           await smoker.runScripts(packItems);
           expect(mocks.execa, 'to have calls satisfying', [
-            [process.execPath, [MOCK_NPM, '--version']],
             [
               process.execPath,
               [MOCK_NPM, 'run-script', 'foo'],
@@ -739,7 +795,6 @@ describe('midnight-smoker', function () {
     it('should pack, install, and run scripts', async function () {
       await smoke('foo');
       expect(mocks.execa, 'to have calls satisfying', [
-        [process.execPath, [MOCK_NPM, '--version']],
         [
           process.execPath,
           [
@@ -781,5 +836,5 @@ describe('midnight-smoker', function () {
  */
 
 /**
- * @typedef { {'node:fs/promises': NodeFsPromisesMocks, which: AsyncStub<any,string>, execa: AsyncStub<any,Partial<import('execa').ExecaReturnValue>>, 'node:console': sinon.SinonStubbedInstance<console>, debug: sinon.SinonStub<any,sinon.SinonStub>, 'node:os': {tmpdir: sinon.SinonStub<any,string>} } } Mocks
+ * @typedef { {'node:fs/promises': NodeFsPromisesMocks, 'fast-glob': sinon.SinonStub, 'read-pkg': sinon.SinonStub, 'resolve-bin': sinon.SinonStub, execa: AsyncStub<any,Partial<import('execa').ExecaReturnValue>>, 'node:console': sinon.SinonStubbedInstance<console>, debug: sinon.SinonStub<any,sinon.SinonStub>, 'node:os': {tmpdir: sinon.SinonStub<any,string>} } } Mocks
  */

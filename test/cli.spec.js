@@ -80,11 +80,11 @@ describe('midnight-smoker CLI', function () {
       .replace(/midnight-smoker@\d+\.\d+\.\d+/, 'midnight-smoker@<version>')
       .replace(/--version\\n\\n\d+\.\d+\.\d+/, '--version\\n\\n<version>')
       // strip the path to `cli.js` since it differs per platform
-      .replace(/node(\.cmd)?\s+.+?cli\.js/, '<path/to/>cli.js');
+      .replace(/node(\.cmd)?\s+.+?npm-cli\.js/, '<path/to/>npm-cli.js');
 
     expect(actual, 'to equal snapshot', {
       stdout:
-        '{\n  "scripts": [\n    "test:smoke"\n  ],\n  "total": 1,\n  "executed": 1,\n  "failures": 0,\n  "results": [\n    {\n      "pkgName": "midnight-smoker",\n      "script": "test:smoke",\n      "command": "<path/to>/bin/npm run-script test:smoke",\n      "escapedCommand": "<path/to>/bin/npm\\" run-script \\"test:smoke\\"",\n      "exitCode": 0,\n      "stdout": "\\n> midnight-smoker@<version> test:smoke\\n> <path/to/>cli.js --version\\n\\n<version>",\n      "stderr": "",\n      "failed": false,\n      "timedOut": false,\n      "isCanceled": false,\n      "killed": false\n    }\n  ]\n}',
+        '{\n  "scripts": [\n    "test:smoke"\n  ],\n  "total": 1,\n  "executed": 1,\n  "failures": 0,\n  "results": [\n    {\n      "pkgName": "midnight-smoker",\n      "script": "test:smoke",\n      "command": "<path/to>/bin/npm-cli.js run-script test:smoke",\n      "escapedCommand": "<path/to>/bin/npm-cli.js\\" run-script \\"test:smoke\\"",\n      "exitCode": 0,\n      "stdout": "\\n> midnight-smoker@<version> test:smoke\\n> node ./src/cli.js --version\\n\\n<version>",\n      "stderr": "",\n      "failed": false,\n      "timedOut": false,\n      "isCanceled": false,\n      "killed": false\n    }\n  ]\n}',
       stderr: '',
       exitCode: 0,
     });

@@ -41,11 +41,21 @@ export interface PackOptions {
 }
 
 /**
- * An item in the array returned by {@linkcode Smoker.pack}
+ * An item in the array returned by `Smoker#pack`
  */
 export interface PackItem {
+  /**
+   * Ostensibly the path to where the package should be installed
+   */
   installPath: string;
+  /**
+   * Path to tarball
+   */
   tarballFilepath: string;
+  /** 
+   * Package name
+   */
+  name: string;
 }
 
 export interface SmokerOptions {
@@ -112,7 +122,6 @@ export interface Events {
   FindNpmBegin: void;
   FindNpmOk: string;
   FindNpmFailed: (err: Error) => void;
-
   PackBegin: void;
   PackFailed: SyntaxError | ExecaError | Error;
   PackOk: PackItem[];
@@ -160,6 +169,23 @@ export interface Events {
     current: number;
     total: number;
   };
+  ReadWorkspacesBegin: PackItem[];
+  ReadWorkspacesSkipped: void;
+  ReadWorkspacesOk: Workspace[];
 }
 
 export type TSmokerEmitter = StrictEventEmitter<EventEmitter, Events>;
+
+/**
+ * Internal representation of a workspace
+ */
+export interface Workspace {
+  /**
+   * Package name of workspace
+   */
+  name: string;
+  /**
+   * Path to workspace
+   */
+  path: string;
+}
