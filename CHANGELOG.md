@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.0.0](https://github.com/boneskull/midnight-smoker/compare/v1.2.2...v2.0.0) (2022-12-05)
+
+
+### ⚠ BREAKING CHANGES
+
+* Now supports ^14.17.0 || ^16.13.0 || >=18.0.0 only!
+
+### Bug Fixes
+
+* **deps:** update dependency which to v3 ([b743420](https://github.com/boneskull/midnight-smoker/commit/b74342065771852ede8f4531448c04d1e49b47d1))
+
+
+### Miscellaneous Chores
+
+* drop support for Node.js &lt;= v14.17.0 ([5890e11](https://github.com/boneskull/midnight-smoker/commit/5890e11ddea1c0fda8ed8071a43e190e413cf056))
+
 ## [1.2.2](https://github.com/boneskull/midnight-smoker/compare/v1.2.1...v1.2.2) (2022-11-18)
 
 
