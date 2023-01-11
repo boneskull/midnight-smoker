@@ -17,6 +17,8 @@ Examples of things that would be a problem:
 
 ## Example Usage
 
+<!-- x-release-please-start-version -->
+
 ```bash
 npx midnight-smoker test:smoke # runs npm script "test:smoke"
 💨 midnight-smoker v1.0.0
@@ -28,6 +30,8 @@ npx midnight-smoker test:smoke # runs npm script "test:smoke"
 ```
 
 `midnight-smoker` is compatible with npm workspaces and stuff.
+
+<!-- x-release-please-end -->
 
 **Run `npx midnight-smoker --help`** for more information.
 
