@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.0.1](https://github.com/boneskull/midnight-smoker/compare/v2.0.0...v2.0.1) (2023-01-11)
+
+
+### Bug Fixes
+
+* npm audit ([dd1d430](https://github.com/boneskull/midnight-smoker/commit/dd1d430253c37c7d718b1c602b475e534d5c737f))
+* use global style installs to avoid false positives ([2208856](https://github.com/boneskull/midnight-smoker/commit/2208856900dcc204db0285131d0f38d656387454))
+
 ## [2.0.0](https://github.com/boneskull/midnight-smoker/compare/v1.2.2...v2.0.0) (2022-12-05)
 
 
