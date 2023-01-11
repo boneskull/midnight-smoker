@@ -36,6 +36,7 @@
   "scripts": {
     "build": "tsc -b",
     "lint-staged": "lint-staged",
+    "lint:commit": "commitlint",
     "prepare": "husky install && npm run build",
     "test": "mocha \"test/**/*.spec.js\"",
     "posttest": "markdownlint-cli2 \"README.md\" && eslint .",
