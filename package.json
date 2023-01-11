@@ -1,6 +1,6 @@
 {
   "name": "midnight-smoker",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Run smoke tests against packages as they would be published",
   "keywords": [
     "test",
