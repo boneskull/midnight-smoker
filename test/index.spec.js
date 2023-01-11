@@ -487,6 +487,7 @@ describe('midnight-smoker', function () {
             [
               MOCK_NPM,
               'install',
+              '--global-style',
               ...packItems.map((item) => item.tarballFilepath),
             ],
             {},
@@ -753,7 +754,7 @@ describe('midnight-smoker', function () {
         ],
         [
           process.execPath,
-          [MOCK_NPM, 'install', `${MOCK_TMPDIR}/tarball.tgz`],
+          [MOCK_NPM, 'install', '--global-style', `${MOCK_TMPDIR}/tarball.tgz`],
           {cwd: MOCK_TMPDIR},
         ],
         [

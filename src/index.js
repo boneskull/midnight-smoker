@@ -432,6 +432,7 @@ class Smoker extends createStrictEventEmitterClass() {
       const cwd = await this.createWorkingDirectory();
       const installArgs = [
         'install',
+        '--global-style',
         ...extraArgs,
         ...packItems.map(({tarballFilepath}) => tarballFilepath),
       ];
