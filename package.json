@@ -67,7 +67,7 @@
     "pluralize": "8.0.0",
     "strict-event-emitter-types": "2.0.0",
     "which": "3.0.0",
-    "yargs": "17.6.2"
+    "yargs": "17.7.0"
   },
   "devDependencies": {
     "@commitlint/cli": "17.4.3",
