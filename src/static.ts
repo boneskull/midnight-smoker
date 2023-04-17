@@ -1,6 +1,7 @@
 import type {ExecaError, ExecaReturnValue, Options} from 'execa';
 import type {StrictEventEmitter} from 'strict-event-emitter-types';
 import type {EventEmitter} from 'events';
+import { Jsonify } from 'type-fest';
 
 /**
  * JSON output of `npm pack`
@@ -100,7 +101,7 @@ export interface SmokerOptions {
   json?: boolean;
 }
 
-export interface RunScriptResult extends ExecaReturnValue<string> {
+export interface RunScriptResult extends ExecaReturnValue {
   pkgName: string;
   script: string;
 }
@@ -121,7 +122,7 @@ export interface Events {
   RunNpmOk: {
     command: string;
     options: Options;
-    value: ExecaReturnValue<string>;
+    value: ExecaReturnValue;
   };
   InstallBegin: PackItem[];
   InstallFailed: ExecaError | Error;
@@ -131,14 +132,14 @@ export interface Events {
     total: number;
     executed: number;
     failures: number;
-    results: Array<ExecaReturnValue<string>|ExecaError<string>>;
+    results: (ExecaReturnValue|ExecaError)[];
     scripts: string[];
   };
   RunScriptsOk: {
     total: number;
     executed: number;
     failures: number;
-    results: ExecaReturnValue<string>[];
+    results: ExecaReturnValue[];
     scripts: string[];
   };
   RunScriptBegin: {
@@ -150,16 +151,21 @@ export interface Events {
     current: number;
   };
   RunScriptFailed: {
-    error: ExecaReturnValue<string> | ExecaError;
+    error: ExecaReturnValue | ExecaError;
     pkgName: string;
     total: number;
     current: number;
   };
   RunScriptOk: {
-    value: ExecaReturnValue<string>;
+    value: ExecaReturnValue;
     current: number;
     total: number;
   };
 }
 
 export type TSmokerEmitter = StrictEventEmitter<EventEmitter, Events>;
+
+/**
+ * Output of the CLI script when `json` flag is `true`
+ */
+export type SmokerJsonOutput = Events['RunScriptsFailed'] | Events['RunScriptsOk'];

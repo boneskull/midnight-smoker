@@ -1,7 +1,16 @@
 'use strict';
 
-module.exports = () => {
+module.exports = (wallaby) => {
   return {
+    compilers: {
+      '**/*.js': wallaby.compilers.typeScript({
+        allowJs: true,
+        allowSyntheticDefaultImports: true,
+        resolveJsonModule: true,
+        isolatedModules: true,
+      }),
+      '**/*.ts?(x)': wallaby.compilers.typeScript(),
+    },
     env: {
       type: 'node',
       params: {
@@ -9,7 +18,8 @@ module.exports = () => {
       }
     },
     files: [
-      './src/*.js',
+      './src/*',
+      './bin/*',
       'package.json',
       {pattern: '.husky/**/*', instrument: false}
     ],

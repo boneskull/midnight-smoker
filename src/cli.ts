@@ -1,19 +1,12 @@
-#!/usr/bin/env node
+import pluralize from 'pluralize';
+import yargs from 'yargs/yargs';
+import {Events, Smoker, SmokerJsonOutput, events} from './index';
+import ora from 'ora';
+import {blue, white, red, yellow} from 'chalk';
 
-const pluralize = require('pluralize');
-const yargs = require('yargs/yargs');
-const {version} = require('../package.json');
-const {Smoker, events} = require('./index.js');
-const ora = require('ora');
-const {blue, white, red, yellow} = require('chalk');
 const BEHAVIOR_GROUP = 'Behavior:';
 
-/**
- *
- * @param {string[]} args
- * @returns {Promise<void>}
- */
-async function main(args) {
+export async function main(args: string[]): Promise<void> {
   const y = yargs(args);
   await y
     .scriptName('smoker')
@@ -109,7 +102,7 @@ async function main(args) {
           }),
       async (argv) => {
         const scripts = [
-          /** @type {string} */ (argv.script),
+          argv.script as string,
           ...(argv.scripts ?? []),
         ];
 
@@ -119,10 +112,8 @@ async function main(args) {
         const smoker = new Smoker(scripts, argv);
 
         if (argv.json) {
-          /** @type {SmokerJsonOutput} */
-          let output;
-          /** @param {SmokerJsonOutput} result */
-          const setResult = (result) => {
+          let output: SmokerJsonOutput;
+          const setResult = (result: SmokerJsonOutput) => {
             smoker
               .removeAllListeners(events.RUN_SCRIPTS_OK)
               .removeAllListeners(events.RUN_SCRIPTS_FAILED);
@@ -142,10 +133,10 @@ async function main(args) {
           await smoker.smoke();
         } else {
           const spinner = ora();
-          /** @type {Events['RunScriptFailed'][]} */
-          const scriptFailedEvts = [];
+          const scriptFailedEvts: Events['RunScriptFailed'][] = [];
           smoker
             .on(events.SMOKE_BEGIN, () => {
+              const {version} = require('../package.json');
               console.error(
                 `💨 ${blue('midnight-smoker')} ${white(`v${version}`)}`
               );
@@ -161,8 +152,7 @@ async function main(args) {
               process.exitCode = 1;
             })
             .on(events.PACK_BEGIN, () => {
-              /** @type {string} */
-              let what;
+              let what: string;
               if (argv.workspace?.length) {
                 what = pluralize('workspace', argv.workspace.length, true);
               } else if (argv.all) {
@@ -250,14 +240,3 @@ async function main(args) {
     .strict()
     .parseAsync();
 }
-
-main(process.argv.slice(2));
-
-/**
- * Output of the CLI script when `json` flag is `true`
- * @typedef {Events['RunScriptsFailed']|Events['RunScriptsOk']} SmokerJsonOutput
- */
-
-/**
- * @typedef {import('./static').Events} Events
- */

@@ -67,7 +67,7 @@ describe('midnight-smoker', function () {
     };
 
     ({Smoker, smoke, events} = rewiremock.proxy(
-      () => require('../src/index'),
+      () => require('../src'),
       mocks
     ));
   });

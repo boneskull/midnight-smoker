@@ -1,9 +1,13 @@
-const {node: execa} = require('execa');
-const {version} = require('../package.json');
+const execa = require('execa');
 const path = require('path');
+const fs = require('node:fs');
 const expect = require('unexpected')
   .clone()
   .use(require('unexpected-snapshot'));
+
+const {version} = JSON.parse(
+  fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8')
+);
 
 /** @type {string} */
 let CLI_PATH;
@@ -11,10 +15,10 @@ let CLI_PATH;
 let CWD;
 
 if (process.env.WALLABY_PROJECT_DIR) {
-  CLI_PATH = path.join(process.env.WALLABY_PROJECT_DIR, 'src', 'cli.js');
+  CLI_PATH = path.join(process.env.WALLABY_PROJECT_DIR, 'bin', 'smoker.js');
   CWD = process.env.WALLABY_PROJECT_DIR;
 } else {
-  CLI_PATH = require.resolve('../src/cli.js');
+  CLI_PATH = require.resolve('../bin/smoker.js');
   CWD = path.join(__dirname, '..');
 }
 
@@ -23,7 +27,7 @@ if (process.env.WALLABY_PROJECT_DIR) {
  * @param {import('execa').NodeOptions} [opts]
  */
 async function run(args, opts = {}) {
-  const {stdout, stderr, exitCode} = await execa(CLI_PATH, args, {
+  const {stdout, stderr, exitCode} = await execa.node(CLI_PATH, args, {
     cwd: CWD,
     ...opts,
     env: opts.env ? opts.env : {DEBUG: ''},
@@ -59,7 +63,7 @@ describe('midnight-smoker CLI', function () {
   it('should smoke test this and produce JSON output', async function () {
     this.timeout('20s');
 
-    const {stdout, stderr, exitCode} = await execa(
+    const {stdout, stderr, exitCode} = await execa.node(
       CLI_PATH,
       ['test:smoke', '--json'],
       {
