@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.0.2](https://github.com/boneskull/midnight-smoker/compare/v2.0.1...v2.0.2) (2023-04-17)
+
+
+### Bug Fixes
+
+* attempt to make it work in windows ([11bc003](https://github.com/boneskull/midnight-smoker/commit/11bc0033fa060bf8facdea2776c0eddf5eb6f320))
+* **deps:** update dependency yargs to v17.7.0 ([1e7a964](https://github.com/boneskull/midnight-smoker/commit/1e7a9643cb7bf58d11a9ee5054bf2d66aa702346))
+* **deps:** update dependency yargs to v17.7.1 ([5bae5e5](https://github.com/boneskull/midnight-smoker/commit/5bae5e502e3631561559dc8a427dc868a57f403e))
+
 ## [2.0.1](https://github.com/boneskull/midnight-smoker/compare/v2.0.0...v2.0.1) (2023-01-11)
 
 
