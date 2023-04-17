@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.3](https://github.com/boneskull/midnight-smoker/compare/v2.0.2...v2.0.3) (2023-04-17)
+
+
+### Bug Fixes
+
+* **windows:** fix windows for real, hopefully ([7f7746c](https://github.com/boneskull/midnight-smoker/commit/7f7746c82792a6ccd49cc0754cef346d97e877a5))
+
 ## [2.0.2](https://github.com/boneskull/midnight-smoker/compare/v2.0.1...v2.0.2) (2023-04-17)
 
 
