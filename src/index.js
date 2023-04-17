@@ -373,7 +373,7 @@ class Smoker extends createStrictEventEmitterClass() {
    */
   async #runNpm(args, options = {}) {
     const npmPath = await this.findNpm();
-    const command = `${process.execPath} ${npmPath} ${args.join(' ')}`;
+    const command = `${npmPath} ${args.join(' ')}`;
     this.emit(RUN_NPM_BEGIN, {
       command,
       options,
