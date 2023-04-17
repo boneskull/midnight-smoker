@@ -332,8 +332,7 @@ describe('midnight-smoker', function () {
 
           it('should append the "--workspace" flag to "npm pack"', async function () {
             await smoker.pack();
-            expect(mocks.execa, 'was called with', process.execPath, [
-              MOCK_NPM,
+            expect(mocks.execa, 'was called with', MOCK_NPM, [
               'pack',
               '--json',
               `--pack-destination=${MOCK_TMPDIR}`,
@@ -352,8 +351,7 @@ describe('midnight-smoker', function () {
 
           it('should append the "--workspaces" flag to "npm pack"', async function () {
             await smoker.pack();
-            expect(mocks.execa, 'was called with', process.execPath, [
-              MOCK_NPM,
+            expect(mocks.execa, 'was called with', MOCK_NPM, [
               'pack',
               '--json',
               `--pack-destination=${MOCK_TMPDIR}`,
@@ -372,8 +370,7 @@ describe('midnight-smoker', function () {
 
             it('should append the "--include-workspace-root" flag to "npm pack"', async function () {
               await smoker.pack();
-              expect(mocks.execa, 'was called with', process.execPath, [
-                MOCK_NPM,
+              expect(mocks.execa, 'was called with', MOCK_NPM, [
                 'pack',
                 '--json',
                 `--pack-destination=${MOCK_TMPDIR}`,
@@ -483,9 +480,8 @@ describe('midnight-smoker', function () {
         it('should execute "npm install" with a list of tarball filepaths', async function () {
           await smoker.install(packItems);
           expect(mocks.execa, 'to have a call satisfying', [
-            process.execPath,
+            MOCK_NPM,
             [
-              MOCK_NPM,
               'install',
               '--global-style',
               ...packItems.map((item) => item.tarballFilepath),
@@ -674,17 +670,9 @@ describe('midnight-smoker', function () {
         it('should call "npm run-script" within each "installPath" in "packItems"', async function () {
           await smoker.runScripts(packItems);
           expect(mocks.execa, 'to have calls satisfying', [
-            [process.execPath, [MOCK_NPM, '--version']],
-            [
-              process.execPath,
-              [MOCK_NPM, 'run-script', 'foo'],
-              {cwd: packItems[0].installPath},
-            ],
-            [
-              process.execPath,
-              [MOCK_NPM, 'run-script', 'foo'],
-              {cwd: packItems[1].installPath},
-            ],
+            [MOCK_NPM, ['--version']],
+            [MOCK_NPM, ['run-script', 'foo'], {cwd: packItems[0].installPath}],
+            [MOCK_NPM, ['run-script', 'foo'], {cwd: packItems[1].installPath}],
           ]);
         });
 
@@ -740,11 +728,10 @@ describe('midnight-smoker', function () {
     it('should pack, install, and run scripts', async function () {
       await smoke('foo');
       expect(mocks.execa, 'to have calls satisfying', [
-        [process.execPath, [MOCK_NPM, '--version']],
+        [MOCK_NPM, ['--version']],
         [
-          process.execPath,
+          MOCK_NPM,
           [
-            MOCK_NPM,
             'pack',
             '--json',
             `--pack-destination=${MOCK_TMPDIR}`,
@@ -753,13 +740,13 @@ describe('midnight-smoker', function () {
           {},
         ],
         [
-          process.execPath,
-          [MOCK_NPM, 'install', '--global-style', `${MOCK_TMPDIR}/tarball.tgz`],
+          MOCK_NPM,
+          ['install', '--global-style', `${MOCK_TMPDIR}/tarball.tgz`],
           {cwd: MOCK_TMPDIR},
         ],
         [
-          process.execPath,
-          [MOCK_NPM, 'run-script', 'foo'],
+          MOCK_NPM,
+          ['run-script', 'foo'],
           {cwd: `${MOCK_TMPDIR}/node_modules/bar`},
         ],
       ]);

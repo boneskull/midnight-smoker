@@ -198,10 +198,7 @@ class Smoker extends createStrictEventEmitterClass() {
     try {
       const npmPath = await which('npm');
       // using #runNpm here would be recursive
-      const {stdout: version} = await execa(process.execPath, [
-        npmPath,
-        '--version',
-      ]);
+      const {stdout: version} = await execa(npmPath, ['--version']);
       debug('(findNpm) Found npm %s at %s', version, npmPath);
       this.#npmPath = npmPath;
       this.emit(FIND_NPM_OK, npmPath);
@@ -384,7 +381,7 @@ class Smoker extends createStrictEventEmitterClass() {
     let proc;
 
     try {
-      proc = execa(process.execPath, [npmPath, ...args], opts);
+      proc = execa(npmPath, args, opts);
     } catch (err) {
       this.emit(RUN_NPM_FAILED, /** @type {execa.ExecaError} */ (err));
       throw err;
@@ -406,11 +403,10 @@ class Smoker extends createStrictEventEmitterClass() {
       this.emit(RUN_NPM_OK, {command, options, value});
       return value;
     } catch (e) {
-      error = /** @type {execa.ExecaError & NodeJS.ErrnoException} */ (e);
-      if (error.code === 'ENOENT') {
-        throw new Error(`Could not find "node" at ${process.execPath}`);
-      }
-      this.emit(RUN_NPM_FAILED, error);
+      this.emit(
+        RUN_NPM_FAILED,
+        /** @type {execa.ExecaError & NodeJS.ErrnoException} */ (e)
+      );
       throw error;
     }
   }
