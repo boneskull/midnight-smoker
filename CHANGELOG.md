@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.0.4](https://github.com/boneskull/midnight-smoker/compare/v2.0.3...v2.0.4) (2023-05-19)
+
+
+### Bug Fixes
+
+* **deps:** update dependency which to v3.0.1 ([8b4b0f1](https://github.com/boneskull/midnight-smoker/commit/8b4b0f106887dfa4fbda9ea5c9103bb7fc311c4c))
+* **deps:** update dependency yargs to v17.7.2 ([b4b86f8](https://github.com/boneskull/midnight-smoker/commit/b4b86f8afb03bddb0ec252a62c7661b0701b3519))
+
 ## [2.0.3](https://github.com/boneskull/midnight-smoker/compare/v2.0.2...v2.0.3) (2023-04-17)
 
 
