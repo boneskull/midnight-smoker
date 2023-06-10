@@ -89,7 +89,7 @@
     "eslint-plugin-promise": "6.1.1",
     "husky": "8.0.3",
     "lint-staged": "13.2.2",
-    "markdownlint-cli2": "0.7.1",
+    "markdownlint-cli2": "0.8.0",
     "mocha": "10.2.0",
     "prettier": "2.8.8",
     "rewiremock": "3.14.5",
