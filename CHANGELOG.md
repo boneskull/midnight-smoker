@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.0.1](https://github.com/boneskull/midnight-smoker/compare/v3.0.0...v3.0.1) (2023-07-24)
+
+
+### Bug Fixes
+
+* **ci:** add missing step id ([0c721ff](https://github.com/boneskull/midnight-smoker/commit/0c721ffc5b8d49bf2e755a116f16272d29e71e5f))
+
 ## [3.0.0](https://github.com/boneskull/midnight-smoker/compare/v2.0.4...v3.0.0) (2023-07-24)
 
 
