@@ -19,6 +19,6 @@ jobs:
       - name: Upgrade npm
         run: npm i -g npm@latest
       - name: npm install
-        uses: bahmutov/npm-install@v1
+        uses: bahmutov/npm-install@c5482d70ec8706408996e31ac94075030694993f # v1
       - name: test
         run: npm test
