@@ -1,5 +1,22 @@
 # Changelog
 
+## [3.0.0](https://github.com/boneskull/midnight-smoker/compare/v2.0.4...v3.0.0) (2023-07-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* npm v9 changes `--global-style` to `--install-strategy=shallow`.  so now we need to retain the version that we found when running `which npm`, and change the shell command accordingly.  Note that even passing a custom path to `npm` will cause it to be executed so that we can verify the version.  This also modifies the `FIND_NPM_OK` event to return an `NpmInfo` object containing props `path` and `version`, instead of just the `string` path.
+* This drops official support for Node.js v14.x, which is now at end-of-life.
+
+### Bug Fixes
+
+* suppress warning when using npm v9 ([a325ad4](https://github.com/boneskull/midnight-smoker/commit/a325ad407f452a1a77a09eb304e35a9471b44a05))
+
+
+### Miscellaneous Chores
+
+* drop Node.js v14.x support ([03f81be](https://github.com/boneskull/midnight-smoker/commit/03f81becc05cdf091fe8e56b273c1b3d9ed1a3b4))
+
 ## [2.0.4](https://github.com/boneskull/midnight-smoker/compare/v2.0.3...v2.0.4) (2023-05-19)
 
 
