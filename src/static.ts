@@ -110,7 +110,7 @@ export interface Events {
   SmokeOk: void;
   SmokeFailed: (err: Error) => void;
   FindNpmBegin: void;
-  FindNpmOk: string;
+  FindNpmOk: NpmInfo;
   FindNpmFailed: (err: Error) => void;
 
   PackBegin: void;
@@ -131,7 +131,7 @@ export interface Events {
     total: number;
     executed: number;
     failures: number;
-    results: Array<ExecaReturnValue<string>|ExecaError<string>>;
+    results: Array<ExecaReturnValue<string> | ExecaError<string>>;
     scripts: string[];
   };
   RunScriptsOk: {
@@ -163,3 +163,8 @@ export interface Events {
 }
 
 export type TSmokerEmitter = StrictEventEmitter<EventEmitter, Events>;
+
+export interface NpmInfo {
+  path: string;
+  version: string;
+}

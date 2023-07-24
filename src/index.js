@@ -98,8 +98,8 @@ class Smoker extends createStrictEventEmitterClass() {
    */
   opts;
 
-  /** @type {string|undefined} */
-  #npmPath;
+  /** @type {NpmInfo|undefined} */
+  #npmInfo;
 
   /** @type {boolean} */
   #force = false;
@@ -159,7 +159,7 @@ class Smoker extends createStrictEventEmitterClass() {
     this.#workspaces = normalizeArray(opts.workspace);
     if (this.#allWorkspaces && this.#workspaces.length) {
       throw new Error(
-        'Option "workspace" is mutually exclusive with "all" and/or "includeRoot"'
+        'Option "workspace" is mutually exclusive with "all" and/or "includeRoot"',
       );
     }
     this.#extraNpmInstallArgs = normalizeArray(opts.installArgs);
@@ -184,25 +184,30 @@ class Smoker extends createStrictEventEmitterClass() {
 
   /**
    *
-   * @returns {Promise<string>}
+   * @returns {Promise<NpmInfo>}
    */
   async findNpm() {
-    if (this.#npmPath) {
-      return this.#npmPath;
-    }
-    if (this.opts.npm) {
-      this.#npmPath = this.opts.npm.trim();
-      return this.#npmPath;
-    }
-    this.emit(FIND_NPM_BEGIN);
-    try {
-      const npmPath = await which('npm');
-      // using #runNpm here would be recursive
+    /**
+     * @param {string} npmPath
+     * @returns {Promise<NpmInfo>}
+     */
+    const getVersion = async (npmPath) => {
       const {stdout: version} = await execa(npmPath, ['--version']);
       debug('(findNpm) Found npm %s at %s', version, npmPath);
-      this.#npmPath = npmPath;
-      this.emit(FIND_NPM_OK, npmPath);
-      return npmPath;
+      return {path: npmPath, version};
+    };
+
+    if (this.#npmInfo) {
+      return this.#npmInfo;
+    }
+
+    this.emit(FIND_NPM_BEGIN);
+
+    try {
+      const npmPath = this.opts.npm ? this.opts.npm.trim() : await which('npm');
+      this.#npmInfo = await getVersion(npmPath);
+      this.emit(FIND_NPM_OK, this.#npmInfo);
+      return this.#npmInfo;
     } catch (err) {
       this.emit(FIND_NPM_FAILED, /** @type {Error} */ (err));
       throw err;
@@ -240,7 +245,7 @@ class Smoker extends createStrictEventEmitterClass() {
       return;
     }
     throw new Error(
-      `Working directory ${wd} already exists. Use "force" option to proceed anyhow.`
+      `Working directory ${wd} already exists. Use "force" option to proceed anyhow.`,
     );
   }
 
@@ -329,7 +334,7 @@ class Smoker extends createStrictEventEmitterClass() {
     if (value.exitCode) {
       debug('(pack) Failed: %O', value);
       const error = new Error(
-        `"npm pack" failed with exit code ${value.exitCode}`
+        `"npm pack" failed with exit code ${value.exitCode}`,
       );
       this.emit(PACK_FAILED, error);
       throw error;
@@ -343,7 +348,7 @@ class Smoker extends createStrictEventEmitterClass() {
     } catch {
       debug('(pack) Failed to parse JSON: %s', packOutput);
       const error = new SyntaxError(
-        `Failed to parse JSON output from "npm pack": ${packOutput}`
+        `Failed to parse JSON output from "npm pack": ${packOutput}`,
       );
       this.emit(PACK_FAILED, error);
       throw error;
@@ -369,8 +374,8 @@ class Smoker extends createStrictEventEmitterClass() {
    * @param {execa.Options} [options]
    */
   async #runNpm(args, options = {}) {
-    const npmPath = await this.findNpm();
-    const command = `${npmPath} ${args.join(' ')}`;
+    const npmInfo = await this.findNpm();
+    const command = `${npmInfo.path} ${args.join(' ')}`;
     this.emit(RUN_NPM_BEGIN, {
       command,
       options,
@@ -381,7 +386,7 @@ class Smoker extends createStrictEventEmitterClass() {
     let proc;
 
     try {
-      proc = execa(npmPath, args, opts);
+      proc = execa(npmInfo.path, args, opts);
     } catch (err) {
       this.emit(RUN_NPM_FAILED, /** @type {execa.ExecaError} */ (err));
       throw err;
@@ -396,8 +401,6 @@ class Smoker extends createStrictEventEmitterClass() {
      * @type {execa.ExecaReturnValue|undefined}
      */
     let value;
-    /** @type {execa.ExecaError & NodeJS.ErrnoException|undefined} */
-    let error;
     try {
       value = await proc;
       this.emit(RUN_NPM_OK, {command, options, value});
@@ -405,9 +408,9 @@ class Smoker extends createStrictEventEmitterClass() {
     } catch (e) {
       this.emit(
         RUN_NPM_FAILED,
-        /** @type {execa.ExecaError & NodeJS.ErrnoException} */ (e)
+        /** @type {execa.ExecaError & NodeJS.ErrnoException} */ (e),
       );
-      throw error;
+      throw e;
     }
   }
 
@@ -426,9 +429,15 @@ class Smoker extends createStrictEventEmitterClass() {
       this.emit(INSTALL_BEGIN, packItems);
       const extraArgs = this.#extraNpmInstallArgs;
       const cwd = await this.createWorkingDirectory();
+      const npmInfo = await this.findNpm();
+      // otherwise we get a deprecation warning
+      const globalStyleFlag =
+        npmInfo.version.startsWith('7') || npmInfo.version.startsWith('8')
+          ? '--global-style'
+          : '--install-strategy=shallow';
       const installArgs = [
         'install',
-        '--global-style',
+        globalStyleFlag,
         ...extraArgs,
         ...packItems.map(({tarballFilepath}) => tarballFilepath),
       ];
@@ -447,7 +456,7 @@ class Smoker extends createStrictEventEmitterClass() {
       if (value.exitCode) {
         debug('(install) Failed: %O', value);
         const error = new Error(
-          `"npm install" failed with exit code ${value.exitCode}: ${value.stdout}`
+          `"npm install" failed with exit code ${value.exitCode}: ${value.stdout}`,
         );
         this.emit(INSTALL_FAILED, error);
         throw error;
@@ -491,7 +500,7 @@ class Smoker extends createStrictEventEmitterClass() {
       script,
       value,
       current,
-      total
+      total,
     ) => {
       const result = {
         pkgName,
@@ -503,19 +512,19 @@ class Smoker extends createStrictEventEmitterClass() {
         if (/missing script:/i.test(value.stderr)) {
           this.emit(RUN_SCRIPT_FAILED, {error: value, current, total, pkgName});
           return new Error(
-            `Script "${script}" in package "${pkgName}" failed; npm was unable to find this script`
+            `Script "${script}" in package "${pkgName}" failed; npm was unable to find this script`,
           );
         }
 
         return new Error(
-          `Script "${script}" in package "${pkgName}" failed with exit code ${value.exitCode}: ${value.all}`
+          `Script "${script}" in package "${pkgName}" failed with exit code ${value.exitCode}: ${value.all}`,
         );
       } else if (value.failed) {
         this.emit(RUN_SCRIPT_FAILED, {error: value, current, total, pkgName});
         debug(
           `(runScripts) Script "%s" in package "%s" failed; continuing...`,
           script,
-          pkgName
+          pkgName,
         );
       } else {
         this.emit(RUN_SCRIPT_OK, {
@@ -526,7 +535,7 @@ class Smoker extends createStrictEventEmitterClass() {
         debug(
           '(runScripts) Successfully executed script %s in package %s',
           script,
-          pkgName
+          pkgName,
         );
       }
     };
@@ -535,7 +544,7 @@ class Smoker extends createStrictEventEmitterClass() {
         const npmArgs = ['run-script', script];
         try {
           for await (const [pkgIdx, {installPath: cwd}] of Object.entries(
-            packItems
+            packItems,
           )) {
             const pkgName = pathToPackageName(cwd);
             const current = Number(pkgIdx) + Number(currentScriptIdx);
@@ -560,7 +569,7 @@ class Smoker extends createStrictEventEmitterClass() {
                 script,
                 /** @type {execa.ExecaError} */ (err),
                 current,
-                total
+                total,
               );
             }
 
@@ -569,7 +578,7 @@ class Smoker extends createStrictEventEmitterClass() {
               script,
               value,
               current,
-              total
+              total,
             );
             if (err) {
               throw err;
@@ -578,7 +587,7 @@ class Smoker extends createStrictEventEmitterClass() {
         } finally {
           const failures = results.reduce(
             (acc, {failed = false}) => acc + Number(failed),
-            0
+            0,
           );
           if (failures) {
             this.emit(RUN_SCRIPTS_FAILED, {
@@ -634,4 +643,5 @@ exports.smoke = async function smoke(scripts, opts = {}) {
  * @typedef {import('./static').RunScriptResult} RunScriptResult
  * @typedef {import('./static').Events} Events
  * @typedef {import('./static').TSmokerEmitter} TSmokerEmitter
+ * @typedef {import('./static').NpmInfo} NpmInfo
  */
