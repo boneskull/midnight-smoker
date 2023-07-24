@@ -117,7 +117,7 @@ That's it. That's the project.
 
 Run `npm install midnight-smoker --save-dev`.
 
-- Minimum Node.js versions supported: `^14.17.0 || ^16.13.0 || >=18.0.0`
+- Minimum Node.js versions supported: `^16.13.0 || >=18.0.0`
 - Minimum `npm` version supported: `v7.0.0`
 
 ## Resources
