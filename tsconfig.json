@@ -1,17 +1,12 @@
 {
+  "extends": "@tsconfig/node16/tsconfig.json",
   "compilerOptions": {
-    "target": "esnext",
-    "module": "commonjs",
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
-    "strict": true,
     "allowJs": true,
     "checkJs": true,
     "declaration": true,
-    "declarationMap": false,
+    "declarationMap": true,
     "declarationDir": "types",
     "emitDeclarationOnly": true,
-    "moduleResolution": "node",
     "types": ["node", "sinon", "mocha"],
     "paths": {
       "midnight-smoker": ["./src/index"]
