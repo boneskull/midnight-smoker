@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.0.2](https://github.com/boneskull/midnight-smoker/compare/v3.0.1...v3.0.2) (2023-07-24)
+
+
+### Bug Fixes
+
+* **ci:** fix broken node version in release action ([bb13b59](https://github.com/boneskull/midnight-smoker/commit/bb13b593560d0b72a67e119451e12956641e0295))
+
 ## [3.0.1](https://github.com/boneskull/midnight-smoker/compare/v3.0.0...v3.0.1) (2023-07-24)
 
 
