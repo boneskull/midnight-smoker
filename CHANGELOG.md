@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.0.3](https://github.com/boneskull/midnight-smoker/compare/v3.0.2...v3.0.3) (2023-07-24)
+
+
+### Bug Fixes
+
+* **ci:** skip npm upgrade step on release if no release ([41760a9](https://github.com/boneskull/midnight-smoker/commit/41760a99c5766366f517c1636d4bfb3ed6c4b01b))
+
 ## [3.0.2](https://github.com/boneskull/midnight-smoker/compare/v3.0.1...v3.0.2) (2023-07-24)
 
 
