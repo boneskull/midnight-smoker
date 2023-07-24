@@ -24,14 +24,13 @@
   "license": "Apache-2.0",
   "author": "Christopher Hiller <boneskull@boneskull.com> (https://boneskull.com/)",
   "main": "src/index.js",
-  "types": "./types/src/index.d.ts",
+  "types": "types/src/index.d.ts",
   "bin": {
     "smoker": "src/cli.js"
   },
   "files": [
     "src",
-    "types",
-    "static.d.ts"
+    "types/src"
   ],
   "scripts": {
     "build": "tsc -b",
@@ -76,6 +75,7 @@
   "devDependencies": {
     "@commitlint/cli": "17.6.7",
     "@commitlint/config-conventional": "17.6.7",
+    "@tsconfig/node16": "16.1.0",
     "@types/debug": "4.1.8",
     "@types/mocha": "10.0.1",
     "@types/node": "18.17.0",
