@@ -47,13 +47,15 @@
   },
   "lint-staged": {
     "*.js": [
-      "eslint --fix"
-    ],
-    "*.{yml,md,d.ts}": [
+      "eslint --fix",
       "prettier --write"
     ],
     "*.md": [
-      "markdownlint-cli2-fix"
+      "markdownlint-cli2-fix",
+      "prettier --write"
+    ],
+    "*.{yml,d.ts}": [
+      "prettier --write"
     ]
   },
   "prettier": {
