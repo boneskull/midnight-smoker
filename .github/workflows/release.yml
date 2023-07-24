@@ -25,6 +25,7 @@ jobs:
         with:
           node-version: 20
       - name: Upgrade npm
+        if: ${{ steps.release.outputs.releases_created }}
         run: npm i -g npm@latest
       - name: Build Package
         if: ${{ steps.release.outputs.releases_created }}
