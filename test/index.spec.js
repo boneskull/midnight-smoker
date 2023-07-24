@@ -68,7 +68,7 @@ describe('midnight-smoker', function () {
 
     ({Smoker, smoke, events} = rewiremock.proxy(
       () => require('../src/index'),
-      mocks
+      mocks,
     ));
   });
 
@@ -82,7 +82,7 @@ describe('midnight-smoker', function () {
         expect(
           () => new Smoker([], {workspace: ['foo'], all: true}),
           'to throw',
-          /Option "workspace" is mutually exclusive with "all" and\/or "includeRoot"/
+          /Option "workspace" is mutually exclusive with "all" and\/or "includeRoot"/,
         );
       });
 
@@ -134,7 +134,7 @@ describe('midnight-smoker', function () {
                 return expect(
                   smoker.cleanup(),
                   'to be rejected with error satisfying',
-                  /Failed to clean working directory/
+                  /Failed to clean working directory/,
                 );
               });
             });
@@ -157,26 +157,35 @@ describe('midnight-smoker', function () {
       });
 
       describe('findNpm()', function () {
+        beforeEach(function () {
+          mocks.execa.resolves({exitCode: 0, stdout: '1.2.3'});
+        });
         describe('when the "npm" option was provided to the constructor', function () {
-          it('should return the trimmed value of the "npm" option', async function () {
+          it('should return object containing trimmed value of the "npm" option', async function () {
             const smoker = new Smoker('foo', {npm: 'npm-path '});
-            return expect(await smoker.findNpm(), 'to be', 'npm-path');
+            return expect(await smoker.findNpm(), 'to equal', {
+              path: 'npm-path',
+              version: '1.2.3',
+            });
           });
 
-          it('should not emit the "FindNpmBegin" event', async function () {
-            const smoker = new Smoker('foo', {npm: 'npm-path '});
+          it('should emit the "FindNpmBegin" event to verify path & version', async function () {
+            const smoker = new Smoker('foo', {npm: 'npm-path'});
             return expect(
               () => smoker.findNpm(),
-              'not to emit from',
+              'to emit from',
               smoker,
-              events.FIND_NPM_BEGIN
+              events.FIND_NPM_BEGIN,
             );
           });
         });
 
         describe('when the "npm" option was not provided to the constructor', function () {
           it('should look for an "npm" executable in the PATH', async function () {
-            expect(smoker.findNpm(), 'to be fulfilled with', MOCK_NPM);
+            expect(smoker.findNpm(), 'to be fulfilled with', {
+              path: MOCK_NPM,
+              version: '1.2.3',
+            });
           });
         });
       });
@@ -191,7 +200,7 @@ describe('midnight-smoker', function () {
             return expect(
               smoker.createWorkingDirectory(),
               'to be rejected with error satisfying',
-              /Failed to create temporary working directory/
+              /Failed to create temporary working directory/,
             );
           });
         });
@@ -202,7 +211,7 @@ describe('midnight-smoker', function () {
             return expect(
               mocks['node:fs/promises'].mkdtemp,
               'was called with',
-              MOCK_TMPDIR
+              MOCK_TMPDIR,
             );
           });
         });
@@ -221,7 +230,7 @@ describe('midnight-smoker', function () {
                 await smoker.createWorkingDirectory();
                 return expect(
                   mocks['node:fs/promises'].stat,
-                  'was called once'
+                  'was called once',
                 );
               });
 
@@ -229,7 +238,7 @@ describe('midnight-smoker', function () {
                 await smoker.createWorkingDirectory();
                 return expect(
                   mocks['node:fs/promises'].mkdir,
-                  'was called once'
+                  'was called once',
                 );
               });
 
@@ -237,7 +246,7 @@ describe('midnight-smoker', function () {
                 return expect(
                   smoker.createWorkingDirectory(),
                   'to be fulfilled with',
-                  '/some/path/to/dir'
+                  '/some/path/to/dir',
                 );
               });
 
@@ -250,7 +259,7 @@ describe('midnight-smoker', function () {
                   return expect(
                     smoker.createWorkingDirectory(),
                     'to be rejected with error satisfying',
-                    /Failed to create working directory/
+                    /Failed to create working directory/,
                   );
                 });
               });
@@ -262,7 +271,7 @@ describe('midnight-smoker', function () {
                 return expect(
                   smoker.createWorkingDirectory(),
                   'to be rejected with error satisfying',
-                  /Working directory \/some\/path\/to\/dir already exists/
+                  /Working directory \/some\/path\/to\/dir already exists/,
                 );
               });
             });
@@ -305,7 +314,7 @@ describe('midnight-smoker', function () {
             smoker.pack(),
             'to emit from',
             smoker,
-            events.PACK_BEGIN
+            events.PACK_BEGIN,
           );
         });
 
@@ -391,7 +400,7 @@ describe('midnight-smoker', function () {
             return expect(
               smoker.pack(),
               'to be rejected with error satisfying',
-              /"npm pack" failed/
+              /"npm pack" failed/,
             );
           });
 
@@ -405,7 +414,7 @@ describe('midnight-smoker', function () {
               'to emit from',
               smoker,
               events.PACK_FAILED,
-              /"npm pack" failed/
+              /"npm pack" failed/,
             );
           });
         });
@@ -444,7 +453,7 @@ describe('midnight-smoker', function () {
             return expect(
               smoker.pack(),
               'to be rejected with error satisfying',
-              /Failed to parse JSON output/
+              /Failed to parse JSON output/,
             );
           });
 
@@ -458,7 +467,7 @@ describe('midnight-smoker', function () {
               'to emit from',
               smoker,
               events.PACK_FAILED,
-              /Failed to parse JSON output/
+              /Failed to parse JSON output/,
             );
           });
         });
@@ -483,7 +492,7 @@ describe('midnight-smoker', function () {
             MOCK_NPM,
             [
               'install',
-              '--global-style',
+              '--install-strategy=shallow',
               ...packItems.map((item) => item.tarballFilepath),
             ],
             {},
@@ -496,7 +505,7 @@ describe('midnight-smoker', function () {
             'to emit from',
             smoker,
             events.INSTALL_BEGIN,
-            packItems
+            packItems,
           );
         });
 
@@ -506,7 +515,7 @@ describe('midnight-smoker', function () {
             'to emit from',
             smoker,
             events.INSTALL_OK,
-            packItems
+            packItems,
           );
         });
 
@@ -516,7 +525,7 @@ describe('midnight-smoker', function () {
               // @ts-expect-error
               smoker.install(),
               'to be rejected with error satisfying',
-              new TypeError('(install) "packItems" is required')
+              new TypeError('(install) "packItems" is required'),
             );
           });
         });
@@ -530,21 +539,22 @@ describe('midnight-smoker', function () {
             return expect(
               smoker.install(packItems),
               'to be rejected with error satisfying',
-              /"npm install" failed with exit code 1/
+              /"npm install" failed with exit code 1/,
             );
           });
         });
 
         describe('when "npm" cannot be executed', function () {
           beforeEach(function () {
-            mocks.execa.rejects({exitCode: 1, stdout: 'oh noes'});
+            mocks.execa.onFirstCall().resolves({stdout: '8.0.0'});
+            mocks.execa.onSecondCall().rejects(new Error('yack'));
           });
 
           it('should reject', async function () {
             return expect(
               smoker.install(packItems),
               'to be rejected with error satisfying',
-              /"npm install" failed to spawn/
+              /"npm install" failed to spawn/,
             );
           });
         });
@@ -602,7 +612,7 @@ describe('midnight-smoker', function () {
             'to emit from',
             smoker,
             events.RUN_SCRIPTS_BEGIN,
-            {scripts: ['foo'], packItems, total: 2}
+            {scripts: ['foo'], packItems, total: 2},
           );
         });
 
@@ -618,7 +628,7 @@ describe('midnight-smoker', function () {
               executed: 2,
               failures: 0,
               results: expect.it('to be an array'),
-            })
+            }),
           );
         });
 
@@ -628,7 +638,7 @@ describe('midnight-smoker', function () {
               // @ts-expect-error
               smoker.runScripts(),
               'to be rejected with error satisfying',
-              new TypeError('(install) "packItems" is required')
+              new TypeError('(install) "packItems" is required'),
             );
           });
         });
@@ -697,7 +707,7 @@ describe('midnight-smoker', function () {
               return expect(
                 smoker.runScripts(packItems),
                 'to be rejected with error satisfying',
-                /failed with exit code 1/
+                /failed with exit code 1/,
               );
             });
 
@@ -714,7 +724,7 @@ describe('midnight-smoker', function () {
                 return expect(
                   smoker.runScripts(packItems),
                   'to be rejected with error satisfying',
-                  /npm was unable to find this script/
+                  /npm was unable to find this script/,
                 );
               });
             });
@@ -725,6 +735,19 @@ describe('midnight-smoker', function () {
   });
 
   describe('smoke()', function () {
+    /** @type {string} */
+    let globalStyleFlag;
+
+    beforeEach(async function () {
+      const smoker = new Smoker('foo');
+      const {version} = await smoker.findNpm();
+      globalStyleFlag =
+        version.startsWith('7') || version.startsWith('8')
+          ? '--global-style'
+          : '--install-strategy=shallow';
+      mocks.execa.resetHistory();
+    });
+
     it('should pack, install, and run scripts', async function () {
       await smoke('foo');
       expect(mocks.execa, 'to have calls satisfying', [
@@ -741,7 +764,7 @@ describe('midnight-smoker', function () {
         ],
         [
           MOCK_NPM,
-          ['install', '--global-style', `${MOCK_TMPDIR}/tarball.tgz`],
+          ['install', globalStyleFlag, `${MOCK_TMPDIR}/tarball.tgz`],
           {cwd: MOCK_TMPDIR},
         ],
         [
