@@ -24,6 +24,7 @@ jobs:
         uses: actions/setup-node@e33196f7422957bea03ed53f6fbb155025ffc7b8 # v3
         with:
           node-version: 20
+          registry-url: 'https://registry.npmjs.org'
       - name: Upgrade npm
         if: ${{ steps.release.outputs.releases_created }}
         run: npm i -g npm@latest
