@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.0.4](https://github.com/boneskull/midnight-smoker/compare/v3.0.3...v3.0.4) (2023-07-25)
+
+
+### Bug Fixes
+
+* **ci:** force default registry ([1dcac87](https://github.com/boneskull/midnight-smoker/commit/1dcac8714049b0a9d6e5ee7d39a7db3eece43407))
+
 ## [3.0.3](https://github.com/boneskull/midnight-smoker/compare/v3.0.2...v3.0.3) (2023-07-24)
 
 
