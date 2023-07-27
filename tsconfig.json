@@ -1,17 +1,8 @@
 {
   "extends": "@tsconfig/node16/tsconfig.json",
-  "compilerOptions": {
-    "allowJs": true,
-    "checkJs": true,
-    "declaration": true,
-    "declarationMap": true,
-    "declarationDir": "types",
-    "emitDeclarationOnly": true,
-    "types": ["node", "sinon", "mocha"],
-    "paths": {
-      "midnight-smoker": ["./src/index"]
-    },
-    "resolveJsonModule": true
+  "files": [],
+  "ts-node": {
+    "transpileOnly": true
   },
-  "include": ["src", "test"]
+  "references": [{"path": "./src"}, {"path": "./test"}]
 }

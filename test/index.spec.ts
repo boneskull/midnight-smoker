@@ -1,37 +1,57 @@
-const unexpected = require('unexpected');
-const {createSandbox} = require('sinon');
+import unexpected from 'unexpected';
+import unexpectedSinon from 'unexpected-sinon';
+import unexpectedEventEmitter from 'unexpected-eventemitter';
+import {createSandbox} from 'sinon';
+import rewiremock from 'rewiremock/node';
+import path from 'node:path';
+import type * as MS from 'midnight-smoker';
+import type {PackItem} from 'midnight-smoker/types';
+import {Readable} from 'node:stream';
+import type {ExecaReturnValue} from 'execa';
+
 const expect = unexpected
   .clone()
-  .use(require('unexpected-sinon'))
-  .use(require('unexpected-eventemitter'));
-const rewiremock = require('rewiremock/node');
-const path = require('path');
-const {Readable} = require('node:stream');
+  .use(unexpectedSinon)
+  .use(unexpectedEventEmitter);
+
+type AsyncStub<TArgs = any, TReturnValue = any> = sinon.SinonStub<
+  TArgs[],
+  Promise<TReturnValue>
+>;
+
+interface NodeFsPromisesMocks {
+  mkdtemp: AsyncStub<any, string>;
+  rm: AsyncStub;
+  mkdir: AsyncStub;
+  stat: AsyncStub;
+}
+
+type Mocks = {
+  'node:fs/promises': NodeFsPromisesMocks;
+  which: AsyncStub<string, string>;
+  execa: AsyncStub<string, Partial<ExecaReturnValue>>;
+  'node:console': sinon.SinonStubbedInstance<typeof console>;
+  debug: sinon.SinonStub<any, sinon.SinonStub>;
+  'node:os': {tmpdir: sinon.SinonStub<any, string>};
+};
 
 describe('midnight-smoker', function () {
-  /** @type {sinon.SinonSandbox} */
-  let sandbox;
+  let sandbox: sinon.SinonSandbox;
 
-  /** @type {typeof import('midnight-smoker').Smoker} */
-  let Smoker;
+  let Smoker: typeof MS.Smoker;
 
-  /** @type {typeof import('midnight-smoker').events} */
-  let events;
+  let events: typeof MS.events;
 
-  /** @type {typeof import('midnight-smoker').smoke} */
-  let smoke;
+  let smoke: typeof MS.smoke;
 
-  /** @type {Mocks} */
-  let mocks;
+  let mocks: Mocks;
 
   const MOCK_NPM = '/some/path/to/npm';
   const MOCK_TMPROOT = '/some/tmp';
   const MOCK_TMPDIR = path.join(MOCK_TMPROOT, 'midnight-smoker-');
 
-  /** @type {sinon.SinonStubbedInstance<Readable>} */
-  let stderr;
-  /** @type {sinon.SinonStubbedInstance<Readable>} */
-  let stdout;
+  let stderr: sinon.SinonStubbedInstance<Readable>;
+  let stdout: sinon.SinonStubbedInstance<Readable>;
 
   beforeEach(function () {
     sandbox = createSandbox();
@@ -101,8 +121,7 @@ describe('midnight-smoker', function () {
     });
 
     describe('method', function () {
-      /** @type {import('midnight-smoker').Smoker} */
-      let smoker;
+      let smoker: import('midnight-smoker').Smoker;
 
       beforeEach(function () {
         smoker = new Smoker('foo');
@@ -141,8 +160,7 @@ describe('midnight-smoker', function () {
 
             describe('when the failure is due to the non-existence of the working directory', function () {
               beforeEach(function () {
-                /** @type {NodeJS.ErrnoException} */
-                const err = new Error();
+                const err: NodeJS.ErrnoException = new Error();
                 err.code = 'ENOENT';
                 mocks['node:fs/promises'].rm.rejects(err);
               });
@@ -217,8 +235,7 @@ describe('midnight-smoker', function () {
         });
 
         describe('when explicit "dir" option provided to constructor', function () {
-          /** @type {import('midnight-smoker').Smoker} */
-          let smoker;
+          let smoker: MS.Smoker;
 
           describe('when "force" option not provided to constructor', function () {
             beforeEach(function () {
@@ -474,8 +491,7 @@ describe('midnight-smoker', function () {
       });
 
       describe('install()', function () {
-        /** @type {import('midnight-smoker').PackItem[]} */
-        const packItems = [
+        const packItems: PackItem[] = [
           {
             tarballFilepath: `${MOCK_TMPDIR}/bar.tgz`,
             installPath: `${MOCK_TMPDIR}/node_modules/bar`,
@@ -522,7 +538,7 @@ describe('midnight-smoker', function () {
         describe('when called without "packItems" argument', function () {
           it('should reject', async function () {
             return expect(
-              // @ts-expect-error
+              // @ts-expect-error invalid args
               smoker.install(),
               'to be rejected with error satisfying',
               new TypeError('(install) "packItems" is required'),
@@ -594,8 +610,7 @@ describe('midnight-smoker', function () {
       });
 
       describe('runScripts()', function () {
-        /** @type {import('midnight-smoker').PackItem[]} */
-        const packItems = [
+        const packItems: PackItem[] = [
           {
             tarballFilepath: `${MOCK_TMPDIR}/bar.tgz`,
             installPath: `${MOCK_TMPDIR}/node_modules/bar`,
@@ -635,7 +650,7 @@ describe('midnight-smoker', function () {
         describe('when called without "packItems" argument', function () {
           it('should reject', async function () {
             return expect(
-              // @ts-expect-error
+              // @ts-expect-error invalid args
               smoker.runScripts(),
               'to be rejected with error satisfying',
               new TypeError('(install) "packItems" is required'),
@@ -735,8 +750,7 @@ describe('midnight-smoker', function () {
   });
 
   describe('smoke()', function () {
-    /** @type {string} */
-    let globalStyleFlag;
+    let globalStyleFlag: string;
 
     beforeEach(async function () {
       const smoker = new Smoker('foo');
@@ -776,21 +790,3 @@ describe('midnight-smoker', function () {
     });
   });
 });
-
-/**
- * @template {Readonly<any>} [TArgs=any]
- * @template [TReturnValue=any]
- * @typedef {sinon.SinonStub<TArgs[], Promise<TReturnValue>>} AsyncStub
- */
-
-/**
- * @typedef NodeFsPromisesMocks
- * @property {AsyncStub<any,string>} mkdtemp
- * @property {AsyncStub} rm
- * @property {AsyncStub} mkdir
- * @property {AsyncStub} stat
- */
-
-/**
- * @typedef { {'node:fs/promises': NodeFsPromisesMocks, which: AsyncStub<any,string>, execa: AsyncStub<any,Partial<import('execa').ExecaReturnValue>>, 'node:console': sinon.SinonStubbedInstance<console>, debug: sinon.SinonStub<any,sinon.SinonStub>, 'node:os': {tmpdir: sinon.SinonStub<any,string>} } } Mocks
- */

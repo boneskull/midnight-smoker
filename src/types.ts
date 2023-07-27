@@ -1,6 +1,15 @@
 import type {ExecaError, ExecaReturnValue, Options} from 'execa';
 import type {StrictEventEmitter} from 'strict-event-emitter-types';
-import type {EventEmitter} from 'events';
+import type {EventEmitter} from 'node:events';
+
+/**
+ * Type of item in the {@linkcode NpmPackItem.files} array.
+ */
+export interface NpmPackItemFileEntry {
+  path: string;
+  size: number;
+  mode: number;
+}
 
 /**
  * JSON output of `npm pack`
@@ -17,15 +26,6 @@ export interface NpmPackItem {
   files: NpmPackItemFileEntry[];
   entryCount: number;
   bundled: any[];
-}
-
-/**
- * Type of item in the {@linkcode NpmPackItem.files} array.
- */
-export interface NpmPackItemFileEntry {
-  path: string;
-  size: number;
-  mode: number;
 }
 
 /**
@@ -105,6 +105,11 @@ export interface RunScriptResult extends ExecaReturnValue<string> {
   script: string;
 }
 
+export interface NpmInfo {
+  path: string;
+  version: string;
+}
+
 export interface Events {
   SmokeBegin: void;
   SmokeOk: void;
@@ -163,8 +168,3 @@ export interface Events {
 }
 
 export type TSmokerEmitter = StrictEventEmitter<EventEmitter, Events>;
-
-export interface NpmInfo {
-  path: string;
-  version: string;
-}

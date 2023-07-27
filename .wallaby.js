@@ -5,19 +5,19 @@ module.exports = () => {
     env: {
       type: 'node',
       params: {
-        env: 'DEBUG=midnight-smoker'
-      }
+        env: 'DEBUG=midnight-smoker',
+      },
     },
     files: [
-      './src/*.js',
+      './src',
+      {pattern: './bin/smoker.js', instrument: false},
       'package.json',
-      {pattern: '.husky/**/*', instrument: false}
     ],
     testFramework: 'mocha',
-    tests: ['./test/*.spec.js'],
+    tests: ['./test/**/*.spec.ts'],
     runMode: 'onsave',
     setup(wallaby) {
       process.env.WALLABY_PROJECT_DIR = wallaby.localProjectDir;
-    }
+    },
   };
 };
