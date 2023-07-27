@@ -1,28 +1,27 @@
-const {node: execa} = require('execa');
-const {version} = require('../package.json');
-const path = require('path');
-const expect = require('unexpected')
-  .clone()
-  .use(require('unexpected-snapshot'));
+import {node as execa, type NodeOptions} from 'execa';
+import {readFileSync} from 'node:fs';
+import path from 'node:path';
+import unexpected from 'unexpected';
+import unexpectedSnapshot from 'unexpected-snapshot';
 
-/** @type {string} */
-let CLI_PATH;
-/** @type {string} */
-let CWD;
+const {version} = JSON.parse(
+  readFileSync(require.resolve('../package.json'), 'utf8'),
+);
+
+const expect = unexpected.clone().use(unexpectedSnapshot);
+
+let CLI_PATH: string;
+let CWD: string;
 
 if (process.env.WALLABY_PROJECT_DIR) {
-  CLI_PATH = path.join(process.env.WALLABY_PROJECT_DIR, 'src', 'cli.js');
+  CLI_PATH = path.join(process.env.WALLABY_PROJECT_DIR, 'bin', 'smoker.js');
   CWD = process.env.WALLABY_PROJECT_DIR;
 } else {
-  CLI_PATH = require.resolve('../src/cli.js');
+  CLI_PATH = require.resolve('../bin/smoker.js');
   CWD = path.join(__dirname, '..');
 }
 
-/**
- * @param {string[]} args
- * @param {import('execa').NodeOptions} [opts]
- */
-async function run(args, opts = {}) {
+async function run(args: string[], opts: NodeOptions = {}) {
   const {stdout, stderr, exitCode} = await execa(CLI_PATH, args, {
     cwd: CWD,
     ...opts,
@@ -67,24 +66,24 @@ describe('midnight-smoker CLI', function () {
         env: {
           DEBUG: '',
         },
-      }
+      },
     );
     const actual = {stdout, stderr, exitCode};
     actual.stdout = actual.stdout
       // strip the path to npm from the `command` & `escapedCommand` since it could differ depending where this is run
       .replace(
         /(?<="(escaped)?[cC]ommand":\s*?")(.+?)(?=\/bin\/npm)/g,
-        '<path/to>'
+        '<path/to>',
       )
       // strip the versions since it could change
       .replace(/midnight-smoker@\d+\.\d+\.\d+/, 'midnight-smoker@<version>')
       .replace(/--version\\n\\n\d+\.\d+\.\d+/, '--version\\n\\n<version>')
       // strip the path to `cli.js` since it differs per platform
-      .replace(/node(\.cmd)?\s+.+?cli\.js/, '<path/to/>cli.js');
+      .replace(/node(\.cmd)?\s+.+?smoker\.js/, '<path/to/>smoker.js');
 
     expect(actual, 'to equal snapshot', {
       stdout:
-        '{\n  "scripts": [\n    "test:smoke"\n  ],\n  "total": 1,\n  "executed": 1,\n  "failures": 0,\n  "results": [\n    {\n      "pkgName": "midnight-smoker",\n      "script": "test:smoke",\n      "command": "<path/to>/bin/npm run-script test:smoke",\n      "escapedCommand": "<path/to>/bin/npm\\" run-script \\"test:smoke\\"",\n      "exitCode": 0,\n      "stdout": "\\n> midnight-smoker@<version> test:smoke\\n> <path/to/>cli.js --version\\n\\n<version>",\n      "stderr": "",\n      "failed": false,\n      "timedOut": false,\n      "isCanceled": false,\n      "killed": false\n    }\n  ]\n}',
+        '{\n  "scripts": [\n    "test:smoke"\n  ],\n  "total": 1,\n  "executed": 1,\n  "failures": 0,\n  "results": [\n    {\n      "pkgName": "midnight-smoker",\n      "script": "test:smoke",\n      "command": "<path/to>/bin/npm run-script test:smoke",\n      "escapedCommand": "<path/to>/bin/npm\\" run-script \\"test:smoke\\"",\n      "exitCode": 0,\n      "stdout": "\\n> midnight-smoker@<version> test:smoke\\n> <path/to/>smoker.js --version\\n\\n<version>",\n      "stderr": "",\n      "failed": false,\n      "timedOut": false,\n      "isCanceled": false,\n      "killed": false\n    }\n  ]\n}',
       stderr: '',
       exitCode: 0,
     });

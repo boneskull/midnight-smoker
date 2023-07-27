@@ -1,18 +1,26 @@
-root: true
 env:
-  node: true
   es2020: true
+  node: true
 extends:
-  - semistandard
-  - prettier
-parserOptions:
-  sourceType: script
+  - 'semistandard'
+  - 'plugin:@typescript-eslint/recommended'
+  - 'prettier'
 ignorePatterns:
   - 'node_modules/**/*'
   - 'coverage/**/*'
   - 'dist/**/*'
 overrides:
   - files:
-      - test/**/*.spec.js
-    env:
+      - 'bin/**/*'
+    parserOptions:
+      sourceType: 'module'
+  - env:
       mocha: true
+    files:
+      - 'test/**/*'
+parser: '@typescript-eslint/parser'
+plugins:
+  - '@typescript-eslint'
+rules:
+  '@typescript-eslint/no-explicit-any': 'off'
+root: true

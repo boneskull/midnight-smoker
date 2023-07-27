@@ -1,20 +1,24 @@
-#!/usr/bin/env node
+import {blue, red, white, yellow} from 'chalk';
+import {readFile} from 'node:fs/promises';
+import ora from 'ora';
+import pluralize from 'pluralize';
+import {hideBin} from 'yargs/helpers';
+import yargs from 'yargs/yargs';
+import {Smoker, events} from './index.js';
+import type {Events} from './types';
 
-const pluralize = require('pluralize');
-const yargs = require('yargs/yargs');
-const {version} = require('../package.json');
-const {Smoker, events} = require('./index.js');
-const ora = require('ora');
-const {blue, white, red, yellow} = require('chalk');
 const BEHAVIOR_GROUP = 'Behavior:';
 
 /**
- *
- * @param {string[]} args
- * @returns {Promise<void>}
+ * Output of the CLI script when `json` flag is `true`
  */
-async function main(args) {
+type SmokerJsonOutput = Events['RunScriptsFailed'] | Events['RunScriptsOk'];
+
+async function main(args: string[]): Promise<void> {
   const y = yargs(args);
+  const {version} = JSON.parse(
+    await readFile(require.resolve('../package.json'), 'utf8'),
+  );
   await y
     .scriptName('smoker')
     .command(
@@ -108,10 +112,7 @@ async function main(args) {
             return true;
           }),
       async (argv) => {
-        const scripts = [
-          /** @type {string} */ (argv.script),
-          ...(argv.scripts ?? []),
-        ];
+        const scripts = [argv.script as string, ...(argv.scripts ?? [])];
 
         // squelch some output if `json` is true
         argv.verbose = argv.json ? false : argv.verbose;
@@ -119,10 +120,8 @@ async function main(args) {
         const smoker = new Smoker(scripts, argv);
 
         if (argv.json) {
-          /** @type {SmokerJsonOutput} */
-          let output;
-          /** @param {SmokerJsonOutput} result */
-          const setResult = (result) => {
+          let output: SmokerJsonOutput;
+          const setResult = (result: SmokerJsonOutput) => {
             smoker
               .removeAllListeners(events.RUN_SCRIPTS_OK)
               .removeAllListeners(events.RUN_SCRIPTS_FAILED);
@@ -142,12 +141,11 @@ async function main(args) {
           await smoker.smoke();
         } else {
           const spinner = ora();
-          /** @type {Events['RunScriptFailed'][]} */
-          const scriptFailedEvts = [];
+          const scriptFailedEvts: Events['RunScriptFailed'][] = [];
           smoker
             .on(events.SMOKE_BEGIN, () => {
               console.error(
-                `💨 ${blue('midnight-smoker')} ${white(`v${version}`)}`
+                `💨 ${blue('midnight-smoker')} ${white(`v${version}`)}`,
               );
             })
             .on(events.FIND_NPM_BEGIN, () => {
@@ -161,8 +159,7 @@ async function main(args) {
               process.exitCode = 1;
             })
             .on(events.PACK_BEGIN, () => {
-              /** @type {string} */
-              let what;
+              let what: string;
               if (argv.workspace?.length) {
                 what = pluralize('workspace', argv.workspace.length, true);
               } else if (argv.all) {
@@ -177,7 +174,7 @@ async function main(args) {
             })
             .on(events.PACK_OK, (packItems) => {
               spinner.succeed(
-                `Packed ${pluralize('package', packItems.length, true)}`
+                `Packed ${pluralize('package', packItems.length, true)}`,
               );
             })
             .on(events.PACK_FAILED, (err) => {
@@ -189,8 +186,8 @@ async function main(args) {
                 `Installing from ${pluralize(
                   'tarball',
                   packItems.length,
-                  true
-                )}...`
+                  true,
+                )}...`,
               );
             })
             .on(events.INSTALL_FAILED, (err) => {
@@ -199,7 +196,7 @@ async function main(args) {
             })
             .on(events.INSTALL_OK, (packItems) => {
               spinner.succeed(
-                `Installed ${pluralize('package', packItems.length, true)}`
+                `Installed ${pluralize('package', packItems.length, true)}`,
               );
             })
             .on(events.RUN_SCRIPTS_BEGIN, ({total}) => {
@@ -214,12 +211,12 @@ async function main(args) {
             })
             .on(events.RUN_SCRIPTS_OK, ({total}) => {
               spinner.succeed(
-                `Successfully ran ${pluralize('script', total, true)}`
+                `Successfully ran ${pluralize('script', total, true)}`,
               );
             })
-            .on(events.RUN_SCRIPTS_FAILED, ({total, executed, failures}) => {
+            .on(events.RUN_SCRIPTS_FAILED, ({total, failures}) => {
               spinner.fail(
-                `${failures} of ${total} ${pluralize('script', total)} failed`
+                `${failures} of ${total} ${pluralize('script', total)} failed`,
               );
               process.exitCode = 1;
             })
@@ -230,8 +227,8 @@ async function main(args) {
                 for (const evt of scriptFailedEvts) {
                   console.error(
                     `\n${red('Error details')} for failed package ${yellow(
-                      evt.pkgName
-                    )}:\n`
+                      evt.pkgName,
+                    )}:\n`,
                   );
                   console.error(evt.error.stderr);
                 }
@@ -243,7 +240,7 @@ async function main(args) {
             });
           await smoker.smoke();
         }
-      }
+      },
     )
     .showHelpOnFail(false)
     .help()
@@ -251,13 +248,4 @@ async function main(args) {
     .parseAsync();
 }
 
-main(process.argv.slice(2));
-
-/**
- * Output of the CLI script when `json` flag is `true`
- * @typedef {Events['RunScriptsFailed']|Events['RunScriptsOk']} SmokerJsonOutput
- */
-
-/**
- * @typedef {import('./static').Events} Events
- */
+main(hideBin(process.argv));

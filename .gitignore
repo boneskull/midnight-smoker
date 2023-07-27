@@ -63,3 +63,5 @@ typings/
 types
 
 .vscode/settings.json
+dist
+*.tsbuildinfo

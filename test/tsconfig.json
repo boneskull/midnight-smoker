@@ -1,0 +1,21 @@
+{
+  "extends": "@tsconfig/node16/tsconfig.json",
+  "compilerOptions": {
+    "types": ["node", "mocha"],
+    "noEmit": true,
+    "paths": {
+      "midnight-smoker": ["../src"],
+      "midnight-smoker/*": ["../src/*"]
+    },
+    "composite": true
+  },
+  "include": ["."],
+  "references": [
+    {
+      "path": "../src"
+    }
+  ],
+  "ts-node": {
+    "transpileOnly": true
+  }
+}
