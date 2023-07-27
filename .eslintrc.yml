@@ -7,6 +7,10 @@ extends:
   - prettier
 parserOptions:
   sourceType: script
+ignorePatterns:
+  - 'node_modules/**/*'
+  - 'coverage/**/*'
+  - 'dist/**/*'
 overrides:
   - files:
       - test/**/*.spec.js
