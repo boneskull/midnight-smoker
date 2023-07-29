@@ -3,10 +3,6 @@
   "compilerOptions": {
     "types": ["node", "mocha"],
     "noEmit": true,
-    "paths": {
-      "midnight-smoker": ["../src"],
-      "midnight-smoker/*": ["../src/*"]
-    },
     "composite": true
   },
   "include": ["."],

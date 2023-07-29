@@ -18,9 +18,14 @@ overrides:
       mocha: true
     files:
       - 'test/**/*'
+    rules:
+      '@typescript-eslint/no-unused-vars': 'off'
+
 parser: '@typescript-eslint/parser'
 plugins:
   - '@typescript-eslint'
 rules:
   '@typescript-eslint/no-explicit-any': 'off'
+  'no-useless-constructor': 'off'
+  'lines-between-class-members': 'off'
 root: true

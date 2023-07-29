@@ -9,12 +9,14 @@ module.exports = () => {
       },
     },
     files: [
-      './src',
+      './src/**/*.ts',
       {pattern: './bin/smoker.js', instrument: false},
+      {pattern: './test/unit/mocks.ts', instrument: false},
       'package.json',
+      '!./src/cli.ts',
     ],
     testFramework: 'mocha',
-    tests: ['./test/**/*.spec.ts'],
+    tests: ['./test/unit/**/*.spec.ts'],
     runMode: 'onsave',
     setup(wallaby) {
       process.env.WALLABY_PROJECT_DIR = wallaby.localProjectDir;

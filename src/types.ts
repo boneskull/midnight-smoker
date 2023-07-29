@@ -1,32 +1,5 @@
-import type {ExecaError, ExecaReturnValue, Options} from 'execa';
-import type {StrictEventEmitter} from 'strict-event-emitter-types';
-import type {EventEmitter} from 'node:events';
-
-/**
- * Type of item in the {@linkcode NpmPackItem.files} array.
- */
-export interface NpmPackItemFileEntry {
-  path: string;
-  size: number;
-  mode: number;
-}
-
-/**
- * JSON output of `npm pack`
- */
-export interface NpmPackItem {
-  id: string;
-  name: string;
-  version: string;
-  size: number;
-  unpackedSize: number;
-  shasum: string;
-  integrity: string;
-  filename: string;
-  files: NpmPackItemFileEntry[];
-  entryCount: number;
-  bundled: any[];
-}
+import type {ExecaError, ExecaReturnValue} from 'execa';
+import type {SmokerError} from './error';
 
 /**
  * Options for {@linkcode Smoker.pack}
@@ -43,9 +16,15 @@ export interface PackOptions {
 /**
  * An item in the array returned by {@linkcode Smoker.pack}
  */
-export interface PackItem {
+export interface PackedPackage {
+  pkgName: string;
   installPath: string;
   tarballFilepath: string;
+}
+
+export interface InstallManifest {
+  packedPkgs: PackedPackage[];
+  tarballRootDir: string;
 }
 
 export interface SmokerOptions {
@@ -100,71 +79,59 @@ export interface SmokerOptions {
   json?: boolean;
 }
 
-export interface RunScriptResult extends ExecaReturnValue<string> {
+export type RunScriptValue = Pick<
+  ExecaReturnValue<string>,
+  'stdout' | 'stderr' | 'command' | 'exitCode' | 'failed' | 'all'
+>;
+
+export interface RunScriptResult {
   pkgName: string;
   script: string;
-}
-
-export interface NpmInfo {
-  path: string;
-  version: string;
+  error?: SmokerError;
+  rawResult: RunScriptValue | ExecaError;
 }
 
 export interface Events {
   SmokeBegin: void;
   SmokeOk: void;
   SmokeFailed: (err: Error) => void;
-  FindNpmBegin: void;
-  FindNpmOk: NpmInfo;
-  FindNpmFailed: (err: Error) => void;
-
   PackBegin: void;
-  PackFailed: SyntaxError | ExecaError | Error;
-  PackOk: PackItem[];
-  RunNpmBegin: {command: string; options: Options};
-  RunNpmFailed: ExecaError;
-  RunNpmOk: {
-    command: string;
-    options: Options;
-    value: ExecaReturnValue<string>;
+  PackFailed: SmokerError;
+  PackOk: InstallManifest;
+  InstallBegin: InstallManifest;
+  InstallFailed: SmokerError;
+  InstallOk: InstallManifest;
+  RunScriptsBegin: {
+    scripts: string[];
+    packedPkgs: PackedPackage[];
+    total: number;
   };
-  InstallBegin: PackItem[];
-  InstallFailed: ExecaError | Error;
-  InstallOk: PackItem[];
-  RunScriptsBegin: {scripts: string[]; packItems: PackItem[]; total: number};
   RunScriptsFailed: {
     total: number;
     executed: number;
     failures: number;
-    results: Array<ExecaReturnValue<string> | ExecaError<string>>;
+    results: RunScriptResult[];
     scripts: string[];
   };
   RunScriptsOk: {
     total: number;
     executed: number;
-    failures: number;
-    results: ExecaReturnValue<string>[];
+    results: RunScriptResult[];
     scripts: string[];
   };
   RunScriptBegin: {
     script: string;
-    cwd: string;
-    npmArgs: string[];
     pkgName: string;
     total: number;
     current: number;
   };
-  RunScriptFailed: {
-    error: ExecaReturnValue<string> | ExecaError;
-    pkgName: string;
+  RunScriptFailed: RunScriptResult & {
+    error: SmokerError;
     total: number;
     current: number;
   };
-  RunScriptOk: {
-    value: ExecaReturnValue<string>;
-    current: number;
+  RunScriptOk: RunScriptResult & {
     total: number;
+    current: number;
   };
 }
-
-export type TSmokerEmitter = StrictEventEmitter<EventEmitter, Events>;
