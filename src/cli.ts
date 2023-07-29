@@ -4,7 +4,8 @@ import ora from 'ora';
 import pluralize from 'pluralize';
 import {hideBin} from 'yargs/helpers';
 import yargs from 'yargs/yargs';
-import {Smoker, events} from './index.js';
+import {events} from './index.js';
+import {Smoker} from './smoker.js';
 import type {Events} from './types';
 
 const BEHAVIOR_GROUP = 'Behavior:';
@@ -29,6 +30,15 @@ async function main(args: string[]): Promise<void> {
           .positional('script', {type: 'string'})
           .positional('scripts', {type: 'string'})
           .options({
+            require: {
+              alias: 'r',
+              type: 'string',
+              array: true,
+              group: BEHAVIOR_GROUP,
+              requiresArg: true,
+              describe:
+                'Package identifier for extra dependency needed by smoke tests',
+            },
             workspace: {
               requiresArg: true,
               type: 'string',
@@ -117,7 +127,7 @@ async function main(args: string[]): Promise<void> {
         // squelch some output if `json` is true
         argv.verbose = argv.json ? false : argv.verbose;
 
-        const smoker = new Smoker(scripts, argv);
+        const smoker = Smoker.withNpm(scripts, argv);
 
         if (argv.json) {
           let output: SmokerJsonOutput;
@@ -148,16 +158,16 @@ async function main(args: string[]): Promise<void> {
                 `💨 ${blue('midnight-smoker')} ${white(`v${version}`)}`,
               );
             })
-            .on(events.FIND_NPM_BEGIN, () => {
-              spinner.start('Looking for npm...');
-            })
-            .on(events.FIND_NPM_OK, (path) => {
-              spinner.succeed(`Found npm at ${path}`);
-            })
-            .on(events.FIND_NPM_FAILED, (err) => {
-              spinner.fail(`Could not find npm: ${err.message}`);
-              process.exitCode = 1;
-            })
+            // .on(events.FIND_NPM_BEGIN, () => {
+            //   spinner.start('Looking for npm...');
+            // })
+            // .on(events.FIND_NPM_OK, (path) => {
+            //   spinner.succeed(`Found npm at ${path}`);
+            // })
+            // .on(events.FIND_NPM_FAILED, (err) => {
+            //   spinner.fail(`Could not find npm: ${err.message}`);
+            //   process.exitCode = 1;
+            // })
             .on(events.PACK_BEGIN, () => {
               let what: string;
               if (argv.workspace?.length) {
@@ -172,20 +182,24 @@ async function main(args: string[]): Promise<void> {
               }
               spinner.start(`Packing ${what}...`);
             })
-            .on(events.PACK_OK, (packItems) => {
+            .on(events.PACK_OK, (manifest) => {
               spinner.succeed(
-                `Packed ${pluralize('package', packItems.length, true)}`,
+                `Packed ${pluralize(
+                  'package',
+                  manifest.packedPkgs.length,
+                  true,
+                )}`,
               );
             })
             .on(events.PACK_FAILED, (err) => {
               spinner.fail(err.message);
               process.exitCode = 1;
             })
-            .on(events.INSTALL_BEGIN, (packItems) => {
+            .on(events.INSTALL_BEGIN, (manifest) => {
               spinner.start(
                 `Installing from ${pluralize(
                   'tarball',
-                  packItems.length,
+                  manifest.packedPkgs.length,
                   true,
                 )}...`,
               );
@@ -194,9 +208,13 @@ async function main(args: string[]): Promise<void> {
               spinner.fail(err.message);
               process.exitCode = 1;
             })
-            .on(events.INSTALL_OK, (packItems) => {
+            .on(events.INSTALL_OK, (manifest) => {
               spinner.succeed(
-                `Installed ${pluralize('package', packItems.length, true)}`,
+                `Installed ${pluralize(
+                  'package',
+                  manifest.packedPkgs.length,
+                  true,
+                )}`,
               );
             })
             .on(events.RUN_SCRIPTS_BEGIN, ({total}) => {
@@ -230,7 +248,7 @@ async function main(args: string[]): Promise<void> {
                       evt.pkgName,
                     )}:\n`,
                   );
-                  console.error(evt.error.stderr);
+                  console.error(evt.error.message);
                 }
               }
               process.exitCode = 1;
