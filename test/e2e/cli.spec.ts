@@ -31,9 +31,6 @@ async function run(args: string[], opts: NodeOptions = {}) {
 }
 
 describe('midnight-smoker CLI', function () {
-  this.timeout('20s');
-  this.slow('10s');
-
   describe('--version', function () {
     it('should print version and exit', async function () {
       const actual = await run(['--version']);
