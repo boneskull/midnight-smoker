@@ -92,7 +92,7 @@ Feeling lucky? Run `npm run test:smoke`.
 
 ### Wait—What Should My Script Do?
 
-In many cases, executing the package's entry point is sufficient:
+In many cases, executing the package's entry point might be enough:
 
 ```json
 {
@@ -109,9 +109,27 @@ Otherwise:
 - If your package distributes an executable, you might want to run that instead, and give it some common arguments (assuming it depends on your entry point). _Or_ you could go BUCK WILD and run it a bunch of different ways.
 - If your package is lazy-loading its dependencies--like if you have a `require()` or `await import()` within some function that isn't called at startup--you may need to do more work than this.
 
-**If you find yourself needing a dev tool to run your script, you are missing the point.** Again: you want to load/run your package as a consumer would--that means _running your distfiles_ **without** dev deps.
+### But I Need a Dev Tool To Run My Script
 
-That's it. That's the project.
+OK--_fine_--but this is not necessarily recommended, because the result is not what a consumer would get. How much does that matter? You decide.
+
+Provide the `--add <thing>` option to `midnight-smoker`, where `thing` is anything `npm install <thing>` could install:
+
+```json
+{
+  "scripts": {
+    "test:smoke": "smoker --add ts-node smoke",
+    "smoke": "ts-node ./some-script.ts"
+  },
+  "devDependencies": {
+    "ts-node": "10.9.1"
+  }
+}
+```
+
+If unspecified in `--add`, `midnight-smoker` will use the version of the dependency in the package's `devDependencies`/`dependencies`/`optionalDependencies`/`peerDepedenencies` (in that order). If it does not appear in any of these fields, it will just pull down the `latest` tag of the dependency.
+
+`--add` can be provided multiple times.
 
 ## Installation
 

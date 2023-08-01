@@ -24,10 +24,11 @@ export interface PackedPackage {
 
 export interface InstallManifest {
   packedPkgs: PackedPackage[];
+  additionalDeps?: string[];
   tarballRootDir: string;
 }
 
-export interface SmokerOptions {
+export interface SmokeOptions {
   /**
    * List of workspaces to use
    */
@@ -61,7 +62,7 @@ export interface SmokerOptions {
    */
   npm?: string;
   /**
-   * If `true`, show output from `npm`
+   * If `true`, show STDERR/STDOUT from the package manager
    */
   verbose?: boolean;
   /**
@@ -77,7 +78,14 @@ export interface SmokerOptions {
    * If `true`, output JSON instead of human-readable text
    */
   json?: boolean;
+
+  /**
+   * Additional deps to install
+   */
+  add?: string[];
 }
+
+export type SmokerOptions = Omit<SmokeOptions, 'verbose'>;
 
 export type RunScriptValue = Pick<
   ExecaReturnValue<string>,
@@ -89,6 +97,7 @@ export interface RunScriptResult {
   script: string;
   error?: SmokerError;
   rawResult: RunScriptValue | ExecaError;
+  cwd: string;
 }
 
 export interface Events {
@@ -134,4 +143,6 @@ export interface Events {
     total: number;
     current: number;
   };
+
+  Lingered: string[];
 }

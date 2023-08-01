@@ -75,46 +75,30 @@ describe('midnight-smoker', function () {
           });
         });
 
-        describe('method', function () {
-          let npm: NPM.Npm;
-
-          beforeEach(function () {
-            npm = new Npm();
-          });
-
+        describe('static method', function () {
           describe('getBinPath()', function () {
             beforeEach(function () {
               mocks.execa.node.resolves({exitCode: 0, stdout: '1.2.3'});
             });
 
-            describe('when the "path" option was provided to the constructor', function () {
-              beforeEach(function () {
-                npm = new Npm({binPath: MOCK_NPM_PATH});
-              });
-
-              it('should not look in the PATH for an executable', async function () {
-                await npm.getBinPath();
+            describe('when the "binPath" argument is provided', function () {
+              it('should not query the environment for the path', async function () {
+                await Npm.getBinPath(MOCK_NPM_PATH);
                 expect(mocks.which, 'was not called');
               });
 
               it('should resolve with the value of the "path" option', async function () {
                 await expect(
-                  npm.getBinPath(),
+                  Npm.getBinPath(MOCK_NPM_PATH),
                   'to be fulfilled with',
                   MOCK_NPM_PATH,
                 );
               });
             });
 
-            describe('when the "path" option was not provided to the constructor', function () {
-              let npm: NPM.Npm;
-
-              beforeEach(function () {
-                npm = new Npm();
-              });
-
+            describe('when the "binPath" option is not provided', function () {
               it('should look in the PATH for an executable', async function () {
-                await npm.getBinPath();
+                await Npm.getBinPath();
                 expect(mocks.which, 'to have a call satisfying', ['npm']);
               });
 
@@ -125,7 +109,7 @@ describe('midnight-smoker', function () {
 
                 it('should reject', async function () {
                   await expect(
-                    npm.getBinPath(),
+                    Npm.getBinPath(),
                     'to be rejected with',
                     /not found/,
                   );
@@ -135,47 +119,50 @@ describe('midnight-smoker', function () {
               describe('when the executable is found', function () {
                 it('should resolve with the path', async function () {
                   await expect(
-                    npm.getBinPath(),
+                    Npm.getBinPath(),
                     'to be fulfilled with',
                     MOCK_NPM_PATH,
                   );
-                });
-
-                describe('when called multiple times', function () {
-                  it('should cache the value', async function () {
-                    await npm.getBinPath();
-                    await npm.getBinPath();
-                    expect(mocks.which, 'was called once');
-                  });
                 });
               });
             });
           });
 
           describe('getVersion()', function () {
-            beforeEach(function () {
-              sandbox.stub(Npm.prototype, 'getBinPath').resolves(MOCK_NPM_PATH);
-            });
-
             it('should return a version number', function () {
-              expect(npm.getVersion(), 'to be fulfilled with', '9.8.1');
+              expect(
+                Npm.getVersion(MOCK_NPM_PATH),
+                'to be fulfilled with',
+                '9.8.1',
+              );
             });
 
             it('should execute "npm --version"', async function () {
-              await npm.getVersion();
+              await Npm.getVersion(MOCK_NPM_PATH);
               expect(mocks.execa.node, 'to have a call satisfying', [
                 MOCK_NPM_PATH,
                 ['--version'],
               ]);
             });
 
-            describe('when called multiple times', function () {
-              it('should cache the value', async function () {
-                await npm.getVersion();
-                await npm.getVersion();
-                expect(mocks.execa.node, 'was called once');
+            describe('when called without a "binPath" arg', function () {
+              it('should reject', async function () {
+                await expect(
+                  // @ts-expect-error invalid args
+                  Npm.getVersion(),
+                  'to be rejected with error satisfying',
+                  new TypeError('(getVersion) "binPath" arg is required'),
+                );
               });
             });
+          });
+        });
+
+        describe('method', function () {
+          let npm: NPM.Npm;
+
+          beforeEach(function () {
+            npm = new Npm();
           });
 
           describe('pack()', function () {
@@ -480,7 +467,7 @@ describe('midnight-smoker', function () {
                   'to be fulfilled with value satisfying',
                   {
                     error: new SmokerError(
-                      '(runScript) npm failed to spawn: no such npm',
+                      '(runScript) Script "some-script" in package "foo" failed: no such npm',
                     ),
                   },
                 );

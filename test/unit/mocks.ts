@@ -118,6 +118,7 @@ export class NullPm implements MS.PackageManager {
         exitCode: 0,
         failed: false,
       },
+      cwd: '',
     };
   }
 }
