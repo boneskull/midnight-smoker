@@ -559,6 +559,7 @@ describe('midnight-smoker', function () {
                     error: err,
                     script,
                     rawResult: {} as MS.RunScriptValue,
+                    cwd: '/some/path',
                   };
                 });
             });
@@ -652,53 +653,5 @@ describe('midnight-smoker', function () {
         });
       });
     });
-
-    // describe('static method', function () {
-    //   describe('smoke()', function () {
-    //     let globalStyleFlag: string;
-
-    //     beforeEach(async function () {
-    //       // const smoker = new Smoker('foo');
-    //       // const {version} = await smoker.findNpm();
-    //       // globalStyleFlag =
-    //       //   version.startsWith('7') || version.startsWith('8')
-    //       //     ? '--global-style'
-    //       //     : '--install-strategy=shallow';
-    //       // mocks.execa.resetHistory();
-    //       sandbox
-    //         .stub(Smoker, 'withNpm')
-    //         .callsFake((scripts: string[] | string, opts?: SmokerOptions) => {
-    //           return new Smoker(scripts, mockPm, opts);
-    //         });
-    //     });
-
-    //     it('should pack, install, and run scripts', async function () {
-    //       await smoke('foo');
-    //       expect(mocks.execa, 'to have calls satisfying', [
-    //         [MOCK_PM, ['--version']],
-    //         [
-    //           MOCK_PM,
-    //           [
-    //             'pack',
-    //             '--json',
-    //             `--pack-destination=${MOCK_TMPDIR}`,
-    //             '--foreground-scripts=false',
-    //           ],
-    //           {},
-    //         ],
-    //         [
-    //           MOCK_PM,
-    //           ['install', globalStyleFlag, `${MOCK_TMPDIR}/tarball.tgz`],
-    //           {cwd: MOCK_TMPDIR},
-    //         ],
-    //         [
-    //           MOCK_PM,
-    //           ['run-script', 'foo'],
-    //           {cwd: `${MOCK_TMPDIR}/node_modules/bar`},
-    //         ],
-    //       ]);
-    //     });
-    //   });
-    // });
   });
 });

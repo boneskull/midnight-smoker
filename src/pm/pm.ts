@@ -1,4 +1,3 @@
-import type {ExecaReturnValue} from 'execa';
 import type {InstallManifest, PackedPackage, RunScriptResult} from '../types';
 
 export interface InstallOpts {
@@ -6,7 +5,13 @@ export interface InstallOpts {
 }
 
 export interface PackageManagerOpts {
+  /**
+   * If `true`, show STDERR/STDOUT from the package manager
+   */
   verbose?: boolean;
+  /**
+   * Explicit path to package manager executable
+   */
   binPath?: string;
 }
 
@@ -35,10 +40,12 @@ export interface RunScriptOpts {
 /**
  * @todo make this more useful
  */
-export type InstallResult = Pick<
-  ExecaReturnValue<string>,
-  'stdout' | 'stderr' | 'command' | 'exitCode'
->;
+export interface InstallResult {
+  stdout: string;
+  stderr: string;
+  command: string;
+  exitCode: number;
+}
 
 export interface PackageManager {
   /**

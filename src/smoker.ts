@@ -12,22 +12,16 @@ import type {
   InstallManifest,
   PackedPackage,
   RunScriptResult,
+  SmokeOptions,
   SmokerOptions,
 } from './types';
+import {castArray, normalizeStringArray} from './util';
 
 const debug = createDebug('midnight-smoker');
 
 export const TMP_DIR_PREFIX = 'midnight-smoker-';
 
 type TSmokerEmitter = StrictEventEmitter<EventEmitter, Events>;
-
-/**
- * Trims all strings in an array and removes empty strings.
- * Returns empty array if input is falsy.
- */
-function normalizeArray(array?: string[]): string[] {
-  return array ? array.map((item) => item.trim()).filter(Boolean) : [];
-}
 
 function createStrictEventEmitterClass() {
   const TypedEmitter: {new (): TSmokerEmitter} = EventEmitter as any;
@@ -50,6 +44,7 @@ export const events = {
   RUN_SCRIPT_BEGIN: 'RunScriptBegin',
   RUN_SCRIPT_FAILED: 'RunScriptFailed',
   RUN_SCRIPT_OK: 'RunScriptOk',
+  LINGERED: 'Lingered',
 } as const;
 
 const {
@@ -68,6 +63,7 @@ const {
   RUN_SCRIPT_BEGIN,
   RUN_SCRIPT_FAILED,
   RUN_SCRIPT_OK,
+  LINGERED,
 } = events;
 
 export class Smoker extends createStrictEventEmitterClass() {
@@ -78,9 +74,9 @@ export class Smoker extends createStrictEventEmitterClass() {
   private readonly force: boolean;
   private readonly includeWorkspaceRoot;
   private readonly linger: boolean;
-  private readonly verbose: boolean;
   private readonly workspaces: string[];
 
+  private readonly add: string[];
   private cwd?: string;
 
   public readonly opts: Readonly<SmokerOptions>;
@@ -92,29 +88,27 @@ export class Smoker extends createStrictEventEmitterClass() {
     opts: SmokerOptions = {},
   ) {
     super();
-    if (typeof scripts === 'string') {
-      scripts = [scripts];
-    }
-    this.scripts = normalizeArray(scripts);
+    this.scripts = normalizeStringArray(castArray(scripts));
     opts = {...opts};
 
     this.linger = Boolean(opts.linger);
     this.force = Boolean(opts.force);
     this.clean = Boolean(opts.clean);
-    this.verbose = Boolean(opts.verbose);
     this.includeWorkspaceRoot = Boolean(opts.includeRoot);
     if (this.includeWorkspaceRoot) {
       opts.all = true;
     }
+    this.add = normalizeStringArray(opts.add);
     this.bail = Boolean(opts.bail);
     this.allWorkspaces = Boolean(opts.all);
-    this.workspaces = normalizeArray(opts.workspace);
+    this.workspaces = normalizeStringArray(opts.workspace);
     if (this.allWorkspaces && this.workspaces.length) {
       throw new SmokerError(
         'Option "workspace" is mutually exclusive with "all" and/or "includeRoot"',
       );
     }
-    this.extraArgs = normalizeArray(opts.installArgs);
+    this.extraArgs = normalizeStringArray(opts.installArgs);
+
     this.opts = Object.freeze(opts);
   }
 
@@ -125,13 +119,13 @@ export class Smoker extends createStrictEventEmitterClass() {
    */
   public static async smoke(
     scripts: string | string[],
-    opts: SmokerOptions = {},
+    opts: SmokeOptions = {},
   ): Promise<RunScriptResult[]> {
     const smoker = Smoker.withNpm(scripts, opts);
     return smoker.smoke();
   }
 
-  public static withNpm(scripts: string | string[], opts: SmokerOptions = {}) {
+  public static withNpm(scripts: string | string[], opts: SmokeOptions = {}) {
     return new Smoker(
       scripts,
       new Npm({binPath: opts.npm, verbose: opts.verbose}),
@@ -179,17 +173,19 @@ export class Smoker extends createStrictEventEmitterClass() {
   /**
    * Installs from tarball in a temp dir
    */
-  public async install(manifest: InstallManifest): Promise<void> {
-    if (!manifest) {
+  public async install(originalManifest: InstallManifest): Promise<void> {
+    if (!originalManifest) {
       throw new TypeError('(install) "manifest" arg is required');
     }
 
-    const pkgCount = manifest.packedPkgs.length;
+    const pkgCount = originalManifest.packedPkgs.length;
     if (!pkgCount) {
       throw new TypeError(
         '(install) "manifest" arg must contain non-empty list of packed packages',
       );
     }
+
+    const manifest = {...originalManifest, additionalDeps: this.add};
 
     // ensure we emit asynchronously
     await Promise.resolve();
@@ -211,7 +207,7 @@ export class Smoker extends createStrictEventEmitterClass() {
    * Creates a tarball for one or more packages
    */
   public async pack(): Promise<InstallManifest> {
-    const dest = await this.createWorkingDir();
+    const dest = await this.createWorkingDirectory();
     this.emit(PACK_BEGIN);
 
     let manifest: InstallManifest;
@@ -313,17 +309,25 @@ export class Smoker extends createStrictEventEmitterClass() {
     await Promise.resolve();
     this.emit(SMOKE_BEGIN);
 
+    let results: RunScriptResult[] | undefined;
     try {
       const manifest = await this.pack();
       debug('(smoke) Received %d packed packages', manifest.packedPkgs.length);
       await this.install(manifest);
-      const results = await this.runScripts(manifest.packedPkgs);
-      this.emit(SMOKE_OK);
+      results = await this.runScripts(manifest.packedPkgs);
+      if (!results.some((result) => result.error)) {
+        this.emit(SMOKE_OK);
+      } else {
+        this.emit(SMOKE_FAILED, new SmokerError('🤮 Maurice!'));
+      }
       return results;
     } catch (err) {
       this.emit(SMOKE_FAILED, err as Error);
       throw err;
     } finally {
+      if (this.linger && this.cwd) {
+        this.emit(LINGERED, [this.cwd]);
+      }
       await this.cleanup();
     }
   }

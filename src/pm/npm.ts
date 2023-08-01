@@ -22,8 +22,9 @@ const debug = createDebug('midnight-smoker:npm');
 
 /**
  * Type of item in the {@linkcode NpmPackItem.files} array.
+ * @internal
  */
-interface NpmPackItemFileEntry {
+export interface NpmPackItemFileEntry {
   path: string;
   size: number;
   mode: number;
@@ -48,20 +49,17 @@ export interface NpmPackItem {
 }
 
 export class Npm implements PackageManager {
-  private cachedBinPath?: string;
-  private cachedVersion?: string;
-
   public readonly name = 'npm';
 
-  constructor(private readonly opts?: PackageManagerOpts) {}
+  constructor(private readonly opts: PackageManagerOpts = {}) {}
 
   public async exec(args: string[], execaOpts: ExecaOptions = {}) {
-    const binPath = await this.getBinPath();
+    const binPath = await Npm.getBinPath(this.opts.binPath);
     const command = `${binPath} ${args.join(' ')}`;
     debug(`Executing: ${command}`);
     const proc = execa(binPath, args, execaOpts);
 
-    if (this.opts?.verbose) {
+    if (this.opts.verbose) {
       proc.stdout?.pipe(process.stdout);
       proc.stderr?.pipe(process.stderr);
     }
@@ -69,30 +67,25 @@ export class Npm implements PackageManager {
     return await proc;
   }
 
-  public async getBinPath(): Promise<string> {
+  public static async getBinPath(binPath?: string): Promise<string> {
+    if (binPath) {
+      return binPath;
+    }
     try {
-      if (!this.cachedBinPath) {
-        this.cachedBinPath = this.opts?.binPath
-          ? this.opts.binPath
-          : await which(this.name);
-      }
+      return await which('npm');
     } catch (err) {
       throw new SmokerError(
         `Failed to find "${this.name}" in PATH: ${(err as Error).message}`,
       );
     }
-    return this.cachedBinPath;
   }
 
-  public async getVersion(): Promise<string> {
-    if (this.cachedVersion) {
-      return this.cachedVersion;
+  public static async getVersion(binPath: string): Promise<string> {
+    if (!binPath) {
+      throw new TypeError('(getVersion) "binPath" arg is required');
     }
-    const {stdout: version} = await execa(await this.getBinPath(), [
-      '--version',
-    ]);
-    this.cachedVersion = version.trim();
-    return this.cachedVersion;
+    const {stdout: version} = await execa(binPath, ['--version']);
+    return version.trim();
   }
 
   public async install(
@@ -104,11 +97,13 @@ export class Npm implements PackageManager {
       throw new TypeError('(install) Non-empty "packedPkgs" arg is required');
     }
 
-    await Promise.resolve();
-
     const extraArgs = opts.extraArgs ?? [];
+    const additionalDeps = manifest.additionalDeps ?? [];
 
-    const version = await this.getVersion();
+    const version = await Npm.getVersion(
+      await Npm.getBinPath(this.opts?.binPath),
+    );
+
     // otherwise we get a deprecation warning
     const globalStyleFlag =
       version.startsWith('7') || version.startsWith('8')
@@ -119,9 +114,10 @@ export class Npm implements PackageManager {
       globalStyleFlag,
       ...extraArgs,
       ...packedPkgs.map(({tarballFilepath}) => tarballFilepath),
+      ...additionalDeps,
     ];
 
-    let installResult: ExecaReturnValue<string>;
+    let installResult: InstallResult;
     try {
       installResult = await this.exec(installArgs, {
         cwd: tarballRootDir,
@@ -219,21 +215,22 @@ export class Npm implements PackageManager {
       throw new TypeError('(runScript) "packedPkg" arg is required');
     }
     const npmArgs = ['run-script', script];
-    const {pkgName, installPath} = packedPkg;
+    const {pkgName, installPath: cwd} = packedPkg;
 
     let result: RunScriptResult;
     try {
-      const value = await this.exec(npmArgs, {cwd: installPath});
-      result = {pkgName, script, rawResult: value};
+      const rawResult = await this.exec(npmArgs, {cwd});
+      result = {pkgName, script, rawResult, cwd};
     } catch (err) {
       const error = err as ExecaError;
       result = {
         pkgName,
         script,
         error: new SmokerError(
-          `(runScript) ${this.name} failed to spawn: ${error.message}`,
+          `(runScript) Script "${script}" in package "${pkgName}" failed: ${error.message}`,
         ),
         rawResult: error,
+        cwd,
       };
     }
 

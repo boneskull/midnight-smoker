@@ -1,75 +1,158 @@
-import {node as execa, type NodeOptions} from 'execa';
-import {readFileSync} from 'node:fs';
+import fs from 'node:fs/promises';
 import path from 'node:path';
-import unexpected from 'unexpected';
 import snapshot from 'snap-shot-it';
+import unexpected from 'unexpected';
+import {readPackageJson} from '../../src/util';
+import assertions from '../assertions';
+import {dump, execSmoker} from './helpers';
+import {ExecaReturnValue} from 'execa';
 
-const {version} = JSON.parse(
-  readFileSync(require.resolve('../../package.json'), 'utf8'),
-);
+const expect = unexpected.clone().use(assertions);
 
-const expect = unexpected.clone();
-
-let CLI_PATH: string;
-let CWD: string;
-
-if (process.env.WALLABY_PROJECT_DIR) {
-  CLI_PATH = path.join(process.env.WALLABY_PROJECT_DIR, 'bin', 'smoker.js');
-  CWD = process.env.WALLABY_PROJECT_DIR;
-} else {
-  CLI_PATH = require.resolve('../../bin/smoker.js');
-  CWD = path.join(__dirname, '..', '..');
-}
-
-async function run(args: string[], opts: NodeOptions = {}) {
-  const {stdout, stderr, exitCode} = await execa(CLI_PATH, args, {
-    cwd: CWD,
-    ...opts,
-    env: opts.env ? opts.env : {DEBUG: ''},
-  });
-  return {stdout, stderr, exitCode};
-}
-
-describe('midnight-smoker CLI', function () {
-  describe('--version', function () {
-    it('should print version and exit', async function () {
-      const actual = await run(['--version']);
-      expect(actual, 'to equal', {
-        stdout: version,
-        stderr: '',
-        exitCode: 0,
-      });
-    });
-  });
-
-  it('should show help text', async function () {
-    snapshot(await run(['test:smoke', '--help']));
-  });
-
-  it('should smoke test this and produce JSON output', async function () {
-    const {stdout, stderr, exitCode} = await execa(
-      CLI_PATH,
-      ['smoke', '--json'],
-      {
-        cwd: CWD,
-        env: {
-          DEBUG: '',
-        },
-      },
-    );
-    const result = {stdout, stderr, exitCode};
-    result.stdout = result.stdout
-      // strip the path to npm from the `command` & `escapedCommand` since it could differ depending where this is run
-      .replace(
-        /(?<="(escaped)?[cC]ommand":\s*?")(.+?)(?=\/bin\/npm)/g,
-        '<path/to>',
-      )
-      // strip the versions since it could change
+function fixupStdout(stdout: string) {
+  return (
+    stdout
+      // strip the paths to npm/node in command
+      .replace(/(?:\S+?)(\/bin\/(node|npm)(?:\.exe|\.cmd)?)/g, '<path/to/>$1')
+      // strip the versions since it will change
       .replace(/midnight-smoker@\d+\.\d+\.\d+/, 'midnight-smoker@<version>')
       .replace(/--version\\n\\n\d+\.\d+\.\d+/, '--version\\n\\n<version>')
       // strip the path to `cli.js` since it differs per platform
-      .replace(/node(\.cmd)?\s+.+?smoker\.js/, '<path/to/>smoker.js');
+      .replace(/node(\.exe)?\s+\S+?smoker\.js/, '<path/to/>smoker.js')
+      .replace(/"cwd":\s+"[^"]+"/, '"cwd": "<cwd>"')
+  );
+}
 
-    snapshot(result);
+describe('midnight-smoker CLI', function () {
+  let version: string;
+  let cwd: string;
+
+  before(async function () {
+    const {packageJson, path: packageJsonPath} = await readPackageJson({
+      cwd: __dirname,
+      strict: true,
+    });
+    version = packageJson.version!;
+    cwd = path.dirname(packageJsonPath);
+  });
+
+  describe('flag', function () {
+    describe('--version', function () {
+      it('should print version and exit', async function () {
+        expect(await execSmoker(['--version'], {cwd}), 'to output', version);
+      });
+    });
+
+    describe('--help', function () {
+      it('should show help text', async function () {
+        const {stdout, stderr, exitCode} = await execSmoker(['--help'], {cwd});
+        snapshot({stdout, stderr, exitCode});
+      });
+    });
+
+    describe('when the test passes', function () {
+      it('should produce expected output', async function () {
+        const {stderr} = await execSmoker(['smoke:js'], {cwd});
+        snapshot(stderr);
+      });
+    });
+
+    describe('when the test fails', function () {
+      const cwd = path.join(__dirname, 'fixture', 'failure');
+
+      let result: ExecaReturnValue;
+
+      before(async function () {
+        try {
+          await execSmoker(['smoke'], {
+            cwd,
+          });
+        } catch (e) {
+          result = e as ExecaReturnValue;
+        }
+      });
+
+      it('should produce expected output', async function () {
+        snapshot(result.stderr);
+      });
+
+      it('should fail', async function () {
+        expect(result, 'to have failed');
+      });
+    });
+
+    describe('--json', function () {
+      describe('when the test passes', function () {
+        let result: ExecaReturnValue;
+
+        before(async function () {
+          result = await execSmoker(['smoke:js', '--json'], {cwd});
+        });
+
+        it('should produce JSON output', function () {
+          expect(result, 'to output valid JSON');
+        });
+
+        it('should produce expected output', async function () {
+          snapshot(fixupStdout(result.stdout));
+        });
+      });
+
+      describe('when the test fails', function () {
+        const cwd = path.join(__dirname, 'fixture', 'failure');
+
+        let result: ExecaReturnValue;
+
+        before(async function () {
+          try {
+            await execSmoker(['smoke', '--json'], {cwd});
+          } catch (e) {
+            result = e as ExecaReturnValue;
+          }
+        });
+
+        it('should fail', function () {
+          expect(result, 'to have failed');
+        });
+
+        it('should produce JSON output', async function () {
+          expect(result, 'to output valid JSON');
+        });
+
+        it('should provide helpful result', async function () {
+          snapshot(fixupStdout(result.stdout));
+        });
+      });
+    });
+
+    describe('--add', function () {
+      const cwd = path.join(__dirname, 'fixture', 'add');
+      let lingeringTempDir: string;
+
+      it('should add a package to the smoke test', async function () {
+        const {stderr, failed} = await execSmoker(
+          ['smoke', '--add=cross-env', '--linger'],
+          {
+            cwd,
+          },
+        );
+        const lines = stderr.trim().split(/\r?\n/);
+        lingeringTempDir = lines[lines.length - 1].trim();
+
+        expect(failed, 'to be false');
+        // this is probably brittle. could use something like `resolve-from`
+        // or even invoke `npm ls` or `npm exec` to check for its existence
+        await expect(
+          fs.stat(path.join(lingeringTempDir, 'node_modules', 'cross-env')),
+          'to be fulfilled',
+        );
+      });
+
+      after(async function () {
+        if (lingeringTempDir) {
+          await fs.rm(lingeringTempDir, {recursive: true, force: true});
+        }
+      });
+    });
   });
 });
