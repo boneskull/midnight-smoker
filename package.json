@@ -95,7 +95,7 @@
     "lint-staged": "13.2.3",
     "markdownlint-cli2": "0.8.1",
     "mocha": "10.2.0",
-    "prettier": "3.0.0",
+    "prettier": "3.0.1",
     "rewiremock": "3.14.5",
     "sinon": "15.2.0",
     "typescript": "5.1.6",
