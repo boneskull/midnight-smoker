@@ -147,17 +147,25 @@ async function main(args: string[]): Promise<void> {
                 .removeAllListeners(events.RUN_SCRIPTS_FAILED);
               output = result;
             };
-          const writeResult = () => {
+            const cleanup = () => {
               smoker
                 .removeAllListeners(events.SMOKE_OK)
                 .removeAllListeners(events.SMOKE_FAILED);
+            };
+            const writeOk = () => {
+              cleanup();
               console.log(JSON.stringify(output, null, 2));
+            };
+            const writeFailed = () => {
+              cleanup();
+              console.log(JSON.stringify(output, null, 2));
+              process.exitCode = 1;
             };
             smoker
               .once(events.RUN_SCRIPTS_OK, setResult)
               .once(events.RUN_SCRIPTS_FAILED, setResult)
-            .once(events.SMOKE_FAILED, writeResult)
-            .once(events.SMOKE_OK, writeResult);
+              .once(events.SMOKE_FAILED, writeFailed)
+              .once(events.SMOKE_OK, writeOk);
             await smoker.smoke();
           } else {
             const spinner = ora();
@@ -264,6 +272,14 @@ async function main(args: string[]): Promise<void> {
               })
               .on(events.SMOKE_OK, () => {
                 spinner.succeed('Lovey-dovey! 💖');
+              })
+              .on(events.LINGERED, (dirs) => {
+                console.error(
+                  `Lingering ${pluralize('temp directory', dirs.length)}:\n`,
+                );
+                for (const dir of dirs) {
+                  console.error(`  ${yellow(dir)}`);
+                }
               });
             await smoker.smoke();
           }
