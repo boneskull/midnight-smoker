@@ -9,7 +9,7 @@ import {ExecaReturnValue} from 'execa';
 
 const expect = unexpected.clone().use(assertions);
 
-function fixupStdout(stdout: string) {
+function fixup(stdout: string) {
   return (
     stdout
       // strip the paths to npm/node in command
@@ -73,7 +73,7 @@ describe('midnight-smoker CLI', function () {
       });
 
       it('should produce expected output', async function () {
-        snapshot(result.stderr);
+        snapshot(fixup(result.stderr));
       });
 
       it('should fail', async function () {
@@ -94,7 +94,7 @@ describe('midnight-smoker CLI', function () {
         });
 
         it('should produce expected output', async function () {
-          snapshot(fixupStdout(result.stdout));
+          snapshot(fixup(result.stdout));
         });
       });
 
@@ -120,7 +120,7 @@ describe('midnight-smoker CLI', function () {
         });
 
         it('should provide helpful result', async function () {
-          snapshot(fixupStdout(result.stdout));
+          snapshot(fixup(result.stdout));
         });
       });
     });
