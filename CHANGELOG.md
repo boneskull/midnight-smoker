@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.1.0](https://github.com/boneskull/midnight-smoker/compare/v3.0.4...v3.1.0) (2023-08-09)
+
+
+### Features
+
+* new --add flag ([41b423c](https://github.com/boneskull/midnight-smoker/commit/41b423cc14cd8493347581a55c7efdc19d527b2f))
+
+
+### Bug Fixes
+
+* --json can now fail ([5df9d9c](https://github.com/boneskull/midnight-smoker/commit/5df9d9c6bdffafb8401b134c6f3efd6b73a40ef5))
+
 ## [3.0.4](https://github.com/boneskull/midnight-smoker/compare/v3.0.3...v3.0.4) (2023-07-25)
 
 
