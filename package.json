@@ -84,7 +84,7 @@
     "execa": "5.1.1",
     "ora": "5.4.1",
     "pluralize": "8.0.0",
-    "read-pkg-up": "7.0.1",
+    "read-pkg-up": "10.0.0",
     "source-map-support": "0.5.21",
     "strict-event-emitter-types": "2.0.0",
     "which": "3.0.1",
