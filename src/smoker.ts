@@ -1,51 +1,32 @@
 /* eslint-disable no-labels */
-import createDebug from 'debug';
 import {EventEmitter} from 'node:events';
 import fs from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import StrictEventEmitter from 'strict-event-emitter-types';
 import {SmokerError} from './error';
-import {Npm, type PackageManager} from './pm';
+import {loadPackageManagers, type PackageManager} from './pm';
 import type {
-  Events,
   InstallManifest,
-  PackedPackage,
+  InstallEventData,
+  PkgInstallManifest,
+  PkgRunManifest,
+  RunManifest,
   RunScriptResult,
   SmokeOptions,
   SmokerOptions,
 } from './types';
+import {Events, type SmokerEvents} from './events';
 import {castArray, normalizeStringArray} from './util';
-
-const debug = createDebug('midnight-smoker');
 
 export const TMP_DIR_PREFIX = 'midnight-smoker-';
 
-type TSmokerEmitter = StrictEventEmitter<EventEmitter, Events>;
+type TSmokerEmitter = StrictEventEmitter<EventEmitter, SmokerEvents>;
 
 function createStrictEventEmitterClass() {
   const TypedEmitter: {new (): TSmokerEmitter} = EventEmitter as any;
   return TypedEmitter;
 }
-
-export const events = {
-  SMOKE_BEGIN: 'SmokeBegin',
-  SMOKE_OK: 'SmokeOk',
-  SMOKE_FAILED: 'SmokeFailed',
-  PACK_BEGIN: 'PackBegin',
-  PACK_FAILED: 'PackFailed',
-  PACK_OK: 'PackOk',
-  INSTALL_BEGIN: 'InstallBegin',
-  INSTALL_FAILED: 'InstallFailed',
-  INSTALL_OK: 'InstallOk',
-  RUN_SCRIPTS_BEGIN: 'RunScriptsBegin',
-  RUN_SCRIPTS_FAILED: 'RunScriptsFailed',
-  RUN_SCRIPTS_OK: 'RunScriptsOk',
-  RUN_SCRIPT_BEGIN: 'RunScriptBegin',
-  RUN_SCRIPT_FAILED: 'RunScriptFailed',
-  RUN_SCRIPT_OK: 'RunScriptOk',
-  LINGERED: 'Lingered',
-} as const;
 
 const {
   SMOKE_BEGIN,
@@ -64,27 +45,25 @@ const {
   RUN_SCRIPT_FAILED,
   RUN_SCRIPT_OK,
   LINGERED,
-} = events;
+} = Events;
 
 export class Smoker extends createStrictEventEmitterClass() {
+  private readonly add: string[];
   private readonly allWorkspaces: boolean;
   private readonly bail: boolean;
-  private readonly clean: boolean;
   private readonly extraArgs: string[];
-  private readonly force: boolean;
   private readonly includeWorkspaceRoot;
   private readonly linger: boolean;
+  private readonly pmIds: WeakMap<PackageManager, string>;
+  private readonly tempDirs: Set<string>;
   private readonly workspaces: string[];
-
-  private readonly add: string[];
-  private cwd?: string;
 
   public readonly opts: Readonly<SmokerOptions>;
   public readonly scripts: string[];
 
   constructor(
     scripts: string | string[],
-    public readonly pm: PackageManager,
+    public readonly pms: Map<string, PackageManager>,
     opts: SmokerOptions = {},
   ) {
     super();
@@ -92,8 +71,6 @@ export class Smoker extends createStrictEventEmitterClass() {
     opts = {...opts};
 
     this.linger = Boolean(opts.linger);
-    this.force = Boolean(opts.force);
-    this.clean = Boolean(opts.clean);
     this.includeWorkspaceRoot = Boolean(opts.includeRoot);
     if (this.includeWorkspaceRoot) {
       opts.all = true;
@@ -109,7 +86,20 @@ export class Smoker extends createStrictEventEmitterClass() {
     }
     this.extraArgs = normalizeStringArray(opts.installArgs);
 
+    this.pmIds = new WeakMap();
+    for (const [pmId, pm] of pms) {
+      this.pmIds.set(pm, pmId);
+    }
+    this.tempDirs = new Set();
     this.opts = Object.freeze(opts);
+  }
+
+  public static async init(
+    scripts: string | string[],
+    opts: SmokeOptions = {},
+  ) {
+    const pms = await loadPackageManagers(opts.pm, {verbose: opts.verbose});
+    return new Smoker(scripts, pms, opts);
   }
 
   /**
@@ -121,164 +111,218 @@ export class Smoker extends createStrictEventEmitterClass() {
     scripts: string | string[],
     opts: SmokeOptions = {},
   ): Promise<RunScriptResult[]> {
-    const smoker = Smoker.withNpm(scripts, opts);
+    const smoker = await Smoker.init(scripts, opts);
     return smoker.smoke();
   }
 
-  public static withNpm(scripts: string | string[], opts: SmokeOptions = {}) {
-    return new Smoker(
-      scripts,
-      new Npm({binPath: opts.npm, verbose: opts.verbose}),
-      opts,
-    );
+  /**
+   * Cleans up any temp directories created by {@linkcode createTempDir}.
+   *
+   * If the {@linkcode SmokeOptions.linger} option is set to `true`, this method
+   * will _not_ clean up the directories, but will instead emit a
+   * {@linkcode SmokerEvents.Lingered|Lingered} event.
+   */
+  public async cleanup(): Promise<void> {
+    if (!this.linger) {
+      await Promise.all(
+        [...this.tempDirs].map(async (tempdir) => {
+          try {
+            await fs.rm(tempdir, {recursive: true, force: true});
+          } catch (e) {
+            const err = e as NodeJS.ErrnoException;
+            if (err.code !== 'ENOENT') {
+              throw new SmokerError(
+                `Failed to clean temp directory ${tempdir}: ${e}`,
+              );
+            }
+          } finally {
+            this.tempDirs.delete(tempdir);
+          }
+        }),
+      );
+    } else if (this.tempDirs.size) {
+      await Promise.resolve();
+      this.emit(LINGERED, [...this.tempDirs]);
+    }
   }
 
   /**
-   * Cleans up; called by {@linkcode Smoker.smoke}.
+   * Creates a temp dir and adds it to the set of temp dirs to be cleaned up later
+   * @returns New temp dir path
    */
-  public async cleanup() {
-    if (this.cwd) {
-      return this.cleanWorkingDir(this.cwd);
-    }
-  }
-
-  public async createWorkingDirectory(): Promise<string> {
+  public async createTempDir(): Promise<string> {
     // TODO EMIT
-    if (this.cwd) {
-      return this.cwd;
+    try {
+      const prefix = path.join(tmpdir(), TMP_DIR_PREFIX);
+      const tempdir = await fs.mkdtemp(prefix);
+      this.tempDirs.add(tempdir);
+      return tempdir;
+    } catch (err) {
+      throw new SmokerError(`Failed to create temporary directory: ${err}`);
     }
-    let wd = this.opts.dir;
-    if (wd) {
-      if (this.force && this.clean) {
-        await this.cleanWorkingDir(wd);
-      } else if (!this.force) {
-        await this.assertNoWorkingDir(wd);
-      }
-      try {
-        await fs.mkdir(wd, {recursive: true});
-      } catch (err) {
-        throw new Error(`Failed to create working directory ${wd}: ${err}`);
-      }
-    } else {
-      wd = await this.createWorkingDir();
-    }
-
-    this.cwd = wd;
-
-    debug('(createWorkingDirectory) Using working directory %s', wd);
-
-    return wd;
   }
 
   /**
    * Installs from tarball in a temp dir
    */
-  public async install(originalManifest: InstallManifest): Promise<void> {
-    if (!originalManifest) {
-      throw new TypeError('(install) "manifest" arg is required');
-    }
-
-    const pkgCount = originalManifest.packedPkgs.length;
-    if (!pkgCount) {
+  public async install(
+    pkgInstallManifest: PkgInstallManifest,
+  ): Promise<PkgRunManifest> {
+    if (!pkgInstallManifest?.size) {
       throw new TypeError(
-        '(install) "manifest" arg must contain non-empty list of packed packages',
+        '(install) Non-empty "pkgInstallManifest" arg is required',
       );
     }
 
-    const manifest = {...originalManifest, additionalDeps: this.add};
-
-    // ensure we emit asynchronously
-    await Promise.resolve();
-    this.emit(INSTALL_BEGIN, manifest);
-    const {extraArgs} = this;
-    try {
-      await this.pm.install(manifest, {extraArgs});
-    } catch (err) {
-      const error = err as SmokerError;
-      this.emit(INSTALL_FAILED, error);
-      throw error;
+    for (const manifest of pkgInstallManifest.values()) {
+      manifest.additionalDeps = this.add;
     }
 
-    this.emit(INSTALL_OK, manifest);
-    debug('(install) Installed %d packages', pkgCount);
+    const installData = this.buildEventData(pkgInstallManifest);
+    // ensure we emit asynchronously
+    await Promise.resolve();
+
+    this.emit(INSTALL_BEGIN, installData);
+
+    const {extraArgs} = this;
+    const pkgRunManifest: PkgRunManifest = new Map();
+
+    for (const [pm, manifest] of pkgInstallManifest) {
+      try {
+        // TODO check for errors?
+        await pm.install(manifest, {extraArgs});
+        const runManifests: Set<RunManifest> = new Set();
+        for (const packedPkg of manifest.packedPkgs) {
+          for (const script of this.scripts) {
+            runManifests.add({packedPkg, script});
+          }
+        }
+        pkgRunManifest.set(pm, runManifests);
+      } catch (err) {
+        const error = err as SmokerError;
+        this.emit(INSTALL_FAILED, error);
+        throw error;
+      }
+    }
+
+    this.emit(INSTALL_OK, installData);
+
+    return pkgRunManifest;
   }
 
   /**
-   * Creates a tarball for one or more packages
+   * For each package manager, creates a tarball for one or more packages
    */
-  public async pack(): Promise<InstallManifest> {
-    const dest = await this.createWorkingDirectory();
+  public async pack(): Promise<PkgInstallManifest> {
+    await Promise.resolve();
     this.emit(PACK_BEGIN);
 
-    let manifest: InstallManifest;
-    try {
-      manifest = await this.pm.pack(dest, {
-        allWorkspaces: this.allWorkspaces,
-        includeWorkspaceRoot: this.includeWorkspaceRoot,
-        workspaces: this.workspaces,
-      });
-    } catch (err) {
-      this.emit(PACK_FAILED, err as SmokerError);
-      throw err;
-    }
+    const manifestMap: PkgInstallManifest = new Map();
 
-    this.emit(PACK_OK, manifest);
-    return manifest;
+    for await (const pm of this.pms.values()) {
+      const dest = await this.createTempDir();
+
+      let manifest: InstallManifest;
+      try {
+        manifest = await pm.pack(dest, {
+          allWorkspaces: this.allWorkspaces,
+          includeWorkspaceRoot: this.includeWorkspaceRoot,
+          workspaces: this.workspaces,
+        });
+        manifestMap.set(pm, manifest);
+      } catch (err) {
+        this.emit(PACK_FAILED, err as SmokerError);
+        throw err;
+      }
+    }
+    this.emit(PACK_OK, this.buildEventData(manifestMap));
+    return manifestMap;
   }
 
   /**
    * Runs the script for each package in `packItems`
    */
   public async runScripts(
-    packedPkgs: PackedPackage[],
+    pkgRunManifest: PkgRunManifest,
   ): Promise<RunScriptResult[]> {
-    if (!packedPkgs) {
-      throw new TypeError('(runScripts) "packedPkgs" arg is required');
-    }
-    if (!packedPkgs.length) {
-      debug('(runScripts) No packed items; no scripts to run');
-      throw new TypeError('(runScripts) "packedPkgs" arg must not be empty');
+    if (!pkgRunManifest) {
+      throw new TypeError('(runScripts) "pkgRunManifest" arg is required');
     }
 
-    const {scripts, bail} = this;
-    const scriptCount = scripts.length;
-    const total = packedPkgs.length * scriptCount;
-    const results: RunScriptResult[] = [];
+    const pkgRunManifestForEmit: Record<string, RunManifest[]> = {};
+    for (const [pm, runManifests] of pkgRunManifest) {
+      const pmId = this.pmIds.get(pm);
+      if (!pmId) {
+        /* istanbul ignore next */
+        throw new SmokerError(
+          'Could not find package manager ID; please report this bug',
+        );
+      }
+      pkgRunManifestForEmit[pmId] = [...runManifests];
+    }
+
+    const totalScripts = [...pkgRunManifest].reduce(
+      (count, [, runManifests]) => count + runManifests.size,
+      0,
+    );
 
     await Promise.resolve();
-    this.emit(RUN_SCRIPTS_BEGIN, {scripts, packedPkgs, total});
+    this.emit(RUN_SCRIPTS_BEGIN, {
+      manifest: pkgRunManifestForEmit,
+      total: totalScripts,
+    });
 
-    BAIL: for await (const [scriptIdx, script] of Object.entries(scripts)) {
-      for await (const [packedPkgIdx, packedPkg] of Object.entries(
-        packedPkgs,
-      )) {
-        const current = Number(scriptIdx) + Number(packedPkgIdx);
-        const {pkgName} = packedPkg;
-        this.emit(RUN_SCRIPT_BEGIN, {script, pkgName, total, current});
+    const {bail} = this;
+    let current = 0;
+    const scripts: string[] = [];
+    const results: RunScriptResult[] = [];
 
+    BAIL: for await (const [pm, runManifests] of pkgRunManifest) {
+      const pmId = this.pmIds.get(pm);
+
+      if (!pmId) {
+        /* istanbul ignore next */
+        throw new SmokerError(
+          'Could not find package manager ID; please report this bug',
+        );
+      }
+      for await (const runManifest of runManifests) {
         let result: RunScriptResult;
+        const {script} = runManifest;
+        scripts.push(script);
+        this.emit(RUN_SCRIPT_BEGIN, {
+          script,
+          pkgName: runManifest.packedPkg.pkgName,
+          total: totalScripts,
+          current,
+        });
         try {
-          result = await this.pm.runScript(packedPkg, script);
+          result = await pm.runScript(runManifest);
+          results.push(result);
           if (result.error) {
             this.emit(RUN_SCRIPT_FAILED, {
               ...result,
               script,
               error: result.error,
-              current,
-              total,
+              current: current++,
+              total: totalScripts,
             });
+
+            if (bail) {
+              break BAIL;
+            }
           } else {
-            this.emit(RUN_SCRIPT_OK, {...result, script, current, total});
+            this.emit(RUN_SCRIPT_OK, {
+              ...result,
+              script,
+              current,
+              total: totalScripts,
+            });
           }
-          results.push(result);
         } catch (err) {
           throw new SmokerError(
-            `(runScripts): Unknown failure from "${this.pm.name}" plugin: ${err}`,
+            `(runScripts): Unknown failure from "${pmId}" plugin: ${err}`,
           );
-        }
-
-        if (bail) {
-          break BAIL;
         }
       }
     }
@@ -288,17 +332,18 @@ export class Smoker extends createStrictEventEmitterClass() {
     if (failureCount) {
       this.emit(RUN_SCRIPTS_FAILED, {
         results,
-        scripts,
-        total,
+        manifest: pkgRunManifestForEmit,
+        total: totalScripts,
         failures: failureCount,
         executed: results.length,
       });
     } else {
       this.emit(RUN_SCRIPTS_OK, {
+        failures: 0,
         results,
-        total,
+        manifest: pkgRunManifestForEmit,
+        total: totalScripts,
         executed: results.length,
-        scripts,
       });
     }
     return results;
@@ -309,12 +354,11 @@ export class Smoker extends createStrictEventEmitterClass() {
     await Promise.resolve();
     this.emit(SMOKE_BEGIN);
 
-    let results: RunScriptResult[] | undefined;
     try {
-      const manifest = await this.pack();
-      debug('(smoke) Received %d packed packages', manifest.packedPkgs.length);
-      await this.install(manifest);
-      results = await this.runScripts(manifest.packedPkgs);
+      const pkgInstallManifest = await this.pack();
+      // debug('(smoke) Received %d packed packages', manifestMap.packedPkgs.length);
+      const pkgRunManifest = await this.install(pkgInstallManifest);
+      const results = await this.runScripts(pkgRunManifest);
       if (!results.some((result) => result.error)) {
         this.emit(SMOKE_OK);
       } else {
@@ -325,45 +369,49 @@ export class Smoker extends createStrictEventEmitterClass() {
       this.emit(SMOKE_FAILED, err as Error);
       throw err;
     } finally {
-      if (this.linger && this.cwd) {
-        this.emit(LINGERED, [this.cwd]);
-      }
       await this.cleanup();
     }
   }
 
-  private async assertNoWorkingDir(wd: string): Promise<void> {
-    // TODO EMIT
-    try {
-      await fs.stat(wd);
-    } catch {
-      return;
-    }
-    throw new Error(
-      `Working directory ${wd} already exists. Use "force" option to proceed anyhow.`,
-    );
-  }
-
-  private async cleanWorkingDir(wd: string): Promise<void> {
-    if (!this.linger) {
-      try {
-        await fs.rm(wd, {recursive: true});
-      } catch (e) {
-        const err = e as NodeJS.ErrnoException;
-        if (err.code !== 'ENOENT') {
-          throw new Error(`Failed to clean working directory ${wd}: ${e}`);
+  /**
+   * This is only here because it's a fair amount of work to mash the data into a format more suitable for display.
+   *
+   * This is used by the events {@linkcode SmokerEvents.InstallBegin}, {@linkcode SmokerEvents.InstallOk}, and {@linkcode SmokerEvents.PackOk}.
+   * @param pkgInstallManifest What to install and with what package manager
+   * @returns Something to be emitted
+   */
+  private buildEventData(
+    pkgInstallManifest: PkgInstallManifest,
+  ): InstallEventData {
+    const uniquePkgs = new Set<string>();
+    const pmIds = new Set<string>();
+    const manifests: InstallManifest[] = [];
+    const additionalDeps = new Set<string>();
+    for (const [pm, manifest] of pkgInstallManifest) {
+      const id = this.pmIds.get(pm);
+      if (!id) {
+        /* istanbul ignore next */
+        throw new SmokerError(
+          'Could not find package manager ID; please report this bug',
+        );
+      }
+      pmIds.add(id);
+      manifests.push(manifest);
+      for (const {pkgName} of manifest.packedPkgs) {
+        uniquePkgs.add(pkgName);
+      }
+      if (manifest.additionalDeps) {
+        for (const dep of manifest.additionalDeps) {
+          additionalDeps.add(dep);
         }
       }
     }
-  }
 
-  private async createWorkingDir(): Promise<string> {
-    // TODO EMIT
-    try {
-      const prefix = path.join(tmpdir(), TMP_DIR_PREFIX);
-      return await fs.mkdtemp(prefix);
-    } catch (err) {
-      throw new Error(`Failed to create temporary working directory: ${err}`);
-    }
+    return {
+      uniquePkgs: [...uniquePkgs],
+      packageManagers: [...pmIds],
+      additionalDeps: [...additionalDeps],
+      manifests,
+    };
   }
 }

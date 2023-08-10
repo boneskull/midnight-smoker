@@ -3,9 +3,9 @@ import ora from 'ora';
 import pluralize from 'pluralize';
 import {hideBin} from 'yargs/helpers';
 import yargs from 'yargs/yargs';
-import {events} from './index';
+import {readConfig} from './config';
+import {Events, type SmokerEvents} from './events';
 import {Smoker} from './smoker';
-import type {Events} from './types';
 import {readPackageJson} from './util';
 
 const BEHAVIOR_GROUP = 'Behavior:';
@@ -13,7 +13,9 @@ const BEHAVIOR_GROUP = 'Behavior:';
 /**
  * Output of the CLI script when `json` flag is `true`
  */
-type SmokerJsonOutput = Events['RunScriptsFailed'] | Events['RunScriptsOk'];
+type SmokerJsonOutput =
+  | SmokerEvents['RunScriptsFailed']
+  | SmokerEvents['RunScriptsOk'];
 
 /**
  * Main entry point for the CLI script
@@ -30,6 +32,9 @@ async function main(args: string[]): Promise<void> {
   }
   const {packageJson} = result;
   const {version, homepage} = packageJson;
+
+  const config = await readConfig();
+
   try {
     await y
       .scriptName('smoker')
@@ -42,85 +47,62 @@ async function main(args: string[]): Promise<void> {
             .positional('scripts', {type: 'string'})
             .options({
               add: {
-                type: 'string',
                 array: true,
-                group: BEHAVIOR_GROUP,
-                requiresArg: true,
                 describe: 'Additional dependency to provide to smoke tests',
-              },
-              workspace: {
+                group: BEHAVIOR_GROUP,
                 requiresArg: true,
                 type: 'string',
-                describe: 'One or more npm workspaces to test',
-                group: BEHAVIOR_GROUP,
-                array: true,
               },
               all: {
-                type: 'boolean',
                 describe: 'Test all workspaces',
                 group: BEHAVIOR_GROUP,
+                type: 'boolean',
+              },
+              bail: {
+                describe: 'When running scripts, halt on first error',
+                group: BEHAVIOR_GROUP,
+                type: 'boolean',
               },
               'include-root': {
-                type: 'boolean',
                 describe: "Include the workspace root; must provide '--all'",
                 group: BEHAVIOR_GROUP,
                 implies: 'all',
-              },
-              'install-args': {
-                requiresArg: true,
-                describe: 'Extra arguments to pass to `npm install`',
-                type: 'string',
-                array: true,
-                group: BEHAVIOR_GROUP,
-              },
-              dir: {
-                requiresArg: true,
-                type: 'string',
-                describe: 'Working directory to use',
-                defaultDescription: 'new temp dir',
-                group: BEHAVIOR_GROUP,
-              },
-              force: {
                 type: 'boolean',
-                group: BEHAVIOR_GROUP,
-                describe: 'Overwrite working directory if it exists',
-              },
-              clean: {
-                type: 'boolean',
-                group: BEHAVIOR_GROUP,
-                describe: "Truncate working directory; must provide '--force'",
-                implies: 'force',
-              },
-              npm: {
-                type: 'string',
-                requiresArg: true,
-                describe: 'Path to `npm` executable',
-                defaultDescription: '`npm` in PATH',
-                group: BEHAVIOR_GROUP,
-                normalize: true,
-              },
-              verbose: {
-                type: 'boolean',
-                describe: 'Print output from npm',
-                group: BEHAVIOR_GROUP,
-              },
-              bail: {
-                type: 'boolean',
-                describe: 'When running scripts, halt on first error',
-                group: BEHAVIOR_GROUP,
-              },
-              linger: {
-                type: 'boolean',
-                describe: 'Do not clean up working dir after completion',
-                hidden: true,
-                group: BEHAVIOR_GROUP,
               },
               json: {
-                type: 'boolean',
                 describe: 'Output JSON only',
                 group: BEHAVIOR_GROUP,
+                type: 'boolean',
+              },
+              linger: {
+                describe: 'Do not clean up working dir after completion',
+                group: BEHAVIOR_GROUP,
+                hidden: true,
+                type: 'boolean',
+              },
+              verbose: {
+                describe: 'Print output from npm',
+                group: BEHAVIOR_GROUP,
+                type: 'boolean',
+              },
+              workspace: {
+                array: true,
+                describe: 'One or more npm workspaces to test',
+                group: BEHAVIOR_GROUP,
+                requiresArg: true,
+                type: 'string',
+              },
+              pm: {
+                describe:
+                  'Run script(s) with a specific package manager; <npm|yarn|pnpm>[@version]',
+                array: true,
+                requiresArg: true,
+                type: 'string',
+                group: BEHAVIOR_GROUP,
+                default: ['npm@latest'],
               },
             })
+            .config(config)
             .epilog(`For more info, see ${homepage}`)
             .check((argv) => {
               if (
@@ -137,20 +119,27 @@ async function main(args: string[]): Promise<void> {
           // squelch some output if `json` is true
           argv.verbose = argv.json ? false : argv.verbose;
 
-          const smoker = Smoker.withNpm(scripts, argv);
+          let smoker: Smoker;
+          try {
+            smoker = await Smoker.init(scripts, argv);
+          } catch (err) {
+            console.error(red((err as Error).message));
+            process.exitCode = 1;
+            return;
+          }
 
           if (argv.json) {
             let output: SmokerJsonOutput;
             const setResult = (result: SmokerJsonOutput) => {
               smoker
-                .removeAllListeners(events.RUN_SCRIPTS_OK)
-                .removeAllListeners(events.RUN_SCRIPTS_FAILED);
+                .removeAllListeners(Events.RUN_SCRIPTS_OK)
+                .removeAllListeners(Events.RUN_SCRIPTS_FAILED);
               output = result;
             };
             const cleanup = () => {
               smoker
-                .removeAllListeners(events.SMOKE_OK)
-                .removeAllListeners(events.SMOKE_FAILED);
+                .removeAllListeners(Events.SMOKE_OK)
+                .removeAllListeners(Events.SMOKE_FAILED);
             };
             const writeOk = () => {
               cleanup();
@@ -162,21 +151,21 @@ async function main(args: string[]): Promise<void> {
               process.exitCode = 1;
             };
             smoker
-              .once(events.RUN_SCRIPTS_OK, setResult)
-              .once(events.RUN_SCRIPTS_FAILED, setResult)
-              .once(events.SMOKE_FAILED, writeFailed)
-              .once(events.SMOKE_OK, writeOk);
+              .once(Events.RUN_SCRIPTS_OK, setResult)
+              .once(Events.RUN_SCRIPTS_FAILED, setResult)
+              .once(Events.SMOKE_FAILED, writeFailed)
+              .once(Events.SMOKE_OK, writeOk);
             await smoker.smoke();
           } else {
             const spinner = ora();
-            const scriptFailedEvts: Events['RunScriptFailed'][] = [];
+            const scriptFailedEvts: SmokerEvents['RunScriptFailed'][] = [];
             smoker
-              .on(events.SMOKE_BEGIN, () => {
+              .on(Events.SMOKE_BEGIN, () => {
                 console.error(
                   `💨 ${blue('midnight-smoker')} ${white(`v${version}`)}`,
                 );
               })
-              .on(events.PACK_BEGIN, () => {
+              .on(Events.PACK_BEGIN, () => {
                 let what: string;
                 if (argv.workspace?.length) {
                   what = pluralize('workspace', argv.workspace.length, true);
@@ -190,66 +179,85 @@ async function main(args: string[]): Promise<void> {
                 }
                 spinner.start(`Packing ${what}...`);
               })
-              .on(events.PACK_OK, (manifest) => {
-                spinner.succeed(
-                  `Packed ${pluralize(
-                    'package',
-                    manifest.packedPkgs.length,
+              .on(Events.PACK_OK, ({uniquePkgs, packageManagers}) => {
+                let msg = `Packed ${pluralize(
+                  'unique package',
+                  uniquePkgs.length,
+                  true,
+                )} using `;
+                if (packageManagers.length > 1) {
+                  msg += `${pluralize(
+                    'package manager',
+                    packageManagers.length,
                     true,
-                  )}`,
-                );
+                  )}`;
+                } else {
+                  msg += `${packageManagers[0]}`;
+                }
+                msg += '…';
+                spinner.succeed(msg);
               })
-              .on(events.PACK_FAILED, (err) => {
+              .on(Events.PACK_FAILED, (err) => {
                 spinner.fail(err.message);
                 process.exitCode = 1;
               })
-              .on(events.INSTALL_BEGIN, (manifest) => {
-                const msg = manifest.additionalDeps?.length
-                  ? `Installing from ${pluralize(
-                      'tarball',
-                      manifest.packedPkgs.length,
-                      true,
-                    )} with ${pluralize(
+              .on(
+                Events.INSTALL_BEGIN,
+                ({uniquePkgs, packageManagers, additionalDeps}) => {
+                  let msg = `Installing ${pluralize(
+                    'unique package',
+                    uniquePkgs.length,
+                    true,
+                  )} from tarball`;
+                  if (additionalDeps.length) {
+                    msg += ` with ${pluralize(
                       'additional dependency',
-                      manifest.additionalDeps.length,
+                      additionalDeps.length,
                       true,
-                    )}...`
-                  : `Installing from ${pluralize(
-                      'tarball',
-                      manifest.packedPkgs.length,
+                    )}`;
+                  }
+                  if (packageManagers.length > 1) {
+                    msg += ` using ${pluralize(
+                      'package manager',
+                      packageManagers.length,
                       true,
-                    )}...`;
-                spinner.start(msg);
-              })
-              .on(events.INSTALL_FAILED, (err) => {
+                    )}`;
+                  } else {
+                    msg += ` using ${packageManagers[0]}`;
+                  }
+                  msg += '…';
+                  spinner.start(msg);
+                },
+              )
+              .on(Events.INSTALL_FAILED, (err) => {
                 spinner.fail(err.message);
                 process.exitCode = 1;
               })
-              .on(events.INSTALL_OK, (manifest) => {
+              .on(Events.INSTALL_OK, ({uniquePkgs}) => {
                 spinner.succeed(
                   `Installed ${pluralize(
-                    'package',
-                    manifest.packedPkgs.length,
+                    'unique package',
+                    uniquePkgs.length,
                     true,
                   )} from tarball`,
                 );
               })
-              .on(events.RUN_SCRIPTS_BEGIN, ({total}) => {
+              .on(Events.RUN_SCRIPTS_BEGIN, ({total}) => {
                 spinner.start(`Running script 0/${total}...`);
               })
-              .on(events.RUN_SCRIPT_BEGIN, ({current, total}) => {
+              .on(Events.RUN_SCRIPT_BEGIN, ({current, total}) => {
                 spinner.text = `Running script ${current}/${total}...`;
               })
-              .on(events.RUN_SCRIPT_FAILED, (evt) => {
+              .on(Events.RUN_SCRIPT_FAILED, (evt) => {
                 scriptFailedEvts.push(evt);
                 process.exitCode = 1;
               })
-              .on(events.RUN_SCRIPTS_OK, ({total}) => {
+              .on(Events.RUN_SCRIPTS_OK, ({total}) => {
                 spinner.succeed(
                   `Successfully ran ${pluralize('script', total, true)}`,
                 );
               })
-              .on(events.RUN_SCRIPTS_FAILED, ({total, failures}) => {
+              .on(Events.RUN_SCRIPTS_FAILED, ({total, failures}) => {
                 spinner.fail(
                   `${failures} of ${total} ${pluralize(
                     'script',
@@ -266,14 +274,14 @@ async function main(args: string[]): Promise<void> {
                 }
                 process.exitCode = 1;
               })
-              .on(events.SMOKE_FAILED, (err) => {
+              .on(Events.SMOKE_FAILED, (err) => {
                 spinner.fail(err?.message ?? err);
                 process.exitCode = 1;
               })
-              .on(events.SMOKE_OK, () => {
+              .on(Events.SMOKE_OK, () => {
                 spinner.succeed('Lovey-dovey! 💖');
               })
-              .on(events.LINGERED, (dirs) => {
+              .on(Events.LINGERED, (dirs) => {
                 console.error(
                   `Lingering ${pluralize('temp directory', dirs.length)}:\n`,
                 );

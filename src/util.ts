@@ -109,7 +109,6 @@ export interface ReadPackageJsonOpts {
    * Normalize the `package.json`
    */
   normalize?: boolean;
-
   /**
    * Reject if not found
    */
@@ -133,12 +132,21 @@ export async function readPackageJson({
   normalize,
   strict,
 }: ReadPackageJsonOpts = {}): Promise<readPkgUp.ReadResult | undefined> {
-  const result = readPkgUp({cwd, normalize});
+  if (readPackageJson.cache.has({cwd, normalize})) {
+    return readPackageJson.cache.get({cwd, normalize});
+  }
+  const result = await readPkgUp({cwd, normalize});
   if (!result && strict) {
     throw new SmokerError(`Could not find a package.json near ${cwd}`);
   }
+  readPackageJson.cache.set({cwd, normalize}, result);
   return result;
 }
+
+readPackageJson.cache = new Map<
+  ReadPackageJsonOpts,
+  readPkgUp.ReadResult | undefined
+>();
 
 /**
  * Reads closest `package.json` from some dir (synchronously)
@@ -158,9 +166,18 @@ export function readPackageJsonSync({
   normalize,
   strict,
 }: ReadPackageJsonOpts = {}) {
+  if (readPackageJsonSync.cache.has({cwd, normalize})) {
+    return readPackageJsonSync.cache.get({cwd, normalize});
+  }
   const result = readPkgUp.sync({cwd, normalize});
   if (!result && strict) {
     throw new SmokerError(`Could not find a package.json near ${cwd}`);
   }
+  readPackageJsonSync.cache.set({cwd, normalize}, result);
   return result;
 }
+
+readPackageJsonSync.cache = new Map<
+  ReadPackageJsonOpts,
+  readPkgUp.ReadResult | undefined
+>();
