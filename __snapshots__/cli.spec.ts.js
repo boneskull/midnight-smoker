@@ -14,7 +14,7 @@ exports[
 exports[
   'midnight-smoker smoker CLI script single script when the script fails should produce expected output 1'
 ] = `
-💨 midnight-smoker v3.1.0
+💨 midnight-smoker v<version>
 - Packing current project...
 ✔ Packed 1 unique package using npm@9.8.1…
 - Installing 1 unique package from tarball using npm@9.8.1…
@@ -47,7 +47,7 @@ exports[
 
 exports['midnight-smoker smoker CLI option --help should show help text 1'] = {
   stdout:
-    "smoker <script> [scripts..]\n\nRun tests against a package as it would be published\n\nPositionals:\n  script                                                                [string]\n  scripts                                                               [string]\n\nBehavior:\n  --add           Additional dependency to provide to smoke tests        [array]\n  --all           Test all workspaces                                  [boolean]\n  --bail          When running scripts, halt on first error            [boolean]\n  --clean         Truncate working directory; must provide '--force'   [boolean]\n  --dir           Working directory to use      [string] [default: new temp dir]\n  --force         Overwrite working directory if it exists             [boolean]\n  --include-root  Include the workspace root; must provide '--all'     [boolean]\n  --json          Output JSON only                                     [boolean]\n  --verbose       Print output from npm                                [boolean]\n  --workspace     One or more npm workspaces to test                     [array]\n  --pm            Run script(s) with a specific package manager;\n                  <npm|yarn|pnpm>[@version]    [array] [default: [\"npm@latest\"]]\n\nOptions:\n  --version  Show version number                                       [boolean]\n  --help     Show help                                                 [boolean]\n\nFor more info, see https://github.com/boneskull/midnight-smoker",
+    'smoker <script> [scripts..]\n\nRun tests against a package as it would be published\n\nPositionals:\n  script                                                                [string]\n  scripts                                                               [string]\n\nBehavior:\n  --add           Additional dependency to provide to smoke tests        [array]\n  --all           Test all workspaces                                  [boolean]\n  --bail          When running scripts, halt on first error            [boolean]\n  --include-root  Include the workspace root; must provide \'--all\'     [boolean]\n  --json          Output JSON only                                     [boolean]\n  --verbose       Print output from npm                                [boolean]\n  --workspace     One or more npm workspaces to test                     [array]\n  --pm            Run script(s) with a specific package manager;\n                  <npm|yarn|pnpm>[@version]    [array] [default: ["npm@latest"]]\n\nOptions:\n  --version  Show version number                                       [boolean]\n  --help     Show help                                                 [boolean]\n\nFor more info, see https://github.com/boneskull/midnight-smoker',
   stderr: '',
   exitCode: 0,
 };
