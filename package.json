@@ -35,6 +35,8 @@
   "files": [
     "./src",
     "./dist",
+    "./data",
+    "./scripts",
     "!**/*.tsbuildinfo"
   ],
   "scripts": {
