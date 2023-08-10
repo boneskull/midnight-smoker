@@ -14,6 +14,7 @@ module.exports = () => {
       {pattern: './test/unit/mocks.ts', instrument: false},
       'package.json',
       '!./src/cli.ts',
+      {pattern: './data/*.json', instrument: false},
     ],
     testFramework: 'mocha',
     tests: ['./test/unit/**/*.spec.ts'],
