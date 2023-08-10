@@ -96,7 +96,7 @@
     "yargs": "17.7.2"
   },
   "devDependencies": {
-    "@commitlint/cli": "17.7.0",
+    "@commitlint/cli": "17.7.1",
     "@commitlint/config-conventional": "17.7.0",
     "@tsconfig/node16": "16.1.0",
     "@types/debug": "4.1.8",
