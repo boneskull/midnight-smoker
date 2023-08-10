@@ -1,4 +1,6 @@
-import type {InstallManifest, PackedPackage, RunScriptResult} from '../types';
+import type {SemVer} from 'semver';
+import type {InstallManifest, RunManifest, RunScriptResult} from '../types';
+import type {CorepackExecutor} from './corepack';
 
 export interface InstallOpts {
   extraArgs?: string[];
@@ -9,10 +11,6 @@ export interface PackageManagerOpts {
    * If `true`, show STDERR/STDOUT from the package manager
    */
   verbose?: boolean;
-  /**
-   * Explicit path to package manager executable
-   */
-  binPath?: string;
 }
 
 export interface PackOpts {
@@ -34,7 +32,7 @@ export interface PackOpts {
 }
 
 export interface RunScriptOpts {
-  bail?: boolean;
+  extraArgs?: string[];
 }
 
 /**
@@ -48,11 +46,6 @@ export interface InstallResult {
 }
 
 export interface PackageManager {
-  /**
-   * Package manager name; should be the same as the executable name
-   */
-  name: string;
-
   /**
    * Installs packages from tarballs as specified in the manifest
    * @param manifest Installation manifest
@@ -73,23 +66,31 @@ export interface PackageManager {
 
   /**
    *
-   * @param packedPkg Object containing package name and installation directory
+   * @param manifest Object containing script and package information
    * @param script Script to run
    * @param opts Options
    * @returns Result of running the script
    */
   runScript(
-    packedPkg: PackedPackage,
-    script: string,
+    manifest: RunManifest,
     opts?: RunScriptOpts,
   ): Promise<RunScriptResult>;
 }
 
 /**
  * A function which returns an object implementing {@linkcode PackageManager}.
- *
- * **This must be the default export of any package manager module.**
  */
 export type PackageManagerFactory = (
+  executor: CorepackExecutor,
   opts?: PackageManagerOpts,
 ) => PackageManager | Promise<PackageManager>;
+
+export interface PackageManagerModule {
+  bin: string;
+  /**
+   * Returns `true` if this `PackageManager` can handle the given version
+   * @param semver
+   */
+  accepts(semver: SemVer): boolean;
+  load: PackageManagerFactory;
+}

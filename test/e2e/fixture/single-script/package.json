@@ -1,0 +1,7 @@
+{
+  "name": "single-script",
+  "version": "1.0.0",
+  "scripts": {
+    "smoke": "exit 0"
+  }
+}

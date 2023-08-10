@@ -1,5 +1,19 @@
-import type {ExecaError, ExecaReturnValue} from 'execa';
+import type {ExecaReturnValue, ExecaError} from 'execa';
 import type {SmokerError} from './error';
+import type {PackageManager} from './pm';
+
+export type RunScriptValue = Pick<
+  ExecaReturnValue<string>,
+  'stdout' | 'stderr' | 'command' | 'exitCode' | 'failed' | 'all'
+>;
+
+export interface RunScriptResult {
+  pkgName: string;
+  script: string;
+  error?: SmokerError;
+  rawResult: RunScriptValue | ExecaError;
+  cwd: string;
+}
 
 /**
  * Options for {@linkcode Smoker.pack}
@@ -83,66 +97,55 @@ export interface SmokeOptions {
    * Additional deps to install
    */
   add?: string[];
+
+  pm?: string[];
 }
 
 export type SmokerOptions = Omit<SmokeOptions, 'verbose'>;
 
-export type RunScriptValue = Pick<
-  ExecaReturnValue<string>,
-  'stdout' | 'stderr' | 'command' | 'exitCode' | 'failed' | 'all'
->;
+export interface InstallEventData {
+  uniquePkgs: string[];
+  packageManagers: string[];
+  manifests: InstallManifest[];
 
-export interface RunScriptResult {
-  pkgName: string;
+  additionalDeps: string[];
+}
+
+export type PackOkEventData = InstallEventData;
+
+export interface RunManifest {
+  packedPkg: PackedPackage;
   script: string;
-  error?: SmokerError;
-  rawResult: RunScriptValue | ExecaError;
-  cwd: string;
 }
 
-export interface Events {
-  SmokeBegin: void;
-  SmokeOk: void;
-  SmokeFailed: (err: Error) => void;
-  PackBegin: void;
-  PackFailed: SmokerError;
-  PackOk: InstallManifest;
-  InstallBegin: InstallManifest;
-  InstallFailed: SmokerError;
-  InstallOk: InstallManifest;
-  RunScriptsBegin: {
-    scripts: string[];
-    packedPkgs: PackedPackage[];
-    total: number;
-  };
-  RunScriptsFailed: {
-    total: number;
-    executed: number;
-    failures: number;
-    results: RunScriptResult[];
-    scripts: string[];
-  };
-  RunScriptsOk: {
-    total: number;
-    executed: number;
-    results: RunScriptResult[];
-    scripts: string[];
-  };
-  RunScriptBegin: {
-    script: string;
-    pkgName: string;
-    total: number;
-    current: number;
-  };
-  RunScriptFailed: RunScriptResult & {
-    error: SmokerError;
-    total: number;
-    current: number;
-  };
-  RunScriptOk: RunScriptResult & {
-    total: number;
-    current: number;
-  };
-
-  Lingered: string[];
+export interface RunScriptsEventData {
+  manifest: Record<string, RunManifest[]>;
+  total: number;
 }
+
+export type RunScriptsBeginEventData = RunScriptsEventData;
+
+export interface RunScriptsEndEventData extends RunScriptsEventData {
+  executed: number;
+  results: RunScriptResult[];
+  failures: number;
+}
+
+export type RunScriptsOkEventData = RunScriptsEndEventData;
+
+export type RunScriptsFailedEventData = RunScriptsEndEventData;
+
+export interface RunScriptEventData {
+  script: string;
+  pkgName: string;
+  total: number;
+  current: number;
+}
+
+export interface RunScriptFailedEventData extends RunScriptEventData {
+  error: SmokerError;
+}
+
+export type PkgInstallManifest = Map<PackageManager, InstallManifest>;
+
+export type PkgRunManifest = Map<PackageManager, Set<RunManifest>>;

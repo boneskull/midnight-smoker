@@ -1,9 +1,11 @@
+import type {SemVer} from 'semver';
 import type debug from 'debug';
 import type which from 'which';
 import type {NodeOptions, ExecaReturnValue} from 'execa';
 import sinon from 'sinon';
 import {Readable} from 'node:stream';
 import type * as MS from '../../src';
+import type {Executor} from '../../src/pm/executor';
 export type WhichMock = sinon.SinonStubbedMember<typeof which>;
 export type ExecaMock = {
   node: sinon.SinonStub<
@@ -44,6 +46,7 @@ export function createExecaMock(
               stdout: stdoutData,
               stderr: '',
               all: '',
+              failed: false,
               command: `${command} ${args.join(' ')}`.trim(),
             });
           });
@@ -59,7 +62,10 @@ export function createExecaMock(
   return {node} as ExecaMock;
 }
 export class NullPm implements MS.PackageManager {
-  opts: MS.PackageManagerOpts = {};
+  constructor(
+    public executor: Executor,
+    public opts: MS.PackageManagerOpts = {},
+  ) {}
   public readonly name = 'nullpm';
 
   public readonly path = '/usr/bin/nullpm';
@@ -104,13 +110,12 @@ export class NullPm implements MS.PackageManager {
   }
 
   public async runScript(
-    packedPkg: MS.PackedPackage,
-    script: string,
+    runManifest: MS.RunManifest,
     opts?: MS.RunScriptOpts | undefined,
   ): Promise<MS.RunScriptResult> {
     return {
-      pkgName: packedPkg.pkgName,
-      script,
+      pkgName: runManifest.packedPkg.pkgName,
+      script: runManifest.script,
       rawResult: {
         stdout: '',
         stderr: '',
@@ -122,3 +127,13 @@ export class NullPm implements MS.PackageManager {
     };
   }
 }
+
+export const nullPmModule: MS.PackageManagerModule = {
+  bin: 'nullpm',
+  load(executor: Executor, opts?: MS.PackageManagerOpts) {
+    return new NullPm(executor, opts);
+  },
+  accepts(semver: SemVer): boolean {
+    return semver.compare('2.0.0') <= 0;
+  },
+};

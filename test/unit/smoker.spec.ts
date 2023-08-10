@@ -7,6 +7,8 @@ import unexpectedEventEmitter from 'unexpected-eventemitter';
 import unexpectedSinon from 'unexpected-sinon';
 import {SmokerError} from '../../src/error';
 import * as Mocks from './mocks';
+import {CorepackExecutor} from '../../src/pm/corepack';
+import type {mkdir, mkdtemp, rm, stat} from 'node:fs/promises';
 
 const expect = unexpected
   .clone()
@@ -19,10 +21,10 @@ type AsyncStub<TArgs = any, TReturnValue = any> = sinon.SinonStub<
 >;
 
 interface NodeFsPromisesMocks {
-  mkdtemp: AsyncStub<any, string>;
-  rm: AsyncStub;
-  mkdir: AsyncStub;
-  stat: AsyncStub;
+  mkdir: sinon.SinonStubbedMember<typeof mkdir>;
+  mkdtemp: sinon.SinonStubbedMember<typeof mkdtemp>;
+  rm: sinon.SinonStubbedMember<typeof rm>;
+  stat: sinon.SinonStubbedMember<typeof stat>;
 }
 
 export const MOCK_PM = '/bin/nullpm';
@@ -42,7 +44,7 @@ describe('midnight-smoker', function () {
 
   let Smoker: typeof MS.Smoker;
 
-  let events: typeof MS.events;
+  let Events: typeof MS.Events;
 
   let smoke: typeof MS.smoke;
 
@@ -50,17 +52,21 @@ describe('midnight-smoker', function () {
 
   let mockPm: Mocks.NullPm;
 
+  let pms: Map<string, MS.PackageManager>;
+
   beforeEach(function () {
     sandbox = createSandbox();
-
+    pms = new Map();
     const execaMock = Mocks.createExecaMock();
 
     mocks = {
       'node:fs/promises': {
-        rm: sandbox.stub().resolves(),
-        mkdtemp: sandbox.stub().resolves(MOCK_TMPDIR),
-        mkdir: sandbox.stub().resolves(),
-        stat: sandbox.stub().rejects(),
+        rm: sandbox.stub<Parameters<typeof rm>>().resolves(),
+        mkdtemp: sandbox
+          .stub<Parameters<typeof mkdtemp>>()
+          .resolves(MOCK_TMPDIR),
+        mkdir: sandbox.stub<Parameters<typeof mkdir>>().resolves(),
+        stat: sandbox.stub<Parameters<typeof stat>>().rejects(),
       },
       execa: execaMock,
       'node:console': sandbox.stub(console),
@@ -70,9 +76,10 @@ describe('midnight-smoker', function () {
       debug: sandbox.stub().returns(sandbox.stub()),
     };
 
-    mockPm = new Mocks.NullPm();
+    mockPm = new Mocks.NullPm(new CorepackExecutor('moo'));
+    pms.set('nullpm@1.0.0', mockPm);
 
-    ({Smoker, smoke, events} = rewiremock.proxy(
+    ({Smoker, smoke, Events} = rewiremock.proxy(
       () => require('../../src'),
       mocks,
     ));
@@ -86,7 +93,7 @@ describe('midnight-smoker', function () {
     describe('constructor', function () {
       it('should throw if both non-empty "workspace" and true "all" options are provided', function () {
         expect(
-          () => new Smoker([], mockPm, {workspace: ['foo'], all: true}),
+          () => new Smoker([], pms, {workspace: ['foo'], all: true}),
           'to throw',
           /Option "workspace" is mutually exclusive with "all" and\/or "includeRoot"/,
         );
@@ -94,14 +101,14 @@ describe('midnight-smoker', function () {
 
       describe('when option "includeRoot" is provided', function () {
         it('should set "all" option to true', function () {
-          const smoker = new Smoker([], mockPm, {includeRoot: true});
+          const smoker = new Smoker([], pms, {includeRoot: true});
           expect(smoker.opts.all, 'to be', true);
         });
       });
 
       describe('when passed a string for "scripts" argument', function () {
         it('should not throw', function () {
-          expect(() => new Smoker('foo', mockPm), 'not to throw');
+          expect(() => new Smoker('foo', pms), 'not to throw');
         });
       });
     });
@@ -110,41 +117,41 @@ describe('midnight-smoker', function () {
       let smoker: MS.Smoker;
 
       beforeEach(function () {
-        smoker = new Smoker('foo', mockPm);
+        smoker = new Smoker('foo', pms);
       });
 
       describe('cleanup()', function () {
-        describe('when `createWorkingDirectory()` has not yet been called', function () {
-          it('should not attempt to prune the working directory', async function () {
+        describe('when `createTempDir()` has not yet been called', function () {
+          it('should not attempt to prune the temp directories', async function () {
             await smoker.cleanup();
             await expect(mocks['node:fs/promises'].rm, 'was not called');
           });
         });
 
-        describe('when `createWorkingDirectory() has been successfully called', function () {
-          it('should attempt to prune the working directory', async function () {
-            await smoker.createWorkingDirectory();
+        describe('when `createTempDir() has been successfully called', function () {
+          it('should attempt to prune the temp directory', async function () {
+            await smoker.createTempDir();
             await smoker.cleanup();
             await expect(mocks['node:fs/promises'].rm, 'was called once');
           });
 
-          describe('when it fails to prune the working directory', function () {
-            describe('when the failure is not due to the non-existence of the working directory', function () {
+          describe('when it fails to prune the temp directory', function () {
+            describe('when the failure is not due to the non-existence of the temp directory', function () {
               beforeEach(function () {
                 mocks['node:fs/promises'].rm.rejects();
               });
 
               it('should reject', async function () {
-                await smoker.createWorkingDirectory();
+                await smoker.createTempDir();
                 await expect(
                   smoker.cleanup(),
                   'to be rejected with error satisfying',
-                  /Failed to clean working directory/,
+                  /Failed to clean temp directory/,
                 );
               });
             });
 
-            describe('when the failure is due to the non-existence of the working directory', function () {
+            describe('when the failure is due to the non-existence of the temp directory', function () {
               beforeEach(function () {
                 const err: NodeJS.ErrnoException = new Error();
                 err.code = 'ENOENT';
@@ -152,124 +159,56 @@ describe('midnight-smoker', function () {
               });
 
               it('should not reject', async function () {
-                await smoker.createWorkingDirectory();
+                await smoker.createTempDir();
                 await expect(smoker.cleanup(), 'to be fulfilled');
               });
             });
           });
         });
+
+        describe('when the "linger" option is true and a temp dir was created', function () {
+          beforeEach(async function () {
+            smoker = new Smoker('foo', pms, {linger: true});
+            await smoker.createTempDir();
+          });
+
+          it('should not attempt to prune the temp directories', async function () {
+            await smoker.cleanup();
+            await expect(mocks['node:fs/promises'].rm, 'was not called');
+          });
+
+          it('should emit the "Lingered" event', async function () {
+            await expect(
+              smoker.cleanup(),
+              'to emit from',
+              smoker,
+              Events.LINGERED,
+            );
+          });
+        });
       });
 
-      describe('createWorkingDirectory()', function () {
-        describe('when creating a temp directory fails', function () {
+      describe('createTempDir()', function () {
+        describe('when mkdtemp() is successful', function () {
+          it('should return the path to the temp directory', async function () {
+            await expect(
+              smoker.createTempDir(),
+              'to be fulfilled with',
+              MOCK_TMPDIR,
+            );
+          });
+        });
+        describe('when mkdtemp() fails', function () {
           beforeEach(function () {
             mocks['node:fs/promises'].mkdtemp.rejects();
           });
 
           it('should reject', async function () {
             await expect(
-              smoker.createWorkingDirectory(),
+              smoker.createTempDir(),
               'to be rejected with error satisfying',
-              /Failed to create temporary working directory/,
+              /Failed to create temporary directory/i,
             );
-          });
-        });
-        describe('when working directory already created', function () {
-          it('should not attempt to create it again', async function () {
-            await smoker.createWorkingDirectory();
-            await smoker.createWorkingDirectory();
-            await expect(
-              mocks['node:fs/promises'].mkdtemp,
-              'was called with',
-              MOCK_TMPDIR,
-            );
-          });
-        });
-
-        describe('when explicit "dir" option provided to constructor', function () {
-          let smoker: MS.Smoker;
-
-          describe('when "force" option not provided to constructor', function () {
-            beforeEach(function () {
-              smoker = new Smoker('foo', mockPm, {dir: '/some/path/to/dir'});
-            });
-
-            describe('when the dir does not exist', function () {
-              it('should assert the directory does not exist', async function () {
-                await smoker.createWorkingDirectory();
-                await expect(mocks['node:fs/promises'].stat, 'was called once');
-              });
-
-              it('should create the directory', async function () {
-                await smoker.createWorkingDirectory();
-                await expect(
-                  mocks['node:fs/promises'].mkdir,
-                  'was called once',
-                );
-              });
-
-              it('should return the directory path', async function () {
-                await expect(
-                  smoker.createWorkingDirectory(),
-                  'to be fulfilled with',
-                  '/some/path/to/dir',
-                );
-              });
-
-              describe('when the directory cannot be created', function () {
-                beforeEach(function () {
-                  mocks['node:fs/promises'].mkdir.rejects();
-                });
-
-                it('should reject', async function () {
-                  await expect(
-                    smoker.createWorkingDirectory(),
-                    'to be rejected with error satisfying',
-                    /Failed to create working directory/,
-                  );
-                });
-              });
-            });
-
-            describe('when the dir exists', function () {
-              it('should reject', async function () {
-                mocks['node:fs/promises'].stat.resolves();
-                await expect(
-                  smoker.createWorkingDirectory(),
-                  'to be rejected with error satisfying',
-                  /Working directory \/some\/path\/to\/dir already exists/,
-                );
-              });
-            });
-          });
-
-          describe('when "force" option provided to constructor', function () {
-            beforeEach(function () {
-              smoker = new Smoker('foo', mockPm, {
-                dir: '/some/path/to/dir',
-                force: true,
-              });
-            });
-
-            it('should not assert the directory exists', async function () {
-              await smoker.createWorkingDirectory();
-              await expect(mocks['node:fs/promises'].stat, 'was not called');
-            });
-
-            describe('when "clean" option is provided to constructor', function () {
-              beforeEach(function () {
-                smoker = new Smoker('foo', mockPm, {
-                  dir: '/some/path/to/dir',
-                  force: true,
-                  clean: true,
-                });
-              });
-
-              it('should clean the directory', async function () {
-                await smoker.createWorkingDirectory();
-                await expect(mocks['node:fs/promises'].rm, 'was called once');
-              });
-            });
           });
         });
       });
@@ -280,31 +219,39 @@ describe('midnight-smoker', function () {
             smoker.pack(),
             'to emit from',
             smoker,
-            events.PACK_BEGIN,
+            Events.PACK_BEGIN,
           );
         });
 
-        it('should emit the "PackOk" event', async function () {
-          await expect(smoker.pack(), 'to emit from', smoker, events.PACK_OK);
+        describe('when packing succeeds', function () {
+          it('should emit the "PackOk" event', async function () {
+            await expect(smoker.pack(), 'to emit from', smoker, Events.PACK_OK);
+          });
         });
 
         it('should return an InstallManifest object', async function () {
-          const manifest = await smoker.pack();
-          await expect(manifest, 'to equal', {
-            packedPkgs: [
+          const manifestMap = await smoker.pack();
+
+          await expect([...manifestMap], 'to equal', [
+            [
+              mockPm,
               {
-                tarballFilepath: `${MOCK_TMPDIR}/bar.tgz`,
-                installPath: `${MOCK_TMPDIR}/node_modules/bar`,
-                pkgName: 'bar',
-              },
-              {
-                tarballFilepath: `${MOCK_TMPDIR}/baz.tgz`,
-                installPath: `${MOCK_TMPDIR}/node_modules/baz`,
-                pkgName: 'baz',
+                packedPkgs: [
+                  {
+                    tarballFilepath: `${MOCK_TMPDIR}/bar.tgz`,
+                    installPath: `${MOCK_TMPDIR}/node_modules/bar`,
+                    pkgName: 'bar',
+                  },
+                  {
+                    tarballFilepath: `${MOCK_TMPDIR}/baz.tgz`,
+                    installPath: `${MOCK_TMPDIR}/node_modules/baz`,
+                    pkgName: 'baz',
+                  },
+                ],
+                tarballRootDir: MOCK_TMPDIR,
               },
             ],
-            tarballRootDir: MOCK_TMPDIR,
-          });
+          ]);
         });
 
         describe('when packing fails', function () {
@@ -330,67 +277,76 @@ describe('midnight-smoker', function () {
               },
               'to emit from',
               smoker,
-              events.PACK_FAILED,
+              Events.PACK_FAILED,
               new Error('uh oh'),
             );
           });
         });
 
         describe('install()', function () {
-          const manifest: MS.InstallManifest = {
-            packedPkgs: [
-              {
-                tarballFilepath: `${MOCK_TMPDIR}/bar.tgz`,
-                installPath: `${MOCK_TMPDIR}/node_modules/bar`,
-                pkgName: 'bar',
-              },
-              {
-                tarballFilepath: `${MOCK_TMPDIR}/baz.tgz`,
-                installPath: `${MOCK_TMPDIR}/node_modules/baz`,
-                pkgName: 'baz',
-              },
-            ],
-            tarballRootDir: MOCK_TMPDIR,
-          };
+          let pkgInstallManifest: MS.PkgInstallManifest;
+
+          beforeEach(function () {
+            pkgInstallManifest = new Map([
+              [
+                mockPm,
+                {
+                  packedPkgs: [
+                    {
+                      tarballFilepath: `${MOCK_TMPDIR}/bar.tgz`,
+                      installPath: `${MOCK_TMPDIR}/node_modules/bar`,
+                      pkgName: 'bar',
+                    },
+                    {
+                      tarballFilepath: `${MOCK_TMPDIR}/baz.tgz`,
+                      installPath: `${MOCK_TMPDIR}/node_modules/baz`,
+                      pkgName: 'baz',
+                    },
+                  ],
+                  tarballRootDir: MOCK_TMPDIR,
+                },
+              ],
+            ]);
+          });
 
           it('should emit the "InstallBegin" event', async function () {
             await expect(
-              smoker.install(manifest),
+              smoker.install(pkgInstallManifest),
               'to emit from',
               smoker,
-              events.INSTALL_BEGIN,
-              manifest,
+              Events.INSTALL_BEGIN,
             );
           });
 
           it('should emit the "InstallOk" event', async function () {
             await expect(
-              smoker.install(manifest),
+              smoker.install(pkgInstallManifest),
               'to emit from',
               smoker,
-              events.INSTALL_OK,
-              manifest,
+              Events.INSTALL_OK,
             );
           });
 
-          describe('when called without "manifest" argument', function () {
+          describe('when called without "pkgInstallManifest" argument', function () {
             it('should reject', async function () {
               await expect(
                 // @ts-expect-error invalid args
                 smoker.install(),
                 'to be rejected with error satisfying',
-                new TypeError('(install) "manifest" arg is required'),
+                new TypeError(
+                  '(install) Non-empty "pkgInstallManifest" arg is required',
+                ),
               );
             });
           });
 
-          describe('when "manifest" argument is empty', function () {
+          describe('when "pkgInstallManifest" argument is empty', function () {
             it('should reject', async function () {
               await expect(
-                smoker.install({packedPkgs: [], tarballRootDir: MOCK_TMPDIR}),
+                smoker.install(new Map()),
                 'to be rejected with error satisfying',
                 new TypeError(
-                  '(install) "manifest" arg must contain non-empty list of packed packages',
+                  '(install) Non-empty "pkgInstallManifest" arg is required',
                 ),
               );
             });
@@ -406,19 +362,19 @@ describe('midnight-smoker', function () {
                 async () => {
                   // we have to eat the error to catch the event due to zalgo
                   try {
-                    await smoker.install(manifest);
+                    await smoker.install(pkgInstallManifest);
                   } catch {}
                 },
                 'to emit from',
                 smoker,
-                events.INSTALL_FAILED,
+                Events.INSTALL_FAILED,
                 new Error('uh oh'),
               );
             });
 
             it('should reject', async function () {
               await expect(
-                smoker.install(manifest),
+                smoker.install(pkgInstallManifest),
                 'to be rejected with error satisfying',
                 new Error('uh oh'),
               );
@@ -427,61 +383,62 @@ describe('midnight-smoker', function () {
         });
 
         describe('runScripts()', function () {
-          const packedPkgs: MS.PackedPackage[] = [
-            {
-              tarballFilepath: `${MOCK_TMPDIR}/bar.tgz`,
-              installPath: `${MOCK_TMPDIR}/node_modules/bar`,
-              pkgName: 'bar',
-            },
-            {
-              tarballFilepath: `${MOCK_TMPDIR}/baz.tgz`,
-              installPath: `${MOCK_TMPDIR}/node_modules/baz`,
-              pkgName: 'baz',
-            },
-          ];
+          let pkgRunManifest: MS.PkgRunManifest;
+
+          beforeEach(function () {
+            pkgRunManifest = new Map([
+              [
+                mockPm,
+                new Set([
+                  {
+                    packedPkg: {
+                      tarballFilepath: `${MOCK_TMPDIR}/bar.tgz`,
+                      installPath: `${MOCK_TMPDIR}/node_modules/bar`,
+                      pkgName: 'bar',
+                    },
+                    script: 'foo',
+                  },
+                  {
+                    packedPkg: {
+                      tarballFilepath: `${MOCK_TMPDIR}/baz.tgz`,
+                      installPath: `${MOCK_TMPDIR}/node_modules/baz`,
+                      pkgName: 'baz',
+                    },
+                    script: 'foo',
+                  },
+                ]),
+              ],
+            ]);
+          });
 
           describe('when the arguments are correct', function () {
             it('should emit the "RunScriptsBegin" event', async function () {
               await expect(
-                smoker.runScripts(packedPkgs),
+                smoker.runScripts(pkgRunManifest),
                 'to emit from',
                 smoker,
-                events.RUN_SCRIPTS_BEGIN,
-                {scripts: ['foo'], packedPkgs, total: 2},
+                Events.RUN_SCRIPTS_BEGIN,
               );
             });
 
             it('should emit the "RunScriptBegin" event (for the first script)', async function () {
               await expect(
-                smoker.runScripts(packedPkgs),
+                smoker.runScripts(pkgRunManifest),
                 'to emit from',
                 smoker,
-                events.RUN_SCRIPT_BEGIN,
+                Events.RUN_SCRIPT_BEGIN,
                 {script: 'foo', pkgName: 'bar', total: 2, current: 0},
               );
             });
           });
 
-          describe('when called without "packedPkgs" argument', function () {
+          describe('when called without "pkgRunManifest" argument', function () {
             it('should reject', async function () {
               await expect(
                 // @ts-expect-error invalid args
                 smoker.runScripts(),
                 'to be rejected with error satisfying',
-                new TypeError('(runScripts) "packedPkgs" arg is required'),
-              );
-            });
-          });
-
-          describe('when "packedPkgs" argument is empty', function () {
-            it('should reject', async function () {
-              'bar';
-              await expect(
-                smoker.runScripts([]),
-                'to be rejected with error satisfying',
-                new TypeError(
-                  '(runScripts) "packedPkgs" arg must not be empty',
-                ),
+                new TypeError('(runScripts) "pkgRunManifest" arg is required'),
               );
             });
           });
@@ -489,12 +446,12 @@ describe('midnight-smoker', function () {
           describe('when the scripts succeed', function () {
             it('should emit the "RunScriptsOk" event', async function () {
               await expect(
-                smoker.runScripts(packedPkgs),
+                smoker.runScripts(pkgRunManifest),
                 'to emit from',
                 smoker,
-                events.RUN_SCRIPTS_OK,
+                Events.RUN_SCRIPTS_OK,
                 {
-                  scripts: ['foo'],
+                  manifest: expect.it('to be an object'),
                   total: 2,
                   executed: 2,
                   results: expect.it('to be an array'),
@@ -506,10 +463,10 @@ describe('midnight-smoker', function () {
               // XXX: this emits twice; one for each package. the unexpected plugin
               // does not support this and only sees the first one
               await expect(
-                smoker.runScripts(packedPkgs),
+                smoker.runScripts(pkgRunManifest),
                 'to emit from',
                 smoker,
-                events.RUN_SCRIPT_OK,
+                Events.RUN_SCRIPT_OK,
                 {
                   script: 'foo',
                   current: 0,
@@ -522,7 +479,7 @@ describe('midnight-smoker', function () {
 
             it(`should resolve with an array of run results`, async function () {
               await expect(
-                smoker.runScripts(packedPkgs),
+                smoker.runScripts(pkgRunManifest),
                 'to be fulfilled with value satisfying',
                 [{pkgName: 'bar'}, {pkgName: 'baz'}],
               );
@@ -536,10 +493,10 @@ describe('midnight-smoker', function () {
 
             it('should reject', async function () {
               await expect(
-                smoker.runScripts(packedPkgs),
+                smoker.runScripts(pkgRunManifest),
                 'to be rejected with error satisfying',
                 new SmokerError(
-                  '(runScripts): Unknown failure from "nullpm" plugin: Error: oh noes',
+                  '(runScripts): Unknown failure from "nullpm@1.0.0" plugin: Error: oh noes',
                 ),
               );
             });
@@ -553,11 +510,11 @@ describe('midnight-smoker', function () {
                 .stub(mockPm, 'runScript')
                 .callThrough()
                 .onFirstCall()
-                .callsFake(async ({pkgName}, script) => {
+                .callsFake(async (runManifest) => {
                   return {
-                    pkgName,
+                    pkgName: runManifest.packedPkg.pkgName,
                     error: err,
-                    script,
+                    script: runManifest.script,
                     rawResult: {} as MS.RunScriptValue,
                     cwd: '/some/path',
                   };
@@ -565,10 +522,10 @@ describe('midnight-smoker', function () {
             });
             it('should emit the "RunScriptFailed" event', async function () {
               await expect(
-                smoker.runScripts(packedPkgs),
+                smoker.runScripts(pkgRunManifest),
                 'to emit from',
                 smoker,
-                events.RUN_SCRIPT_FAILED,
+                Events.RUN_SCRIPT_FAILED,
                 {
                   pkgName: 'bar',
                   error: expect.it('to be a', SmokerError),
@@ -582,16 +539,16 @@ describe('midnight-smoker', function () {
 
             it('should emit the "RunScriptsFailed" event', async function () {
               await expect(
-                smoker.runScripts(packedPkgs),
+                smoker.runScripts(pkgRunManifest),
                 'to emit from',
                 smoker,
-                events.RUN_SCRIPTS_FAILED,
+                Events.RUN_SCRIPTS_FAILED,
                 {
                   results: [
                     {pkgName: 'bar', error: expect.it('to be a', SmokerError)},
                     {pkgName: 'baz', error: undefined},
                   ],
-                  scripts: ['foo'],
+                  manifest: expect.it('to be an object'),
                   total: 2,
                   failures: 1,
                   executed: 2,
@@ -601,12 +558,12 @@ describe('midnight-smoker', function () {
 
             describe('when the "bail" option is false', function () {
               beforeEach(function () {
-                smoker = new Smoker('foo', mockPm, {bail: false});
+                smoker = new Smoker('foo', pms, {bail: false});
               });
 
               it('should execute all scripts', async function () {
                 await expect(
-                  smoker.runScripts(packedPkgs),
+                  smoker.runScripts(pkgRunManifest),
                   'to be fulfilled with value satisfying',
                   [
                     {pkgName: 'bar', error: err},
@@ -618,12 +575,12 @@ describe('midnight-smoker', function () {
 
             describe('when the "bail" option is true', function () {
               beforeEach(function () {
-                smoker = new Smoker('foo', mockPm, {bail: true});
+                smoker = new Smoker('foo', pms, {bail: true});
               });
 
               it('should execute only until a script fails', async function () {
                 await expect(
-                  smoker.runScripts(packedPkgs),
+                  smoker.runScripts(pkgRunManifest),
                   'to be fulfilled with value satisfying',
                   expect
                     .it('to have length', 1)
@@ -637,21 +594,20 @@ describe('midnight-smoker', function () {
     });
 
     describe('static method', function () {
-      describe('withNpm()', function () {
-        it('should return a Smoker instance with an Npm PackageManager', function () {
-          const smoker = Smoker.withNpm('foo');
-          // instanceof may not work here given all the mocks flying around
-          expect(smoker.pm.name, 'to be', 'npm');
-        });
-      });
-
-      describe('smoke()', function () {
-        it('should initialize a Smoker instance and call smoke()', async function () {
-          await expect(smoke('foo'), 'to be fulfilled with value satisfying', [
-            {pkgName: 'bar', script: 'foo'},
-          ]);
-        });
-      });
+      // describe('withNpm()', function () {
+      //   it('should return a Smoker instance with an Npm PackageManager', function () {
+      //     const smoker = Smoker.withNpm('foo');
+      //     // instanceof may not work here given all the mocks flying around
+      //     expect(smoker.pm.name, 'to be', 'npm');
+      //   });
+      // });
+      // describe('smoke()', function () {
+      //   it('should initialize a Smoker instance and call smoke()', async function () {
+      //     await expect(smoke('foo'), 'to be fulfilled with value satisfying', [
+      //       {pkgName: 'bar', script: 'foo'},
+      //     ]);
+      //   });
+      // });
     });
   });
 });

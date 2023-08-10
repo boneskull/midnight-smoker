@@ -33,3 +33,25 @@ export async function execSmoker(
 export function dump(obj: any): void {
   console.error(inspect(obj, {depth: null, colors: true}));
 }
+export function fixupOutput(stdout: string) {
+  return (
+    stdout
+      // strip the paths to npm/node/corepack in command
+      .replace(
+        /(?:[^" ]+?)(\/bin\/(node|npm|corepack)(?:\.exe|\.cmd)?)/g,
+        '<path/to/>$1',
+      )
+      // strip the versions since it will change
+      .replace(/midnight-smoker@\d+\.\d+\.\d+/, 'midnight-smoker@<version>')
+      .replace(/midnight-smoker v\d+\.\d+\.\d+/, 'midnight-smoker v<version>')
+      .replace(/--version\\n\\n\d+\.\d+\.\d+/, '--version\\n\\n<version>')
+      // strip the path to `cli.js` since it differs per platform
+      .replace(/node(\.exe)?\s+\S+?smoker\.js/, '<path/to/>smoker.js')
+      .replace(/"cwd":\s+"[^"]+"/, '"cwd": "<cwd>"')
+      .replace(
+        /"tarballFilepath":\s+"[^"]+"/,
+        '"tarballFilepath": "<tarball.tgz>"',
+      )
+      .replace(/"installPath":\s+"[^"]+"/, '"installPath": "<some/path>"')
+  );
+}
