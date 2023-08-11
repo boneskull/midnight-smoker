@@ -1,5 +1,22 @@
 # Changelog
 
+## [4.0.0](https://github.com/boneskull/midnight-smoker/compare/v3.1.0...v4.0.0) (2023-08-11)
+
+
+### ⚠ BREAKING CHANGES
+
+* **package-managers:** The following CLI options have been removed:
+    - `--npm`: replaced by `--pm` functionality; provide a version, not a path
+    - `--install-args`: may be re-added later, but package managers accept different args, so this became a problem
+    - `--dir`, `--clean`, and `--force`: package managers each have their own temp dir and we cannot share a dir between them
+* **package-managers:** add ability to run tests against multiple arbitrary package managers
+
+### Features
+
+* **package-managers:** add ability to run tests against multiple arbitrary package managers ([ad94ad4](https://github.com/boneskull/midnight-smoker/commit/ad94ad4bb53567a572c83067ffed5f45ae6d9e28))
+* **package-managers:** add datafiles and generation script ([42d2d7e](https://github.com/boneskull/midnight-smoker/commit/42d2d7e3bad9b3752970bd4450954fd020994e3c))
+* **package-managers:** add package manager support ([16b391e](https://github.com/boneskull/midnight-smoker/commit/16b391e4af5e3ca87fa45aa9c6c760aa69350766))
+
 ## [3.1.0](https://github.com/boneskull/midnight-smoker/compare/v3.0.4...v3.1.0) (2023-08-09)
 
 
