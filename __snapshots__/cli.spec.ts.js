@@ -1,7 +1,7 @@
 exports[
   'midnight-smoker smoker CLI script single script when the script succeeds should produce expected output 1'
 ] = `
-💨 midnight-smoker v3.1.0
+💨 midnight-smoker v4.0.0
 - Packing current project...
 ✔ Packed 1 unique package using npm@9.8.1…
 - Installing 1 unique package from tarball using npm@9.8.1…
@@ -35,7 +35,7 @@ Error details for failed package fail:
 exports[
   'midnight-smoker smoker CLI script multiple scripts when the scripts succeed should produce expected output 1'
 ] = `
-💨 midnight-smoker v3.1.0
+💨 midnight-smoker v4.0.0
 - Packing current project...
 ✔ Packed 1 unique package using npm@9.8.1…
 - Installing 1 unique package from tarball using npm@9.8.1…
