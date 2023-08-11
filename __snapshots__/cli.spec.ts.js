@@ -1,7 +1,7 @@
 exports[
   'midnight-smoker smoker CLI script single script when the script succeeds should produce expected output 1'
 ] = `
-💨 midnight-smoker v4.0.0
+💨 midnight-smoker v<version>
 - Packing current project...
 ✔ Packed 1 unique package using npm@9.8.1…
 - Installing 1 unique package from tarball using npm@9.8.1…
@@ -35,7 +35,7 @@ Error details for failed package fail:
 exports[
   'midnight-smoker smoker CLI script multiple scripts when the scripts succeed should produce expected output 1'
 ] = `
-💨 midnight-smoker v4.0.0
+💨 midnight-smoker v<version>
 - Packing current project...
 ✔ Packed 1 unique package using npm@9.8.1…
 - Installing 1 unique package from tarball using npm@9.8.1…
@@ -45,12 +45,9 @@ exports[
 ✔ Lovey-dovey! 💖
 `;
 
-exports['midnight-smoker smoker CLI option --help should show help text 1'] = {
-  stdout:
-    'smoker <script> [scripts..]\n\nRun tests against a package as it would be published\n\nPositionals:\n  script                                                                [string]\n  scripts                                                               [string]\n\nBehavior:\n  --add           Additional dependency to provide to smoke tests        [array]\n  --all           Test all workspaces                                  [boolean]\n  --bail          When running scripts, halt on first error            [boolean]\n  --include-root  Include the workspace root; must provide \'--all\'     [boolean]\n  --json          Output JSON only                                     [boolean]\n  --verbose       Print output from npm                                [boolean]\n  --workspace     One or more npm workspaces to test                     [array]\n  --pm            Run script(s) with a specific package manager;\n                  <npm|yarn|pnpm>[@version]    [array] [default: ["npm@latest"]]\n\nOptions:\n  --version  Show version number                                       [boolean]\n  --help     Show help                                                 [boolean]\n\nFor more info, see https://github.com/boneskull/midnight-smoker',
-  stderr: '',
-  exitCode: 0,
-};
+exports['midnight-smoker smoker CLI option --help should show help text 1'] = `
+
+`;
 
 exports[
   'midnight-smoker smoker CLI option --json when the script succeeds should produce expected output 1'

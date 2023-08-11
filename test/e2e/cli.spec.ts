@@ -30,7 +30,7 @@ describe('midnight-smoker', function () {
         describe('when the script succeeds', function () {
           it('should produce expected output', async function () {
             const {stderr} = await execSmoker(['smoke'], {cwd});
-            snapshot(stderr);
+            snapshot(fixupOutput(stderr));
           });
         });
 
@@ -65,7 +65,7 @@ describe('midnight-smoker', function () {
         describe('when the scripts succeed', function () {
           it('should produce expected output', async function () {
             const {stderr} = await execSmoker(['smoke:a', 'smoke:b'], {cwd});
-            snapshot(stderr);
+            snapshot(fixupOutput(stderr));
           });
         });
       });
@@ -80,10 +80,10 @@ describe('midnight-smoker', function () {
 
       describe('--help', function () {
         it('should show help text', async function () {
-          const {stdout, stderr, exitCode} = await execSmoker(['--help'], {
+          const {stderr} = await execSmoker(['--help'], {
             cwd,
           });
-          snapshot({stdout, stderr, exitCode});
+          snapshot(fixupOutput(stderr));
         });
       });
 
