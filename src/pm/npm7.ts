@@ -3,17 +3,16 @@ import path from 'node:path';
 import type {SemVer} from 'semver';
 import {SmokerError} from '../error';
 import type {InstallManifest} from '../types';
-import type {ExecResult} from './executor';
 import type {CorepackExecutor} from './corepack';
+import type {ExecResult} from './executor';
+import {GenericNpmPackageManager} from './npm';
 import type {
-  InstallOpts,
   InstallResult,
   PackOpts,
   PackageManager,
   PackageManagerModule,
   PackageManagerOpts,
 } from './pm';
-import {GenericNpmPackageManager} from './npm';
 
 /**
  * Type of item in the {@linkcode NpmPackItem.files} array.
@@ -63,16 +62,12 @@ export class Npm7 extends GenericNpmPackageManager implements PackageManager {
     return new Npm7(executor, opts);
   }
 
-  public async install(
-    manifest: InstallManifest,
-    opts: InstallOpts = {},
-  ): Promise<InstallResult> {
+  public async install(manifest: InstallManifest): Promise<InstallResult> {
     const {packedPkgs, tarballRootDir} = manifest;
     if (!packedPkgs?.length) {
       throw new TypeError('(install) Non-empty "manifest" arg is required');
     }
 
-    const extraArgs = opts.extraArgs ?? [];
     const additionalDeps = manifest.additionalDeps ?? [];
 
     // otherwise we get a deprecation warning
@@ -80,7 +75,6 @@ export class Npm7 extends GenericNpmPackageManager implements PackageManager {
       'install',
       '--no-package-lock',
       '--global-style',
-      ...extraArgs,
       ...packedPkgs.map(({tarballFilepath}) => tarballFilepath),
       ...additionalDeps,
     ];

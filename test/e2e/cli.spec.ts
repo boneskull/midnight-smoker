@@ -23,6 +23,12 @@ describe('midnight-smoker', function () {
       cwd = path.dirname(packageJsonPath);
     });
 
+    describe('when run without arguments', function () {
+      it('should fail', async function () {
+        await expect(execSmoker([]), 'to be rejected');
+      });
+    });
+
     describe('script', function () {
       describe('single script', function () {
         const cwd = path.join(__dirname, 'fixture', 'single-script');

@@ -1,12 +1,12 @@
 import createDebug from 'debug';
 import path from 'node:path';
+import type {SemVer} from 'semver';
 import {SmokerError} from '../error';
 import type {InstallManifest, PackedPackage} from '../types';
 import {readPackageJson} from '../util';
-import type {ExecError, ExecResult} from './executor';
 import type {CorepackExecutor} from './corepack';
+import type {ExecError, ExecResult} from './executor';
 import type {
-  InstallOpts,
   InstallResult,
   PackOpts,
   PackageManager,
@@ -14,7 +14,6 @@ import type {
   PackageManagerOpts,
 } from './pm';
 import {YarnClassic} from './yarn-classic';
-import type {SemVer} from 'semver';
 
 interface WorkspaceInfo {
   location: string;
@@ -41,10 +40,7 @@ export class YarnBerry extends YarnClassic implements PackageManager {
     return new YarnBerry(executor, opts);
   }
 
-  public async install(
-    manifest: InstallManifest,
-    opts: InstallOpts = {},
-  ): Promise<InstallResult> {
+  public async install(manifest: InstallManifest): Promise<InstallResult> {
     const {packedPkgs, tarballRootDir} = manifest;
     if (!packedPkgs?.length) {
       throw new TypeError(
@@ -98,12 +94,10 @@ export class YarnBerry extends YarnClassic implements PackageManager {
       cwd: tarballRootDir,
     });
 
-    const extraArgs = opts.extraArgs ?? [];
     const additionalDeps = manifest.additionalDeps ?? [];
 
     const installArgs = [
       'add',
-      ...extraArgs,
       ...packedPkgs.map(({tarballFilepath}) => tarballFilepath),
       ...additionalDeps,
     ];

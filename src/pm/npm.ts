@@ -1,16 +1,15 @@
-import type {InstallManifest, RunManifest, RunScriptResult} from '../types';
+import createDebug from 'debug';
 import {SmokerError} from '../error';
-import {type ExecError} from './executor';
+import type {InstallManifest, RunManifest, RunScriptResult} from '../types';
 import {CorepackExecutor} from './corepack';
+import {type ExecError} from './executor';
 import type {
   InstallOpts,
   InstallResult,
   PackOpts,
   PackageManager,
   PackageManagerOpts,
-  RunScriptOpts,
 } from './pm';
-import createDebug from 'debug';
 
 export abstract class GenericNpmPackageManager implements PackageManager {
   protected abstract debug: createDebug.Debugger;
@@ -29,20 +28,17 @@ export abstract class GenericNpmPackageManager implements PackageManager {
     opts?: PackOpts | undefined,
   ): Promise<InstallManifest>;
 
-  public async runScript(
-    manifest: RunManifest,
-    opts: RunScriptOpts = {},
-  ): Promise<RunScriptResult> {
+  public async runScript(manifest: RunManifest): Promise<RunScriptResult> {
     if (!manifest) {
       throw new TypeError('(runScript) "manifest" arg is required');
     }
     const {script, packedPkg} = manifest;
     const npmArgs = ['run', script];
     const {pkgName, installPath: cwd} = packedPkg;
-    const extraArgs = opts.extraArgs ?? [];
+
     let result: RunScriptResult;
     try {
-      const rawResult = await this.executor.exec([...npmArgs, ...extraArgs], {
+      const rawResult = await this.executor.exec(npmArgs, {
         cwd,
       });
       result = {pkgName, script, rawResult, cwd};

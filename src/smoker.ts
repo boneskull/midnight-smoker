@@ -5,10 +5,11 @@ import {tmpdir} from 'node:os';
 import path from 'node:path';
 import StrictEventEmitter from 'strict-event-emitter-types';
 import {SmokerError} from './error';
+import {Events, type SmokerEvents} from './events';
 import {loadPackageManagers, type PackageManager} from './pm';
 import type {
-  InstallManifest,
   InstallEventData,
+  InstallManifest,
   PkgInstallManifest,
   PkgRunManifest,
   RunManifest,
@@ -16,8 +17,7 @@ import type {
   SmokeOptions,
   SmokerOptions,
 } from './types';
-import {Events, type SmokerEvents} from './events';
-import {castArray, normalizeStringArray} from './util';
+import {normalizeStringArray} from './util';
 
 export const TMP_DIR_PREFIX = 'midnight-smoker-';
 
@@ -48,17 +48,42 @@ const {
 } = Events;
 
 export class Smoker extends createStrictEventEmitterClass() {
+  /**
+   * List of extra dependencies to install
+   */
   private readonly add: string[];
+  /**
+   * Whether to run against all workspaces
+   */
   private readonly allWorkspaces: boolean;
+  /**
+   * Whether to bail on the first script failure
+   */
   private readonly bail: boolean;
-  private readonly extraArgs: string[];
+  /**
+   * Whether to include the workspace root
+   */
   private readonly includeWorkspaceRoot;
+  /**
+   * Whether to keep temp dirs around (debugging purposes)
+   */
   private readonly linger: boolean;
+  /**
+   * Mapping of {@linkcode PackageManager} instances to their identifiers of the form `<npm|yarn|pnpm>@<version>`
+   */
   private readonly pmIds: WeakMap<PackageManager, string>;
+  /**
+   * List of temp directories created
+   */
   private readonly tempDirs: Set<string>;
+  /**
+   * List of specific workspaces to run against
+   */
   private readonly workspaces: string[];
 
-  public readonly opts: Readonly<SmokerOptions>;
+  /**
+   * List of scripts to run in each workspace
+   */
   public readonly scripts: string[];
 
   constructor(
@@ -67,7 +92,7 @@ export class Smoker extends createStrictEventEmitterClass() {
     opts: SmokerOptions = {},
   ) {
     super();
-    this.scripts = normalizeStringArray(castArray(scripts));
+    this.scripts = normalizeStringArray(scripts);
     opts = {...opts};
 
     this.linger = Boolean(opts.linger);
@@ -84,14 +109,12 @@ export class Smoker extends createStrictEventEmitterClass() {
         'Option "workspace" is mutually exclusive with "all" and/or "includeRoot"',
       );
     }
-    this.extraArgs = normalizeStringArray(opts.installArgs);
 
     this.pmIds = new WeakMap();
     for (const [pmId, pm] of pms) {
       this.pmIds.set(pm, pmId);
     }
     this.tempDirs = new Set();
-    this.opts = Object.freeze(opts);
   }
 
   public static async init(
@@ -165,32 +188,25 @@ export class Smoker extends createStrictEventEmitterClass() {
   /**
    * Installs from tarball in a temp dir
    */
-  public async install(
-    pkgInstallManifest: PkgInstallManifest,
-  ): Promise<PkgRunManifest> {
-    if (!pkgInstallManifest?.size) {
+  public async install(manifests: PkgInstallManifest): Promise<PkgRunManifest> {
+    if (!manifests?.size) {
       throw new TypeError(
         '(install) Non-empty "pkgInstallManifest" arg is required',
       );
     }
 
-    for (const manifest of pkgInstallManifest.values()) {
-      manifest.additionalDeps = this.add;
-    }
-
-    const installData = this.buildEventData(pkgInstallManifest);
     // ensure we emit asynchronously
     await Promise.resolve();
 
+    const installData = this.buildEventData(manifests);
     this.emit(INSTALL_BEGIN, installData);
 
-    const {extraArgs} = this;
     const pkgRunManifest: PkgRunManifest = new Map();
 
-    for (const [pm, manifest] of pkgInstallManifest) {
+    for (const [pm, manifest] of manifests) {
       try {
         // TODO check for errors?
-        await pm.install(manifest, {extraArgs});
+        await pm.install({...manifest, additionalDeps: this.add});
         const runManifests: Set<RunManifest> = new Set();
         for (const packedPkg of manifest.packedPkgs) {
           for (const script of this.scripts) {
@@ -356,7 +372,6 @@ export class Smoker extends createStrictEventEmitterClass() {
 
     try {
       const pkgInstallManifest = await this.pack();
-      // debug('(smoke) Received %d packed packages', manifestMap.packedPkgs.length);
       const pkgRunManifest = await this.install(pkgInstallManifest);
       const results = await this.runScripts(pkgRunManifest);
       if (!results.some((result) => result.error)) {

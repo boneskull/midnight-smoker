@@ -3,10 +3,10 @@ import ora from 'ora';
 import pluralize from 'pluralize';
 import {hideBin} from 'yargs/helpers';
 import yargs from 'yargs/yargs';
-import {readConfig} from './config';
+import {SmokerConfig, readConfig} from './config';
 import {Events, type SmokerEvents} from './events';
 import {Smoker} from './smoker';
-import {readPackageJson} from './util';
+import {normalizeStringArray, readPackageJson} from './util';
 
 const BEHAVIOR_GROUP = 'Behavior:';
 
@@ -33,91 +33,112 @@ async function main(args: string[]): Promise<void> {
   const {packageJson} = result;
   const {version, homepage} = packageJson;
 
-  const config = await readConfig();
+  /**
+   * These options can be specified more than once.
+   *
+   * Unfortunately, the typing gets hinky if we try to define the options object outside of the `options()` call, so we cannot programmatically gather these.
+   */
+  const arrayOptNames: Readonly<Set<string>> = new Set([
+    'add',
+    'workspace',
+    'pm',
+    'script',
+    'scripts',
+  ]);
 
   try {
+    const config = await readConfig();
+
+    if (config.script) {
+      args.unshift(...config.script);
+    }
+
     await y
       .scriptName('smoker')
       .command(
         '* <script> [scripts..]',
         'Run tests against a package as it would be published',
-        (yargs) =>
-          yargs
-            .positional('script', {type: 'string'})
-            .positional('scripts', {type: 'string'})
+        (yargs) => {
+          /**
+           * Reusable config for array-type options
+           */
+          const arrayOptConfig = {
+            requiresArg: true,
+            array: true,
+            type: 'string',
+            coerce: normalizeStringArray,
+          } as const;
+
+          return yargs
+            .positional('script', {
+              describe: 'Script in package.json to run',
+              type: 'string',
+              coerce: normalizeStringArray,
+              default: config.script,
+            })
+            .positional('scripts', {
+              describe: 'Additional script(s) to run',
+              type: 'string',
+              // no default here since if the config file is used, everything is
+              // thrown into `script`.
+              coerce: normalizeStringArray,
+            })
             .options({
               add: {
-                array: true,
-                describe: 'Additional dependency to provide to smoke tests',
+                describe: 'Additional dependency to provide to script(s)',
                 group: BEHAVIOR_GROUP,
-                requiresArg: true,
-                type: 'string',
+                default: config.add,
+                ...arrayOptConfig,
               },
               all: {
-                describe: 'Test all workspaces',
+                describe: 'Run script in all workspaces',
                 group: BEHAVIOR_GROUP,
+                default: config.all,
                 type: 'boolean',
               },
               bail: {
                 describe: 'When running scripts, halt on first error',
                 group: BEHAVIOR_GROUP,
+                default: config.bail,
                 type: 'boolean',
               },
               'include-root': {
                 describe: "Include the workspace root; must provide '--all'",
                 group: BEHAVIOR_GROUP,
+                default: config.includeRoot,
                 implies: 'all',
                 type: 'boolean',
               },
               json: {
                 describe: 'Output JSON only',
+                default: config.json,
                 group: BEHAVIOR_GROUP,
                 type: 'boolean',
               },
               linger: {
-                describe: 'Do not clean up working dir after completion',
+                describe: 'Do not clean up temp dir(s) after completion',
                 group: BEHAVIOR_GROUP,
+                default: config.linger,
                 hidden: true,
                 type: 'boolean',
               },
-              verbose: {
-                describe: 'Print output from npm',
-                group: BEHAVIOR_GROUP,
-                type: 'boolean',
-              },
               workspace: {
-                array: true,
-                describe: 'One or more npm workspaces to test',
+                describe: 'Run script in a specific workspace or workspaces',
                 group: BEHAVIOR_GROUP,
-                requiresArg: true,
-                type: 'string',
+                default: config.workspace,
+                ...arrayOptConfig,
               },
               pm: {
                 describe:
                   'Run script(s) with a specific package manager; <npm|yarn|pnpm>[@version]',
-                array: true,
-                requiresArg: true,
-                type: 'string',
                 group: BEHAVIOR_GROUP,
-                default: ['npm@latest'],
+                default: config.pm ?? 'npm@latest',
+                ...arrayOptConfig,
               },
-            })
-            .config(config)
-            .epilog(`For more info, see ${homepage}`)
-            .check((argv) => {
-              if (
-                Array.isArray(argv['install-args']) &&
-                argv['install-args'].length > 1
-              ) {
-                throw new Error('--install-args can only be provided once');
-              }
-              return true;
-            }),
+            });
+        },
         async (argv) => {
-          const scripts = [argv.script as string, ...(argv.scripts ?? [])];
-
-          // squelch some output if `json` is true
-          argv.verbose = argv.json ? false : argv.verbose;
+          const scripts = [...argv.script!, ...argv.scripts!];
 
           let smoker: Smoker;
           try {
@@ -291,6 +312,42 @@ async function main(args: string[]): Promise<void> {
               });
             await smoker.smoke();
           }
+        },
+      )
+      .options({
+        verbose: {
+          describe: 'Verbose output',
+          type: 'boolean',
+          global: true,
+        },
+      })
+      .epilog(`For more info, see ${homepage}\n`)
+      .middleware(
+        /**
+         * If an array-type option is provided in both the config file and on the command-line,
+         * we use this to merge the two arrays.
+         *
+         * If we had any object-type options (we don't) then we'd do that here as well.
+         */
+        (argv) => {
+          for (const key of arrayOptNames) {
+            const cfgKey = key as keyof SmokerConfig;
+            const arg = key as keyof typeof argv;
+            if (cfgKey in config && arg in argv) {
+              const cfgValue = (
+                Array.isArray(config[cfgKey])
+                  ? config[cfgKey]
+                  : [config[cfgKey]]
+              ) as string[];
+              const argvValue = (
+                Array.isArray(argv[arg]) ? argv[arg] : [argv[arg]]
+              ) as string[];
+              argv[arg] = [...new Set([...cfgValue, ...argvValue])];
+            }
+          }
+
+          // squelch some output if `json` is true
+          argv.verbose = argv.json ? false : argv.verbose;
         },
       )
       .showHelpOnFail(false)

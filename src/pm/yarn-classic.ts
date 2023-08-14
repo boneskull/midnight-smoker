@@ -1,5 +1,6 @@
 import createDebug from 'debug';
 import path from 'node:path';
+import type {SemVer} from 'semver';
 import {SmokerError} from '../error';
 import type {
   InstallManifest,
@@ -8,18 +9,15 @@ import type {
   RunScriptResult,
 } from '../types';
 import {readPackageJson} from '../util';
-import type {ExecError, ExecResult} from './executor';
 import type {CorepackExecutor} from './corepack';
+import type {ExecError, ExecResult} from './executor';
 import type {
-  InstallOpts,
   InstallResult,
   PackOpts,
   PackageManager,
   PackageManagerModule,
   PackageManagerOpts,
-  RunScriptOpts,
 } from './pm';
-import type {SemVer} from 'semver';
 
 interface WorkspaceInfo {
   location: string;
@@ -49,10 +47,7 @@ export class YarnClassic implements PackageManager {
     return new YarnClassic(executor, opts);
   }
 
-  public async install(
-    manifest: InstallManifest,
-    opts: InstallOpts = {},
-  ): Promise<InstallResult> {
+  public async install(manifest: InstallManifest): Promise<InstallResult> {
     const {packedPkgs, tarballRootDir} = manifest;
     if (!packedPkgs?.length) {
       throw new TypeError(
@@ -60,14 +55,12 @@ export class YarnClassic implements PackageManager {
       );
     }
 
-    const extraArgs = opts.extraArgs ?? [];
     const additionalDeps = manifest.additionalDeps ?? [];
 
     const installArgs = [
       'add',
       '--no-lockfile',
       '--force',
-      ...extraArgs,
       ...packedPkgs.map(({tarballFilepath}) => tarballFilepath),
       ...additionalDeps,
     ];
@@ -240,20 +233,16 @@ export class YarnClassic implements PackageManager {
     return {packedPkgs, tarballRootDir: dest};
   }
 
-  public async runScript(
-    manifest: RunManifest,
-    opts: RunScriptOpts = {},
-  ): Promise<RunScriptResult> {
+  public async runScript(manifest: RunManifest): Promise<RunScriptResult> {
     if (!manifest) {
       throw new TypeError('(runScript) "manifest" arg is required');
     }
     const {script, packedPkg} = manifest;
     const args = ['run', script];
     const {pkgName, installPath: cwd} = packedPkg;
-    const extraArgs = opts.extraArgs ?? [];
     let result: RunScriptResult;
     try {
-      const rawResult = await this.executor.exec([...args, ...extraArgs], {
+      const rawResult = await this.executor.exec(args, {
         cwd,
       });
       result = {pkgName, script, rawResult, cwd};

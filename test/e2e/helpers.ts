@@ -5,6 +5,9 @@
 import {node as execa, type ExecaReturnValue, type NodeOptions} from 'execa';
 import path from 'node:path';
 import {inspect} from 'node:util';
+import createDebug from 'debug';
+
+const debug = createDebug('midnight-smoker:test:e2e');
 
 /**
  * If running in Wallaby, we'll need this
@@ -19,6 +22,7 @@ export async function execSmoker(
   args: string[],
   opts: NodeOptions = {},
 ): Promise<ExecaReturnValue> {
+  debug(`executing: ${CLI_PATH} ${args.join(' ')}`);
   return execa(CLI_PATH, args, {
     cwd: CWD,
     env: {DEBUG: ''},
