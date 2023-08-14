@@ -46,7 +46,30 @@ exports[
 `;
 
 exports['midnight-smoker smoker CLI option --help should show help text 1'] = `
+smoker <script> [scripts..]
 
+Run tests against a package as it would be published
+
+Positionals:
+  script   Script in package.json to run                                [string]
+  scripts  Additional script(s) to run                                  [string]
+
+Behavior:
+  --add           Additional dependency to provide to script(s)          [array]
+  --all           Run script in all workspaces                         [boolean]
+  --bail          When running scripts, halt on first error            [boolean]
+  --include-root  Include the workspace root; must provide '--all'     [boolean]
+  --json          Output JSON only                                     [boolean]
+  --workspace     Run script in a specific workspace or workspaces       [array]
+  --pm            Run script(s) with a specific package manager;
+                  <npm|yarn|pnpm>[@version]      [array] [default: "npm@latest"]
+
+Options:
+  --version  Show version number                                       [boolean]
+  --verbose  Verbose output                                            [boolean]
+  --help     Show help                                                 [boolean]
+
+For more info, see https://github.com/boneskull/midnight-smoker
 `;
 
 exports[

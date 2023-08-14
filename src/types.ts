@@ -56,10 +56,6 @@ export interface SmokeOptions {
    */
   includeRoot?: boolean;
   /**
-   * Extra arguments to pass to `npm install`
-   */
-  installArgs?: string[];
-  /**
    * Working directory to use. If omitted, a temp dir is created
    */
   dir?: string;

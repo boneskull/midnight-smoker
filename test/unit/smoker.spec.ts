@@ -99,13 +99,6 @@ describe('midnight-smoker', function () {
         );
       });
 
-      describe('when option "includeRoot" is provided', function () {
-        it('should set "all" option to true', function () {
-          const smoker = new Smoker([], pms, {includeRoot: true});
-          expect(smoker.opts.all, 'to be', true);
-        });
-      });
-
       describe('when passed a string for "scripts" argument', function () {
         it('should not throw', function () {
           expect(() => new Smoker('foo', pms), 'not to throw');

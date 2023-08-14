@@ -1,0 +1,8 @@
+{
+  "name": "config-script",
+  "version": "1.0.0",
+  "scripts": {
+    "smoke": "exit 0",
+    "smoke-again": "exit 0"
+  }
+}

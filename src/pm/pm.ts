@@ -2,9 +2,7 @@ import type {SemVer} from 'semver';
 import type {InstallManifest, RunManifest, RunScriptResult} from '../types';
 import type {CorepackExecutor} from './corepack';
 
-export interface InstallOpts {
-  extraArgs?: string[];
-}
+export interface InstallOpts {}
 
 export interface PackageManagerOpts {
   /**
@@ -27,13 +25,9 @@ export interface PackOpts {
    * List of individual workspaces
    */
   workspaces?: string[];
-
-  extraArgs?: string[];
 }
 
-export interface RunScriptOpts {
-  extraArgs?: string[];
-}
+export interface RunScriptOpts {}
 
 /**
  * @todo make this more useful

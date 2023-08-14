@@ -10,12 +10,18 @@ import {SmokerError} from './error';
  * Trims all strings in an array and removes empty strings.
  * Returns empty array if input is falsy.
  */
-export function normalizeStringArray(array?: string[]): string[] {
-  return array ? array.map((item) => item.trim()).filter(Boolean) : [];
+export function normalizeStringArray(value?: string | string[]): string[] {
+  return value
+    ? castArray(value)
+        .map((item) => item.trim())
+        .filter(Boolean)
+    : [];
 }
 
 export function castArray<T>(value: T | T[]): T[] {
-  return Array.isArray(value) ? value : [value];
+  return (value ? (Array.isArray(value) ? value : [value]) : []).filter(
+    Boolean,
+  );
 }
 
 /**

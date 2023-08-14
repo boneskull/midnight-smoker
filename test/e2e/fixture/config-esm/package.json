@@ -1,0 +1,7 @@
+{
+  "name": "config-esm",
+  "version": "1.0.0",
+  "scripts": {
+    "smoke": "exit 0"
+  }
+}
