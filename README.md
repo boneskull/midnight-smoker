@@ -82,13 +82,25 @@ The `--all` flag tells `midnight-smoker` to run the `smoke` script in all worksp
 }
 ```
 
-### Try It
+### Using Specific Package Managers
 
-Feeling lucky? Run `npm run test:smoke`.
+`midnight-smoker` supports running scripts against multiple package managers. By default, it will use the latest version of `npm` to pack, install, and run the scripts. However, you can provide the `--pm` option to use a different package manager _or additional package managers._
 
-**Run `npx midnight-smoker --help`** to see more options.
+Example:
 
-> Note: You can name your scripts whatever you want; there is nothing special about `smoke` or `test:smoke`.
+```bash
+# run the "smoke" script against the latest version of yarn@1.x.x, the latest npm,
+# and npm v6.14.18.
+midnight-smoker --pm yarn@1 --pm npm@latest --pm npm@6.14.18 smoke
+```
+
+`midnight-smoker` uses [`corepack`](https://github.com/nodejs/corepack) and supports the same versions as `corepack` (as of whatever version `midnight-smoker` depends upon). The strategy for consuming `corepack` may change in the future, if needed.
+
+> Note: if present, the `packageManager` field in `package.json` will be ignored.
+
+#### pnpm Support
+
+As of `midnight-smoker` v4.0.0, only `yarn` and `npm` are supported. `pnpm` support is planned for a future release.
 
 ### Wait—What Should My Script Do?
 
@@ -131,12 +143,24 @@ If unspecified in `--add`, `midnight-smoker` will use the version of the depende
 
 `--add` can be provided multiple times.
 
+### Try It
+
+Feeling lucky? Run `npx midnight-smoker <some-script>` and see the result.
+
+**Run `npx midnight-smoker --help`** to see more options.
+
+> Note: You can name your scripts whatever you want; there is nothing special about `smoke` or `test:smoke`.
+
 ## Installation
+
+It's recommended to install `midnight-smoker` as a dev dependency, if you want to use it.
 
 Run `npm install midnight-smoker --save-dev`.
 
-- Minimum Node.js versions supported: `^16.13.0 || >=18.0.0`
+- Node.js versions supported: `^16.13.0 || ^18.0.0 || ^20.0.0`
 - Minimum `npm` version supported: `v7.0.0`
+
+While odd-numbered Node.js releases _may_ work, they are not tested on and not officially supported.
 
 ## Resources
 
