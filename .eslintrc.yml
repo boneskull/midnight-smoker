@@ -1,14 +1,20 @@
+root: true
+
 env:
   es2020: true
   node: true
+
 extends:
   - 'semistandard'
   - 'plugin:@typescript-eslint/recommended'
   - 'prettier'
+
 ignorePatterns:
   - 'node_modules/**/*'
   - 'coverage/**/*'
   - 'dist/**/*'
+  - '__snapshots__/**/*'
+
 overrides:
   - files:
       - 'bin/**/*'
@@ -22,10 +28,8 @@ overrides:
       '@typescript-eslint/no-unused-vars': 'off'
 
 parser: '@typescript-eslint/parser'
-plugins:
-  - '@typescript-eslint'
+
 rules:
   '@typescript-eslint/no-explicit-any': 'off'
   'no-useless-constructor': 'off'
   'lines-between-class-members': 'off'
-root: true

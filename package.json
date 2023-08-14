@@ -63,7 +63,7 @@
     "test:update-snapshots": "cross-env SNAPSHOT_UPDATE=1 run-s test:e2e"
   },
   "lint-staged": {
-    "*.{js,ts}": [
+    "!(__snapshots__/)*.{js,ts}": [
       "eslint --fix",
       "prettier --write"
     ],
