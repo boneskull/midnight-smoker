@@ -10,7 +10,7 @@ jobs:
     steps:
       - name: Create Release
         id: release
-        uses: google-github-actions/release-please-action@21e064e1c6b5ff47fd786e6ace618d1ccf2a2bf9 # v3.7.11
+        uses: google-github-actions/release-please-action@ca6063f4ed81b55db15b8c42d1b6f7925866342d # v3.7.11
         with:
           release-type: node
           package-name: midnight-smoker
