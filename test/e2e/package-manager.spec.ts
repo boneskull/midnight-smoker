@@ -15,7 +15,7 @@ function testInCwd(cwd: string) {
             cwd,
           },
         );
-        const {results} = JSON.parse(fixupOutput(stdout));
+        const {results} = JSON.parse(fixupOutput(stdout, false));
         expect(results, 'to have an item satisfying', {
           rawResult: {
             command: actual
@@ -47,7 +47,7 @@ describe('midnight-smoker', function () {
                 cwd,
               },
             );
-            const {results} = JSON.parse(fixupOutput(stdout));
+            const {results} = JSON.parse(fixupOutput(stdout, false));
             expect(results, 'to have an item satisfying', {
               rawResult: {
                 command: expect.it('not to contain', packageManager),

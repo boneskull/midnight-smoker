@@ -3,8 +3,8 @@ exports[
 ] = `
 💨 midnight-smoker v<version>
 - Packing current project...
-✔ Packed 1 unique package using npm@9.8.1…
-- Installing 1 unique package from tarball using npm@9.8.1…
+✔ Packed 1 unique package using npm@<version>…
+- Installing 1 unique package from tarball using npm@<version>…
 ✔ Installed 1 unique package from tarball
 - Running script 0/1...
 ✔ Successfully ran 1 script
@@ -16,15 +16,15 @@ exports[
 ] = `
 💨 midnight-smoker v<version>
 - Packing current project...
-✔ Packed 1 unique package using npm@9.8.1…
-- Installing 1 unique package from tarball using npm@9.8.1…
+✔ Packed 1 unique package using npm@<version>…
+- Installing 1 unique package from tarball using npm@<version>…
 ✔ Installed 1 unique package from tarball
 - Running script 0/1...
 ✖ 1 of 1 script failed
 
 Error details for failed package fail:
 
-(runScript) Script "smoke" in package "fail" failed: Command failed with exit code 1: <path/to/>/bin/node <path/to/>/bin/corepack npm@9.8.1 run smoke
+(runScript) Script "smoke" in package "fail" failed: Command failed with exit code 1: <path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> run smoke
 
 > fail@1.0.0 smoke
 > exit 1
@@ -37,8 +37,8 @@ exports[
 ] = `
 💨 midnight-smoker v<version>
 - Packing current project...
-✔ Packed 1 unique package using npm@9.8.1…
-- Installing 1 unique package from tarball using npm@9.8.1…
+✔ Packed 1 unique package using npm@<version>…
+- Installing 1 unique package from tarball using npm@<version>…
 ✔ Installed 1 unique package from tarball
 - Running script 0/2...
 ✔ Successfully ran 2 scripts
@@ -82,8 +82,8 @@ exports[
       "pkgName": "single-script",
       "script": "smoke",
       "rawResult": {
-        "command": "<path/to/>/bin/node <path/to/>/bin/corepack npm@9.8.1 run smoke",
-        "escapedCommand": "\\"<path/to/>/bin/node\\" \\"<path/to/>/bin/corepack\\" \\"npm@9.8.1\\" run smoke",
+        "command": "<path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> run smoke",
+        "escapedCommand": "\\"<path/to/>/bin/node\\" \\"<path/to/>/.bin/corepack\\" \\"npm@<version>\\" run smoke",
         "exitCode": 0,
         "stdout": "\\n> single-script@1.0.0 smoke\\n> exit 0\\n",
         "stderr": "",
@@ -96,7 +96,7 @@ exports[
     }
   ],
   "manifest": {
-    "npm@9.8.1": [
+    "npm@<version>": [
       {
         "packedPkg": {
           "tarballFilepath": "<tarball.tgz>",
@@ -122,9 +122,9 @@ exports[
       "script": "smoke",
       "error": {},
       "rawResult": {
-        "shortMessage": "Command failed with exit code 1: <path/to/>/bin/node <path/to/>/bin/corepack npm@9.8.1 run smoke",
-        "command": "<path/to/>/bin/node <path/to/>/bin/corepack npm@9.8.1 run smoke",
-        "escapedCommand": "\\"<path/to/>/bin/node\\" \\"<path/to/>/bin/corepack\\" \\"npm@9.8.1\\" run smoke",
+        "shortMessage": "Command failed with exit code 1: <path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> run smoke",
+        "command": "<path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> run smoke",
+        "escapedCommand": "\\"<path/to/>/bin/node\\" \\"<path/to/>/.bin/corepack\\" \\"npm@<version>\\" run smoke",
         "exitCode": 1,
         "stdout": "\\n> fail@1.0.0 smoke\\n> exit 1\\n",
         "stderr": "",
@@ -137,7 +137,7 @@ exports[
     }
   ],
   "manifest": {
-    "npm@9.8.1": [
+    "npm@<version>": [
       {
         "packedPkg": {
           "tarballFilepath": "<tarball.tgz>",
