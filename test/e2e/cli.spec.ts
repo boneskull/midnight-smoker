@@ -80,10 +80,10 @@ describe('midnight-smoker', function () {
 
       describe('--help', function () {
         it('should show help text', async function () {
-          const {stderr} = await execSmoker(['--help'], {
+          const {stdout} = await execSmoker(['--help'], {
             cwd,
           });
-          snapshot(fixupOutput(stderr));
+          snapshot(fixupOutput(stdout));
         });
       });
 
