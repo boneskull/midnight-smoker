@@ -1,5 +1,18 @@
 # Changelog
 
+## [5.0.0](https://github.com/boneskull/midnight-smoker/compare/v4.0.0...v5.0.0) (2023-08-14)
+
+
+### ⚠ BREAKING CHANGES
+
+* This package now requires a minimum Node.js of v16.20.0.
+
+### Bug Fixes
+
+* **config:** fix weird config file handling ([#282](https://github.com/boneskull/midnight-smoker/issues/282)) ([83a0fac](https://github.com/boneskull/midnight-smoker/commit/83a0fac29c5bbda740e4d1a2939d48bac0450972))
+* pin corepack version ([20a0a03](https://github.com/boneskull/midnight-smoker/commit/20a0a03bb7a1556146c0d043305b47afa01a9ddd))
+* **types:** export `SmokerConfig` type ([83a0fac](https://github.com/boneskull/midnight-smoker/commit/83a0fac29c5bbda740e4d1a2939d48bac0450972))
+
 ## [4.0.0](https://github.com/boneskull/midnight-smoker/compare/v3.1.0...v4.0.0) (2023-08-11)
 
 
