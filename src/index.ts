@@ -6,3 +6,4 @@ export type * from './error';
 export type * from './types';
 export * from './events';
 export * from './smoker';
+export type {SmokerConfig} from './config';
