@@ -143,6 +143,17 @@ If unspecified in `--add`, `midnight-smoker` will use the version of the depende
 
 `--add` can be provided multiple times.
 
+### Config Files
+
+Config files are supported via a `smoker` field in `package.json`, or one of:
+
+- `.smokerrc.(json|js|cjs|mjs)`
+- `smoker.config.(json|js|cjs|mjs)`
+- `.config/smokerrc.(json|js|cjs|mjs)`
+- `.config/smoker.config.(json|js|cjs|mjs)`
+
+All args and options (except `--help` and `--version`) shown in `smoker --help` are supported; the field names are camel-cased versions of the option names. See the `SmokerConfig` type exported from the entry point for further details.
+
 ### Try It
 
 Feeling lucky? Run `npx midnight-smoker <some-script>` and see the result.
