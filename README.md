@@ -168,7 +168,7 @@ It's recommended to install `midnight-smoker` as a dev dependency, if you want t
 
 Run `npm install midnight-smoker --save-dev`.
 
-- Node.js versions supported: `^16.13.0 || ^18.0.0 || ^20.0.0`
+- Node.js versions supported: `^16.20.0 || ^18.0.0 || ^20.0.0`
 - Minimum `npm` version supported: `v7.0.0`
 
 While odd-numbered Node.js releases _may_ work, they are not tested on and not officially supported.

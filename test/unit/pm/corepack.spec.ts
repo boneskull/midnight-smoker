@@ -24,7 +24,6 @@ describe('midnight-smoker', function () {
       ({CorepackExecutor} = rewiremock.proxy(
         () => require('../../../src/pm/corepack'),
         {
-          which: sandbox.stub().resolves('/usr/bin/phony/corepack'),
           execa: execaMock,
         },
       ));
@@ -57,7 +56,7 @@ describe('midnight-smoker', function () {
             expect(
               execaMock.node,
               'was called with',
-              '/usr/bin/phony/corepack',
+              expect.it('to match', /corepack$/),
             ).and('was called once');
           });
         });
@@ -77,7 +76,7 @@ describe('midnight-smoker', function () {
             expect(
               execaMock.node,
               'was called with',
-              '/usr/bin/phony/corepack',
+              expect.it('to match', /corepack$/),
             ).and('was called once');
           });
         });

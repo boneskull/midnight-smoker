@@ -1,13 +1,6 @@
 import {node as execa, type Options as ExecaOptions} from 'execa';
-import which from 'which';
-import type {Executor, ExecOpts, ExecResult} from './executor';
-
-/**
- * Cached path to `corepack`.
- *
- * This should persist between instantiations, so here it is.
- */
-let corepackPath: string | undefined;
+import path from 'node:path';
+import type {ExecOpts, ExecResult, Executor} from './executor';
 
 /**
  * Disables the strict `packageManager` field in `package.json`.
@@ -25,18 +18,18 @@ const DEFAULT_ENV = {
  * @see {@link https://github.com/nodejs/corepack}
  */
 export class CorepackExecutor implements Executor {
+  protected readonly corepackPath: string;
+
   /**
    * @param pmId The package manager ID (`<npm|yarn|pnpm>@<version>`) to use as the first argument to `corepack`.
    */
-  public constructor(private readonly pmId: string) {}
-
-  protected async getCorepackPath(): Promise<string> {
-    if (corepackPath) {
-      return corepackPath;
-    }
-    // TODO: handle missing corepack
-    corepackPath = await which('corepack');
-    return corepackPath;
+  public constructor(private readonly pmId: string) {
+    this.corepackPath = path.resolve(
+      path.dirname(require.resolve('corepack/package.json')),
+      '..',
+      '.bin',
+      'corepack',
+    );
   }
 
   public async exec(
@@ -44,9 +37,7 @@ export class CorepackExecutor implements Executor {
     execaOpts: ExecaOptions = {},
     execOpts: ExecOpts = {},
   ): Promise<ExecResult> {
-    const corepack = await this.getCorepackPath();
-
-    const proc = execa(corepack, [this.pmId, ...args], {
+    const proc = execa(this.corepackPath, [this.pmId, ...args], {
       env: {...DEFAULT_ENV, ...execaOpts.env},
       ...execaOpts,
     });
