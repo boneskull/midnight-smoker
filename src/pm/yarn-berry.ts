@@ -2,7 +2,12 @@ import createDebug from 'debug';
 import path from 'node:path';
 import type {SemVer} from 'semver';
 import {SmokerError} from '../error';
-import type {InstallManifest, PackedPackage} from '../types';
+import type {
+  InstallManifest,
+  PackedPackage,
+  RunManifest,
+  RunScriptResult,
+} from '../types';
 import {readPackageJson} from '../util';
 import type {CorepackExecutor} from './corepack';
 import type {ExecError, ExecResult} from './executor';
@@ -193,7 +198,7 @@ export class YarnBerry extends YarnClassic implements PackageManager {
           'list',
           '--json',
         ]);
-        const lines = stdout.split('\r?\n');
+        const lines = stdout.split(/\r?\n/);
         workspaceInfo = lines.reduce(
           (acc, line) => {
             const {name, location} = JSON.parse(line);
@@ -281,6 +286,73 @@ export class YarnBerry extends YarnClassic implements PackageManager {
     this.debug('(pack) Packed %d packages', packedPkgs.length);
 
     return {packedPkgs, tarballRootDir: dest};
+  }
+
+  public async runScript(manifest: RunManifest): Promise<RunScriptResult> {
+    if (!manifest) {
+      throw new TypeError('(runScript) "manifest" arg is required');
+    }
+    const {script, packedPkg} = manifest;
+    const args = ['run', script];
+    const {pkgName, installPath: cwd} = packedPkg;
+    let result: RunScriptResult;
+    try {
+      const rawResult = await this.executor.exec(args, {
+        cwd,
+      });
+      result = {pkgName, script, rawResult, cwd};
+    } catch (err) {
+      const error = err as ExecError;
+      result = {
+        pkgName,
+        script,
+        rawResult: error,
+        cwd,
+      };
+      if (
+        this.opts.loose &&
+        /Couldn't find a script named/i.test(error.stdout)
+      ) {
+        result.skipped = true;
+      } else {
+        result.error = new SmokerError(
+          `(runScript) Script "${script}" in package "${pkgName}" failed: ${error.message}`,
+        );
+      }
+    }
+
+    if (!result.error && !result.skipped && result.rawResult.failed) {
+      let message: string;
+      if (
+        result.rawResult.stdout &&
+        /Couldn't find a script named/i.test(result.rawResult.stdout)
+      ) {
+        message = `(runScript) Script "${script}" in package "${pkgName}" failed; script not found`;
+      } else {
+        if (result.rawResult.exitCode) {
+          message = `(runScript) Script "${script}" in package "${pkgName}" failed with exit code ${result.rawResult.exitCode}: ${result.rawResult.all}`;
+        } else {
+          message = `(runScript) Script "${script}" in package "${pkgName}" failed: ${result.rawResult.all}`;
+        }
+      }
+      result.error = new SmokerError(message);
+    }
+
+    if (result.error) {
+      this.debug(
+        `(runScripts) Script "%s" in package "%s" failed; continuing...`,
+        script,
+        pkgName,
+      );
+    } else {
+      this.debug(
+        '(runScripts) Successfully executed script %s in package %s',
+        script,
+        pkgName,
+      );
+    }
+
+    return result;
   }
 }
 

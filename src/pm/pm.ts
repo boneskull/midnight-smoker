@@ -9,6 +9,11 @@ export interface PackageManagerOpts {
    * If `true`, show STDERR/STDOUT from the package manager
    */
   verbose?: boolean;
+
+  /**
+   * If `true`, ignore missing scripts
+   */
+  loose?: boolean;
 }
 
 export interface PackOpts {

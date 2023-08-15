@@ -32,25 +32,72 @@ const DEFAULT_OPTS: Readonly<LilconfigOpts> = Object.freeze({
 });
 
 export interface SmokerConfig {
+  /**
+   * Add an extra package to the list of packages to be installed.
+   */
   add?: string[] | string;
+  /**
+   * Operate on all workspaces.
+   *
+   * The root workspace is omitted unless `includeRoot` is `true`.
+   */
   all?: boolean;
+  /**
+   * Fail on first script failure.
+   */
   bail?: boolean;
+  /**
+   * Operate on the root workspace.
+   *
+   * Only has an effect if `all` is `true`.
+   */
   includeRoot?: boolean;
+  /**
+   * Output JSON only
+   */
   json?: boolean;
+  /**
+   * Do not delete temp directories after completion
+   */
   linger?: boolean;
+  /**
+   * Verbose logging
+   */
   verbose?: boolean;
+  /**
+   * One or more workspaces to run scripts in
+   */
   workspace?: string[] | string;
+  /**
+   * Package manager(s) to use
+   */
   pm?: string[] | string;
+  /**
+   * Script(s) to run.
+   *
+   * Alias of `scripts`
+   */
   script?: string[] | string;
+  /**
+   * Script(s) to run.
+   *
+   * Alias of `script`
+   */
   scripts?: string[] | string;
+  /**
+   * If `true`, fail if a workspace is missing a script
+   */
+  loose?: boolean;
 }
 
+/**
+ * @internal
+ */
 export interface NormalizedSmokerConfig extends SmokerConfig {
   add?: string[];
   workspace?: string[];
   pm?: string[];
   script?: string[];
-
   scripts?: never;
 }
 

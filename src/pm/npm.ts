@@ -33,12 +33,12 @@ export abstract class GenericNpmPackageManager implements PackageManager {
       throw new TypeError('(runScript) "manifest" arg is required');
     }
     const {script, packedPkg} = manifest;
-    const npmArgs = ['run', script];
+    const args = ['run', script];
     const {pkgName, installPath: cwd} = packedPkg;
 
     let result: RunScriptResult;
     try {
-      const rawResult = await this.executor.exec(npmArgs, {
+      const rawResult = await this.executor.exec(args, {
         cwd,
       });
       result = {pkgName, script, rawResult, cwd};
@@ -47,29 +47,39 @@ export abstract class GenericNpmPackageManager implements PackageManager {
       result = {
         pkgName,
         script,
-        error: new SmokerError(
-          `(runScript) Script "${script}" in package "${pkgName}" failed: ${error.message}`,
-        ),
         rawResult: error,
         cwd,
       };
+      if (this.opts.loose && /missing script:/i.test(error.stderr)) {
+        result.skipped = true;
+      } else {
+        result.error = new SmokerError(
+          `(runScript) Script "${script}" in package "${pkgName}" failed: ${error.message}`,
+        );
+      }
     }
 
-    if (!result.error && result.rawResult.failed) {
-      let message: string;
+    if (!result.error && !result.skipped && result.rawResult.failed) {
       if (
         result.rawResult.stderr &&
         /missing script:/i.test(result.rawResult.stderr)
       ) {
-        message = `(runScript) Script "${script}" in package "${pkgName}" failed; script not found`;
+        if (!this.opts.loose) {
+          result.error = new SmokerError(
+            `(runScript) Script "${script}" in package "${pkgName}" failed; script not found`,
+          );
+        } else {
+          result.skipped = true;
+        }
       } else {
+        let message: string;
         if (result.rawResult.exitCode) {
           message = `(runScript) Script "${script}" in package "${pkgName}" failed with exit code ${result.rawResult.exitCode}: ${result.rawResult.all}`;
         } else {
           message = `(runScript) Script "${script}" in package "${pkgName}" failed: ${result.rawResult.all}`;
         }
+        result.error = new SmokerError(message);
       }
-      result.error = new SmokerError(message);
     }
 
     if (result.error) {

@@ -121,7 +121,11 @@ export class Smoker extends createStrictEventEmitterClass() {
     scripts: string | string[],
     opts: SmokeOptions = {},
   ) {
-    const pms = await loadPackageManagers(opts.pm, {verbose: opts.verbose});
+    const {pm, verbose, loose, all} = opts;
+    const pms = await loadPackageManagers(pm, {
+      verbose,
+      loose: all && loose,
+    });
     return new Smoker(scripts, pms, opts);
   }
 
