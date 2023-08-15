@@ -1,0 +1,743 @@
+{
+  "resources": {
+    "chalk": {
+      "packages": {
+        "chalk>ansi-styles": true,
+        "chalk>supports-color": true
+      }
+    },
+    "chalk>ansi-styles": {
+      "packages": {
+        "chalk>ansi-styles>color-convert": true
+      }
+    },
+    "chalk>ansi-styles>color-convert": {
+      "packages": {
+        "chalk>ansi-styles>color-convert>color-name": true
+      }
+    },
+    "chalk>supports-color": {
+      "builtin": {
+        "os.release": true,
+        "tty.isatty": true
+      },
+      "globals": {
+        "process.env": true,
+        "process.platform": true
+      },
+      "packages": {
+        "chalk>supports-color>has-flag": true
+      }
+    },
+    "chalk>supports-color>has-flag": {
+      "globals": {
+        "process.argv": true
+      }
+    },
+    "debug": {
+      "builtin": {
+        "tty.isatty": true,
+        "util.deprecate": true,
+        "util.format": true,
+        "util.inspect": true
+      },
+      "globals": {
+        "console": true,
+        "document": true,
+        "localStorage": true,
+        "navigator": true,
+        "process": true
+      },
+      "packages": {
+        "chalk>supports-color": true,
+        "debug>ms": true
+      }
+    },
+    "eslint-plugin-import>has": {
+      "packages": {
+        "eslint-plugin-import>has>function-bind": true
+      }
+    },
+    "eslint-plugin-n>is-core-module": {
+      "globals": {
+        "process.versions": true
+      },
+      "packages": {
+        "eslint-plugin-import>has": true
+      }
+    },
+    "execa": {
+      "builtin": {
+        "child_process.ChildProcess": true,
+        "child_process.spawn": true,
+        "child_process.spawnSync": true,
+        "os.constants.signals.SIGTERM": true,
+        "path.basename": true
+      },
+      "globals": {
+        "Buffer.isBuffer": true,
+        "clearTimeout": true,
+        "process.cwd": true,
+        "process.env": true,
+        "process.execArgv.filter": true,
+        "process.execPath": true,
+        "process.platform": true,
+        "setTimeout": true
+      },
+      "packages": {
+        "execa>cross-spawn": true,
+        "execa>get-stream": true,
+        "execa>human-signals": true,
+        "execa>is-stream": true,
+        "execa>merge-stream": true,
+        "execa>npm-run-path": true,
+        "execa>onetime": true,
+        "execa>signal-exit": true,
+        "execa>strip-final-newline": true
+      }
+    },
+    "execa>cross-spawn": {
+      "builtin": {
+        "child_process.spawn": true,
+        "child_process.spawnSync": true,
+        "fs.closeSync": true,
+        "fs.openSync": true,
+        "fs.readSync": true,
+        "path.delimiter": true,
+        "path.normalize": true,
+        "path.resolve": true
+      },
+      "globals": {
+        "Buffer.alloc": true,
+        "process.chdir": true,
+        "process.cwd": true,
+        "process.env": true,
+        "process.platform": true
+      },
+      "packages": {
+        "execa>cross-spawn>path-key": true,
+        "execa>cross-spawn>shebang-command": true,
+        "execa>cross-spawn>which": true
+      }
+    },
+    "execa>cross-spawn>path-key": {
+      "globals": {
+        "process.env": true,
+        "process.platform": true
+      }
+    },
+    "execa>cross-spawn>shebang-command": {
+      "packages": {
+        "execa>cross-spawn>shebang-command>shebang-regex": true
+      }
+    },
+    "execa>cross-spawn>which": {
+      "builtin": {
+        "path.join": true
+      },
+      "globals": {
+        "process.cwd": true,
+        "process.env.OSTYPE": true,
+        "process.env.PATH": true,
+        "process.env.PATHEXT": true,
+        "process.platform": true
+      },
+      "packages": {
+        "which>isexe": true
+      }
+    },
+    "execa>get-stream": {
+      "builtin": {
+        "buffer.constants.MAX_LENGTH": true,
+        "stream.PassThrough": true,
+        "stream.pipeline": true,
+        "util.promisify": true
+      },
+      "globals": {
+        "Buffer.concat": true
+      }
+    },
+    "execa>human-signals": {
+      "builtin": {
+        "os.constants": true
+      }
+    },
+    "execa>merge-stream": {
+      "builtin": {
+        "stream.PassThrough": true
+      }
+    },
+    "execa>npm-run-path": {
+      "builtin": {
+        "path.delimiter": true,
+        "path.join": true,
+        "path.resolve": true
+      },
+      "globals": {
+        "process.cwd": true,
+        "process.env": true,
+        "process.execPath": true
+      },
+      "packages": {
+        "execa>cross-spawn>path-key": true
+      }
+    },
+    "execa>onetime": {
+      "packages": {
+        "execa>onetime>mimic-fn": true
+      }
+    },
+    "execa>signal-exit": {
+      "builtin": {
+        "assert.equal": true,
+        "events": true
+      },
+      "globals": {
+        "process": true
+      }
+    },
+    "lavamoat>@babel/code-frame": {
+      "globals": {
+        "console.warn": true,
+        "process.emitWarning": true
+      },
+      "packages": {
+        "lavamoat>@babel/code-frame>chalk": true,
+        "lavamoat>@babel/highlight": true
+      }
+    },
+    "lavamoat>@babel/code-frame>chalk": {
+      "globals": {
+        "process.env.TERM": true,
+        "process.platform": true
+      },
+      "packages": {
+        "lavamoat>@babel/code-frame>chalk>ansi-styles": true,
+        "lavamoat>@babel/code-frame>chalk>escape-string-regexp": true,
+        "lavamoat>@babel/code-frame>chalk>supports-color": true
+      }
+    },
+    "lavamoat>@babel/code-frame>chalk>ansi-styles": {
+      "packages": {
+        "lavamoat>@babel/code-frame>chalk>ansi-styles>color-convert": true
+      }
+    },
+    "lavamoat>@babel/code-frame>chalk>ansi-styles>color-convert": {
+      "packages": {
+        "lavamoat>@babel/code-frame>chalk>ansi-styles>color-convert>color-name": true
+      }
+    },
+    "lavamoat>@babel/code-frame>chalk>supports-color": {
+      "builtin": {
+        "os.release": true
+      },
+      "globals": {
+        "process.env": true,
+        "process.platform": true,
+        "process.stderr": true,
+        "process.stdout": true,
+        "process.versions.node.split": true
+      },
+      "packages": {
+        "lavamoat>@babel/code-frame>chalk>supports-color>has-flag": true
+      }
+    },
+    "lavamoat>@babel/code-frame>chalk>supports-color>has-flag": {
+      "globals": {
+        "process.argv": true
+      }
+    },
+    "lavamoat>@babel/highlight": {
+      "packages": {
+        "lavamoat>@babel/highlight>@babel/helper-validator-identifier": true,
+        "lavamoat>@babel/highlight>chalk": true,
+        "lavamoat>@babel/highlight>js-tokens": true
+      }
+    },
+    "lavamoat>@babel/highlight>chalk": {
+      "globals": {
+        "process.env.TERM": true,
+        "process.platform": true
+      },
+      "packages": {
+        "lavamoat>@babel/highlight>chalk>ansi-styles": true,
+        "lavamoat>@babel/highlight>chalk>escape-string-regexp": true,
+        "lavamoat>@babel/highlight>chalk>supports-color": true
+      }
+    },
+    "lavamoat>@babel/highlight>chalk>ansi-styles": {
+      "packages": {
+        "lavamoat>@babel/highlight>chalk>ansi-styles>color-convert": true
+      }
+    },
+    "lavamoat>@babel/highlight>chalk>ansi-styles>color-convert": {
+      "packages": {
+        "lavamoat>@babel/highlight>chalk>ansi-styles>color-convert>color-name": true
+      }
+    },
+    "lavamoat>@babel/highlight>chalk>supports-color": {
+      "builtin": {
+        "os.release": true
+      },
+      "globals": {
+        "process.env": true,
+        "process.platform": true,
+        "process.stderr": true,
+        "process.stdout": true,
+        "process.versions.node.split": true
+      },
+      "packages": {
+        "lavamoat>@babel/highlight>chalk>supports-color>has-flag": true
+      }
+    },
+    "lavamoat>@babel/highlight>chalk>supports-color>has-flag": {
+      "globals": {
+        "process.argv": true
+      }
+    },
+    "lavamoat>resolve": {
+      "builtin": {
+        "fs.readFile": true,
+        "fs.readFileSync": true,
+        "fs.realpath": true,
+        "fs.realpathSync": true,
+        "fs.stat": true,
+        "fs.statSync": true,
+        "os.homedir": true,
+        "path.dirname": true,
+        "path.join": true,
+        "path.parse": true,
+        "path.relative": true,
+        "path.resolve": true
+      },
+      "globals": {
+        "process.env.HOME": true,
+        "process.env.HOMEDRIVE": true,
+        "process.env.HOMEPATH": true,
+        "process.env.LNAME": true,
+        "process.env.LOGNAME": true,
+        "process.env.USER": true,
+        "process.env.USERNAME": true,
+        "process.env.USERPROFILE": true,
+        "process.getuid": true,
+        "process.nextTick": true,
+        "process.platform": true
+      },
+      "packages": {
+        "eslint-plugin-n>is-core-module": true,
+        "rewiremock>path-parse": true
+      }
+    },
+    "lilconfig": {
+      "builtin": {
+        "fs.accessSync": true,
+        "fs.promises.access": true,
+        "fs.promises.readFile": true,
+        "fs.readFileSync": true,
+        "os.homedir": true,
+        "path.extname": true,
+        "path.join": true,
+        "path.parse": true,
+        "path.resolve": true,
+        "path.sep": true
+      },
+      "globals": {
+        "process.cwd": true
+      },
+      "packages": {
+        "$root$": true
+      }
+    },
+    "mocha>find-up>path-exists": {
+      "builtin": {
+        "fs.access": true,
+        "fs.accessSync": true,
+        "util.promisify": true
+      }
+    },
+    "npm-run-all>read-pkg>normalize-package-data>validate-npm-package-license": {
+      "packages": {
+        "npm-run-all>read-pkg>normalize-package-data>validate-npm-package-license>spdx-correct": true,
+        "npm-run-all>read-pkg>normalize-package-data>validate-npm-package-license>spdx-expression-parse": true
+      }
+    },
+    "npm-run-all>read-pkg>normalize-package-data>validate-npm-package-license>spdx-correct": {
+      "packages": {
+        "npm-run-all>read-pkg>normalize-package-data>validate-npm-package-license>spdx-correct>spdx-license-ids": true,
+        "npm-run-all>read-pkg>normalize-package-data>validate-npm-package-license>spdx-expression-parse": true
+      }
+    },
+    "npm-run-all>read-pkg>normalize-package-data>validate-npm-package-license>spdx-expression-parse": {
+      "packages": {
+        "npm-run-all>read-pkg>normalize-package-data>validate-npm-package-license>spdx-correct>spdx-license-ids": true,
+        "npm-run-all>read-pkg>normalize-package-data>validate-npm-package-license>spdx-expression-parse>spdx-exceptions": true
+      }
+    },
+    "ora": {
+      "builtin": {
+        "readline.createInterface": true
+      },
+      "globals": {
+        "clearInterval": true,
+        "process.emit": true,
+        "process.kill": true,
+        "process.listenerCount": true,
+        "process.pid": true,
+        "process.platform": true,
+        "process.stderr": true,
+        "process.stdin": true,
+        "process.stdout": true,
+        "setInterval": true
+      },
+      "packages": {
+        "chalk": true,
+        "ora>bl": true,
+        "ora>cli-cursor": true,
+        "ora>cli-spinners": true,
+        "ora>is-interactive": true,
+        "ora>is-unicode-supported": true,
+        "ora>log-symbols": true,
+        "ora>strip-ansi": true,
+        "ora>wcwidth": true
+      }
+    },
+    "ora>bl": {
+      "builtin": {
+        "buffer.Buffer.alloc": true,
+        "buffer.Buffer.allocUnsafe": true,
+        "buffer.Buffer.concat": true,
+        "buffer.Buffer.from": true,
+        "buffer.Buffer.isBuffer": true
+      },
+      "packages": {
+        "ora>bl>inherits": true,
+        "ora>bl>readable-stream": true
+      }
+    },
+    "ora>bl>inherits": {
+      "builtin": {
+        "util.inherits": true
+      }
+    },
+    "ora>bl>readable-stream": {
+      "builtin": {
+        "buffer.Buffer": true,
+        "events.EventEmitter": true,
+        "stream": true,
+        "util": true
+      },
+      "globals": {
+        "process.env.READABLE_STREAM": true,
+        "process.nextTick": true,
+        "process.stderr": true,
+        "process.stdout": true
+      },
+      "packages": {
+        "ora>bl>inherits": true,
+        "ora>bl>readable-stream>util-deprecate": true,
+        "rewiremock>node-libs-browser>string_decoder": true
+      }
+    },
+    "ora>bl>readable-stream>util-deprecate": {
+      "builtin": {
+        "util.deprecate": true
+      }
+    },
+    "ora>cli-cursor": {
+      "globals": {
+        "process.stderr": true
+      },
+      "packages": {
+        "ora>cli-cursor>restore-cursor": true
+      }
+    },
+    "ora>cli-cursor>restore-cursor": {
+      "globals": {
+        "process.stderr.write": true
+      },
+      "packages": {
+        "execa>onetime": true,
+        "execa>signal-exit": true
+      }
+    },
+    "ora>is-interactive": {
+      "globals": {
+        "process.env": true,
+        "process.stdout": true
+      }
+    },
+    "ora>is-unicode-supported": {
+      "globals": {
+        "process.env.CI": true,
+        "process.env.TERM": true,
+        "process.env.TERM_PROGRAM": true,
+        "process.env.WT_SESSION": true,
+        "process.platform": true
+      }
+    },
+    "ora>log-symbols": {
+      "packages": {
+        "chalk": true,
+        "ora>is-unicode-supported": true
+      }
+    },
+    "ora>strip-ansi": {
+      "packages": {
+        "ora>strip-ansi>ansi-regex": true
+      }
+    },
+    "ora>wcwidth": {
+      "packages": {
+        "ora>wcwidth>defaults": true
+      }
+    },
+    "ora>wcwidth>defaults": {
+      "packages": {
+        "ora>wcwidth>defaults>clone": true
+      }
+    },
+    "ora>wcwidth>defaults>clone": {
+      "globals": {
+        "Buffer": true
+      }
+    },
+    "pluralize": {
+      "globals": {
+        "define": true
+      }
+    },
+    "read-pkg-up": {
+      "builtin": {
+        "path.dirname": true
+      },
+      "packages": {
+        "read-pkg-up>find-up": true,
+        "read-pkg-up>read-pkg": true
+      }
+    },
+    "read-pkg-up>find-up": {
+      "builtin": {
+        "path.dirname": true,
+        "path.parse": true,
+        "path.resolve": true
+      },
+      "packages": {
+        "mocha>find-up>path-exists": true,
+        "read-pkg-up>find-up>locate-path": true
+      }
+    },
+    "read-pkg-up>find-up>locate-path": {
+      "builtin": {
+        "fs.lstat": true,
+        "fs.lstatSync": true,
+        "fs.stat": true,
+        "fs.statSync": true,
+        "path.resolve": true,
+        "util.promisify": true
+      },
+      "globals": {
+        "process.cwd": true
+      },
+      "packages": {
+        "read-pkg-up>find-up>locate-path>p-locate": true
+      }
+    },
+    "read-pkg-up>find-up>locate-path>p-locate": {
+      "packages": {
+        "read-pkg-up>find-up>locate-path>p-locate>p-limit": true
+      }
+    },
+    "read-pkg-up>find-up>locate-path>p-locate>p-limit": {
+      "packages": {
+        "read-pkg-up>find-up>locate-path>p-locate>p-limit>p-try": true
+      }
+    },
+    "read-pkg-up>read-pkg": {
+      "builtin": {
+        "fs.readFile": true,
+        "fs.readFileSync": true,
+        "path.resolve": true,
+        "util.promisify": true
+      },
+      "globals": {
+        "process.cwd": true
+      },
+      "packages": {
+        "read-pkg-up>read-pkg>normalize-package-data": true,
+        "read-pkg-up>read-pkg>parse-json": true
+      }
+    },
+    "read-pkg-up>read-pkg>normalize-package-data": {
+      "builtin": {
+        "url.parse": true,
+        "util.format": true
+      },
+      "packages": {
+        "lavamoat>resolve": true,
+        "npm-run-all>read-pkg>normalize-package-data>validate-npm-package-license": true,
+        "read-pkg-up>read-pkg>normalize-package-data>hosted-git-info": true,
+        "read-pkg-up>read-pkg>normalize-package-data>semver": true
+      }
+    },
+    "read-pkg-up>read-pkg>normalize-package-data>hosted-git-info": {
+      "builtin": {
+        "url.URL": true,
+        "url.parse": true
+      }
+    },
+    "read-pkg-up>read-pkg>normalize-package-data>semver": {
+      "globals": {
+        "console": true,
+        "process": true
+      }
+    },
+    "read-pkg-up>read-pkg>parse-json": {
+      "packages": {
+        "lavamoat>@babel/code-frame": true,
+        "read-pkg-up>read-pkg>parse-json>error-ex": true,
+        "read-pkg-up>read-pkg>parse-json>json-parse-even-better-errors": true,
+        "read-pkg-up>read-pkg>parse-json>lines-and-columns": true
+      }
+    },
+    "read-pkg-up>read-pkg>parse-json>error-ex": {
+      "builtin": {
+        "util.inherits": true
+      },
+      "packages": {
+        "read-pkg-up>read-pkg>parse-json>error-ex>is-arrayish": true
+      }
+    },
+    "read-pkg-up>read-pkg>parse-json>json-parse-even-better-errors": {
+      "globals": {
+        "Buffer.isBuffer": true
+      }
+    },
+    "rewiremock>node-libs-browser>string_decoder": {
+      "packages": {
+        "rewiremock>node-libs-browser>string_decoder>safe-buffer": true
+      }
+    },
+    "rewiremock>node-libs-browser>string_decoder>safe-buffer": {
+      "builtin": {
+        "buffer": true
+      }
+    },
+    "rewiremock>path-parse": {
+      "globals": {
+        "process.platform": true
+      }
+    },
+    "semver": {
+      "globals": {
+        "console.error": true,
+        "process": true
+      },
+      "packages": {
+        "semver>lru-cache": true
+      }
+    },
+    "semver>lru-cache": {
+      "packages": {
+        "semver>lru-cache>yallist": true
+      }
+    },
+    "which>isexe": {
+      "builtin": {
+        "fs": true
+      },
+      "globals": {
+        "TESTING_WINDOWS": true,
+        "process.env.PATHEXT": true,
+        "process.getgid": true,
+        "process.getuid": true,
+        "process.platform": true
+      }
+    },
+    "yargs": {
+      "builtin": {
+        "assert.notStrictEqual": true,
+        "assert.strictEqual": true,
+        "fs.readFileSync": true,
+        "path": true,
+        "util.inspect": true
+      },
+      "globals": {
+        "__dirname": true,
+        "console.error": true,
+        "console.log": true,
+        "console.warn": true,
+        "process": true
+      },
+      "packages": {
+        "yargs>cliui": true,
+        "yargs>escalade": true,
+        "yargs>get-caller-file": true,
+        "yargs>require-directory": true,
+        "yargs>string-width": true,
+        "yargs>y18n": true,
+        "yargs>yargs-parser": true
+      }
+    },
+    "yargs>cliui": {
+      "globals": {
+        "process": true
+      },
+      "packages": {
+        "ora>strip-ansi": true,
+        "yargs>cliui>wrap-ansi": true,
+        "yargs>string-width": true
+      }
+    },
+    "yargs>cliui>wrap-ansi": {
+      "packages": {
+        "chalk>ansi-styles": true,
+        "ora>strip-ansi": true,
+        "yargs>string-width": true
+      }
+    },
+    "yargs>escalade": {
+      "builtin": {
+        "fs.readdirSync": true,
+        "fs.statSync": true,
+        "path.dirname": true,
+        "path.resolve": true
+      }
+    },
+    "yargs>require-directory": {
+      "builtin": {
+        "fs.readdirSync": true,
+        "fs.statSync": true,
+        "path.dirname": true,
+        "path.join": true,
+        "path.resolve": true
+      }
+    },
+    "yargs>string-width": {
+      "packages": {
+        "ora>strip-ansi": true,
+        "yargs>string-width>emoji-regex": true,
+        "yargs>string-width>is-fullwidth-code-point": true
+      }
+    },
+    "yargs>y18n": {
+      "builtin": {
+        "fs.readFileSync": true,
+        "fs.statSync": true,
+        "fs.writeFile": true,
+        "path.resolve": true,
+        "util.format": true
+      }
+    },
+    "yargs>yargs-parser": {
+      "builtin": {
+        "fs.readFileSync": true,
+        "path.normalize": true,
+        "path.resolve": true,
+        "util.format": true
+      },
+      "globals": {
+        "process": true
+      }
+    }
+  }
+}

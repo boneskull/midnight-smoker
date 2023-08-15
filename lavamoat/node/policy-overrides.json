@@ -1,0 +1,9 @@
+{
+  "resources": {
+    "lilconfig": {
+      "packages": {
+        "$root$": true
+      }
+    }
+  }
+}

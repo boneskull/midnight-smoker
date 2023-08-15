@@ -33,3 +33,6 @@ rules:
   '@typescript-eslint/no-explicit-any': 'off'
   'no-useless-constructor': 'off'
   'lines-between-class-members': 'off'
+
+globals:
+  'lockdown': false
