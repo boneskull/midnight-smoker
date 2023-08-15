@@ -60,9 +60,10 @@ Behavior:
   --bail          When running scripts, halt on first error            [boolean]
   --include-root  Include the workspace root; must provide '--all'     [boolean]
   --json          Output JSON only                                     [boolean]
-  --workspace     Run script in a specific workspace or workspaces       [array]
   --pm            Run script(s) with a specific package manager;
                   <npm|yarn|pnpm>[@version]      [array] [default: "npm@latest"]
+  --loose         Ignore missing scripts (used with --all)             [boolean]
+  --workspace     Run script in a specific workspace or workspaces       [array]
 
 Options:
   --version  Show version number                                       [boolean]
@@ -120,7 +121,6 @@ exports[
     {
       "pkgName": "fail",
       "script": "smoke",
-      "error": {},
       "rawResult": {
         "shortMessage": "Command failed with exit code 1: <path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> run smoke",
         "command": "<path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> run smoke",
@@ -133,7 +133,8 @@ exports[
         "isCanceled": false,
         "killed": false
       },
-      "cwd": "<cwd>"
+      "cwd": "<cwd>",
+      "error": {}
     }
   ],
   "manifest": {

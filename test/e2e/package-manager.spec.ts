@@ -5,12 +5,12 @@ import {readPackageJson} from '../../src/util';
 
 const expect = unexpected.clone();
 
-function testInCwd(cwd: string) {
+function createCommandTest(cwd: string, extraArgs: string[] = []) {
   return (requested: string, actual?: RegExp) => {
     describe(`requested: ${requested}`, function () {
       it('should use a matching package manager', async function () {
         const {stdout} = await execSmoker(
-          ['smoke', `--pm=${requested}`, '--json', '--linger'],
+          ['smoke', `--pm=${requested}`, '--json', ...extraArgs],
           {
             cwd,
           },
@@ -23,6 +23,23 @@ function testInCwd(cwd: string) {
               : expect.it('to contain', requested),
           },
         });
+      });
+    });
+  };
+}
+
+function createBehaviorTest(cwd: string, extraArgs: string[] = []) {
+  return (requested: string, actual: any) => {
+    describe(`requested: ${requested}`, function () {
+      it('should exhibit the expected behavior', async function () {
+        const {stdout} = await execSmoker(
+          ['smoke', `--pm=${requested}`, '--json', ...extraArgs],
+          {
+            cwd,
+          },
+        );
+        const {results} = JSON.parse(fixupOutput(stdout, false));
+        expect(results, 'to satisfy', actual);
       });
     });
   };
@@ -57,36 +74,97 @@ describe('midnight-smoker', function () {
         });
 
         describe('npm', function () {
-          const test = testInCwd(
+          const testHappyPath = createCommandTest(
             path.join(__dirname, 'fixture', 'single-script'),
           );
 
-          test('npm@7', /npm@7\.\d+\.\d+/);
-          test('npm@7.24.0');
-          test('npm@latest-7', /npm@7\.\d+\.\d+/);
-          test('npm@^7.0.0', /npm@7\.\d+\.\d+/);
-          test('npm@8', /npm@8\.\d+\.\d+/);
-          test('npm@8.10.0');
-          test('npm@^8.0.0', /npm@8\.\d+\.\d+/);
-          test('npm@9', /npm@9\.\d+\.\d+/);
-          test('npm@9.8.1');
-          test('npm@^9.0.0', /npm@9\.\d+\.\d+/);
-          test('npm@next-10', /npm@10\.\d+\.\d+/);
+          const happyMatrix = [
+            ['npm@7', /npm@7\.\d+\.\d+/],
+            ['npm@7.24.0'],
+            ['npm@latest-7', /npm@7\.\d+\.\d+/],
+            ['npm@^7.0.0', /npm@7\.\d+\.\d+/],
+            ['npm@8', /npm@8\.\d+\.\d+/],
+            ['npm@8.10.0'],
+            ['npm@^8.0.0', /npm@8\.\d+\.\d+/],
+            ['npm@9', /npm@9\.\d+\.\d+/],
+            ['npm@9.8.1'],
+            ['npm@^9.0.0', /npm@9\.\d+\.\d+/],
+            ['npm@next-10', /npm@10\.\d+\.\d+/],
+          ] as const;
+
+          for (const [requested, actual] of happyMatrix) {
+            testHappyPath(requested, actual);
+          }
+
+          describe('behavior', function () {
+            const looseMatrix = ['npm@7', 'npm@9'] as const;
+
+            const testLoose = createBehaviorTest(
+              path.join(__dirname, 'fixture', 'loose'),
+              ['--all', '--loose'],
+            );
+
+            describe('--loose', function () {
+              for (const requested of looseMatrix) {
+                testLoose(
+                  requested,
+                  expect.it('to have an item satisfying', {skipped: true}),
+                );
+              }
+            });
+          });
         });
 
         describe('yarn', function () {
-          const test = testInCwd(
+          const testHappyPath = createCommandTest(
             path.join(__dirname, 'fixture', 'single-script'),
           );
 
-          test('yarn@1', /yarn@1\.\d+\.\d+/);
-          test('yarn@1.22.19');
-          test('yarn@latest', /yarn@1\.\d+\.\d+/);
-          test('yarn@legacy', /yarn@1\.21\.1/);
-          test('yarn@^1.0.0', /yarn@1\.\d+\.\d+/);
-          test('yarn@2', /yarn@2\.\d+\.\d+/);
-          test('yarn@berry', /yarn@2\.\d+\.\d+/);
-          test('yarn@3', /yarn@3\.\d+\.\d+/);
+          const happyMatrix = [
+            ['yarn@1', /yarn@1\.\d+\.\d+/],
+            ['yarn@1.22.19'],
+            ['yarn@latest', /yarn@1\.\d+\.\d+/],
+            ['yarn@legacy', /yarn@1\.21\.1/],
+            ['yarn@^1.0.0', /yarn@1\.\d+\.\d+/],
+            ['yarn@2', /yarn@2\.\d+\.\d+/],
+            ['yarn@berry', /yarn@2\.\d+\.\d+/],
+            ['yarn@3', /yarn@3\.\d+\.\d+/],
+          ] as const;
+
+          for (const [requested, actual] of happyMatrix) {
+            testHappyPath(requested, actual);
+          }
+
+          describe('behavior', function () {
+            const looseMatrix = ['yarn@1', 'yarn@2', 'yarn@3'] as const;
+
+            const testLoose = createBehaviorTest(
+              path.join(__dirname, 'fixture', 'loose'),
+              ['--all', '--loose'],
+            );
+
+            describe('--loose', function () {
+              for (const requested of looseMatrix) {
+                testLoose(
+                  requested,
+                  expect.it('to have an item satisfying', {skipped: true}),
+                );
+              }
+            });
+          });
+        });
+
+        describe('pnpm', function () {
+          it('should fail (for now)', async function () {
+            const cwd = path.join(__dirname, 'fixture', 'single-script');
+            await expect(
+              execSmoker(['smoke', `--pm=pnpm`, '--json'], {
+                cwd,
+              }),
+              'to be rejected with error satisfying',
+              /pnpm is currently unsupported/,
+            );
+          });
         });
       });
     });

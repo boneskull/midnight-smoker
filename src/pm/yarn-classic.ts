@@ -149,7 +149,11 @@ export class YarnClassic implements PackageManager {
     if (shouldUseWorkspaces) {
       let workspaceInfo: Record<string, WorkspaceInfo>;
       try {
-        const {stdout} = await this.executor.exec(['workspaces', 'info']);
+        let {stdout} = await this.executor.exec(['workspaces', 'info']);
+        const lines = stdout.split(/\r?\n/);
+        lines.shift();
+        lines.pop();
+        stdout = lines.join('\n');
         workspaceInfo = JSON.parse(stdout);
       } catch (err) {
         throw new SmokerError(`(pack) Unable to read workspace information`);
@@ -251,15 +255,19 @@ export class YarnClassic implements PackageManager {
       result = {
         pkgName,
         script,
-        error: new SmokerError(
-          `(runScript) Script "${script}" in package "${pkgName}" failed: ${error.message}`,
-        ),
         rawResult: error,
         cwd,
       };
+      if (this.opts.loose && /Command ".+?" not found/i.test(error.stderr)) {
+        result.skipped = true;
+      } else {
+        result.error = new SmokerError(
+          `(runScript) Script "${script}" in package "${pkgName}" failed: ${error.message}`,
+        );
+      }
     }
 
-    if (!result.error && result.rawResult.failed) {
+    if (!result.error && !result.skipped && result.rawResult.failed) {
       let message: string;
       if (
         result.rawResult.stderr &&

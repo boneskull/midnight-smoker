@@ -13,6 +13,7 @@ export interface RunScriptResult {
   error?: SmokerError;
   rawResult: RunScriptValue | ExecaError;
   cwd: string;
+  skipped?: boolean;
 }
 
 /**
@@ -95,6 +96,8 @@ export interface SmokeOptions {
   add?: string[];
 
   pm?: string[];
+
+  loose?: boolean;
 }
 
 export type SmokerOptions = Omit<SmokeOptions, 'verbose'>;

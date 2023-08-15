@@ -7,6 +7,7 @@ import {SmokerConfig, readConfig} from './config';
 import {Events, type SmokerEvents} from './events';
 import {Smoker} from './smoker';
 import {normalizeStringArray, readPackageJson} from './util';
+import {SmokerError} from './error';
 
 const BEHAVIOR_GROUP = 'Behavior:';
 
@@ -122,12 +123,6 @@ async function main(args: string[]): Promise<void> {
                 hidden: true,
                 type: 'boolean',
               },
-              workspace: {
-                describe: 'Run script in a specific workspace or workspaces',
-                group: BEHAVIOR_GROUP,
-                default: config.workspace,
-                ...arrayOptConfig,
-              },
               pm: {
                 describe:
                   'Run script(s) with a specific package manager; <npm|yarn|pnpm>[@version]',
@@ -135,6 +130,25 @@ async function main(args: string[]): Promise<void> {
                 default: config.pm ?? 'npm@latest',
                 ...arrayOptConfig,
               },
+              loose: {
+                describe: 'Ignore missing scripts (used with --all)',
+                type: 'boolean',
+                default: config.loose,
+                group: BEHAVIOR_GROUP,
+                implies: 'all',
+              },
+              workspace: {
+                describe: 'Run script in a specific workspace or workspaces',
+                group: BEHAVIOR_GROUP,
+                default: config.workspace,
+                ...arrayOptConfig,
+              },
+            })
+            .check((argv) => {
+              if (argv.pm?.some((pm) => pm.startsWith('pnpm'))) {
+                throw new SmokerError('pnpm is currently unsupported');
+              }
+              return true;
             });
         },
         async (argv) => {
