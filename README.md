@@ -60,7 +60,7 @@ Add two scripts to your `package.json`. The first script will run `smoker <secon
 }
 ```
 
-### For Repos Using npm Workspaces
+### For Repos Using Workspaces
 
 Add a script to your **root** `package.json`:
 
@@ -81,6 +81,8 @@ The `--all` flag tells `midnight-smoker` to run the `smoke` script in all worksp
   }
 }
 ```
+
+If the `smoke` script should only exist in _some_ of those workspaces, then use `smoker --all --loose smoke`, and the missing scripts will be conveniently ignored.
 
 ### Using Specific Package Managers
 
