@@ -1,0 +1,7 @@
+{
+  "name": "no-missing-pkg-files",
+  "version": "1.0.0",
+  "bin": {
+    "no-missing-pkg-files": "./bin/no-missing-pkg-files.js"
+  }
+}

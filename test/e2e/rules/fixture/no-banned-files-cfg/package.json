@@ -1,0 +1,9 @@
+{
+  "name": "no-banned-files",
+  "version": "1.0.0",
+  "smoker": {
+    "rules": {
+      "no-banned-files": [{"allow": "id_rsa", "deny": "anarchist-cookbook.txt"}, "error"]
+    }
+  }
+}

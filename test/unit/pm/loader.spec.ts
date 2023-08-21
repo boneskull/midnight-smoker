@@ -1,7 +1,7 @@
 import {parse} from 'semver';
 import rewiremock from 'rewiremock/node';
 import unexpected from 'unexpected';
-import type {initLoader as _initLoader} from '../../../src/pm/loader';
+import type {initPMLoader as _initPMLoader} from '../../../src/pm/pm-loader';
 import type {normalizeVersion as _normalizeVersion} from '../../../src/pm/version';
 import {createSandbox} from 'sinon';
 import {NullPm, nullPmModule} from '../mocks';
@@ -12,7 +12,7 @@ describe('midnight-smoker', function () {
   describe('package manager', function () {
     describe('loader', function () {
       let sandbox: sinon.SinonSandbox;
-      let initLoader: typeof _initLoader;
+      let initPMLoader: typeof _initPMLoader;
       let versionStub: {
         normalizeVersion: sinon.SinonStubbedMember<typeof _normalizeVersion>;
       };
@@ -23,8 +23,8 @@ describe('midnight-smoker', function () {
           normalizeVersion: sandbox.stub<[string, string?]>().resolvesArg(1),
         };
 
-        ({initLoader} = rewiremock.proxy(
-          () => require('../../../src/pm/loader'),
+        ({initPMLoader} = rewiremock.proxy(
+          () => require('../../../src/pm/pm-loader'),
           {
             '../../../src/pm/version': versionStub,
           },
@@ -37,14 +37,14 @@ describe('midnight-smoker', function () {
 
       describe('initLoader()', function () {
         it('should return a function', function () {
-          expect(initLoader(), 'to be a function');
+          expect(initPMLoader(), 'to be a function');
         });
 
         describe('loadPackageManagers()', function () {
-          let loadPackageManagers: ReturnType<typeof initLoader>;
+          let loadPackageManagers: ReturnType<typeof initPMLoader>;
 
           beforeEach(function () {
-            loadPackageManagers = initLoader([nullPmModule]);
+            loadPackageManagers = initPMLoader([nullPmModule]);
           });
 
           describe('when provided a version within the accepted range', function () {

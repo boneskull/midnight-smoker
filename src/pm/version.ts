@@ -1,17 +1,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {valid, validRange, maxSatisfying, type SemVer, parse} from 'semver';
-import {readPackageJson} from '../util';
-import type {ReadResult} from 'read-pkg-up';
 import {SmokerError} from '../error';
-
-async function findDataDir(): Promise<string> {
-  const {path: packagePath} = (await readPackageJson({
-    cwd: __dirname,
-  })) as ReadResult;
-  const root = path.dirname(packagePath);
-  return path.join(root, 'data');
-}
+import {findDataDir} from '../util';
 
 async function cachedRead<T = unknown>(filename: string): Promise<T> {
   if (cachedRead.cache.has(filename)) {

@@ -36,7 +36,7 @@
     "./src",
     "./dist",
     "./data",
-    "./scripts",
+    "./schema",
     "!**/*.tsbuildinfo"
   ],
   "scripts": {
@@ -51,16 +51,18 @@
     "lint:staged": "lint-staged",
     "husky-install": "husky install",
     "prepare": "run-p husky-install rebuild",
+    "preversion": "run-s update-schema",
     "rebuild": "run-s clean build",
     "smoke:ts": "ts-node -D ./src/cli.ts --version",
     "smoke:js": "node ./bin/smoker.js --version",
     "test": "run-s test:unit test:smoke",
     "test:ci": "run-s test:unit test:smoke test:e2e",
     "test:unit": "mocha \"test/unit/**/*.spec.ts\"",
-    "pretest:e2e": "run-s build",
+    "pretest:e2e": "run-s rebuild",
     "test:e2e": "mocha --timeout 20s --slow 10s \"test/e2e/**/*.spec.ts\"",
     "test:smoke": "node ./bin/smoker.js smoke:ts smoke:js --add ts-node --add @tsconfig/node16",
-    "test:update-snapshots": "cross-env SNAPSHOT_UPDATE=1 run-s test:e2e"
+    "test:update-snapshots": "cross-env SNAPSHOT_UPDATE=1 run-s test:e2e",
+    "update-schema": "ts-node ./scripts/generate-schema.ts && git add -A schema/midnight-smoker.schema.json"
   },
   "lint-staged": {
     "!(__snapshots__/)*.{js,ts}": [
@@ -86,6 +88,8 @@
     "corepack": "0.19.0",
     "debug": "4.3.4",
     "execa": "5.1.1",
+    "glob": "10.3.3",
+    "is-file-esm": "1.0.0",
     "lilconfig": "2.1.0",
     "ora": "5.4.1",
     "pluralize": "8.0.0",
@@ -94,13 +98,15 @@
     "source-map-support": "0.5.21",
     "strict-event-emitter-types": "2.0.0",
     "which": "3.0.1",
-    "yargs": "17.7.2"
+    "yargs": "17.7.2",
+    "zod": "3.22.1"
   },
   "devDependencies": {
     "@commitlint/cli": "17.7.1",
     "@commitlint/config-conventional": "17.7.0",
     "@tsconfig/node16": "16.1.1",
     "@types/debug": "4.1.8",
+    "@types/is-file-esm": "1.0.0",
     "@types/mocha": "10.0.1",
     "@types/node": "18.17.8",
     "@types/pluralize": "0.0.30",
@@ -131,7 +137,8 @@
     "typescript": "5.1.6",
     "unexpected": "13.2.1",
     "unexpected-eventemitter": "2.4.0",
-    "unexpected-sinon": "11.1.0"
+    "unexpected-sinon": "11.1.0",
+    "zod-to-json-schema": "3.21.4"
   },
   "engines": {
     "node": "^16.20.0 || ^18.0.0 || ^20.0.0",

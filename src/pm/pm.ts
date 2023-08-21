@@ -1,5 +1,6 @@
 import type {SemVer} from 'semver';
-import type {InstallManifest, RunManifest, RunScriptResult} from '../types';
+import type {InstallManifest, RunScriptResult} from '../types';
+import type {RunManifest} from '../';
 import type {CorepackExecutor} from './corepack';
 
 export interface InstallOpts {}
@@ -75,6 +76,11 @@ export interface PackageManager {
     opts?: RunScriptOpts,
   ): Promise<RunScriptResult>;
 }
+
+export type InstallResults = Map<
+  PackageManager,
+  [manifest: InstallManifest, result: InstallResult]
+>;
 
 /**
  * A function which returns an object implementing {@linkcode PackageManager}.

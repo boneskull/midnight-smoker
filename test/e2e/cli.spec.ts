@@ -1,4 +1,3 @@
-import {ExecaReturnValue} from 'execa';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import snapshot from 'snap-shot-it';
@@ -6,6 +5,7 @@ import unexpected from 'unexpected';
 import {readPackageJson} from '../../src/util';
 import assertions from '../assertions';
 import {execSmoker, fixupOutput} from './helpers';
+import type {RawRunScriptResult} from '../../src/types';
 
 const expect = unexpected.clone().use(assertions);
 
@@ -24,8 +24,10 @@ describe('midnight-smoker', function () {
     });
 
     describe('when run without arguments', function () {
-      it('should fail', async function () {
-        await expect(execSmoker([]), 'to be rejected');
+      const cwd = path.join(__dirname, 'fixture', 'single-script');
+
+      it('should not fail', async function () {
+        await expect(execSmoker([], {cwd}), 'to be fulfilled');
       });
     });
 
@@ -35,7 +37,7 @@ describe('midnight-smoker', function () {
 
         describe('when the script succeeds', function () {
           it('should produce expected output', async function () {
-            const {stderr} = await execSmoker(['smoke'], {cwd});
+            const {stderr} = await execSmoker(['smoke', '--no-checks'], {cwd});
             snapshot(fixupOutput(stderr));
           });
         });
@@ -43,15 +45,15 @@ describe('midnight-smoker', function () {
         describe('when the script fails', function () {
           const cwd = path.join(__dirname, 'fixture', 'failure');
 
-          let result: ExecaReturnValue;
+          let result: RawRunScriptResult;
 
           before(async function () {
             try {
-              await execSmoker(['smoke'], {
+              result = await execSmoker(['smoke', '--no-checks'], {
                 cwd,
               });
             } catch (e) {
-              result = e as ExecaReturnValue;
+              result = e as RawRunScriptResult;
             }
           });
 
@@ -70,7 +72,10 @@ describe('midnight-smoker', function () {
 
         describe('when the scripts succeed', function () {
           it('should produce expected output', async function () {
-            const {stderr} = await execSmoker(['smoke:a', 'smoke:b'], {cwd});
+            const {stderr} = await execSmoker(
+              ['smoke:a', 'smoke:b', '--no-checks'],
+              {cwd},
+            );
             snapshot(fixupOutput(stderr));
           });
         });
@@ -94,34 +99,70 @@ describe('midnight-smoker', function () {
       });
 
       describe('--json', function () {
+        describe('when run without other arguments', function () {
+          const cwd = path.join(__dirname, 'fixture', 'single-script');
+
+          it('should produce statistics for checks only', async function () {
+            const result = await execSmoker(['--json'], {cwd});
+            const {stats} = JSON.parse(fixupOutput(result.stdout, false));
+            expect(stats, 'to satisfy', {
+              totalPackages: 1,
+              totalPackageManagers: 1,
+              totalScripts: null,
+              failedScripts: null,
+              passedScripts: null,
+              totalChecks: expect.it('to be greater than', 0),
+              failedChecks: 0,
+              passedChecks: expect.it('to be greater than', 0),
+            });
+          });
+        });
+
         describe('when the script succeeds', function () {
           const cwd = path.join(__dirname, 'fixture', 'single-script');
 
-          let result: ExecaReturnValue;
+          let result: RawRunScriptResult;
 
           before(async function () {
-            result = await execSmoker(['smoke', '--json'], {cwd});
+            result = await execSmoker(['smoke', '--json'], {
+              cwd,
+            });
           });
 
           it('should produce JSON output', function () {
             expect(result, 'to output valid JSON');
           });
 
-          it('should produce expected output', async function () {
-            snapshot(fixupOutput(result.stdout));
+          it('should produce expected script output', async function () {
+            const {results} = JSON.parse(fixupOutput(result.stdout, false));
+            snapshot(results);
+          });
+
+          it('should produce statistics', async function () {
+            const {stats} = JSON.parse(result.stdout);
+            expect(stats, 'to satisfy', {
+              totalPackages: 1,
+              totalPackageManagers: 1,
+              totalScripts: 1,
+              failedScripts: 0,
+              passedScripts: 1,
+              totalChecks: expect.it('to be greater than', 0),
+              failedChecks: 0,
+              passedChecks: expect.it('to be greater than', 0),
+            });
           });
         });
 
         describe('when the script fails', function () {
           const cwd = path.join(__dirname, 'fixture', 'failure');
 
-          let result: ExecaReturnValue;
+          let result: RawRunScriptResult;
 
           before(async function () {
             try {
-              await execSmoker(['smoke', '--json'], {cwd});
+              await execSmoker(['smoke', '--json', '--no-checks'], {cwd});
             } catch (e) {
-              result = e as ExecaReturnValue;
+              result = e as RawRunScriptResult;
             }
           });
 
@@ -145,7 +186,7 @@ describe('midnight-smoker', function () {
 
         it('should add a package to the smoke test', async function () {
           const {stderr, failed} = await execSmoker(
-            ['smoke', '--add=cross-env', '--linger'],
+            ['smoke', '--add=cross-env', '--linger', '--no-checks'],
             {
               cwd,
             },

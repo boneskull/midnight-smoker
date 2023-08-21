@@ -1,0 +1,8 @@
+{
+  "name": "no-missing-exports-glob-ok",
+  "version": "1.0.0",
+  "exports": {
+    "./*.js": "./lib/*.js"
+  },
+  "type": "module"
+}

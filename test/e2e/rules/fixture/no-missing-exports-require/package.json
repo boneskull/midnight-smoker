@@ -1,0 +1,8 @@
+{
+  "name": "no-missing-exports-require",
+  "version": "1.0.0",
+  "exports": {
+    "require": "./index.js"
+  },
+  "type": "module"
+}

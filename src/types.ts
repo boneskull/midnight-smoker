@@ -1,17 +1,31 @@
-import type {ExecaReturnValue, ExecaError} from 'execa';
+import type {ExecaError, ExecaReturnValue} from 'execa';
 import type {SmokerError} from './error';
 import type {PackageManager} from './pm';
+import type {RawRuleConfig, CheckResults} from './rules';
 
-export type RunScriptValue = Pick<
+/**
+ * Properties of the result of running `execa` that we care about
+ */
+export type RawRunScriptProps =
+  | 'stdout'
+  | 'stderr'
+  | 'command'
+  | 'exitCode'
+  | 'failed'
+  | 'all';
+
+export type RawRunScriptResult = Pick<
   ExecaReturnValue<string>,
-  'stdout' | 'stderr' | 'command' | 'exitCode' | 'failed' | 'all'
+  RawRunScriptProps
 >;
+
+export type RawRunScriptError = Pick<ExecaError, RawRunScriptProps>;
 
 export interface RunScriptResult {
   pkgName: string;
   script: string;
   error?: SmokerError;
-  rawResult: RunScriptValue | ExecaError;
+  rawResult: RawRunScriptResult | RawRunScriptError;
   cwd: string;
   skipped?: boolean;
 }
@@ -35,6 +49,11 @@ export interface PackedPackage {
   pkgName: string;
   installPath: string;
   tarballFilepath: string;
+}
+
+export interface RunManifest {
+  packedPkg: PackedPackage;
+  script: string;
 }
 
 export interface InstallManifest {
@@ -95,56 +114,71 @@ export interface SmokeOptions {
    */
   add?: string[];
 
+  /**
+   * Package manager ids
+   */
   pm?: string[];
 
+  /**
+   * If `true`, ignore missing scripts (if `all` is `true`)
+   */
   loose?: boolean;
+
+  /**
+   * Raw (user-provided) rule configuration
+   */
+  rules?: RawRuleConfig;
+
+  /**
+   * If `true`, run checks
+   * @defaultValue true
+   */
+  checks?: boolean;
 }
 
 export type SmokerOptions = Omit<SmokeOptions, 'verbose'>;
 
-export interface InstallEventData {
-  uniquePkgs: string[];
-  packageManagers: string[];
-  manifests: InstallManifest[];
-
-  additionalDeps: string[];
-}
-
-export type PackOkEventData = InstallEventData;
-
-export interface RunManifest {
-  packedPkg: PackedPackage;
-  script: string;
-}
-
-export interface RunScriptsEventData {
-  manifest: Record<string, RunManifest[]>;
-  total: number;
-}
-
-export type RunScriptsBeginEventData = RunScriptsEventData;
-
-export interface RunScriptsEndEventData extends RunScriptsEventData {
-  executed: number;
-  results: RunScriptResult[];
-  failures: number;
-}
-
-export type RunScriptsOkEventData = RunScriptsEndEventData;
-
-export type RunScriptsFailedEventData = RunScriptsEndEventData;
-
-export interface RunScriptEventData {
-  script: string;
-  pkgName: string;
-  total: number;
-  current: number;
-}
-
-export interface RunScriptFailedEventData extends RunScriptEventData {
-  error: SmokerError;
-}
-
+/**
+ * Describes what tarballs to install where with what package manager
+ */
 export type PkgInstallManifest = Map<PackageManager, InstallManifest>;
 
+/**
+ * Describes what scripts to run where with what package manager
+ */
 export type PkgRunManifest = Map<PackageManager, Set<RunManifest>>;
+
+/**
+ * The result of running `Smoker.prototype.smoke()`
+ */
+export interface SmokeResults {
+  opts: SmokeOptions;
+  scripts: RunScriptResult[];
+  checks: CheckResults;
+}
+
+/**
+ * Stats gathered during the run
+ */
+export interface SmokerStats {
+  totalPackages: number | null;
+  totalPackageManagers: number | null;
+  totalScripts: number | null;
+  failedScripts: number | null;
+  passedScripts: number | null;
+  totalChecks: number | null;
+  failedChecks: number | null;
+  passedChecks: number | null;
+}
+
+export interface SmokerJsonResults {
+  results: SmokeResults;
+  stats: SmokerStats;
+}
+
+export interface SmokerJsonError {
+  error: string;
+  stats: SmokerStats;
+}
+
+export type SmokerJsonOutput = SmokerJsonResults | SmokerJsonError;

@@ -1,0 +1,330 @@
+{
+  "$ref": "#/definitions/midnight-smoker-config",
+  "definitions": {
+    "midnight-smoker-config": {
+      "type": "object",
+      "properties": {
+        "add": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Add an extra package to the list of packages to be installed."
+        },
+        "all": {
+          "type": "boolean",
+          "description": "Operate on all workspaces. The root workspace is omitted unless `includeRoot` is `true`."
+        },
+        "bail": {
+          "type": "boolean",
+          "description": "Fail on first script failure."
+        },
+        "includeRoot": {
+          "type": "boolean",
+          "description": "Operate on the root workspace. Only has an effect if `all` is `true`."
+        },
+        "json": {
+          "type": "boolean",
+          "description": "Output JSON only."
+        },
+        "linger": {
+          "type": "boolean",
+          "description": "Do not delete temp directories after completion."
+        },
+        "verbose": {
+          "type": "boolean",
+          "description": "Verbose logging."
+        },
+        "workspace": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "One or more workspaces to run scripts in."
+        },
+        "pm": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Package manager(s) to use."
+        },
+        "script": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Script(s) to run. Alias of `scripts`."
+        },
+        "scripts": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Script(s) to run. Alias of `script`."
+        },
+        "loose": {
+          "type": "boolean",
+          "description": "If `true`, fail if a workspace is missing a script."
+        },
+        "checks": {
+          "type": "boolean",
+          "description": "If `false`, run no builtin checks."
+        },
+        "rules": {
+          "type": "object",
+          "properties": {
+            "no-banned-files": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "off",
+                    "warn",
+                    "error"
+                  ],
+                  "description": "Severity of a rule. `off` disables the rule, `warn` will warn on violations, and `error` will error on violations.",
+                  "default": "error"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "allow": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "description": "Allow these banned files"
+                    },
+                    "deny": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "description": "Deny these additional files"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 1,
+                  "items": [
+                    {
+                      "$ref": "#/definitions/midnight-smoker-config/properties/rules/properties/no-banned-files/anyOf/1"
+                    }
+                  ]
+                },
+                {
+                  "type": "array",
+                  "minItems": 2,
+                  "maxItems": 2,
+                  "items": [
+                    {
+                      "$ref": "#/definitions/midnight-smoker-config/properties/rules/properties/no-banned-files/anyOf/1"
+                    },
+                    {
+                      "$ref": "#/definitions/midnight-smoker-config/properties/rules/properties/no-banned-files/anyOf/0"
+                    }
+                  ]
+                }
+              ]
+            },
+            "no-missing-pkg-files": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/midnight-smoker-config/properties/rules/properties/no-banned-files/anyOf/0",
+                  "default": "error",
+                  "description": "Severity of a rule. `off` disables the rule, `warn` will warn on violations, and `error` will error on violations."
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "bin": {
+                      "type": "boolean",
+                      "default": true,
+                      "description": "Check the \"bin\" field (if it exists)"
+                    },
+                    "fields": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "description": "Check files referenced by these additional top-level fields"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 1,
+                  "items": [
+                    {
+                      "$ref": "#/definitions/midnight-smoker-config/properties/rules/properties/no-missing-pkg-files/anyOf/1"
+                    }
+                  ]
+                },
+                {
+                  "type": "array",
+                  "minItems": 2,
+                  "maxItems": 2,
+                  "items": [
+                    {
+                      "$ref": "#/definitions/midnight-smoker-config/properties/rules/properties/no-missing-pkg-files/anyOf/1"
+                    },
+                    {
+                      "$ref": "#/definitions/midnight-smoker-config/properties/rules/properties/no-missing-pkg-files/anyOf/0"
+                    }
+                  ]
+                }
+              ]
+            },
+            "no-missing-entry-point": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/midnight-smoker-config/properties/rules/properties/no-banned-files/anyOf/0",
+                  "default": "error",
+                  "description": "Severity of a rule. `off` disables the rule, `warn` will warn on violations, and `error` will error on violations."
+                },
+                {
+                  "not": {}
+                },
+                {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 1,
+                  "items": [
+                    {
+                      "$ref": "#/definitions/midnight-smoker-config/properties/rules/properties/no-missing-entry-point/anyOf/1"
+                    }
+                  ]
+                },
+                {
+                  "type": "array",
+                  "minItems": 2,
+                  "maxItems": 2,
+                  "items": [
+                    {
+                      "$ref": "#/definitions/midnight-smoker-config/properties/rules/properties/no-missing-entry-point/anyOf/1"
+                    },
+                    {
+                      "$ref": "#/definitions/midnight-smoker-config/properties/rules/properties/no-missing-entry-point/anyOf/0"
+                    }
+                  ]
+                }
+              ]
+            },
+            "no-missing-exports": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/midnight-smoker-config/properties/rules/properties/no-banned-files/anyOf/0",
+                  "default": "error",
+                  "description": "Severity of a rule. `off` disables the rule, `warn` will warn on violations, and `error` will error on violations."
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "types": {
+                      "type": "boolean",
+                      "default": true,
+                      "description": "Assert a \"types\" conditional export matches a file with a .d.ts extension"
+                    },
+                    "require": {
+                      "type": "boolean",
+                      "default": true,
+                      "description": "Assert a \"require\" conditional export matches a CJS script"
+                    },
+                    "import": {
+                      "type": "boolean",
+                      "default": true,
+                      "description": "Assert an \"import\" conditional export matches a ESM module"
+                    },
+                    "order": {
+                      "type": "boolean",
+                      "default": true,
+                      "description": "Assert conditional export \"default\", if present, is the last export"
+                    },
+                    "glob": {
+                      "type": "boolean",
+                      "default": true,
+                      "description": "Allow glob patterns in subpath exports"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 1,
+                  "items": [
+                    {
+                      "$ref": "#/definitions/midnight-smoker-config/properties/rules/properties/no-missing-exports/anyOf/1"
+                    }
+                  ]
+                },
+                {
+                  "type": "array",
+                  "minItems": 2,
+                  "maxItems": 2,
+                  "items": [
+                    {
+                      "$ref": "#/definitions/midnight-smoker-config/properties/rules/properties/no-missing-exports/anyOf/1"
+                    },
+                    {
+                      "$ref": "#/definitions/midnight-smoker-config/properties/rules/properties/no-missing-exports/anyOf/0"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "description": "Rule configuration for checks"
+        }
+      },
+      "additionalProperties": false,
+      "description": "midnight-smoker configuration file schema"
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

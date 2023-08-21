@@ -1,0 +1,9 @@
+{
+  "name": "no-missing-exports-conditional",
+  "version": "1.0.0",
+  "exports": {
+    "require": "./index-missing.cjs",
+    "default": "./index.js"
+  },
+  "type": "module"
+}
