@@ -1,5 +1,17 @@
 # Changelog
 
+## [5.1.0](https://github.com/boneskull/midnight-smoker/compare/v5.0.0...v5.1.0) (2023-08-21)
+
+
+### Features
+
+* add --loose flag ([8a35799](https://github.com/boneskull/midnight-smoker/commit/8a35799192a8c40b5b3c6a6058df91dce57d6622)), closes [#257](https://github.com/boneskull/midnight-smoker/issues/257)
+
+
+### Bug Fixes
+
+* **yarn:** fix workspace-related problems ([8a35799](https://github.com/boneskull/midnight-smoker/commit/8a35799192a8c40b5b3c6a6058df91dce57d6622))
+
 ## [5.0.0](https://github.com/boneskull/midnight-smoker/compare/v4.0.0...v5.0.0) (2023-08-14)
 
 
