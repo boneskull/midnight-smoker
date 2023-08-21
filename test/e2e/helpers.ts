@@ -2,10 +2,11 @@
  * E2E test harness helpers
  * @module
  */
-import {node as execa, type ExecaReturnValue, type NodeOptions} from 'execa';
+import createDebug from 'debug';
+import {node as execa, type NodeOptions} from 'execa';
 import path from 'node:path';
 import {inspect} from 'node:util';
-import createDebug from 'debug';
+import type {RawRunScriptResult} from '../../src';
 
 const debug = createDebug('midnight-smoker:test:e2e');
 
@@ -21,7 +22,7 @@ export const CLI_PATH = path.join(CWD, 'bin', 'smoker.js');
 export async function execSmoker(
   args: string[],
   opts: NodeOptions = {},
-): Promise<ExecaReturnValue> {
+): Promise<RawRunScriptResult> {
   debug(`executing: ${CLI_PATH} ${args.join(' ')}`);
   return execa(CLI_PATH, args, {
     cwd: CWD,
@@ -62,7 +63,8 @@ export function fixupOutput(stdout: string, stripPmVersions = true) {
       /"tarballFilepath":\s+"[^"]+"/g,
       '"tarballFilepath": "<tarball.tgz>"',
     )
-    .replace(/"installPath":\s+"[^"]+"/g, '"installPath": "<some/path>"');
+    .replace(/"(install|pkg(Json)?)Path":\s+"[^"]+"/g, '"$1": "<some/path>"')
+    .replace(/\(.+?:\d+:\d+\)/g, '(<path/to/file>:<line>:<col>)');
 
   if (stripPmVersions) {
     result = result.replace(

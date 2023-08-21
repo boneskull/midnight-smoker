@@ -12,7 +12,7 @@ import {normalizeVersion} from './version';
 
 const debug = createDebugger('midnight-smoker:pm:loader');
 
-export function initLoader(builtinPms: PackageManagerModule[] = []) {
+export function initPMLoader(builtinPms: PackageManagerModule[] = []) {
   return async function loadPackageManagers(
     pms: string[] = ['npm'],
     opts: PackageManagerOpts = {},

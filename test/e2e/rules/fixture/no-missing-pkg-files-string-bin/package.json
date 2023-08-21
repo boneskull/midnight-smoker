@@ -1,0 +1,5 @@
+{
+  "name": "no-missing-pkg-files-string",
+  "version": "1.0.0",
+  "bin": "./bin/no-missing-pkg-files.js"
+}

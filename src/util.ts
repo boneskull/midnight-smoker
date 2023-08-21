@@ -2,8 +2,8 @@
  * Gotta have a "util" module
  * @module
  */
-
-import readPkgUp from 'read-pkg-up';
+import path from 'node:path';
+import readPkgUp, {type ReadResult} from 'read-pkg-up';
 import {SmokerError} from './error';
 
 /**
@@ -141,12 +141,16 @@ export async function readPackageJson({
   if (readPackageJson.cache.has({cwd, normalize})) {
     return readPackageJson.cache.get({cwd, normalize});
   }
-  const result = await readPkgUp({cwd, normalize});
-  if (!result && strict) {
-    throw new SmokerError(`Could not find a package.json near ${cwd}`);
+  try {
+    const result = await readPkgUp({cwd, normalize});
+    if (!result && strict) {
+      throw new SmokerError(`Could not find package.json from ${cwd}`);
+    }
+    readPackageJson.cache.set({cwd, normalize}, result);
+    return result;
+  } catch (err) {
+    throw new SmokerError(`Could not read package.json from ${cwd}: ${err}`);
   }
-  readPackageJson.cache.set({cwd, normalize}, result);
-  return result;
 }
 
 readPackageJson.cache = new Map<
@@ -175,15 +179,32 @@ export function readPackageJsonSync({
   if (readPackageJsonSync.cache.has({cwd, normalize})) {
     return readPackageJsonSync.cache.get({cwd, normalize});
   }
-  const result = readPkgUp.sync({cwd, normalize});
-  if (!result && strict) {
-    throw new SmokerError(`Could not find a package.json near ${cwd}`);
+  try {
+    const result = readPkgUp.sync({cwd, normalize});
+    if (!result && strict) {
+      throw new SmokerError(`Could not find package.json from ${cwd}`);
+    }
+    readPackageJsonSync.cache.set({cwd, normalize}, result);
+    return result;
+  } catch (err) {
+    throw new SmokerError(`Could not read package.json from ${cwd}:\n${err}`);
   }
-  readPackageJsonSync.cache.set({cwd, normalize}, result);
-  return result;
 }
 
 readPackageJsonSync.cache = new Map<
   ReadPackageJsonOpts,
   readPkgUp.ReadResult | undefined
 >();
+
+let dataDir: string;
+export async function findDataDir(): Promise<string> {
+  if (dataDir) {
+    return dataDir;
+  }
+  const {path: packagePath} = (await readPackageJson({
+    cwd: __dirname,
+  })) as ReadResult;
+  const root = path.dirname(packagePath);
+  dataDir = path.join(root, 'data');
+  return dataDir;
+}

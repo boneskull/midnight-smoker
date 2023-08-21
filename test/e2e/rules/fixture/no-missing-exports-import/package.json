@@ -1,0 +1,8 @@
+{
+  "name": "no-missing-exports-import",
+  "version": "1.0.0",
+  "exports": {
+    "import": "./index.js"
+  },
+  "type": "commonjs"
+}

@@ -13,18 +13,19 @@ Examples of things that would be a problem:
 - Weirdo `exports` configuration
 - Wonky lifecycle scripts
 
-`midnight-smoker` is intended to run in CI or in a pre-publish lifecycle script.
+`midnight-smoker` is intended to run in a pre-publish lifecycle script and/or in your CI pipeline.
 
 ## Example Usage
 
 <!-- x-release-please-start-version -->
 
 ```bash
-npx midnight-smoker test:smoke # runs npm script "test:smoke"
-💨 midnight-smoker v1.0.0
-✔ Found npm at /wherever/npm/lives/bin/npm
-✔ Packed 1 package
-✔ Installed 1 package
+npx midnight-smoker test:smoke # runs script "test:smoke" from `package.json`
+
+💨 midnight-smoker v5.1.0
+✔ Packed 1 unique package using npm@latest…
+✔ Installed 1 unique package from tarball
+✔ Successfully ran 4 checks
 ✔ Successfully ran 1 script
 ✔ Lovey-dovey! 💖
 ```
@@ -35,19 +36,19 @@ npx midnight-smoker test:smoke # runs npm script "test:smoke"
 
 ## What It Does
 
-Three (3) things:
+In a nutshell, `midnight-smoker`:
 
-1. It runs `npm pack` on the package(s)
-2. Installs the resulting tarball(s) to a temp dir (or dir of your choosing) using [`--install-strategy=shallow`/`--global-style`](https://docs.npmjs.com/cli/v9/using-npm/config#install-strategy) to avoid hoisting/deduping. This will install _only_ "production" dependencies.
-3. For each package, executes `npm run <script>` with `/some/tmp/dir/node_modules/<package>` as the current working directory
-
-This means whatever script gets run will _not_ have access to your testing framework, linter, etc.
+1. Packs your workspace(s) into tarballs
+2. Installs the resulting tarballs into a temp dir using shallow installs (no deduping or hoisting) for isolation. This installs only _production_ dependencies (assuming no `npm-shrinkwrap.json`), and transitive dependencies from one workspace will not be visible to any other.
+3. In each installed package directory, performs a [series of checks](#builtin-checks) and/or runs scripts of your choosing.
 
 ## Usage
 
-Depending on your setup, one of these should work:
+### Custom Scripts
 
-### For Single-Package Repos
+Depending on your setup, one of the following should get you started. But also you should [read more](#waitwhat-should-my-custom-script-do) about what your custom script should do. And if you _really_ want to do some heavy lifting, see [the thing about adding dev tools](#but-i-need-a-dev-tool-to-run-my-script).
+
+#### For Single-Package Repos
 
 Add two scripts to your `package.json`. The first script will run `smoker <second-script>`.
 
@@ -60,7 +61,7 @@ Add two scripts to your `package.json`. The first script will run `smoker <secon
 }
 ```
 
-### For Repos Using Workspaces
+#### For Repos Using Workspaces
 
 Add a script to your **root** `package.json`:
 
@@ -84,9 +85,11 @@ The `--all` flag tells `midnight-smoker` to run the `smoke` script in all worksp
 
 If the `smoke` script should only exist in _some_ of those workspaces, then use `smoker --all --loose smoke`, and the missing scripts will be conveniently ignored.
 
-### Using Specific Package Managers
+#### Using Specific Package Managers
 
-`midnight-smoker` supports running scripts against multiple package managers. By default, it will use the latest version of `npm` to pack, install, and run the scripts. However, you can provide the `--pm` option to use a different package manager _or additional package managers._
+`midnight-smoker` supports running scripts against _multiple, specific_ package managers.
+
+By default, it will use the latest version of `npm` to pack, install, and run the scripts. However, you can provide the `--pm` option to use a different package manager _or additional package managers._
 
 Example:
 
@@ -96,17 +99,30 @@ Example:
 midnight-smoker --pm yarn@1 --pm npm@latest --pm npm@6.14.18 smoke
 ```
 
-`midnight-smoker` uses [`corepack`](https://github.com/nodejs/corepack) and supports the same versions as `corepack` (as of whatever version `midnight-smoker` depends upon). The strategy for consuming `corepack` may change in the future, if needed.
+> For the curious: `midnight-smoker` uses [`corepack`](https://github.com/nodejs/corepack) and supports the same versions as its `corepack` dependency. The strategy for consuming `corepack` may change in the future, if needed; ideally we could rely on the system `corepack` (since it ships with Node.js), but that's not currently possible.
+>
+> If present, the `packageManager` field in `package.json` will be ignored.
 
-> Note: if present, the `packageManager` field in `package.json` will be ignored.
-
-#### pnpm Support
+##### pnpm Support
 
 As of `midnight-smoker` v4.0.0, only `yarn` and `npm` are supported. `pnpm` support is planned for a future release.
 
-### Wait—What Should My Script Do?
+### Builtin Checks
 
-In many cases, executing the package's entry point might be enough:
+By default, `midnight-smoker` will run a suite of checks against each installed package:
+
+- `no-banned-files`: Asserts no sensitive files get published--things like private keys and other naughty secrets; supports custom filenames
+- `no-missing-entry-point`: Asserts that a CJS package has a "traditional" entry point (`main` is defined and points to an existing file _or_ one of `index.js`, `index.json` or `index.node` exists);
+- `no-missing-exports`: Asserts that the `exports` field, if present, points to an existing file or files; checks conditional exports for proper file types (ESM, CJS, or `.d.ts` in the case of `types`); asserts the `default` conditional export, if present, is _last_ in the object; optionally disallows glob patterns in subpath exports
+- `no-missing-pkg-files`: Asserts that a `bin` field--if present--refers to an existing file; supports custom fields
+
+These can be disabled entirely via the `--no-checks` option, and further configured via the `rules` property of a [config file](#config-files).
+
+In lieu of actual documentation on the options, please see the `RuleConfig` type in `midnight-smoker`'s type declarations.
+
+### Wait—What Should My Custom Script Do?
+
+The bare minimum would be checking that the entry point can be run:
 
 ```json
 {
@@ -122,10 +138,11 @@ Otherwise:
 
 - If your package distributes an executable, you might want to run that instead, and give it some common arguments (assuming it depends on your entry point). _Or_ you could go BUCK WILD and run it a bunch of different ways.
 - If your package is lazy-loading its dependencies--like if you have a `require()` or `await import()` within some function that isn't called at startup--you may need to do more work than this.
+- If your package skulks around in `node_modules` or otherwise has a _special relationship_ with package management or module resolution, you really ought to consider [running against multiple package managers](#using-specific-package-managers).
 
 ### But I Need a Dev Tool To Run My Script
 
-OK--_fine_--but this is not necessarily recommended, because the result is not what a consumer would get. How much does that matter? You decide.
+OK--_fine_--but this is not necessarily recommended, because the result is not what a consumer would get. How much does that matter? You decide--any additional packages won't leak transitive dependencies either.
 
 Provide the `--add <thing>` option to `midnight-smoker`, where `thing` is anything `npm install <thing>` could install:
 
@@ -145,33 +162,31 @@ If unspecified in `--add`, `midnight-smoker` will use the version of the depende
 
 `--add` can be provided multiple times.
 
+> PRO TIP: You should just add the thing to your `devDependencies` if it isn't there. That is smart. That is cool.
+
 ### Config Files
 
-Config files are supported via a `smoker` field in `package.json`, or one of:
+> [**JSON Schema**](/schema/midnight-smoker.schema.json)
+
+I know what you're thinking: "I just don't have enough config files!" `midnight-smoker` solves this problem by giving you the opportunity to add another one. Config files are supported via a `smoker` field in `package.json`, or one of:
 
 - `.smokerrc.(json|js|cjs|mjs)`
 - `smoker.config.(json|js|cjs|mjs)`
 - `.config/smokerrc.(json|js|cjs|mjs)`
 - `.config/smoker.config.(json|js|cjs|mjs)`
 
-All args and options (except `--help` and `--version`) shown in `smoker --help` are supported; the field names are camel-cased versions of the option names. See the `SmokerConfig` type exported from the entry point for further details.
-
-### Try It
-
-Feeling lucky? Run `npx midnight-smoker <some-script>` and see the result.
-
-**Run `npx midnight-smoker --help`** to see more options.
-
-> Note: You can name your scripts whatever you want; there is nothing special about `smoke` or `test:smoke`.
-
 ## Installation
 
-It's recommended to install `midnight-smoker` as a dev dependency, if you want to use it.
+It's recommended to install `midnight-smoker` as a dev dependency:
 
-Run `npm install midnight-smoker --save-dev`.
+```bash
+npm install midnight-smoker --save-dev
+```
+
+## Requirements
 
 - Node.js versions supported: `^16.20.0 || ^18.0.0 || ^20.0.0`
-- Minimum `npm` version supported: `v7.0.0`
+- Minimum `npm` version supported (if using `npm`): `v7.0.0`
 
 While odd-numbered Node.js releases _may_ work, they are not tested on and not officially supported.
 
@@ -179,7 +194,12 @@ While odd-numbered Node.js releases _may_ work, they are not tested on and not o
 
 - GitHub Action: [**node-js-production-test-action**](https://github.com/marketplace/actions/node-js-production-test-action)
 
-  > I recommend adding `midnight-smoker` as a dev dep, but the above action is just a wrapper around `midnight-smoker`.
+  > It's probably a better idea to just add `midnight-smoker` as a dev dep and run it instead of using this action, since it may trail behind the latest version of `midnight-smoker`.
+
+## Acknowledgements
+
+- [ban-sensitive-files](https://github.com/bahmutov/ban-sensitive-files) for the file list
+- [ESLint](https://eslint.org/) for the "rule" concept & config
 
 ## Notes
 

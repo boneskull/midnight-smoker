@@ -11,11 +11,19 @@ describe('midnight-smoker', function () {
       const cwd = path.join(__dirname, 'fixture', 'config-esm');
 
       it('should respect the config file', async function () {
-        const {stdout} = await execSmoker(['smoke', '--json'], {cwd});
+        const {stdout} = await execSmoker(['smoke', '--json', '--no-checks'], {
+          cwd,
+        });
         const result = JSON.parse(stdout);
         expect(result, 'to satisfy', {
-          results: expect.it('to have length', 2),
-          manifest: expect.it('to have keys satisfying', /^(npm|yarn)/),
+          results: {
+            scripts: expect
+              .it('to have length', 2)
+              .and('to satisfy', [
+                {rawResult: {command: /npm/}},
+                {rawResult: {command: /yarn/}},
+              ]),
+          },
         });
       });
     });
@@ -24,19 +32,24 @@ describe('midnight-smoker', function () {
       const cwd = path.join(__dirname, 'fixture', 'config-script');
 
       it('should run script from config file', async function () {
-        const {stdout} = await execSmoker([], {cwd});
+        // includes json: true
+        const {stdout} = await execSmoker(['--no-checks'], {cwd});
         const result = JSON.parse(stdout);
         expect(result, 'to satisfy', {
-          results: expect.it('to have length', 1),
+          results: {
+            scripts: expect.it('to have length', 1),
+          },
         });
       });
 
       describe('when the CLI also contains a script', function () {
         it('should run all scripts', async function () {
-          const {stdout} = await execSmoker(['smoke'], {cwd});
+          const {stdout} = await execSmoker(['smoke', '--no-checks'], {cwd});
           const result = JSON.parse(stdout);
           expect(result, 'to satisfy', {
-            results: expect.it('to have length', 2),
+            results: {
+              scripts: expect.it('to have length', 2),
+            },
           });
         });
       });
@@ -46,19 +59,23 @@ describe('midnight-smoker', function () {
       const cwd = path.join(__dirname, 'fixture', 'config-scripts');
 
       it('should run scripts from config file', async function () {
-        const {stdout} = await execSmoker([], {cwd});
+        const {stdout} = await execSmoker(['--no-checks'], {cwd});
         const result = JSON.parse(stdout);
         expect(result, 'to satisfy', {
-          results: expect.it('to have length', 1),
+          results: {
+            scripts: expect.it('to have length', 1),
+          },
         });
       });
 
       describe('when the CLI also contains a script', function () {
         it('should run all scripts', async function () {
-          const {stdout} = await execSmoker(['smoke'], {cwd});
+          const {stdout} = await execSmoker(['smoke', '--no-checks'], {cwd});
           const result = JSON.parse(stdout);
           expect(result, 'to satisfy', {
-            results: expect.it('to have length', 2),
+            results: {
+              scripts: expect.it('to have length', 2),
+            },
           });
         });
       });

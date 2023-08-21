@@ -15,11 +15,6 @@ const expect = unexpected
   .use(unexpectedSinon)
   .use(unexpectedEventEmitter);
 
-type AsyncStub<TArgs = any, TReturnValue = any> = sinon.SinonStub<
-  TArgs[],
-  Promise<TReturnValue>
->;
-
 interface NodeFsPromisesMocks {
   mkdir: sinon.SinonStubbedMember<typeof mkdir>;
   mkdtemp: sinon.SinonStubbedMember<typeof mkdtemp>;
@@ -37,6 +32,13 @@ type SmokerSpecMocks = {
   debug: sinon.SinonStub<any, sinon.SinonStub>;
   'node:os': {tmpdir: sinon.SinonStub<any, string>};
   execa: Mocks.ExecaMock;
+  'read-pkg-up': sinon.SinonStub<
+    any,
+    Promise<{packageJson: {name: 'foo'}; path: '/some/path/to/package.json'}>
+  >;
+  '../../src/pm': {
+    loadPackageManagers: sinon.SinonStub<any, Map<string, MS.PackageManager>>;
+  };
 };
 
 describe('midnight-smoker', function () {
@@ -74,6 +76,13 @@ describe('midnight-smoker', function () {
         tmpdir: sandbox.stub().returns(MOCK_TMPROOT),
       },
       debug: sandbox.stub().returns(sandbox.stub()),
+      'read-pkg-up': sandbox.stub().returns({
+        packageJson: {name: 'foo'},
+        path: '/some/path/to/package.json',
+      }),
+      '../../src/pm': {
+        loadPackageManagers: sandbox.stub().resolves(pms),
+      },
     };
 
     mockPm = new Mocks.NullPm(new CorepackExecutor('moo'));
@@ -93,7 +102,7 @@ describe('midnight-smoker', function () {
     describe('constructor', function () {
       it('should throw if both non-empty "workspace" and true "all" options are provided', function () {
         expect(
-          () => new Smoker([], pms, {workspace: ['foo'], all: true}),
+          () => new Smoker(pms, [], {workspace: ['foo'], all: true}),
           'to throw',
           /Option "workspace" is mutually exclusive with "all" and\/or "includeRoot"/,
         );
@@ -101,7 +110,13 @@ describe('midnight-smoker', function () {
 
       describe('when passed a string for "scripts" argument', function () {
         it('should not throw', function () {
-          expect(() => new Smoker('foo', pms), 'not to throw');
+          expect(() => new Smoker(pms, 'foo'), 'not to throw');
+        });
+      });
+
+      describe('when not passed any scripts at all', function () {
+        it('should not throw', function () {
+          expect(() => new Smoker(pms), 'not to throw');
         });
       });
     });
@@ -110,7 +125,7 @@ describe('midnight-smoker', function () {
       let smoker: MS.Smoker;
 
       beforeEach(function () {
-        smoker = new Smoker('foo', pms);
+        smoker = new Smoker(pms, 'foo');
       });
 
       describe('cleanup()', function () {
@@ -161,7 +176,7 @@ describe('midnight-smoker', function () {
 
         describe('when the "linger" option is true and a temp dir was created', function () {
           beforeEach(async function () {
-            smoker = new Smoker('foo', pms, {linger: true});
+            smoker = new Smoker(pms, 'foo', {linger: true});
             await smoker.createTempDir();
           });
 
@@ -191,6 +206,7 @@ describe('midnight-smoker', function () {
             );
           });
         });
+
         describe('when mkdtemp() fails', function () {
           beforeEach(function () {
             mocks['node:fs/promises'].mkdtemp.rejects();
@@ -444,10 +460,9 @@ describe('midnight-smoker', function () {
                 smoker,
                 Events.RUN_SCRIPTS_OK,
                 {
-                  manifest: expect.it('to be an object'),
-                  total: 2,
-                  executed: 2,
                   results: expect.it('to be an array'),
+                  failed: 0,
+                  passed: 2,
                 },
               );
             });
@@ -508,11 +523,12 @@ describe('midnight-smoker', function () {
                     pkgName: runManifest.packedPkg.pkgName,
                     error: err,
                     script: runManifest.script,
-                    rawResult: {} as MS.RunScriptValue,
+                    rawResult: {} as MS.RawRunScriptResult,
                     cwd: '/some/path',
                   };
                 });
             });
+
             it('should emit the "RunScriptFailed" event', async function () {
               await expect(
                 smoker.runScripts(pkgRunManifest),
@@ -541,17 +557,15 @@ describe('midnight-smoker', function () {
                     {pkgName: 'bar', error: expect.it('to be a', SmokerError)},
                     {pkgName: 'baz', error: undefined},
                   ],
-                  manifest: expect.it('to be an object'),
-                  total: 2,
-                  failures: 1,
-                  executed: 2,
+                  failed: 1,
+                  passed: 1,
                 },
               );
             });
 
             describe('when the "bail" option is false', function () {
               beforeEach(function () {
-                smoker = new Smoker('foo', pms, {bail: false});
+                smoker = new Smoker(pms, 'foo', {bail: false});
               });
 
               it('should execute all scripts', async function () {
@@ -568,7 +582,7 @@ describe('midnight-smoker', function () {
 
             describe('when the "bail" option is true', function () {
               beforeEach(function () {
-                smoker = new Smoker('foo', pms, {bail: true});
+                smoker = new Smoker(pms, 'foo', {bail: true});
               });
 
               it('should execute only until a script fails', async function () {
@@ -584,23 +598,83 @@ describe('midnight-smoker', function () {
           });
         });
       });
+
+      describe('smoke()', function () {
+        describe('when provided scripts', function () {
+          it('should pack, install, and run scripts', async function () {
+            await expect(
+              smoker.smoke(),
+              'to be fulfilled with value satisfying',
+              {
+                scripts: [
+                  {pkgName: 'bar', script: 'foo'},
+                  {pkgName: 'baz', script: 'foo'},
+                ],
+              },
+            );
+          });
+        });
+
+        describe('when checks enabled', async function () {
+          beforeEach(function () {
+            smoker = new Smoker(pms);
+          });
+
+          it('should run checks', async function () {
+            await expect(
+              smoker.smoke(),
+              'to be fulfilled with value satisfying',
+              {
+                checks: {
+                  passed: expect.it('to have items satisfying', {
+                    rule: {
+                      name: expect.it('to be a string'),
+                      description: expect.it('to be a string'),
+                    },
+                    context: {
+                      pkgJson: expect.it('to be an object'),
+                      pkgJsonPath: expect.it('to be a string'),
+                      pkgPath: expect.it('to be a string'),
+                      severity: expect.it('to be one of', [
+                        'error',
+                        'warn',
+                        'off',
+                      ]),
+                    },
+                  }),
+                },
+              },
+            );
+          });
+        });
+      });
     });
 
     describe('static method', function () {
-      // describe('withNpm()', function () {
-      //   it('should return a Smoker instance with an Npm PackageManager', function () {
-      //     const smoker = Smoker.withNpm('foo');
-      //     // instanceof may not work here given all the mocks flying around
-      //     expect(smoker.pm.name, 'to be', 'npm');
-      //   });
-      // });
-      // describe('smoke()', function () {
-      //   it('should initialize a Smoker instance and call smoke()', async function () {
-      //     await expect(smoke('foo'), 'to be fulfilled with value satisfying', [
-      //       {pkgName: 'bar', script: 'foo'},
-      //     ]);
-      //   });
-      // });
+      describe('smoke()', function () {
+        it('should pack, install, and run scripts', async function () {
+          await expect(
+            Smoker.smoke('foo'),
+            'to be fulfilled with value satisfying',
+            {
+              scripts: [
+                {pkgName: 'bar', script: 'foo'},
+                {pkgName: 'baz', script: 'foo'},
+              ],
+            },
+          );
+        });
+      });
+
+      describe('init()', function () {
+        it('should return a new Smoker instance', async function () {
+          await expect(
+            Smoker.init('foo'),
+            'to be fulfilled with value satisfying',
+            expect.it('to be a', Smoker),
+          );
+        });
+      });
     });
   });
 });

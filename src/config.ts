@@ -1,6 +1,8 @@
+import {z} from 'zod';
 import createDebug from 'debug';
 import {lilconfig, type Options as LilconfigOpts} from 'lilconfig';
 import {castArray} from './util';
+import {RuleConfigSchema} from './rules';
 
 const debug = createDebug('midnight-smoker:config');
 
@@ -31,74 +33,76 @@ const DEFAULT_OPTS: Readonly<LilconfigOpts> = Object.freeze({
   ],
 });
 
-export interface SmokerConfig {
-  /**
-   * Add an extra package to the list of packages to be installed.
-   */
-  add?: string[] | string;
-  /**
-   * Operate on all workspaces.
-   *
-   * The root workspace is omitted unless `includeRoot` is `true`.
-   */
-  all?: boolean;
-  /**
-   * Fail on first script failure.
-   */
-  bail?: boolean;
-  /**
-   * Operate on the root workspace.
-   *
-   * Only has an effect if `all` is `true`.
-   */
-  includeRoot?: boolean;
-  /**
-   * Output JSON only
-   */
-  json?: boolean;
-  /**
-   * Do not delete temp directories after completion
-   */
-  linger?: boolean;
-  /**
-   * Verbose logging
-   */
-  verbose?: boolean;
-  /**
-   * One or more workspaces to run scripts in
-   */
-  workspace?: string[] | string;
-  /**
-   * Package manager(s) to use
-   */
-  pm?: string[] | string;
-  /**
-   * Script(s) to run.
-   *
-   * Alias of `scripts`
-   */
-  script?: string[] | string;
-  /**
-   * Script(s) to run.
-   *
-   * Alias of `script`
-   */
-  scripts?: string[] | string;
-  /**
-   * If `true`, fail if a workspace is missing a script
-   */
-  loose?: boolean;
-}
+export const SmokerConfigSchema = z
+  .object({
+    add: z
+      .union([z.string(), z.array(z.string())])
+      .optional()
+      .describe(
+        'Add an extra package to the list of packages to be installed.',
+      ),
+    all: z
+      .boolean()
+      .optional()
+      .describe(
+        'Operate on all workspaces. The root workspace is omitted unless `includeRoot` is `true`.',
+      ),
+    bail: z.boolean().optional().describe('Fail on first script failure.'),
+    includeRoot: z
+      .boolean()
+      .optional()
+      .describe(
+        'Operate on the root workspace. Only has an effect if `all` is `true`.',
+      ),
+    json: z.boolean().optional().describe('Output JSON only.'),
+    linger: z
+      .boolean()
+      .optional()
+      .describe('Do not delete temp directories after completion.'),
+    verbose: z.boolean().optional().describe('Verbose logging.'),
+    workspace: z
+      .union([z.string(), z.array(z.string())])
+      .optional()
+      .describe('One or more workspaces to run scripts in.'),
+    pm: z
+      .union([z.string(), z.array(z.string())])
+      .optional()
+      .describe('Package manager(s) to use.'),
+    script: z
+      .union([z.string(), z.array(z.string())])
+      .optional()
+      .describe('Script(s) to run. Alias of `scripts`.'),
+    scripts: z
+      .union([z.string(), z.array(z.string())])
+      .optional()
+      .describe('Script(s) to run. Alias of `script`.'),
+    loose: z
+      .boolean()
+      .optional()
+      .describe('If `true`, fail if a workspace is missing a script.'),
+    checks: z
+      .boolean()
+      .optional()
+      .describe('If `false`, run no builtin checks.'),
+    rules: RuleConfigSchema.optional().describe(
+      'Rule configuration for checks',
+    ),
+  })
+  .describe('midnight-smoker configuration file schema');
+
+export type SmokerConfig = z.infer<typeof SmokerConfigSchema>;
 
 /**
+ * After normalization, `script` and `scripts` are merged into `scripts` and
+ * some other props which can be `string | string[]` become `string[]`
  * @internal
  */
 export interface NormalizedSmokerConfig extends SmokerConfig {
   add?: string[];
   workspace?: string[];
   pm?: string[];
-  script?: string[];
-  scripts?: never;
+  script?: never;
+  scripts?: string[];
 }
 
 type KeysWithValueType<T, V> = keyof {
@@ -121,7 +125,8 @@ export async function readConfig(): Promise<NormalizedSmokerConfig> {
       config = (config as any).default;
     }
 
-    // TODO better validation
+    // TODO actually use zod to validate this.
+    // TODO also use transform or coerce or w/e to cast to array
     for (const key of ARRAY_KEYS) {
       const value = config[key];
 
@@ -130,13 +135,8 @@ export async function readConfig(): Promise<NormalizedSmokerConfig> {
       }
     }
 
-    /**
-     * consolidate these two because at least one script is required by the
-     * CLI, and we will stuff `script` into `process.argv` if it is present
-     * to avoid the failure case of no scripts being present.
-     */
-    config.script = [...(config.script ?? []), ...(config.scripts ?? [])];
-    delete config.scripts;
+    config.scripts = [...(config.script ?? []), ...(config.scripts ?? [])];
+    delete config.script;
 
     debug('Loaded config: %O', config);
     return config as NormalizedSmokerConfig;

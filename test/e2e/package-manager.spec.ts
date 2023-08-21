@@ -10,13 +10,13 @@ function createCommandTest(cwd: string, extraArgs: string[] = []) {
     describe(`requested: ${requested}`, function () {
       it('should use a matching package manager', async function () {
         const {stdout} = await execSmoker(
-          ['smoke', `--pm=${requested}`, '--json', ...extraArgs],
+          ['smoke', `--pm=${requested}`, '--no-checks', '--json', ...extraArgs],
           {
             cwd,
           },
         );
         const {results} = JSON.parse(fixupOutput(stdout, false));
-        expect(results, 'to have an item satisfying', {
+        expect(results.scripts, 'to have an item satisfying', {
           rawResult: {
             command: actual
               ? expect.it('to match', actual)
@@ -33,13 +33,13 @@ function createBehaviorTest(cwd: string, extraArgs: string[] = []) {
     describe(`requested: ${requested}`, function () {
       it('should exhibit the expected behavior', async function () {
         const {stdout} = await execSmoker(
-          ['smoke', `--pm=${requested}`, '--json', ...extraArgs],
+          ['smoke', `--pm=${requested}`, '--no-checks', '--json', ...extraArgs],
           {
             cwd,
           },
         );
         const {results} = JSON.parse(fixupOutput(stdout, false));
-        expect(results, 'to satisfy', actual);
+        expect(results.scripts, 'to satisfy', actual);
       });
     });
   };
@@ -59,16 +59,18 @@ describe('midnight-smoker', function () {
             const {packageJson} = await readPackageJson({cwd, strict: true});
             const {packageManager} = packageJson;
             const {stdout} = await execSmoker(
-              ['smoke', '--pm=npm@latest', '--json'],
+              ['smoke', '--pm=npm@latest', '--json', '--no-checks'],
               {
                 cwd,
               },
             );
             const {results} = JSON.parse(fixupOutput(stdout, false));
-            expect(results, 'to have an item satisfying', {
-              rawResult: {
-                command: expect.it('not to contain', packageManager),
-              },
+            expect(results, 'to satisfy', {
+              scripts: expect
+                .it('to have length', 1)
+                .and('not to have an item satisfying', {
+                  rawResult: expect.it('to contain', packageManager),
+                }),
             });
           });
         });
@@ -158,7 +160,7 @@ describe('midnight-smoker', function () {
           it('should fail (for now)', async function () {
             const cwd = path.join(__dirname, 'fixture', 'single-script');
             await expect(
-              execSmoker(['smoke', `--pm=pnpm`, '--json'], {
+              execSmoker(['smoke', `--pm=pnpm`, '--json', '--no-checks'], {
                 cwd,
               }),
               'to be rejected with error satisfying',
