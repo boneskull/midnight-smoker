@@ -99,7 +99,7 @@
   "devDependencies": {
     "@commitlint/cli": "17.7.1",
     "@commitlint/config-conventional": "17.7.0",
-    "@tsconfig/node16": "16.1.0",
+    "@tsconfig/node16": "16.1.1",
     "@types/debug": "4.1.8",
     "@types/mocha": "10.0.1",
     "@types/node": "18.17.6",
