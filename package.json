@@ -102,7 +102,7 @@
     "@tsconfig/node16": "16.1.1",
     "@types/debug": "4.1.8",
     "@types/mocha": "10.0.1",
-    "@types/node": "18.17.6",
+    "@types/node": "18.17.7",
     "@types/pluralize": "0.0.30",
     "@types/sinon": "10.0.16",
     "@types/source-map-support": "0.5.6",
