@@ -36,7 +36,7 @@ describe('midnight-smoker', function () {
         const cwd = path.join(__dirname, 'fixture', 'single-script');
 
         describe('when the script succeeds', function () {
-          it('should produce expected output', async function () {
+          it('should produce expected output [snapshot]', async function () {
             const {stderr} = await execSmoker(['smoke', '--no-checks'], {cwd});
             snapshot(fixupOutput(stderr));
           });
@@ -57,7 +57,7 @@ describe('midnight-smoker', function () {
             }
           });
 
-          it('should produce expected output', async function () {
+          it('should produce expected output [snapshot]', async function () {
             snapshot(fixupOutput(result.stderr));
           });
 
@@ -71,7 +71,7 @@ describe('midnight-smoker', function () {
         const cwd = path.join(__dirname, 'fixture', 'multi-script');
 
         describe('when the scripts succeed', function () {
-          it('should produce expected output', async function () {
+          it('should produce expected output [snapshot]', async function () {
             const {stderr} = await execSmoker(
               ['smoke:a', 'smoke:b', '--no-checks'],
               {cwd},
@@ -90,7 +90,7 @@ describe('midnight-smoker', function () {
       });
 
       describe('--help', function () {
-        it('should show help text', async function () {
+        it('should show help text [snapshot]', async function () {
           const {stdout} = await execSmoker(['--help'], {
             cwd,
           });
@@ -133,7 +133,7 @@ describe('midnight-smoker', function () {
             expect(result, 'to output valid JSON');
           });
 
-          it('should produce expected script output', async function () {
+          it('should produce expected script output [snapshot]', async function () {
             const {results} = JSON.parse(fixupOutput(result.stdout, false));
             snapshot(results);
           });
@@ -174,7 +174,7 @@ describe('midnight-smoker', function () {
             expect(result, 'to output valid JSON');
           });
 
-          it('should provide helpful result', async function () {
+          it('should provide helpful result [snapshot]', async function () {
             snapshot(fixupOutput(result.stdout));
           });
         });

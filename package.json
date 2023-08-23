@@ -61,7 +61,7 @@
     "pretest:e2e": "run-s rebuild",
     "test:e2e": "mocha --timeout 20s --slow 10s \"test/e2e/**/*.spec.ts\"",
     "test:smoke": "node ./bin/smoker.js smoke:ts smoke:js --add ts-node --add @tsconfig/node16",
-    "test:update-snapshots": "cross-env SNAPSHOT_UPDATE=1 run-s test:e2e",
+    "test:update-snapshots": "npm run --omit=dev test:e2e -- --fgrep '[snapshot]'",
     "update-schema": "ts-node ./scripts/generate-schema.ts && git add -A schema/midnight-smoker.schema.json"
   },
   "lint-staged": {

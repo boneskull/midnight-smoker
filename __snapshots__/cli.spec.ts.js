@@ -1,5 +1,5 @@
 exports[
-  'midnight-smoker smoker CLI script single script when the script succeeds should produce expected output 1'
+  'midnight-smoker smoker CLI script single script when the script succeeds should produce expected output [snapshot] 1'
 ] = `
 💨 midnight-smoker v<version>
 - Packing current project…
@@ -12,7 +12,7 @@ exports[
 `;
 
 exports[
-  'midnight-smoker smoker CLI script single script when the script fails should produce expected output 1'
+  'midnight-smoker smoker CLI script single script when the script fails should produce expected output [snapshot] 1'
 ] = `
 💨 midnight-smoker v<version>
 - Packing current project…
@@ -32,7 +32,7 @@ exports[
 `;
 
 exports[
-  'midnight-smoker smoker CLI script multiple scripts when the scripts succeed should produce expected output 1'
+  'midnight-smoker smoker CLI script multiple scripts when the scripts succeed should produce expected output [snapshot] 1'
 ] = `
 💨 midnight-smoker v<version>
 - Packing current project…
@@ -44,7 +44,9 @@ exports[
 ✔ Lovey-dovey! 💖
 `;
 
-exports['midnight-smoker smoker CLI option --help should show help text 1'] = `
+exports[
+  'midnight-smoker smoker CLI option --help should show help text [snapshot] 1'
+] = `
 smoker [scripts..]
 
 Run tests against a package as it would be published
@@ -73,69 +75,7 @@ For more info, see https://github.com/boneskull/midnight-smoker
 `;
 
 exports[
-  'midnight-smoker smoker CLI option --json when the script fails should provide helpful result 1'
-] = `
-{
-  "results": {
-    "scripts": [
-      {
-        "pkgName": "fail",
-        "script": "smoke",
-        "rawResult": {
-          "shortMessage": "Command failed with exit code 1: <path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> run smoke",
-          "command": "<path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> run smoke",
-          "escapedCommand": "\\"<path/to/>/bin/node\\" \\"<path/to/>/.bin/corepack\\" \\"npm@<version>\\" run smoke",
-          "exitCode": 1,
-          "stdout": "\\n> fail@1.0.0 smoke\\n> exit 1\\n",
-          "stderr": "",
-          "failed": true,
-          "timedOut": false,
-          "isCanceled": false,
-          "killed": false
-        },
-        "cwd": "<cwd>",
-        "error": {
-          "message": "(runScript) Script \\"smoke\\" in package \\"fail\\" failed: Command failed with exit code 1: <path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> run smoke\\n\\n> fail@1.0.0 smoke\\n> exit 1\\n",
-          "name": "Error",
-          "stack": "Error: (<path/to/file>:<line>:<col>)\\n    at processTicksAndRejections (<path/to/file>:<line>:<col>)\\n    at Smoker.runScripts (<path/to/file>:<line>:<col>)\\n    at Smoker.smoke (<path/to/file>:<line>:<col>)\\n    at Object.handler (<path/to/file>:<line>:<col>)"
-        }
-      }
-    ],
-    "checks": {
-      "passed": [],
-      "failed": []
-    },
-    "opts": {
-      "_": [],
-      "json": true,
-      "checks": false,
-      "scripts": [
-        "smoke"
-      ],
-      "add": [],
-      "pm": [
-        "npm@latest"
-      ],
-      "workspace": [],
-      "$0": "smoker",
-      "verbose": false
-    }
-  },
-  "stats": {
-    "totalPackages": 1,
-    "totalPackageManagers": 1,
-    "totalScripts": 1,
-    "failedScripts": 1,
-    "passedScripts": 0,
-    "totalChecks": null,
-    "failedChecks": null,
-    "passedChecks": null
-  }
-}
-`;
-
-exports[
-  'midnight-smoker smoker CLI option --json when the script succeeds should produce expected script output 1'
+  'midnight-smoker smoker CLI option --json when the script succeeds should produce expected script output [snapshot] 1'
 ] = {
   scripts: [
     {
@@ -225,3 +165,65 @@ exports[
     verbose: false,
   },
 };
+
+exports[
+  'midnight-smoker smoker CLI option --json when the script fails should provide helpful result [snapshot] 1'
+] = `
+{
+  "results": {
+    "scripts": [
+      {
+        "pkgName": "fail",
+        "script": "smoke",
+        "rawResult": {
+          "shortMessage": "Command failed with exit code 1: <path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> run smoke",
+          "command": "<path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> run smoke",
+          "escapedCommand": "\\"<path/to/>/bin/node\\" \\"<path/to/>/.bin/corepack\\" \\"npm@<version>\\" run smoke",
+          "exitCode": 1,
+          "stdout": "\\n> fail@1.0.0 smoke\\n> exit 1\\n",
+          "stderr": "",
+          "failed": true,
+          "timedOut": false,
+          "isCanceled": false,
+          "killed": false
+        },
+        "cwd": "<cwd>",
+        "error": {
+          "message": "(runScript) Script \\"smoke\\" in package \\"fail\\" failed: Command failed with exit code 1: <path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> run smoke\\n\\n> fail@1.0.0 smoke\\n> exit 1\\n",
+          "name": "Error",
+          "stack": "Error: (<path/to/file>:<line>:<col>)\\n    at processTicksAndRejections (<path/to/file>:<line>:<col>)\\n    at Smoker.runScripts (<path/to/file>:<line>:<col>)\\n    at Smoker.smoke (<path/to/file>:<line>:<col>)\\n    at Object.handler (<path/to/file>:<line>:<col>)"
+        }
+      }
+    ],
+    "checks": {
+      "passed": [],
+      "failed": []
+    },
+    "opts": {
+      "_": [],
+      "json": true,
+      "checks": false,
+      "scripts": [
+        "smoke"
+      ],
+      "add": [],
+      "pm": [
+        "npm@latest"
+      ],
+      "workspace": [],
+      "$0": "smoker",
+      "verbose": false
+    }
+  },
+  "stats": {
+    "totalPackages": 1,
+    "totalPackageManagers": 1,
+    "totalScripts": 1,
+    "failedScripts": 1,
+    "passedScripts": 0,
+    "totalChecks": null,
+    "failedChecks": null,
+    "passedChecks": null
+  }
+}
+`;
