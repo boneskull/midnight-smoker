@@ -1,5 +1,21 @@
 # Changelog
 
+## [6.0.0](https://github.com/boneskull/midnight-smoker/compare/v5.1.0...v6.0.0) (2023-08-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* `midnight-smoker` now runs a small suite of automated checks by default.
+
+### Features
+
+* add builtin checks ([26d3979](https://github.com/boneskull/midnight-smoker/commit/26d3979c07904580c6794f672b8c4aee3c12fd3a))
+
+
+### Bug Fixes
+
+* **deps:** update dependency zod to v3.22.2 ([4926a4e](https://github.com/boneskull/midnight-smoker/commit/4926a4ee439e3e663bcf8f3ae873275eb48191bd))
+
 ## [5.1.0](https://github.com/boneskull/midnight-smoker/compare/v5.0.0...v5.1.0) (2023-08-21)
 
 
