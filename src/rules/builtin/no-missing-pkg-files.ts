@@ -13,6 +13,12 @@ const noMissingPkgFiles = createRule({
     if (opts?.bin !== false) {
       fieldsToCheck.push('bin');
     }
+    if (opts?.browser !== false) {
+      fieldsToCheck.push('browser');
+    }
+    if (opts?.types !== false) {
+      fieldsToCheck.push('types');
+    }
 
     /**
      * @param relativePath Path from package root to file
@@ -68,6 +74,16 @@ const noMissingPkgFiles = createRule({
       .default(true)
       .optional()
       .describe('Check the "bin" field (if it exists)'),
+    browser: z
+      .boolean()
+      .default(true)
+      .optional()
+      .describe('Check the "browser" field (if it exists)'),
+    types: z
+      .boolean()
+      .default(true)
+      .optional()
+      .describe('Check the "types" field (if it exists)'),
     fields: z
       .array(z.string().min(1))
       .optional()

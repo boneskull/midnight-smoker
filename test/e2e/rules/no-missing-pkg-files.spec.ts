@@ -70,6 +70,7 @@ describe('midnight-smoker', function () {
             });
           });
         });
+
         describe('when the "bin" field is a string', function () {
           beforeEach(function () {
             ({ruleConfig, pkg} = setupRuleTest(
@@ -87,6 +88,62 @@ describe('midnight-smoker', function () {
                     rule: noMissingPkgFiles.toJSON(),
                     message:
                       'File from "bin" field unreadable at path: ./bin/no-missing-pkg-files.js',
+                    context: {
+                      pkgJson: expect.it('to be an object'),
+                      pkgJsonPath: expect.it('to be a string'),
+                      pkgPath: expect.it('to be a string'),
+                      severity: RuleSeverities.ERROR,
+                    },
+                  },
+                ],
+              },
+            );
+          });
+        });
+
+        describe('when the "types" field is a string', function () {
+          beforeEach(function () {
+            ({ruleConfig, pkg} = setupRuleTest('no-missing-pkg-files-types'));
+          });
+
+          it('should return a RuleFailure', async function () {
+            await expect(
+              applyRules(ruleConfig, pkg, ruleCont),
+              'to be fulfilled with value satisfying',
+              {
+                failed: [
+                  {
+                    rule: noMissingPkgFiles.toJSON(),
+                    message:
+                      'File from "types" field unreadable at path: index.d.ts',
+                    context: {
+                      pkgJson: expect.it('to be an object'),
+                      pkgJsonPath: expect.it('to be a string'),
+                      pkgPath: expect.it('to be a string'),
+                      severity: RuleSeverities.ERROR,
+                    },
+                  },
+                ],
+              },
+            );
+          });
+        });
+
+        describe('when the "browser" field is a string', function () {
+          beforeEach(function () {
+            ({ruleConfig, pkg} = setupRuleTest('no-missing-pkg-files-browser'));
+          });
+
+          it('should return a RuleFailure', async function () {
+            await expect(
+              applyRules(ruleConfig, pkg, ruleCont),
+              'to be fulfilled with value satisfying',
+              {
+                failed: [
+                  {
+                    rule: noMissingPkgFiles.toJSON(),
+                    message:
+                      'File from "browser" field unreadable at path: index.browser.js',
                     context: {
                       pkgJson: expect.it('to be an object'),
                       pkgJsonPath: expect.it('to be a string'),
