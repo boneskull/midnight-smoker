@@ -18,9 +18,11 @@ jobs:
           node-version: ${{ matrix.node_version }}
       - name: Upgrade npm
         run: npm i -g npm@latest
-      - name: npm install
+      - name: Install dependencies
         uses: bahmutov/npm-install@5e78a2c1fa3203b777a67764f15380aa7c80d015 # v1.8.34
         with:
           install-command: npm install --foreground-scripts
-      - name: test
+      - name: Test Suite
         run: npm run test:ci
+      - name: Check Lockfile
+        run: npm ci
