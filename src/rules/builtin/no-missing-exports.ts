@@ -2,7 +2,7 @@ import {glob} from 'glob';
 import isESMFile from 'is-file-esm';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import {PackageJson} from 'read-pkg-up';
+import type {PackageJson} from 'read-pkg';
 import {z} from 'zod';
 import {castArray} from '../../util';
 import {CheckFailure} from '../result';

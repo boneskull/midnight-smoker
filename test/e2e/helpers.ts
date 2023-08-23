@@ -7,8 +7,13 @@ import {node as execa, type NodeOptions} from 'execa';
 import path from 'node:path';
 import {inspect} from 'node:util';
 import type {RawRunScriptResult} from '../../src';
-
 const debug = createDebug('midnight-smoker:test:e2e');
+
+/**
+ * Matches any absolute path, leaving the last path segment intact
+ */
+const ABS_PATH_REGEX =
+  /(\/([^\0 !$`&*()+]|\/|\(|!|\$|`|&|\*|\(|\)|\+\))+(\/))/g;
 
 /**
  * If running in Wallaby, we'll need this
@@ -47,25 +52,7 @@ export function dump(obj: any): void {
  * @returns Fixed output
  */
 export function fixupOutput(stdout: string, stripPmVersions = true) {
-  let result = stdout
-    // strip the paths to npm/node/corepack in command
-    .replace(
-      /(?:[^" ]+?)(\/(\.)?bin\/(node|npm|corepack)(?:\.exe|\.cmd)?)/g,
-      '<path/to/>$1',
-    )
-    // strip the versions since it will change
-    .replace(/midnight-smoker v\d+\.\d+\.\d+/g, 'midnight-smoker v<version>')
-    .replace(/--version\\n\\n\d+\.\d+\.\d+/g, '--version\\n\\n<version>')
-    // strip the path to `cli.js` since it differs per platform
-    .replace(/node(\.exe)?\s+\S+?smoker\.js/g, '<path/to/>smoker.js')
-    .replace(/"cwd":\s+"[^"]+"/g, '"cwd": "<cwd>"')
-    .replace(
-      /"tarballFilepath":\s+"[^"]+"/g,
-      '"tarballFilepath": "<tarball.tgz>"',
-    )
-    .replace(/"(install|pkg(Json)?)Path":\s+"[^"]+"/g, '"$1": "<some/path>"')
-    .replace(/\(.+?:\d+:\d+\)/g, '(<path/to/file>:<line>:<col>)');
-
+  let result = stdout.replaceAll(ABS_PATH_REGEX, '');
   if (stripPmVersions) {
     result = result.replace(
       /(npm|yarn|pnpm|midnight-smoker)@\d+\.\d+\.\d+/g,

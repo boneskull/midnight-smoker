@@ -5,7 +5,7 @@ import unexpected from 'unexpected';
 import {readPackageJson} from '../../src/util';
 import assertions from '../assertions';
 import {execSmoker, fixupOutput} from './helpers';
-import type {RawRunScriptResult} from '../../src/types';
+import type {RawRunScriptResult, SmokerJsonResults} from '../../src/types';
 
 const expect = unexpected.clone().use(assertions);
 
@@ -134,8 +134,21 @@ describe('midnight-smoker', function () {
           });
 
           it('should produce expected script output [snapshot]', async function () {
-            const {results} = JSON.parse(fixupOutput(result.stdout, false));
-            snapshot(results);
+            const {results} = JSON.parse(
+              fixupOutput(result.stdout),
+            ) as SmokerJsonResults;
+            snapshot({
+              ...results,
+              scripts: results.scripts.map(
+                ({pkgName, script, rawResult, cwd, error}) => ({
+                  pkgName,
+                  script,
+                  rawResult,
+                  cwd,
+                  error: {message: error?.message, name: error?.name},
+                }),
+              ),
+            });
           });
 
           it('should produce statistics', async function () {
@@ -175,7 +188,22 @@ describe('midnight-smoker', function () {
           });
 
           it('should provide helpful result [snapshot]', async function () {
-            snapshot(fixupOutput(result.stdout));
+            const {results} = JSON.parse(
+              fixupOutput(result.stdout),
+            ) as SmokerJsonResults;
+
+            snapshot({
+              ...results,
+              scripts: results.scripts.map(
+                ({pkgName, script, rawResult, cwd, error}) => ({
+                  pkgName,
+                  script,
+                  rawResult,
+                  cwd,
+                  error: {message: error?.message, name: error?.name},
+                }),
+              ),
+            });
           });
         });
       });

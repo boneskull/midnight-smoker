@@ -1,6 +1,7 @@
 import rewiremock from 'rewiremock/node';
 import unexpected from 'unexpected';
-import sinon from 'sinon';
+import type {PackageJson} from 'read-pkg';
+import {createSandbox} from 'sinon';
 import type * as _Util from '../../src/util';
 
 const expect = unexpected.clone();
@@ -8,25 +9,26 @@ const expect = unexpected.clone();
 describe('midnight-smoker', function () {
   let Util: typeof _Util;
   let pickPackageVersion: typeof _Util.pickPackageVersion;
-  let readPkgUpStub: sinon.SinonStub;
+  let readPkgStub: sinon.SinonStub<any, PackageJson>;
 
+  let sandbox: sinon.SinonSandbox;
   beforeEach(function () {
-    readPkgUpStub = sinon.stub().resolves({
-      packageJson: {
-        devDependencies: {
-          mocha: '10.2.0',
-        },
-        dependencies: {
-          mocha: '10.0.0',
-        },
-        optionalDependencies: {
-          mocha: '10.1.0',
-        },
-        peerDependencies: {mocha: '^10.0.0'},
+    sandbox = createSandbox();
+    readPkgStub = sandbox.stub().resolves({
+      devDependencies: {
+        mocha: '10.2.0',
       },
+      dependencies: {
+        mocha: '10.0.0',
+      },
+      optionalDependencies: {
+        mocha: '10.1.0',
+      },
+      peerDependencies: {mocha: '^10.0.0'},
     });
     Util = rewiremock.proxy(() => require('../../src/util'), {
-      'read-pkg-up': readPkgUpStub,
+      'read-pkg': readPkgStub,
+      'pkg-dir': sandbox.stub().resolves('/some/path'),
     });
     ({pickPackageVersion} = Util);
   });
@@ -78,16 +80,14 @@ describe('midnight-smoker', function () {
 
         describe('when the package appears in the local package.json in the "dependencies" and "peerDependencies" fields', function () {
           beforeEach(function () {
-            readPkgUpStub.resolves({
-              packageJson: {
-                dependencies: {
-                  mocha: '10.0.0',
-                },
-                optionalDependencies: {
-                  mocha: '10.1.0',
-                },
-                peerDependencies: {mocha: '^10.0.0'},
+            readPkgStub.resolves({
+              dependencies: {
+                mocha: '10.0.0',
               },
+              optionalDependencies: {
+                mocha: '10.1.0',
+              },
+              peerDependencies: {mocha: '^10.0.0'},
             });
           });
 
@@ -102,13 +102,11 @@ describe('midnight-smoker', function () {
 
         describe('when the package appears in the local package.json in the "optionalDependencies" and "peerDependencies" fields', function () {
           beforeEach(function () {
-            readPkgUpStub.resolves({
-              packageJson: {
-                optionalDependencies: {
-                  mocha: '10.1.0',
-                },
-                peerDependencies: {mocha: '^10.0.0'},
+            readPkgStub.resolves({
+              optionalDependencies: {
+                mocha: '10.1.0',
               },
+              peerDependencies: {mocha: '^10.0.0'},
             });
           });
 
@@ -123,10 +121,8 @@ describe('midnight-smoker', function () {
 
         describe('when the package appears in the local package.json in the "peerDependencies" field only', function () {
           beforeEach(function () {
-            readPkgUpStub.resolves({
-              packageJson: {
-                peerDependencies: {mocha: '^10.0.0'},
-              },
+            readPkgStub.resolves({
+              peerDependencies: {mocha: '^10.0.0'},
             });
           });
 

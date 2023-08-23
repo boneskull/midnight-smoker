@@ -1,4 +1,4 @@
-import type {PackageJson} from 'read-pkg-up';
+import type {PackageJson} from 'read-pkg';
 import {z} from 'zod';
 import type {RuleSeverity} from './rule-config';
 import type {CheckFailure} from './result';

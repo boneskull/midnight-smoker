@@ -53,11 +53,10 @@ describe('midnight-smoker', function () {
           });
 
           it('should run corepack', function () {
-            expect(
-              execaMock.node,
-              'was called with',
-              expect.it('to match', /corepack$/),
-            ).and('was called once');
+            expect(execaMock.node, 'was called once').and(
+              'to have a call satisfying',
+              /corepack/,
+            );
           });
         });
 
@@ -73,11 +72,10 @@ describe('midnight-smoker', function () {
           });
 
           it('should run corepack', function () {
-            expect(
-              execaMock.node,
-              'was called with',
-              expect.it('to match', /corepack$/),
-            ).and('was called once');
+            expect(execaMock.node, 'was called once').and(
+              'to have a call satisfying',
+              /corepack/,
+            );
           });
         });
       });

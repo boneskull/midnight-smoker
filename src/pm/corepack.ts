@@ -1,6 +1,7 @@
 import {node as execa, type Options as ExecaOptions} from 'execa';
 import path from 'node:path';
 import type {ExecOpts, ExecResult, Executor} from './executor';
+import corepackPkg from 'corepack/package.json';
 
 /**
  * Disables the strict `packageManager` field in `package.json`.
@@ -24,12 +25,9 @@ export class CorepackExecutor implements Executor {
    * @param pmId The package manager ID (`<npm|yarn|pnpm>@<version>`) to use as the first argument to `corepack`.
    */
   public constructor(private readonly pmId: string) {
-    this.corepackPath = path.resolve(
-      path.dirname(require.resolve('corepack/package.json')),
-      '..',
-      '.bin',
-      'corepack',
-    );
+    const corepackRelativePath = corepackPkg.bin.corepack;
+    const corepackDir = path.dirname(require.resolve('corepack/package.json'));
+    this.corepackPath = path.resolve(corepackDir, corepackRelativePath);
   }
 
   public async exec(

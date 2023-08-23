@@ -3,7 +3,8 @@
  * @module
  */
 import path from 'node:path';
-import readPkgUp, {type ReadResult} from 'read-pkg-up';
+import pkgDir from 'pkg-dir';
+import readPkg, {type PackageJson} from 'read-pkg';
 import {SmokerError} from './error';
 
 /**
@@ -112,13 +113,14 @@ export interface ReadPackageJsonOpts {
    */
   cwd?: string;
   /**
-   * Normalize the `package.json`
-   */
-  normalize?: boolean;
-  /**
    * Reject if not found
    */
   strict?: boolean;
+}
+
+export interface ReadPackageJsonResult {
+  packageJson: PackageJson;
+  path: string;
 }
 
 /**
@@ -129,82 +131,121 @@ export interface ReadPackageJsonOpts {
  */
 export async function readPackageJson(
   opts: ReadPackageJsonOpts & {strict: true},
-): Promise<readPkgUp.ReadResult>;
+): Promise<ReadPackageJsonResult>;
 export async function readPackageJson(
   opts?: ReadPackageJsonOpts,
-): Promise<readPkgUp.ReadResult | undefined>;
+): Promise<ReadPackageJsonResult | undefined>;
 export async function readPackageJson({
   cwd,
-  normalize,
   strict,
-}: ReadPackageJsonOpts = {}): Promise<readPkgUp.ReadResult | undefined> {
-  if (readPackageJson.cache.has({cwd, normalize})) {
-    return readPackageJson.cache.get({cwd, normalize});
+}: ReadPackageJsonOpts = {}): Promise<ReadPackageJsonResult | undefined> {
+  cwd = cwd ?? process.cwd();
+  if (readPackageJson.cache.has(cwd)) {
+    return readPackageJson.cache.get(cwd);
   }
-  try {
-    const result = await readPkgUp({cwd, normalize});
-    if (!result && strict) {
-      throw new SmokerError(`Could not find package.json from ${cwd}`);
+  const packageDir = await findPkgDir(cwd, strict);
+  if (packageDir) {
+    try {
+      const packageJson = await readPkg({cwd: packageDir, normalize: false});
+      if (!packageJson && strict) {
+        throw new SmokerError(`Could not find package.json from ${cwd}`);
+      }
+      const result = {packageJson, path: path.join(packageDir, 'package.json')};
+      readPackageJson.cache.set(cwd, result);
+      return result;
+    } catch (err) {
+      throw new SmokerError(`Could not read package.json from ${cwd}: ${err}`);
     }
-    readPackageJson.cache.set({cwd, normalize}, result);
-    return result;
-  } catch (err) {
-    throw new SmokerError(`Could not read package.json from ${cwd}: ${err}`);
   }
 }
 
-readPackageJson.cache = new Map<
-  ReadPackageJsonOpts,
-  readPkgUp.ReadResult | undefined
->();
+readPackageJson.cache = new Map<string, ReadPackageJsonResult>();
 
 /**
- * Reads closest `package.json` from some dir (synchronously)
+ * Reads closest `package.json` from some dir, synchronously
  * @param cwd Dir to read from
  * @param Options
  * @returns Object with `packageJson` and `path` properties or `undefined` if not in `strict` mode
- * @remarks Use {@linkcode readPackageJson} instead if possible
  */
 export function readPackageJsonSync(
   opts: ReadPackageJsonOpts & {strict: true},
-): readPkgUp.ReadResult;
+): ReadPackageJsonResult;
 export function readPackageJsonSync(
   opts?: ReadPackageJsonOpts,
-): readPkgUp.ReadResult | undefined;
-export function readPackageJsonSync({
-  cwd,
-  normalize,
-  strict,
-}: ReadPackageJsonOpts = {}) {
-  if (readPackageJsonSync.cache.has({cwd, normalize})) {
-    return readPackageJsonSync.cache.get({cwd, normalize});
+): ReadPackageJsonResult | undefined;
+export function readPackageJsonSync({cwd, strict}: ReadPackageJsonOpts = {}):
+  | ReadPackageJsonResult
+  | undefined {
+  cwd = cwd ?? process.cwd();
+  if (readPackageJson.cache.has(cwd)) {
+    return readPackageJson.cache.get(cwd);
   }
-  try {
-    const result = readPkgUp.sync({cwd, normalize});
-    if (!result && strict) {
-      throw new SmokerError(`Could not find package.json from ${cwd}`);
+  const packageDir = findPkgDirSync(cwd, strict);
+  if (packageDir) {
+    try {
+      const packageJson = readPkg.sync({cwd: packageDir, normalize: false});
+      if (!packageJson && strict) {
+        throw new SmokerError(`Could not find package.json from ${cwd}`);
+      }
+      const result = {packageJson, path: path.join(packageDir, 'package.json')};
+      readPackageJson.cache.set(cwd, result);
+      return result;
+    } catch (err) {
+      throw new SmokerError(`Could not read package.json from ${cwd}: ${err}`);
     }
-    readPackageJsonSync.cache.set({cwd, normalize}, result);
-    return result;
-  } catch (err) {
-    throw new SmokerError(`Could not read package.json from ${cwd}:\n${err}`);
   }
 }
 
-readPackageJsonSync.cache = new Map<
-  ReadPackageJsonOpts,
-  readPkgUp.ReadResult | undefined
->();
+readPackageJson.cache = new Map<string, ReadPackageJsonResult>();
 
 let dataDir: string;
 export async function findDataDir(): Promise<string> {
   if (dataDir) {
     return dataDir;
   }
-  const {path: packagePath} = (await readPackageJson({
-    cwd: __dirname,
-  })) as ReadResult;
-  const root = path.dirname(packagePath);
+  const root = await findPkgDir(__dirname, true);
   dataDir = path.join(root, 'data');
   return dataDir;
 }
+
+export async function findPkgDir(cwd: string, strict: true): Promise<string>;
+export async function findPkgDir(
+  cwd?: string,
+  strict?: boolean,
+): Promise<string | undefined>;
+export async function findPkgDir(
+  cwd = process.cwd(),
+  strict = true,
+): Promise<string | undefined> {
+  if (findPkgDir.cache.has(cwd)) {
+    return findPkgDir.cache.get(cwd)!;
+  }
+  const dir = await pkgDir(cwd);
+  if (!dir && strict) {
+    throw new SmokerError(`Could not find package root from ${cwd}`);
+  }
+  findPkgDir.cache.set(cwd, dir);
+  return dir;
+}
+findPkgDir.cache = new Map<string, string | undefined>();
+
+export function findPkgDirSync(cwd: string, strict: true): string;
+export function findPkgDirSync(
+  cwd?: string,
+  strict?: boolean,
+): string | undefined;
+export function findPkgDirSync(
+  cwd = process.cwd(),
+  strict = false,
+): string | undefined {
+  if (findPkgDirSync.cache.has(cwd)) {
+    return findPkgDirSync.cache.get(cwd)!;
+  }
+  const dir = pkgDir.sync(cwd);
+  if (!dir && strict) {
+    throw new SmokerError(`Could not find package root from ${cwd}`);
+  }
+  findPkgDirSync.cache.set(cwd, dir);
+  return dir;
+}
+findPkgDirSync.cache = new Map<string, string | undefined>();

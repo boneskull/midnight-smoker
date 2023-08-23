@@ -1,14 +1,17 @@
-import type * as MS from '../../src';
+import type debug from 'debug';
+import type {mkdir, mkdtemp, rm, stat} from 'node:fs/promises';
 import path from 'node:path';
+import type pkgDir from 'pkg-dir';
+import type readPkg from 'read-pkg';
 import rewiremock from 'rewiremock/node';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedEventEmitter from 'unexpected-eventemitter';
 import unexpectedSinon from 'unexpected-sinon';
+import type * as MS from '../../src';
 import {SmokerError} from '../../src/error';
-import * as Mocks from './mocks';
 import {CorepackExecutor} from '../../src/pm/corepack';
-import type {mkdir, mkdtemp, rm, stat} from 'node:fs/promises';
+import * as Mocks from './mocks';
 
 const expect = unexpected
   .clone()
@@ -29,13 +32,11 @@ export const MOCK_TMPDIR = path.join(MOCK_TMPROOT, 'midnight-smoker-');
 type SmokerSpecMocks = {
   'node:fs/promises': NodeFsPromisesMocks;
   'node:console': sinon.SinonStubbedInstance<typeof console>;
-  debug: sinon.SinonStub<any, sinon.SinonStub>;
+  debug: sinon.SinonStubbedMember<typeof debug>;
   'node:os': {tmpdir: sinon.SinonStub<any, string>};
   execa: Mocks.ExecaMock;
-  'read-pkg-up': sinon.SinonStub<
-    any,
-    Promise<{packageJson: {name: 'foo'}; path: '/some/path/to/package.json'}>
-  >;
+  'read-pkg': sinon.SinonStubbedMember<typeof readPkg>;
+  'pkg-dir': sinon.SinonStubbedMember<typeof pkgDir>;
   '../../src/pm': {
     loadPackageManagers: sinon.SinonStub<any, Map<string, MS.PackageManager>>;
   };
@@ -47,8 +48,6 @@ describe('midnight-smoker', function () {
   let Smoker: typeof MS.Smoker;
 
   let Events: typeof MS.Events;
-
-  let smoke: typeof MS.smoke;
 
   let mocks: SmokerSpecMocks;
 
@@ -75,11 +74,13 @@ describe('midnight-smoker', function () {
       'node:os': {
         tmpdir: sandbox.stub().returns(MOCK_TMPROOT),
       },
-      debug: sandbox.stub().returns(sandbox.stub()),
-      'read-pkg-up': sandbox.stub().returns({
-        packageJson: {name: 'foo'},
-        path: '/some/path/to/package.json',
-      }),
+      debug: sandbox.stub<Parameters<typeof debug>>().returns(sandbox.stub()),
+      'read-pkg': sandbox
+        .stub<Parameters<typeof readPkg>>()
+        .resolves({name: 'foo'}),
+      'pkg-dir': sandbox
+        .stub<Parameters<typeof pkgDir>>()
+        .resolves('/some/path'),
       '../../src/pm': {
         loadPackageManagers: sandbox.stub().resolves(pms),
       },
@@ -88,10 +89,7 @@ describe('midnight-smoker', function () {
     mockPm = new Mocks.NullPm(new CorepackExecutor('moo'));
     pms.set('nullpm@1.0.0', mockPm);
 
-    ({Smoker, smoke, Events} = rewiremock.proxy(
-      () => require('../../src'),
-      mocks,
-    ));
+    ({Smoker, Events} = rewiremock.proxy(() => require('../../src'), mocks));
   });
 
   afterEach(function () {
