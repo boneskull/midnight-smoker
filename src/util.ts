@@ -4,7 +4,7 @@
  */
 import path from 'node:path';
 import readPkgUp, {type ReadResult} from 'read-pkg-up';
-import {SmokerError} from './error';
+import {MissingPackageJsonError, UnreadablePackageJsonError} from './error';
 
 /**
  * Trims all strings in an array and removes empty strings.
@@ -138,18 +138,26 @@ export async function readPackageJson({
   normalize,
   strict,
 }: ReadPackageJsonOpts = {}): Promise<readPkgUp.ReadResult | undefined> {
+  cwd ??= process.cwd();
   if (readPackageJson.cache.has({cwd, normalize})) {
     return readPackageJson.cache.get({cwd, normalize});
   }
   try {
     const result = await readPkgUp({cwd, normalize});
     if (!result && strict) {
-      throw new SmokerError(`Could not find package.json from ${cwd}`);
+      throw new MissingPackageJsonError(
+        `Could not find package.json from ${cwd}`,
+        cwd,
+      );
     }
     readPackageJson.cache.set({cwd, normalize}, result);
     return result;
   } catch (err) {
-    throw new SmokerError(`Could not read package.json from ${cwd}: ${err}`);
+    throw new UnreadablePackageJsonError(
+      `Could not read package.json from ${cwd}`,
+      cwd,
+      err as Error,
+    );
   }
 }
 
@@ -176,18 +184,26 @@ export function readPackageJsonSync({
   normalize,
   strict,
 }: ReadPackageJsonOpts = {}) {
+  cwd ??= process.cwd();
   if (readPackageJsonSync.cache.has({cwd, normalize})) {
     return readPackageJsonSync.cache.get({cwd, normalize});
   }
   try {
     const result = readPkgUp.sync({cwd, normalize});
     if (!result && strict) {
-      throw new SmokerError(`Could not find package.json from ${cwd}`);
+      throw new MissingPackageJsonError(
+        `Could not find package.json from ${cwd}`,
+        cwd,
+      );
     }
     readPackageJsonSync.cache.set({cwd, normalize}, result);
     return result;
   } catch (err) {
-    throw new SmokerError(`Could not read package.json from ${cwd}:\n${err}`);
+    throw new UnreadablePackageJsonError(
+      `Could not read package.json from ${cwd}`,
+      cwd,
+      err as Error,
+    );
   }
 }
 

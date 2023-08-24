@@ -7,7 +7,17 @@ import {tmpdir} from 'node:os';
 import path from 'node:path';
 import StrictEventEmitter from 'strict-event-emitter-types';
 import {z} from 'zod';
-import {SmokerError} from './error';
+import {
+  DirCreationError,
+  DirDeletionError,
+  FatalError,
+  InvalidArgError,
+  PackageManagerError,
+  PackageManagerIdError,
+  SmokeFailedError,
+  type InstallError,
+  type PackError,
+} from './error';
 import {Events, type InstallEventData, type SmokerEvents} from './events';
 import {
   loadPackageManagers,
@@ -144,7 +154,7 @@ export class Smoker extends createStrictEventEmitterClass() {
     this.allWorkspaces = Boolean(opts.all);
     this.workspaces = normalizeStringArray(opts.workspace);
     if (this.allWorkspaces && this.workspaces.length) {
-      throw new SmokerError(
+      throw new InvalidArgError(
         'Option "workspace" is mutually exclusive with "all" and/or "includeRoot"',
       );
     }
@@ -203,8 +213,10 @@ export class Smoker extends createStrictEventEmitterClass() {
           } catch (e) {
             const err = e as NodeJS.ErrnoException;
             if (err.code !== 'ENOENT') {
-              throw new SmokerError(
-                `Failed to clean temp directory ${tempdir}: ${e}`,
+              throw new DirDeletionError(
+                `Failed to clean temp directory ${tempdir}`,
+                tempdir,
+                err,
               );
             }
           } finally {
@@ -230,7 +242,10 @@ export class Smoker extends createStrictEventEmitterClass() {
       this.tempDirs.add(tempdir);
       return tempdir;
     } catch (err) {
-      throw new SmokerError(`Failed to create temporary directory: ${err}`);
+      throw new DirCreationError(
+        'Failed to create temp directory',
+        err as NodeJS.ErrnoException,
+      );
     }
   }
 
@@ -239,8 +254,9 @@ export class Smoker extends createStrictEventEmitterClass() {
    */
   public async install(manifests: PkgInstallManifest): Promise<InstallResults> {
     if (!manifests?.size) {
-      throw new TypeError(
-        '(install) Non-empty "pkgInstallManifest" arg is required',
+      throw new InvalidArgError(
+        'Non-empty "manifests" arg is required',
+        'manifests',
       );
     }
 
@@ -268,7 +284,7 @@ export class Smoker extends createStrictEventEmitterClass() {
         const result = await pm.install(manifestWithAdds);
         installResults.set(pm, [manifest, result]);
       } catch (err) {
-        const error = err as SmokerError;
+        const error = err as InstallError;
         this.emit(INSTALL_FAILED, error);
         throw error;
       }
@@ -302,7 +318,7 @@ export class Smoker extends createStrictEventEmitterClass() {
         });
         manifestMap.set(pm, manifest);
       } catch (err) {
-        this.emit(PACK_FAILED, err as SmokerError);
+        this.emit(PACK_FAILED, err as PackError);
         throw err;
       }
     }
@@ -465,9 +481,7 @@ export class Smoker extends createStrictEventEmitterClass() {
       const pmId = this.pmIds.get(pm);
       if (!pmId) {
         /* istanbul ignore next */
-        throw new SmokerError(
-          'Could not find package manager ID; please report this bug',
-        );
+        throw new PackageManagerIdError();
       }
       pkgRunManifestForEmit[pmId] = [...runManifests];
     }
@@ -493,9 +507,7 @@ export class Smoker extends createStrictEventEmitterClass() {
 
       if (!pmId) {
         /* istanbul ignore next */
-        throw new SmokerError(
-          'Could not find package manager ID; please report this bug',
-        );
+        throw new PackageManagerIdError();
       }
       for await (const runManifest of runManifests) {
         let result: RunScriptResult;
@@ -538,8 +550,10 @@ export class Smoker extends createStrictEventEmitterClass() {
             });
           }
         } catch (err) {
-          throw new SmokerError(
-            `(runScripts): Unknown failure from "${pmId}" plugin: ${err}`,
+          throw new PackageManagerError(
+            `Package manager "${pmId}" failed to run script "${script}`,
+            pmId,
+            err as Error,
           );
         }
       }
@@ -628,15 +642,17 @@ export class Smoker extends createStrictEventEmitterClass() {
       };
 
       if (this.isSmokeFailure(smokeResults)) {
-        this.emit(SMOKE_FAILED, new SmokerError('🤮 Maurice!'));
+        this.emit(
+          SMOKE_FAILED,
+          new SmokeFailedError('🤮 Maurice!', {results: smokeResults}),
+        );
       } else {
         this.emit(SMOKE_OK, smokeResults);
       }
 
       return smokeResults;
     } catch (err) {
-      this.emit(SMOKE_FAILED, err as SmokerError);
-      throw err;
+      throw new FatalError('midnight-smoker failed unexpectedly', err as Error);
     } finally {
       await this.cleanup();
     }
@@ -660,9 +676,7 @@ export class Smoker extends createStrictEventEmitterClass() {
       const id = this.pmIds.get(pm);
       if (!id) {
         /* istanbul ignore next */
-        throw new SmokerError(
-          'Could not find package manager ID; please report this bug',
-        );
+        throw new PackageManagerIdError();
       }
       pmIds.add(id);
       manifests.push(manifest);

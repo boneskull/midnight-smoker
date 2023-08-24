@@ -21,8 +21,8 @@ exports[
 ✔ Installed 1 unique package from tarball
 - Running script 0/1…
 ✖ 1 of 1 script failed
-ℹ Script failure details for package fail:
-» (runScript) Script "smoke" in package "fail" failed: Command failed with exit code 1: <path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> run smoke
+ℹ Script failure details for package "fail":
+» Script "smoke" in package "fail" failed: Command failed with exit code 1: <path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> run smoke
 
 > fail@1.0.0 smoke
 > exit 1
@@ -189,9 +189,29 @@ exports[
         },
         "cwd": "<cwd>",
         "error": {
-          "message": "(runScript) Script \\"smoke\\" in package \\"fail\\" failed: Command failed with exit code 1: <path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> run smoke\\n\\n> fail@1.0.0 smoke\\n> exit 1\\n",
+          "message": "Script \\"smoke\\" in package \\"fail\\" failed",
           "name": "Error",
-          "stack": "Error: (<path/to/file>:<line>:<col>)\\n    at processTicksAndRejections (<path/to/file>:<line>:<col>)\\n    at Smoker.runScripts (<path/to/file>:<line>:<col>)\\n    at Smoker.smoke (<path/to/file>:<line>:<col>)\\n    at Object.handler (<path/to/file>:<line>:<col>)"
+          "stack": "Error: Script \\"smoke\\" in package \\"fail\\" failed\\n    at Npm7.runScript (<path/to/file>:<line>:<col>)\\n    at processTicksAndRejections (<path/to/file>:<line>:<col>)\\n    at Smoker.runScripts (<path/to/file>:<line>:<col>)\\n    at Smoker.smoke (<path/to/file>:<line>:<col>)\\n    at Object.handler (<path/to/file>:<line>:<col>)",
+          "cause": {
+            "script": "smoke",
+            "pkgName": "fail",
+            "pm": "npm",
+            "error": {
+              "shortMessage": "Command failed with exit code 1: <path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> run smoke",
+              "command": "<path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> run smoke",
+              "escapedCommand": "\\"<path/to/>/bin/node\\" \\"<path/to/>/.bin/corepack\\" \\"npm@<version>\\" run smoke",
+              "exitCode": 1,
+              "stdout": "\\n> fail@1.0.0 smoke\\n> exit 1\\n",
+              "stderr": "",
+              "failed": true,
+              "timedOut": false,
+              "isCanceled": false,
+              "killed": false
+            },
+            "exitCode": 1,
+            "output": ""
+          },
+          "code": "ESMOKER_RUNSCRIPT"
         }
       }
     ],

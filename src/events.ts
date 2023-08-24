@@ -1,5 +1,10 @@
-import type {SmokerError} from './error';
-import type {RuleConfig, CheckFailure, CheckOk} from './rules';
+import type {
+  InstallError,
+  PackError,
+  ScriptError,
+  SmokeFailedError,
+} from './error';
+import type {CheckFailure, CheckOk, RuleConfig} from './rules';
 import type {
   InstallManifest,
   RunManifest,
@@ -46,7 +51,7 @@ export interface RunScriptEventData {
 }
 
 export interface RunScriptFailedEventData extends RunScriptEventData {
-  error: SmokerError;
+  error: ScriptError;
 }
 
 export interface RunChecksBeginEventData {
@@ -81,11 +86,11 @@ export type RunChecksOkEventData = RunChecksEndEventData;
 
 export interface SmokerEvents {
   InstallBegin: InstallEventData;
-  InstallFailed: SmokerError;
+  InstallFailed: InstallError;
   InstallOk: InstallEventData;
   Lingered: string[];
   PackBegin: PackBeginEventData;
-  PackFailed: SmokerError;
+  PackFailed: PackError;
   PackOk: PackOkEventData;
   RunCheckBegin: RunCheckEventData;
   RunCheckFailed: RunCheckFailedEventData;
@@ -100,7 +105,7 @@ export interface SmokerEvents {
   RunScriptsFailed: RunScriptsFailedEventData;
   RunScriptsOk: RunScriptsOkEventData;
   SmokeBegin: void;
-  SmokeFailed: SmokerError;
+  SmokeFailed: SmokeFailedError;
   SmokeOk: SmokeResults;
 }
 

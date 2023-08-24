@@ -1,4 +1,5 @@
 import type * as MS from '../../src';
+import * as Errors from '../../src/error';
 import path from 'node:path';
 import rewiremock from 'rewiremock/node';
 import {createSandbox} from 'sinon';
@@ -23,6 +24,7 @@ interface NodeFsPromisesMocks {
 }
 
 export const MOCK_PM = '/bin/nullpm';
+const MOCK_PM_ID = 'nullpm@1.0.0';
 const MOCK_TMPROOT = '/some/tmp';
 export const MOCK_TMPDIR = path.join(MOCK_TMPROOT, 'midnight-smoker-');
 
@@ -86,7 +88,7 @@ describe('midnight-smoker', function () {
     };
 
     mockPm = new Mocks.NullPm(new CorepackExecutor('moo'));
-    pms.set('nullpm@1.0.0', mockPm);
+    pms.set(MOCK_PM_ID, mockPm);
 
     ({Smoker, smoke, Events} = rewiremock.proxy(
       () => require('../../src'),
@@ -216,7 +218,7 @@ describe('midnight-smoker', function () {
             await expect(
               smoker.createTempDir(),
               'to be rejected with error satisfying',
-              /Failed to create temporary directory/i,
+              /Failed to create temp directory/i,
             );
           });
         });
@@ -336,27 +338,13 @@ describe('midnight-smoker', function () {
             );
           });
 
-          describe('when called without "pkgInstallManifest" argument', function () {
+          describe('when called without argument', function () {
             it('should reject', async function () {
               await expect(
                 // @ts-expect-error invalid args
                 smoker.install(),
                 'to be rejected with error satisfying',
-                new TypeError(
-                  '(install) Non-empty "pkgInstallManifest" arg is required',
-                ),
-              );
-            });
-          });
-
-          describe('when "pkgInstallManifest" argument is empty', function () {
-            it('should reject', async function () {
-              await expect(
-                smoker.install(new Map()),
-                'to be rejected with error satisfying',
-                new TypeError(
-                  '(install) Non-empty "pkgInstallManifest" arg is required',
-                ),
+                {code: 'ESMOKER_INVALIDARG'},
               );
             });
           });
@@ -503,17 +491,21 @@ describe('midnight-smoker', function () {
               await expect(
                 smoker.runScripts(pkgRunManifest),
                 'to be rejected with error satisfying',
-                new SmokerError(
-                  '(runScripts): Unknown failure from "nullpm@1.0.0" plugin: Error: oh noes',
-                ),
+                {code: 'ESMOKER_PACKAGEMANAGER', cause: {pmId: MOCK_PM_ID}},
               );
             });
           });
 
           describe('when a script fails', function () {
-            let err: SmokerError;
+            let error: Errors.ScriptError;
             beforeEach(function () {
-              err = new SmokerError('oh noes');
+              error = new Errors.RunScriptError(
+                'oh noes',
+                'some-script',
+                'bar',
+                MOCK_PM_ID,
+                {error: new Error()},
+              );
               sandbox
                 .stub(mockPm, 'runScript')
                 .callThrough()
@@ -521,7 +513,7 @@ describe('midnight-smoker', function () {
                 .callsFake(async (runManifest) => {
                   return {
                     pkgName: runManifest.packedPkg.pkgName,
-                    error: err,
+                    error,
                     script: runManifest.script,
                     rawResult: {} as MS.RawRunScriptResult,
                     cwd: '/some/path',
@@ -573,7 +565,7 @@ describe('midnight-smoker', function () {
                   smoker.runScripts(pkgRunManifest),
                   'to be fulfilled with value satisfying',
                   [
-                    {pkgName: 'bar', error: err},
+                    {pkgName: 'bar', error},
                     {pkgName: 'baz', error: undefined},
                   ],
                 );
@@ -591,7 +583,7 @@ describe('midnight-smoker', function () {
                   'to be fulfilled with value satisfying',
                   expect
                     .it('to have length', 1)
-                    .and('to satisfy', [{pkgName: 'bar', error: err}]),
+                    .and('to satisfy', [{pkgName: 'bar', error}]),
                 );
               });
             });

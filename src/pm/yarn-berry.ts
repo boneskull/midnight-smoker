@@ -1,7 +1,7 @@
 import createDebug from 'debug';
 import path from 'node:path';
 import type {SemVer} from 'semver';
-import {SmokerError} from '../error';
+import {InstallError, PackError, RunScriptError} from '../error';
 import type {
   InstallManifest,
   PackedPackage,
@@ -22,14 +22,13 @@ import {YarnClassic} from './yarn-classic';
 
 interface WorkspaceInfo {
   location: string;
-
   [key: string]: any;
 }
 
 export class YarnBerry extends YarnClassic implements PackageManager {
   protected readonly debug: createDebug.Debugger;
 
-  public static readonly bin = 'yarn';
+  public readonly name = 'yarn';
 
   constructor(executor: CorepackExecutor, opts: PackageManagerOpts = {}) {
     super(executor, opts);
@@ -113,16 +112,18 @@ export class YarnBerry extends YarnClassic implements PackageManager {
         cwd: tarballRootDir,
       });
     } catch (err) {
-      throw new SmokerError(
-        `(install) ${YarnBerry.bin} failed to spawn: ${
-          (err as ExecError).message
-        }`,
+      throw new InstallError(
+        `Package manager "${this.name}" failed to install packages`,
+        this.name,
+        {error: err as Error},
       );
     }
     if (installResult.exitCode) {
       this.debug('(install) Failed: %O', installResult);
-      throw new SmokerError(
-        `(install) Installation failed with exit code ${installResult.exitCode}: ${installResult.stderr}`,
+      throw new InstallError(
+        `Package manager "${this.name}" failed to install packages`,
+        this.name,
+        {exitCode: installResult.exitCode},
       );
     }
 
@@ -207,7 +208,11 @@ export class YarnBerry extends YarnClassic implements PackageManager {
           {} as Record<string, WorkspaceInfo>,
         );
       } catch (err) {
-        throw new SmokerError(`(pack) Unable to read workspace information`);
+        throw new PackError(
+          `Package manager "${this.name}" unable to read workspace information`,
+          this.name,
+          {error: err as Error},
+        );
       }
 
       if (opts.workspaces?.length) {
@@ -220,8 +225,9 @@ export class YarnBerry extends YarnClassic implements PackageManager {
                 ([, info]) => info.location === workspace,
               );
               if (!info) {
-                throw new SmokerError(
-                  `(pack) Unknown workspace "${workspace}"`,
+                throw new PackError(
+                  `Package manager "${this.name}" unable to find workspace "${workspace}"`,
+                  this.name,
                 );
               }
             } else {
@@ -260,19 +266,28 @@ export class YarnBerry extends YarnClassic implements PackageManager {
     const packedPkgs: PackedPackage[] = [];
 
     for await (const {command, cwd, tarball, pkgName} of commands) {
-      let result: ExecResult;
+      let packResult: ExecResult;
       try {
-        result = await this.executor.exec(command, {cwd});
+        packResult = await this.executor.exec(command, {cwd});
       } catch (err) {
-        throw new SmokerError(
-          `(pack) ${YarnBerry.bin} failed to pack: ${(err as Error).message}`,
+        throw new PackError(
+          `Package manager "${this.name}" failed to pack`,
+          this.name,
+          {
+            error: err as Error,
+          },
         );
       }
 
-      if (result.exitCode) {
-        this.debug('(pack) Failed: %O', result);
-        throw new SmokerError(
-          `(pack) ${YarnBerry.bin} failed to pack: ${result.stderr}`,
+      if (packResult.exitCode) {
+        this.debug('(pack) Failed: %O', packResult);
+        throw new PackError(
+          `Package manager "${this.name}" failed to pack`,
+          this.name,
+          {
+            exitCode: packResult.exitCode,
+            output: packResult.stderr,
+          },
         );
       }
 
@@ -315,8 +330,12 @@ export class YarnBerry extends YarnClassic implements PackageManager {
       ) {
         result.skipped = true;
       } else {
-        result.error = new SmokerError(
-          `(runScript) Script "${script}" in package "${pkgName}" failed: ${error.message}`,
+        result.error = new RunScriptError(
+          `Script "${script}" in package "${pkgName}" failed`,
+          script,
+          pkgName,
+          this.name,
+          {error, exitCode: error.exitCode, output: error.stderr},
         );
       }
     }
@@ -327,15 +346,18 @@ export class YarnBerry extends YarnClassic implements PackageManager {
         result.rawResult.stdout &&
         /Couldn't find a script named/i.test(result.rawResult.stdout)
       ) {
-        message = `(runScript) Script "${script}" in package "${pkgName}" failed; script not found`;
+        message = `Script "${script}" in package "${pkgName}" failed; script not found`;
       } else {
         if (result.rawResult.exitCode) {
-          message = `(runScript) Script "${script}" in package "${pkgName}" failed with exit code ${result.rawResult.exitCode}: ${result.rawResult.all}`;
+          message = `Script "${script}" in package "${pkgName}" failed with exit code ${result.rawResult.exitCode}`;
         } else {
-          message = `(runScript) Script "${script}" in package "${pkgName}" failed: ${result.rawResult.all}`;
+          message = `Script "${script}" in package "${pkgName}" failed`;
         }
       }
-      result.error = new SmokerError(message);
+      result.error = new RunScriptError(message, script, pkgName, this.name, {
+        exitCode: result.rawResult.exitCode,
+        output: result.rawResult.all,
+      });
     }
 
     if (result.error) {

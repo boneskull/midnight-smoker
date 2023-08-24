@@ -1,7 +1,7 @@
 import createDebug from 'debug';
 import path from 'node:path';
 import type {SemVer} from 'semver';
-import {SmokerError} from '../error';
+import {InstallError, PackError, RunScriptError} from '../error';
 import type {
   InstallManifest,
   PackedPackage,
@@ -71,14 +71,18 @@ export class YarnClassic implements PackageManager {
         cwd: tarballRootDir,
       });
     } catch (err) {
-      throw new SmokerError(
-        `(install) ${this.name} failed to spawn: ${(err as ExecError).message}`,
+      throw new InstallError(
+        `Package manager "${this.name}" failed to install packages`,
+        this.name,
+        {error: err as Error},
       );
     }
     if (installResult.exitCode) {
       this.debug('(install) Failed: %O', installResult);
-      throw new SmokerError(
-        `(install) Installation failed with exit code ${installResult.exitCode}: ${installResult.stderr}`,
+      throw new InstallError(
+        `Package manager "${this.name}" failed to install packages`,
+        this.name,
+        {exitCode: installResult.exitCode},
       );
     }
 
@@ -156,7 +160,11 @@ export class YarnClassic implements PackageManager {
         stdout = lines.join('\n');
         workspaceInfo = JSON.parse(stdout);
       } catch (err) {
-        throw new SmokerError(`(pack) Unable to read workspace information`);
+        throw new PackError(
+          `Package manager "${this.name}" unable to read workspace information`,
+          this.name,
+          {error: err as Error},
+        );
       }
 
       if (opts.workspaces?.length) {
@@ -169,8 +177,9 @@ export class YarnClassic implements PackageManager {
                 ([, info]) => info.location === workspace,
               );
               if (!info) {
-                throw new SmokerError(
-                  `(pack) Unknown workspace "${workspace}"`,
+                throw new PackError(
+                  `Package manager "${this.name}" unable to find workspace "${workspace}"`,
+                  this.name,
                 );
               }
             } else {
@@ -209,19 +218,28 @@ export class YarnClassic implements PackageManager {
     const packedPkgs: PackedPackage[] = [];
 
     for await (const {command, cwd, tarball, pkgName} of commands) {
-      let result: ExecResult;
+      let packResult: ExecResult;
       try {
-        result = await this.executor.exec(command, {cwd});
+        packResult = await this.executor.exec(command, {cwd});
       } catch (err) {
-        throw new SmokerError(
-          `(pack) ${this.name} failed to pack: ${(err as Error).message}`,
+        throw new PackError(
+          `Package manager "${this.name}" failed to pack`,
+          this.name,
+          {
+            error: err as Error,
+          },
         );
       }
 
-      if (result.exitCode) {
-        this.debug('(pack) Failed: %O', result);
-        throw new SmokerError(
-          `(pack) ${this.name} failed to pack: ${result.stderr}`,
+      if (packResult.exitCode) {
+        this.debug('(pack) Failed: %O', packResult);
+        throw new PackError(
+          `Package manager "${this.name}" failed to pack`,
+          this.name,
+          {
+            exitCode: packResult.exitCode,
+            output: packResult.stderr,
+          },
         );
       }
 
@@ -261,8 +279,12 @@ export class YarnClassic implements PackageManager {
       if (this.opts.loose && /Command ".+?" not found/i.test(error.stderr)) {
         result.skipped = true;
       } else {
-        result.error = new SmokerError(
-          `(runScript) Script "${script}" in package "${pkgName}" failed: ${error.message}`,
+        result.error = new RunScriptError(
+          `Script "${script}" in package "${pkgName}" failed`,
+          script,
+          pkgName,
+          this.name,
+          {error, exitCode: error.exitCode, output: error.stderr},
         );
       }
     }
@@ -281,7 +303,10 @@ export class YarnClassic implements PackageManager {
           message = `(runScript) Script "${script}" in package "${pkgName}" failed: ${result.rawResult.all}`;
         }
       }
-      result.error = new SmokerError(message);
+      result.error = new RunScriptError(message, script, pkgName, this.name, {
+        exitCode: result.rawResult.exitCode,
+        output: result.rawResult.all,
+      });
     }
 
     if (result.error) {

@@ -1,7 +1,11 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import {valid, validRange, maxSatisfying, type SemVer, parse} from 'semver';
-import {SmokerError} from '../error';
+import {maxSatisfying, parse, valid, validRange, type SemVer} from 'semver';
+import {
+  UnknownDistTagError,
+  UnknownVersionError,
+  UnknownVersionRangeError,
+} from '../error';
 import {findDataDir} from '../util';
 
 async function cachedRead<T = unknown>(filename: string): Promise<T> {
@@ -60,8 +64,10 @@ export async function normalizeVersion(
     if (versions.has(version)) {
       return parse(version)!;
     }
-    throw new SmokerError(
-      `(normalizeVersion) Unknown version "${version}" for package manager "${name}"`,
+    throw new UnknownVersionError(
+      `Unknown version "${version}" of package manager "${name}"`,
+      name,
+      version,
     );
   }
 
@@ -69,8 +75,10 @@ export async function normalizeVersion(
   if (range) {
     const max = maxSatisfying([...versions], range, true);
     if (!max) {
-      throw new SmokerError(
-        `(normalizeVersion) No version found for "${name}" matching range "${version}"`,
+      throw new UnknownVersionRangeError(
+        `No version found for package manager "${name}" matching range "${version}"`,
+        name,
+        version,
       );
     }
     return parse(max)!;
@@ -80,8 +88,10 @@ export async function normalizeVersion(
   if (version in distTags) {
     return parse(distTags[version])!;
   } else {
-    throw new SmokerError(
-      `(normalizeVersion) Unknown version/tag "${version}" for package manager "${name}"`,
+    throw new UnknownDistTagError(
+      `Unknown version/tag "${version}" for package manager "${name}"`,
+      name,
+      version,
     );
   }
 }
