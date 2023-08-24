@@ -1,5 +1,5 @@
 import createDebug from 'debug';
-import {SmokerError} from '../error';
+import {RunScriptError, UnknownScriptError} from '../error';
 import type {InstallManifest, RunManifest, RunScriptResult} from '../types';
 import {CorepackExecutor} from './corepack';
 import {type ExecError} from './executor';
@@ -13,6 +13,8 @@ import type {
 
 export abstract class GenericNpmPackageManager implements PackageManager {
   protected abstract debug: createDebug.Debugger;
+
+  public readonly name = 'npm';
 
   constructor(
     protected readonly executor: CorepackExecutor,
@@ -53,8 +55,12 @@ export abstract class GenericNpmPackageManager implements PackageManager {
       if (this.opts.loose && /missing script:/i.test(error.stderr)) {
         result.skipped = true;
       } else {
-        result.error = new SmokerError(
-          `(runScript) Script "${script}" in package "${pkgName}" failed: ${error.message}`,
+        result.error = new RunScriptError(
+          `Script "${script}" in package "${pkgName}" failed`,
+          script,
+          pkgName,
+          this.name,
+          {error, exitCode: error.exitCode, output: error.stderr},
         );
       }
     }
@@ -65,8 +71,10 @@ export abstract class GenericNpmPackageManager implements PackageManager {
         /missing script:/i.test(result.rawResult.stderr)
       ) {
         if (!this.opts.loose) {
-          result.error = new SmokerError(
-            `(runScript) Script "${script}" in package "${pkgName}" failed; script not found`,
+          result.error = new UnknownScriptError(
+            `Script "${script}" in package "${pkgName}" not found`,
+            script,
+            pkgName,
           );
         } else {
           result.skipped = true;
@@ -74,11 +82,14 @@ export abstract class GenericNpmPackageManager implements PackageManager {
       } else {
         let message: string;
         if (result.rawResult.exitCode) {
-          message = `(runScript) Script "${script}" in package "${pkgName}" failed with exit code ${result.rawResult.exitCode}: ${result.rawResult.all}`;
+          message = `Script "${script}" in package "${pkgName}" failed with exit code ${result.rawResult.exitCode}`;
         } else {
-          message = `(runScript) Script "${script}" in package "${pkgName}" failed: ${result.rawResult.all}`;
+          message = `Script "${script}" in package "${pkgName}" failed`;
         }
-        result.error = new SmokerError(message);
+        result.error = new RunScriptError(message, script, pkgName, this.name, {
+          exitCode: result.rawResult.exitCode,
+          output: result.rawResult.all,
+        });
       }
     }
 

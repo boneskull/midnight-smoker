@@ -1,5 +1,5 @@
 import type {ExecaError, ExecaReturnValue} from 'execa';
-import type {SmokerError} from './error';
+import type {ScriptError} from './error';
 import type {PackageManager} from './pm';
 import type {RawRuleConfig, CheckResults} from './rules';
 
@@ -24,7 +24,7 @@ export type RawRunScriptError = Pick<ExecaError, RawRunScriptProps>;
 export interface RunScriptResult {
   pkgName: string;
   script: string;
-  error?: SmokerError;
+  error?: ScriptError;
   rawResult: RawRunScriptResult | RawRunScriptError;
   cwd: string;
   skipped?: boolean;

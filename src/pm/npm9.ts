@@ -1,9 +1,8 @@
 import createDebug from 'debug';
 import type {SemVer} from 'semver';
-import {SmokerError} from '../error';
+import {InstallError} from '../error';
 import type {InstallManifest} from '../types';
 import type {CorepackExecutor} from './corepack';
-import type {ExecError} from './executor';
 import {Npm7} from './npm7';
 import type {
   InstallResult,
@@ -81,14 +80,18 @@ export class Npm9 extends Npm7 implements PackageManager {
         cwd: tarballRootDir,
       });
     } catch (err) {
-      throw new SmokerError(
-        `(install) ${this.name} failed to spawn: ${(err as ExecError).message}`,
+      throw new InstallError(
+        `Package manager "${this.name}" failed to install packages`,
+        this.name,
+        {error: err as Error},
       );
     }
     if (installResult.exitCode) {
       this.debug('(install) Failed: %O', installResult);
-      throw new SmokerError(
-        `(install) Installation failed with exit code ${installResult.exitCode}: ${installResult.stderr}`,
+      throw new InstallError(
+        `Package manager "${this.name}" failed to install packages`,
+        this.name,
+        {exitCode: installResult.exitCode},
       );
     }
 

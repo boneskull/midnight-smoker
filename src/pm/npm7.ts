@@ -1,7 +1,7 @@
 import createDebug from 'debug';
 import path from 'node:path';
 import type {SemVer} from 'semver';
-import {SmokerError} from '../error';
+import {InstallError, PackError, PackParseError} from '../error';
 import type {InstallManifest} from '../types';
 import type {CorepackExecutor} from './corepack';
 import type {ExecResult} from './executor';
@@ -46,7 +46,6 @@ export class Npm7 extends GenericNpmPackageManager implements PackageManager {
   protected debug: createDebug.Debugger;
 
   public static readonly bin = 'npm';
-
   public readonly name = 'npm';
 
   constructor(executor: CorepackExecutor, opts: PackageManagerOpts = {}) {
@@ -85,14 +84,18 @@ export class Npm7 extends GenericNpmPackageManager implements PackageManager {
         cwd: tarballRootDir,
       });
     } catch (err) {
-      throw new SmokerError(
-        `(install) ${this.name} failed to install: ${(err as Error).message}`,
+      throw new InstallError(
+        `Package manager "${this.name}" failed to install packages`,
+        this.name,
+        {error: err as Error},
       );
     }
     if (installResult.exitCode) {
       this.debug('(install) Failed: %O', installResult);
-      throw new SmokerError(
-        `(install) Installation failed with exit code ${installResult.exitCode}: ${installResult.stderr}`,
+      throw new InstallError(
+        `Package manager "${this.name}" failed to install packages`,
+        this.name,
+        {exitCode: installResult.exitCode},
       );
     }
 
@@ -131,15 +134,24 @@ export class Npm7 extends GenericNpmPackageManager implements PackageManager {
     try {
       packResult = await this.executor.exec(packArgs);
     } catch (err) {
-      throw new SmokerError(
-        `(pack) ${this.name} failed to spawn: ${(err as Error).message}`,
+      throw new PackError(
+        `Package manager "${this.name}" failed to pack`,
+        this.name,
+        {
+          error: err as Error,
+        },
       );
     }
 
     if (packResult.exitCode) {
       this.debug('(pack) Failed: %O', packResult);
-      throw new SmokerError(
-        `(pack) Packing failed with exit code ${packResult.exitCode}: ${packResult.stderr}`,
+      throw new PackError(
+        `Package manager "${this.name}" failed to pack`,
+        this.name,
+        {
+          exitCode: packResult.exitCode,
+          output: packResult.stderr,
+        },
       );
     }
 
@@ -148,10 +160,13 @@ export class Npm7 extends GenericNpmPackageManager implements PackageManager {
     const {stdout: packOutput} = packResult;
     try {
       parsed = JSON.parse(packOutput);
-    } catch {
+    } catch (err) {
       this.debug('(pack) Failed to parse JSON: %s', packOutput);
-      throw new SmokerError(
-        `(pack) Failed to parse JSON output from "${this.name} pack": ${packOutput}`,
+      throw new PackParseError(
+        `Failed to parse JSON result of pack from package manager "${this.name}"`,
+        this.name,
+        err as Error,
+        packOutput,
       );
     }
 

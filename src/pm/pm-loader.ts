@@ -6,7 +6,7 @@ import type {
   PackageManagerOpts,
 } from './pm';
 
-import {SmokerError} from '../error';
+import {UnsupportedPackageManagerError} from '../error';
 import {CorepackExecutor} from './corepack';
 import {normalizeVersion} from './version';
 
@@ -37,8 +37,10 @@ export function initPMLoader(builtinPms: PackageManagerModule[] = []) {
         (pmm) => pmm.bin === name && pmm.accepts(version),
       );
       if (!pmm) {
-        throw new SmokerError(
+        throw new UnsupportedPackageManagerError(
           `No package manager found that can handle ${name}@${version}`,
+          name,
+          version.toString(),
         );
       }
       acc.set(`${name}@${version}`, pmm);

@@ -182,7 +182,7 @@ describe('midnight-smoker', function () {
               await expect(
                 npm.pack('foo'),
                 'to be rejected with error satisfying',
-                new SmokerError('(pack) npm failed to spawn: no such npm'),
+                {code: 'ESMOKER_PACK'},
               );
             });
           });
@@ -199,9 +199,7 @@ describe('midnight-smoker', function () {
               await expect(
                 npm.pack('foo'),
                 'to be rejected with error satisfying',
-                new SmokerError(
-                  '(pack) Packing failed with exit code 1: oh no',
-                ),
+                {code: 'ESMOKER_PACK', cause: {exitCode: 1, pm: 'npm'}},
               );
             });
           });
@@ -215,9 +213,7 @@ describe('midnight-smoker', function () {
               await expect(
                 npm.pack('foo'),
                 'to be rejected with error satisfying',
-                new SmokerError(
-                  '(pack) Failed to parse JSON output from "npm pack": {not json}',
-                ),
+                {code: 'ESMOKER_PACKPARSE'},
               );
             });
           });
@@ -272,7 +268,10 @@ describe('midnight-smoker', function () {
               await expect(
                 npm.install(manifest),
                 'to be rejected with error satisfying',
-                new SmokerError('(install) npm failed to install: no such npm'),
+                {
+                  code: 'ESMOKER_INSTALL',
+                  cause: {error: new Error('no such npm')},
+                },
               );
             });
           });
@@ -289,9 +288,10 @@ describe('midnight-smoker', function () {
               return expect(
                 npm.install(manifest),
                 'to be rejected with error satisfying',
-                new SmokerError(
-                  '(install) Installation failed with exit code 1: wackadoo',
-                ),
+                {
+                  code: 'ESMOKER_INSTALL',
+                  cause: {exitCode: 1, pm: 'npm'},
+                },
               );
             });
           });
@@ -349,9 +349,7 @@ describe('midnight-smoker', function () {
                 }),
                 'to be fulfilled with value satisfying',
                 {
-                  error: new SmokerError(
-                    '(runScript) Script "some-script" in package "foo" failed: no such npm',
-                  ),
+                  error: {code: 'ESMOKER_RUNSCRIPT'},
                 },
               );
             });
@@ -374,9 +372,7 @@ describe('midnight-smoker', function () {
                 }),
                 'to be fulfilled with value satisfying',
                 {
-                  error: new SmokerError(
-                    '(runScript) Script "some-script" in package "foo" failed: reasons',
-                  ),
+                  error: {code: 'ESMOKER_RUNSCRIPT'},
                 },
               );
             });
@@ -403,9 +399,7 @@ describe('midnight-smoker', function () {
                 }),
                 'to be fulfilled with value satisfying',
                 {
-                  error: new SmokerError(
-                    '(runScript) Script "some-script" in package "foo" failed with exit code 1: reasons',
-                  ),
+                  error: {code: 'ESMOKER_RUNSCRIPT', cause: {exitCode: 1}},
                 },
               );
             });
@@ -431,9 +425,7 @@ describe('midnight-smoker', function () {
                 }),
                 'to be fulfilled with value satisfying',
                 {
-                  error: new SmokerError(
-                    '(runScript) Script "some-script" in package "foo" failed; script not found',
-                  ),
+                  error: {code: 'ESMOKER_UNKNOWNSCRIPT'},
                 },
               );
             });

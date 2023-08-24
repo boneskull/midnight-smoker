@@ -4,7 +4,7 @@ import pluralize from 'pluralize';
 import {hideBin} from 'yargs/helpers';
 import yargs from 'yargs/yargs';
 import {SmokerConfig, readConfig} from './config';
-import {SmokerError} from './error';
+import {NotImplementedError} from './error';
 import {Events, type SmokerEvents} from './events';
 import type {CheckFailure} from './rules/result';
 import {Smoker} from './smoker';
@@ -136,7 +136,7 @@ async function main(args: string[]): Promise<void> {
             })
             .check((argv) => {
               if (argv.pm?.some((pm) => pm.startsWith('pnpm'))) {
-                throw new SmokerError('pnpm is currently unsupported');
+                throw new NotImplementedError('pnpm is currently unsupported');
               }
               return true;
             });
@@ -367,7 +367,7 @@ async function main(args: string[]): Promise<void> {
                     'Check failure',
                   )} details for package ${cyan(pkgName)}:\n`;
                   for (const failure of failed) {
-                    text += `» ${yellow(failure.message)}\n`;
+                    text += `» ${yellow(failure)}\n`;
                   }
                   spinner.info(text);
                 }
@@ -398,9 +398,9 @@ async function main(args: string[]): Promise<void> {
                 );
                 for (const evt of scriptFailedEvts) {
                   spinner.info(
-                    `${red('Script failure')} details for package ${cyan(
+                    `${red('Script failure')} details for package "${cyan(
                       evt.pkgName,
-                    )}:\n» ${yellow(evt.error.message)}\n`,
+                    )}":\n» ${yellow(evt.error)}\n`,
                   );
                 }
                 process.exitCode = 1;

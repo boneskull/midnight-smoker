@@ -23,7 +23,7 @@ describe('midnight-smoker', function () {
                 await expect(
                   normalizeVersion('npm', '^999999'),
                   'to be rejected with error satisfying',
-                  /no version found for "npm" matching range/i,
+                  {code: 'ESMOKER_UNKNOWNVERSIONRANGE'},
                 );
               });
             });
