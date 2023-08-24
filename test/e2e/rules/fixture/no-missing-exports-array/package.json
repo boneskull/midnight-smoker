@@ -1,0 +1,9 @@
+{
+  "name": "no-missing-exports-array",
+  "version": "1.0.0",
+  "exports": [
+    "./index.js",
+    "./index-missing.js"
+  ],
+  "type": "module"
+}

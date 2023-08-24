@@ -1,0 +1,11 @@
+{
+  "name": "no-missing-exports-conditional-array",
+  "version": "1.0.0",
+  "exports": {
+    "default": [
+      "./index.js",
+      "./index-missing.js"
+    ]
+  },
+  "type": "module"
+}

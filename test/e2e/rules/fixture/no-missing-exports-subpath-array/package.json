@@ -1,0 +1,11 @@
+{
+  "name": "no-missing-exports-subpath",
+  "version": "1.0.0",
+  "exports": {
+    ".": [
+      "./index.js",
+      "./another-index.cjs"
+    ]
+  },
+  "type": "module"
+}

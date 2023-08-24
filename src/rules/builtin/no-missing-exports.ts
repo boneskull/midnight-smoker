@@ -14,6 +14,14 @@ const CONDITIONAL_EXPORT_REQUIRE = 'require';
 const CONDITIONAL_EXPORT_IMPORT = 'import';
 const CONDITIONAL_EXPORT_TYPES = 'types';
 
+type ExportsField =
+  | string
+  | string[]
+  | Record<
+      string,
+      string | null | string[] | Record<string, string | null | string[]>
+    >;
+
 function isESMPkg(pkgJson: PackageJson) {
   return 'type' in pkgJson && pkgJson.type === 'module';
 }
@@ -138,7 +146,10 @@ const noMissingExports = createRule({
      * `RuleFailure` if the `default` key is _not_ the last key in the object
      * @param exports Conditional or subpath exports
      */
-    const checkOrder = (exports: Record<string, string | null>) => {
+    const checkOrder = (exports: ExportsField) => {
+      if (!exports || typeof exports === 'string' || Array.isArray(exports)) {
+        return;
+      }
       if (opts?.order && CONDITIONAL_EXPORT_DEFAULT in exports) {
         const keys = Object.keys(exports);
         if (keys[keys.length - 1] !== CONDITIONAL_EXPORT_DEFAULT) {
@@ -151,10 +162,7 @@ const noMissingExports = createRule({
       }
     };
 
-    const exports = pkgJson[EXPORTS_FIELD] as
-      | string
-      | null
-      | Record<string, string | null>;
+    const exports = pkgJson[EXPORTS_FIELD] as ExportsField;
 
     if (exports === null) {
       return [fail(`"${EXPORTS_FIELD}" field canot be null`)];
@@ -162,38 +170,59 @@ const noMissingExports = createRule({
 
     // yeah yeah
     let result:
-      | (CheckFailure | undefined | (CheckFailure | undefined)[])[]
-      | CheckFailure
+      | (
+          | CheckFailure
+          | undefined
+          | (CheckFailure | undefined)[]
+          | (CheckFailure | undefined | (CheckFailure | undefined)[])[]
+        )[]
       | undefined;
 
     if (typeof exports === 'string') {
-      result = await checkFile(exports);
+      result = [await checkFile(exports)];
+    } else if (Array.isArray(exports)) {
+      result = await Promise.all(
+        exports.map(async (relativePath) => checkFile(relativePath)),
+      );
     } else {
       result =
         checkOrder(exports) ??
         (await Promise.all(
-          Object.entries(exports).map(([name, relativePath]) => {
-            // most certainly an object
-            if (relativePath && typeof relativePath === 'object') {
-              return (
-                checkOrder(relativePath) ??
-                Promise.all(
-                  Object.entries(relativePath).map(
-                    ([deepName, relativePath]) => {
-                      // don't think this can be an object, but might be wrong!
-                      return checkFile(
-                        relativePath as string | null,
-                        deepName,
-                        `${name} » ${deepName}`,
-                      );
-                    },
-                  ),
-                )
+          Object.entries(exports).map(async ([topKey, topValue]) => {
+            if (topValue === null) {
+              return undefined;
+            }
+            if (typeof topValue === 'string') {
+              return checkFile(topValue, topKey);
+            }
+            if (Array.isArray(topValue)) {
+              if (topKey.startsWith('.')) {
+                return fail(
+                  `Subpath export "${topKey}" should be a string instead of an array`,
+                );
+              }
+              return Promise.all(
+                topValue.map(async (file) => checkFile(file, topKey)),
               );
             }
-
-            // string or null
-            return checkFile(relativePath, name);
+            return (
+              checkOrder(topValue) ??
+              Promise.all(
+                Object.entries(topValue).map(async ([key, value]) => {
+                  if (typeof value === 'string') {
+                    return checkFile(value, key, `${topKey} » ${key}`);
+                  }
+                  if (Array.isArray(value)) {
+                    return Promise.all(
+                      value.map(async (file) =>
+                        checkFile(file, key, `${topKey} » ${key}`),
+                      ),
+                    );
+                  }
+                  return undefined;
+                }),
+              )
+            );
           }),
         ));
     }
