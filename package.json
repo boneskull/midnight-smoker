@@ -65,7 +65,7 @@
     "update-schema": "ts-node ./scripts/generate-schema.ts && git add -A schema/midnight-smoker.schema.json"
   },
   "lint-staged": {
-    "!(__snapshots__/)*.{js,ts}": [
+    "*.{js,ts}": [
       "eslint --fix",
       "prettier --write"
     ],
