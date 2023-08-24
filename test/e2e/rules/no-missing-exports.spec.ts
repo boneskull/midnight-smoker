@@ -86,7 +86,7 @@ describe('midnight-smoker', function () {
         });
       });
 
-      describe('when the package contains subpath "exports"', function () {
+      describe('when the package contains subpath "exports" field', function () {
         describe('when a file is missing', function () {
           beforeEach(function () {
             ({ruleConfig, pkg} = setupRuleTest('no-missing-exports-subpath'));
@@ -108,6 +108,32 @@ describe('midnight-smoker', function () {
                 ],
               },
             );
+          });
+
+          describe('when the value is an array', function () {
+            beforeEach(function () {
+              ({ruleConfig, pkg} = setupRuleTest(
+                'no-missing-exports-subpath-array',
+              ));
+            });
+
+            it('should return a RuleFailure', async function () {
+              await expect(
+                applyRules(ruleConfig, pkg, ruleCont),
+                'to be fulfilled with value satisfying',
+                {
+                  passed: expect.it('to be empty'),
+                  failed: [
+                    {
+                      rule: noMissingExports.toJSON(),
+                      message:
+                        'Subpath export "." should be a string instead of an array',
+                      failed: true,
+                    },
+                  ],
+                },
+              );
+            });
           });
         });
 
@@ -195,7 +221,7 @@ describe('midnight-smoker', function () {
         });
       });
 
-      describe('when the package contains conditional "exports"', function () {
+      describe('when the package contains conditional "exports" field', function () {
         describe('when a file is missing', function () {
           beforeEach(function () {
             ({ruleConfig, pkg} = setupRuleTest(
@@ -214,6 +240,32 @@ describe('midnight-smoker', function () {
                     rule: noMissingExports.toJSON(),
                     message:
                       'Export "require" unreadable at path: ./index-missing.js',
+                    failed: true,
+                  },
+                ],
+              },
+            );
+          });
+        });
+
+        describe('when the value is an array', function () {
+          beforeEach(function () {
+            ({ruleConfig, pkg} = setupRuleTest(
+              'no-missing-exports-conditional-array',
+            ));
+          });
+
+          it('should return a RuleFailure', async function () {
+            await expect(
+              applyRules(ruleConfig, pkg, ruleCont),
+              'to be fulfilled with value satisfying',
+              {
+                passed: expect.it('to be empty'),
+                failed: [
+                  {
+                    rule: noMissingExports.toJSON(),
+                    message:
+                      'Export "default" unreadable at path: ./index-missing.js',
                     failed: true,
                   },
                 ],
@@ -360,6 +412,31 @@ describe('midnight-smoker', function () {
                 );
               });
             });
+          });
+        });
+      });
+
+      describe('when the package contains an array "exports" field', function () {
+        describe('when a file is missing', function () {
+          beforeEach(function () {
+            ({ruleConfig, pkg} = setupRuleTest('no-missing-exports-array'));
+          });
+
+          it('should return a RuleFailure', async function () {
+            await expect(
+              applyRules(ruleConfig, pkg, ruleCont),
+              'to be fulfilled with value satisfying',
+              {
+                passed: expect.it('to be empty'),
+                failed: [
+                  {
+                    rule: noMissingExports.toJSON(),
+                    message: 'Export unreadable at path: ./index-missing.js',
+                    failed: true,
+                  },
+                ],
+              },
+            );
           });
         });
       });
