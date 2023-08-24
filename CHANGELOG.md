@@ -1,5 +1,12 @@
 # Changelog
 
+## [6.1.0](https://github.com/boneskull/midnight-smoker/compare/v6.0.0...v6.1.0) (2023-08-24)
+
+
+### Features
+
+* **rules:** no-missing-pkg-files checks browser and types fields ([2beb84f](https://github.com/boneskull/midnight-smoker/commit/2beb84fb9a929d2ff1e1848c684c07329c993e53)), closes [#304](https://github.com/boneskull/midnight-smoker/issues/304)
+
 ## [6.0.0](https://github.com/boneskull/midnight-smoker/compare/v5.1.0...v6.0.0) (2023-08-23)
 
 
