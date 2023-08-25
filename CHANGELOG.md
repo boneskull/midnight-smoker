@@ -1,5 +1,13 @@
 # Changelog
 
+## [6.1.1](https://github.com/boneskull/midnight-smoker/compare/v6.1.0...v6.1.1) (2023-08-25)
+
+
+### Bug Fixes
+
+* **rules:** no-banned-files ignores node_modules ([4eb6e5d](https://github.com/boneskull/midnight-smoker/commit/4eb6e5d3e19663b0d63551713939fc4a015a9bc0)), closes [#330](https://github.com/boneskull/midnight-smoker/issues/330)
+* **rules:** no-missing-exports supports arrays ([6dc69c2](https://github.com/boneskull/midnight-smoker/commit/6dc69c27535dbd96501af763b72d8965fa04e9a7))
+
 ## [6.1.0](https://github.com/boneskull/midnight-smoker/compare/v6.0.0...v6.1.0) (2023-08-24)
 
 
