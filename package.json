@@ -117,7 +117,7 @@
     "@typescript-eslint/eslint-plugin": "6.4.1",
     "@typescript-eslint/parser": "6.4.1",
     "cross-env": "7.0.3",
-    "eslint": "8.47.0",
+    "eslint": "8.48.0",
     "eslint-config-prettier": "8.10.0",
     "eslint-config-semistandard": "17.0.0",
     "eslint-config-standard": "17.1.0",
