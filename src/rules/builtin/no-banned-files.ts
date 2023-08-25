@@ -91,6 +91,9 @@ const noBannedFiles = createRule({
       const dirents = await fs.readdir(dir, {withFileTypes: true});
       for (const dirent of dirents) {
         if (dirent.isDirectory()) {
+          if (path.basename(dirent.name) === 'node_modules') {
+            continue;
+          }
           queue.push(path.join(dir, dirent.name));
         } else {
           if (allow.has(dirent.name)) {
