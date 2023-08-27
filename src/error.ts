@@ -5,6 +5,7 @@
 
 import {bold} from 'chalk';
 import {SmokeResults} from './types';
+import {StaticCheckContext} from '.';
 
 /**
  * Options for {@link SmokerError} with a generic `Cause` type for `cause` prop.
@@ -264,6 +265,24 @@ export class UnsupportedPackageManagerError extends SmokerError<{
     super(message, {
       code: 'ESMOKER_UNSUPPORTEDPACKAGEMANAGER',
       cause: {name, version},
+    });
+  }
+}
+
+export class RuleError extends SmokerError<{
+  context: StaticCheckContext;
+  ruleName: string;
+  error: Error;
+}> {
+  constructor(
+    message: string,
+    context: StaticCheckContext,
+    ruleName: string,
+    error: Error,
+  ) {
+    super(message, {
+      code: 'ESMOKER_RULEERROR',
+      cause: {context, ruleName, error},
     });
   }
 }

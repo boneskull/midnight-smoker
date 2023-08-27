@@ -82,6 +82,71 @@ describe('midnight-smoker', function () {
       });
     });
 
+    describe('check', function () {
+      describe('when a check fails', function () {
+        describe('when the rule severity is "error"', function () {
+          const cwd = path.join(__dirname, 'fixture', 'check-error');
+          let result: RawRunScriptResult;
+
+          before(async function () {
+            try {
+              result = await execSmoker([], {
+                cwd,
+              });
+            } catch (e) {
+              result = e as RawRunScriptResult;
+            }
+          });
+
+          it('should exit with a non-zero exit code', function () {
+            expect(result.exitCode, 'to be greater than', 0);
+          });
+
+          it('should produce expected output [snapshot]', async function () {
+            snapshot(fixupOutput(result.stderr));
+          });
+        });
+
+        describe('when the rule severity is "warn"', function () {
+          const cwd = path.join(__dirname, 'fixture', 'check-warn');
+          let result: RawRunScriptResult;
+
+          before(async function () {
+            result = await execSmoker([], {
+              cwd,
+            });
+          });
+
+          it('should not exit with a non-zero exit code', function () {
+            expect(result.exitCode, 'to be', 0);
+          });
+
+          it('should produce expected output [snapshot]', async function () {
+            snapshot(fixupOutput(result.stderr));
+          });
+        });
+
+        describe('when the rule severity is "off"', function () {
+          const cwd = path.join(__dirname, 'fixture', 'check-off');
+          let result: RawRunScriptResult;
+
+          before(async function () {
+            result = await execSmoker([], {
+              cwd,
+            });
+          });
+
+          it('should not exit with a non-zero exit code', function () {
+            expect(result.exitCode, 'to be', 0);
+          });
+
+          it('should produce expected output [snapshot]', async function () {
+            snapshot(fixupOutput(result.stderr));
+          });
+        });
+      });
+    });
+
     describe('option', function () {
       describe('--version', function () {
         it('should print version and exit', async function () {
@@ -192,7 +257,8 @@ describe('midnight-smoker', function () {
             },
           );
           const lines = stderr.trim().split(/\r?\n/);
-          lingeringTempDir = lines[lines.length - 1].trim();
+          // leading "» "
+          lingeringTempDir = lines[lines.length - 1].trim().slice(2);
 
           expect(failed, 'to be false');
           // this is probably brittle. could use something like `resolve-from`

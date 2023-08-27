@@ -1,15 +1,21 @@
 import {blue, cyan, red, white, yellow} from 'chalk';
+import createDebug from 'debug';
+import deepMerge from 'deepmerge';
+import {error, info, warning} from 'log-symbols';
 import ora from 'ora';
 import pluralize from 'pluralize';
 import {hideBin} from 'yargs/helpers';
 import yargs from 'yargs/yargs';
-import {SmokerConfig, readConfig} from './config';
+import {readConfigFile} from './config-file';
 import {NotImplementedError} from './error';
-import {Events, type SmokerEvents} from './events';
+import {Event, type SmokerEvent} from './event';
+import {DEFAULT_PACKAGE_MANAGER_ID} from './options';
 import type {CheckFailure} from './rules/result';
 import {Smoker} from './smoker';
 import type {SmokerJsonOutput, SmokerStats} from './types';
-import {normalizeStringArray, readPackageJson} from './util';
+import {readPackageJson} from './util';
+
+const debug = createDebug('midnight-smoker:cli');
 
 const BEHAVIOR_GROUP = 'Behavior:';
 
@@ -29,21 +35,9 @@ async function main(args: string[]): Promise<void> {
   const {packageJson} = result;
   const {version, homepage} = packageJson;
 
-  /**
-   * These options can be specified more than once.
-   *
-   * Unfortunately, the typing gets hinky if we try to define the options object outside of the `options()` call, so we cannot programmatically gather these.
-   */
-  const arrayOptNames: Readonly<Set<string>> = new Set([
-    'add',
-    'workspace',
-    'pm',
-    'script',
-    'scripts',
-  ]);
-
+  let verbose = false;
   try {
-    const config = await readConfig();
+    const config = await readConfigFile();
 
     await y
       .scriptName('smoker')
@@ -58,52 +52,43 @@ async function main(args: string[]): Promise<void> {
             requiresArg: true,
             array: true,
             type: 'string',
-            coerce: normalizeStringArray,
           } as const;
 
           return yargs
             .positional('scripts', {
               describe: 'Script(s) in package.json to run',
               type: 'string',
-              coerce: normalizeStringArray,
-              default: config.scripts,
             })
             .options({
               add: {
                 describe: 'Additional dependency to provide to script(s)',
                 group: BEHAVIOR_GROUP,
-                default: config.add,
                 ...arrayOptConfig,
               },
               all: {
                 describe: 'Run script in all workspaces',
                 group: BEHAVIOR_GROUP,
-                default: config.all,
                 type: 'boolean',
               },
               bail: {
                 describe: 'When running scripts, halt on first error',
                 group: BEHAVIOR_GROUP,
-                default: config.bail,
                 type: 'boolean',
               },
               'include-root': {
                 describe: "Include the workspace root; must provide '--all'",
                 group: BEHAVIOR_GROUP,
-                default: config.includeRoot,
                 implies: 'all',
                 type: 'boolean',
               },
               json: {
                 describe: 'Output JSON only',
-                default: config.json,
                 group: BEHAVIOR_GROUP,
                 type: 'boolean',
               },
               linger: {
                 describe: 'Do not clean up temp dir(s) after completion',
                 group: BEHAVIOR_GROUP,
-                default: config.linger,
                 hidden: true,
                 type: 'boolean',
               },
@@ -111,49 +96,39 @@ async function main(args: string[]): Promise<void> {
                 describe:
                   'Run script(s) with a specific package manager; <npm|yarn|pnpm>[@version]',
                 group: BEHAVIOR_GROUP,
-                default: config.pm ?? 'npm@latest',
+                default: [DEFAULT_PACKAGE_MANAGER_ID],
                 ...arrayOptConfig,
               },
               loose: {
                 describe: 'Ignore missing scripts (used with --all)',
                 type: 'boolean',
-                default: config.loose,
                 group: BEHAVIOR_GROUP,
                 implies: 'all',
               },
               workspace: {
                 describe: 'Run script in a specific workspace or workspaces',
                 group: BEHAVIOR_GROUP,
-                default: config.workspace,
                 ...arrayOptConfig,
               },
               checks: {
                 describe: 'Run built-in checks',
                 group: BEHAVIOR_GROUP,
-                default: Boolean('checks' in config ? config.checks : true),
                 type: 'boolean',
               },
-            })
-            .check((argv) => {
-              if (argv.pm?.some((pm) => pm.startsWith('pnpm'))) {
-                throw new NotImplementedError('pnpm is currently unsupported');
-              }
-              return true;
             });
         },
         async (argv) => {
-          const scripts = argv.scripts ?? [];
-
-          let smoker: Smoker;
-          try {
-            smoker = await Smoker.init(scripts, argv);
-          } catch (err) {
-            console.error(red((err as Error).message));
-            process.exitCode = 1;
-            return;
+          const opts = deepMerge(config, argv);
+          if (opts.pm?.some((pm) => pm.startsWith('pnpm'))) {
+            throw new NotImplementedError('pnpm is currently unsupported');
           }
+          debug('Final options: %O', opts);
+          verbose = Boolean(opts.verbose);
 
-          if (argv.json) {
+          const smoker = await Smoker.init(opts);
+
+          if (opts.json) {
+            // if we don't have any scripts, the script-related ones will remain null
             let totalPackages = null;
             let totalScripts = null;
             let totalPackageManagers = null;
@@ -164,40 +139,50 @@ async function main(args: string[]): Promise<void> {
             let passedChecks = null;
 
             smoker
-              .once(Events.INSTALL_BEGIN, ({uniquePkgs, packageManagers}) => {
+              .once(Event.INSTALL_BEGIN, ({uniquePkgs, packageManagers}) => {
                 totalPackages = uniquePkgs.length;
                 totalPackageManagers = packageManagers.length;
               })
-              .once(Events.RUN_SCRIPTS_BEGIN, ({total}) => {
+              .once(Event.INSTALL_FAILED, () => {
+                process.exitCode = 1;
+              })
+              .once(Event.RUN_SCRIPTS_BEGIN, ({total}) => {
                 totalScripts = total;
               })
-              .once(Events.RUN_SCRIPTS_FAILED, ({failed, passed}) => {
+              .once(Event.RUN_SCRIPTS_FAILED, ({failed, passed}) => {
                 failedScripts = failed;
                 passedScripts = passed;
-                smoker.removeAllListeners(Events.RUN_SCRIPTS_OK);
+                smoker.removeAllListeners(Event.RUN_SCRIPTS_OK);
                 process.exitCode = 1;
               })
-              .once(Events.RUN_SCRIPTS_OK, ({passed}) => {
+              .once(Event.RUN_SCRIPTS_OK, ({passed}) => {
                 passedScripts = passed;
                 failedScripts = 0;
-                smoker.removeAllListeners(Events.RUN_SCRIPTS_FAILED);
+                smoker.removeAllListeners(Event.RUN_SCRIPTS_FAILED);
               })
-              .once(Events.RUN_CHECKS_BEGIN, ({total}) => {
+              .once(Event.RUN_CHECKS_BEGIN, ({total}) => {
                 totalChecks = total;
               })
-              .once(Events.RUN_CHECKS_FAILED, ({failed, passed}) => {
+              .once(Event.RUN_CHECKS_FAILED, ({failed, passed}) => {
                 failedChecks = failed.length;
                 passedChecks = passed.length;
-                smoker.removeAllListeners(Events.RUN_CHECKS_OK);
-                process.exitCode = 1;
+                smoker.removeAllListeners(Event.RUN_CHECKS_OK);
               })
-              .once(Events.RUN_CHECKS_OK, ({passed}) => {
+              .on(Event.RUN_CHECK_FAILED, ({config}) => {
+                if (config.severity === 'error') {
+                  process.exitCode = 1;
+                }
+              })
+              .once(Event.RUN_CHECKS_OK, ({passed}) => {
                 passedChecks = passed.length;
                 failedChecks = 0;
-                smoker.removeAllListeners(Events.RUN_CHECKS_FAILED);
+                smoker.removeAllListeners(Event.RUN_CHECKS_FAILED);
               })
-              .once(Events.SMOKE_FAILED, () => {
-                process.exitCode = 1;
+              .once(Event.SMOKE_OK, () => {
+                smoker.removeAllListeners();
+              })
+              .once(Event.SMOKE_FAILED, () => {
+                smoker.removeAllListeners();
               });
 
             let output: SmokerJsonOutput;
@@ -236,22 +221,22 @@ async function main(args: string[]): Promise<void> {
             console.log(JSON.stringify(output, null, 2));
           } else {
             const spinner = ora();
-            const scriptFailedEvts: SmokerEvents['RunScriptFailed'][] = [];
-            const checkFailedEvts: SmokerEvents['RunCheckFailed'][] = [];
+            const scriptFailedEvts: SmokerEvent['RunScriptFailed'][] = [];
+            const checkFailedEvts: SmokerEvent['RunCheckFailed'][] = [];
 
             smoker
-              .on(Events.SMOKE_BEGIN, () => {
+              .once(Event.SMOKE_BEGIN, () => {
                 console.error(
                   `💨 ${blue('midnight-smoker')} ${white(`v${version}`)}`,
                 );
               })
-              .on(Events.PACK_BEGIN, () => {
+              .once(Event.PACK_BEGIN, () => {
                 let what: string;
-                if (argv.workspace?.length) {
-                  what = pluralize('workspace', argv.workspace.length, true);
-                } else if (argv.all) {
+                if (opts.workspace?.length) {
+                  what = pluralize('workspace', opts.workspace.length, true);
+                } else if (opts.all) {
                   what = 'all workspaces';
-                  if (argv.includeRoot) {
+                  if (opts.includeRoot) {
                     what += ' (and the workspace root)';
                   }
                 } else {
@@ -259,7 +244,7 @@ async function main(args: string[]): Promise<void> {
                 }
                 spinner.start(`Packing ${what}…`);
               })
-              .on(Events.PACK_OK, ({uniquePkgs, packageManagers}) => {
+              .once(Event.PACK_OK, ({uniquePkgs, packageManagers}) => {
                 let msg = `Packed ${pluralize(
                   'unique package',
                   uniquePkgs.length,
@@ -277,12 +262,12 @@ async function main(args: string[]): Promise<void> {
                 msg += '…';
                 spinner.succeed(msg);
               })
-              .on(Events.PACK_FAILED, (err) => {
+              .once(Event.PACK_FAILED, (err) => {
                 spinner.fail(err.message);
                 process.exitCode = 1;
               })
-              .on(
-                Events.INSTALL_BEGIN,
+              .once(
+                Event.INSTALL_BEGIN,
                 ({uniquePkgs, packageManagers, additionalDeps}) => {
                   let msg = `Installing ${pluralize(
                     'unique package',
@@ -309,11 +294,11 @@ async function main(args: string[]): Promise<void> {
                   spinner.start(msg);
                 },
               )
-              .on(Events.INSTALL_FAILED, (err) => {
+              .once(Event.INSTALL_FAILED, (err) => {
                 spinner.fail(err.message);
                 process.exitCode = 1;
               })
-              .on(Events.INSTALL_OK, ({uniquePkgs}) => {
+              .once(Event.INSTALL_OK, ({uniquePkgs}) => {
                 spinner.succeed(
                   `Installed ${pluralize(
                     'unique package',
@@ -322,28 +307,30 @@ async function main(args: string[]): Promise<void> {
                   )} from tarball`,
                 );
               })
-              .on(Events.RUN_CHECKS_BEGIN, ({total}) => {
+              .once(Event.RUN_CHECKS_BEGIN, ({total}) => {
                 spinner.start(`Running 0/${total} checks…`);
               })
-              .on(Events.RUN_CHECK_BEGIN, ({current, total}) => {
+              .on(Event.RUN_CHECK_BEGIN, ({current, total}) => {
                 spinner.text = `Running check ${current}/${total}…`;
               })
-              .on(Events.RUN_CHECK_FAILED, (evt) => {
+              .on(Event.RUN_CHECK_FAILED, (evt) => {
                 checkFailedEvts.push(evt);
-                process.exitCode = 1;
+                if (evt.config.severity === 'error') {
+                  process.exitCode = 1;
+                }
               })
-              .on(Events.RUN_CHECKS_OK, ({total}) => {
+              .once(Event.RUN_CHECKS_OK, ({total}) => {
                 spinner.succeed(
                   `Successfully ran ${pluralize('check', total, true)}`,
                 );
               })
-              .on(Events.RUN_CHECKS_FAILED, ({total, failed}) => {
+              .once(Event.RUN_CHECKS_FAILED, ({total, failed}) => {
                 spinner.fail(
                   `${pluralize(
                     'check',
                     failed.length,
                     true,
-                  )} out of ${total} failed`,
+                  )} of ${total} failed`,
                 );
 
                 // TODO: move this crunching somewhere else
@@ -363,33 +350,37 @@ async function main(args: string[]): Promise<void> {
                 for (const [pkgName, failed] of Object.entries(
                   failedByPackage,
                 )) {
-                  let text = `${red(
-                    'Check failure',
-                  )} details for package ${cyan(pkgName)}:\n`;
-                  for (const failure of failed) {
-                    text += `» ${yellow(failure)}\n`;
+                  let text = `Check failures in package ${cyan(pkgName)}:\n`;
+                  for (const {message, severity} of failed) {
+                    if (severity === 'error') {
+                      text += `» ${error} ${red(message)}\n`;
+                    } else {
+                      text += `» ${warning} ${yellow(message)}\n`;
+                    }
                   }
                   spinner.info(text);
                 }
-
+              })
+              .on(Event.RULE_ERROR, (err) => {
+                spinner.fail(err.message);
                 process.exitCode = 1;
               })
-              .on(Events.RUN_SCRIPTS_BEGIN, ({total}) => {
+              .once(Event.RUN_SCRIPTS_BEGIN, ({total}) => {
                 spinner.start(`Running script 0/${total}…`);
               })
-              .on(Events.RUN_SCRIPT_BEGIN, ({current, total}) => {
+              .on(Event.RUN_SCRIPT_BEGIN, ({current, total}) => {
                 spinner.text = `Running script ${current}/${total}…`;
               })
-              .on(Events.RUN_SCRIPT_FAILED, (evt) => {
+              .on(Event.RUN_SCRIPT_FAILED, (evt) => {
                 scriptFailedEvts.push(evt);
                 process.exitCode = 1;
               })
-              .on(Events.RUN_SCRIPTS_OK, ({total}) => {
+              .once(Event.RUN_SCRIPTS_OK, ({total}) => {
                 spinner.succeed(
                   `Successfully ran ${pluralize('script', total, true)}`,
                 );
               })
-              .on(Events.RUN_SCRIPTS_FAILED, ({total, failed: failures}) => {
+              .once(Event.RUN_SCRIPTS_FAILED, ({total, failed: failures}) => {
                 spinner.fail(
                   `${failures} of ${total} ${pluralize(
                     'script',
@@ -405,19 +396,21 @@ async function main(args: string[]): Promise<void> {
                 }
                 process.exitCode = 1;
               })
-              .on(Events.SMOKE_FAILED, (err) => {
+              .once(Event.SMOKE_FAILED, (err) => {
                 spinner.fail(err?.message ?? err);
-                process.exitCode = 1;
               })
-              .on(Events.SMOKE_OK, () => {
+              .once(Event.SMOKE_OK, () => {
                 spinner.succeed('Lovey-dovey! 💖');
               })
-              .on(Events.LINGERED, (dirs) => {
+              .once(Event.LINGERED, (dirs) => {
                 console.error(
-                  `Lingering ${pluralize('temp directory', dirs.length)}:\n`,
+                  `${info} Lingering ${pluralize(
+                    'temp directory',
+                    dirs.length,
+                  )}:\n`,
                 );
                 for (const dir of dirs) {
-                  console.error(`  ${yellow(dir)}`);
+                  console.error(`» ${yellow(dir)}`);
                 }
               });
             await smoker.smoke();
@@ -432,40 +425,15 @@ async function main(args: string[]): Promise<void> {
         },
       })
       .epilog(`For more info, see ${homepage}\n`)
-      .middleware(
-        /**
-         * If an array-type option is provided in both the config file and on the command-line,
-         * we use this to merge the two arrays.
-         *
-         * If we had any object-type options (we don't) then we'd do that here as well.
-         */
-        (argv) => {
-          for (const key of arrayOptNames) {
-            const cfgKey = key as keyof SmokerConfig;
-            const arg = key as keyof typeof argv;
-            if (cfgKey in config && arg in argv) {
-              const cfgValue = (
-                Array.isArray(config[cfgKey])
-                  ? config[cfgKey]
-                  : [config[cfgKey]]
-              ) as string[];
-              const argvValue = (
-                Array.isArray(argv[arg]) ? argv[arg] : [argv[arg]]
-              ) as string[];
-              argv[arg] = [...new Set([...cfgValue, ...argvValue])];
-            }
-          }
-
-          // squelch some output if `json` is true
-          argv.verbose = argv.json ? false : argv.verbose;
-        },
-      )
       .showHelpOnFail(false)
       .help()
       .strict()
       .parseAsync();
   } catch (err) {
-    console.error(red(err));
+    if (verbose) {
+      throw err;
+    }
+    console.error(error, red(err));
     process.exitCode = 1;
   }
 }

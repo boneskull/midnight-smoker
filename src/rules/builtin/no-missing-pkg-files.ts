@@ -4,21 +4,23 @@ import path from 'node:path';
 import {z} from 'zod';
 import {CheckFailure} from '../result';
 import {createRule} from '../rule';
+import {zNonEmptyStringArray, zTrue} from '../../schema-util';
 
 const debug = createDebug('midnight-smoker:rule:no-missing-pkg-files');
 
 const noMissingPkgFiles = createRule({
   async check({pkgJson: pkg, pkgPath, fail}, opts) {
-    const fieldsToCheck = opts?.fields ?? [];
-    if (opts?.bin !== false) {
+    let fieldsToCheck = opts.fields ?? [];
+    if (opts.bin !== false) {
       fieldsToCheck.push('bin');
     }
-    if (opts?.browser !== false) {
+    if (opts.browser !== false) {
       fieldsToCheck.push('browser');
     }
-    if (opts?.types !== false) {
+    if (opts.types !== false) {
       fieldsToCheck.push('types');
     }
+    fieldsToCheck = [...new Set(fieldsToCheck)];
 
     /**
      * @param relativePath Path from package root to file
@@ -52,11 +54,12 @@ const noMissingPkgFiles = createRule({
           if (value) {
             if (typeof value === 'string') {
               return checkFile(value, field);
-            } else if (!Array.isArray(value) && typeof value === 'object') {
+            }
+            if (!Array.isArray(value) && typeof value === 'object') {
               return Promise.all(
-                Object.entries(value).map(([name, relativePath]) => {
-                  return checkFile(relativePath, field, name);
-                }),
+                Object.entries(value).map(([name, relativePath]) =>
+                  checkFile(relativePath, field, name),
+                ),
               );
             }
           }
@@ -69,25 +72,12 @@ const noMissingPkgFiles = createRule({
   description:
     'Checks that files referenced in package.json exist in the tarball',
   schema: z.object({
-    bin: z
-      .boolean()
-      .default(true)
-      .optional()
-      .describe('Check the "bin" field (if it exists)'),
-    browser: z
-      .boolean()
-      .default(true)
-      .optional()
-      .describe('Check the "browser" field (if it exists)'),
-    types: z
-      .boolean()
-      .default(true)
-      .optional()
-      .describe('Check the "types" field (if it exists)'),
-    fields: z
-      .array(z.string().min(1))
-      .optional()
-      .describe('Check files referenced by these additional top-level fields'),
+    bin: zTrue.describe('Check the "bin" field (if it exists)'),
+    browser: zTrue.describe('Check the "browser" field (if it exists)'),
+    types: zTrue.describe('Check the "types" field (if it exists)'),
+    fields: zNonEmptyStringArray.describe(
+      'Check files referenced by these additional top-level fields',
+    ),
   }),
 });
 

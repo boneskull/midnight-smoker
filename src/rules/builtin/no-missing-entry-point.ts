@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {createRule} from '../rule';
+import {z} from 'zod';
 
 const DEFAULT_FIELD = 'main';
 
@@ -59,6 +60,7 @@ const noMissingEntryPoint = createRule({
       }
     }
   },
+  schema: z.any(),
   name: 'no-missing-entry-point',
   description:
     'Checks that the package contains an entry point; only applies to CJS packages without an "exports" field',

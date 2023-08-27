@@ -1,0 +1,12 @@
+{
+  "name": "check-error",
+  "version": "1.0.0",
+  "scripts": {
+    "smoke": "exit 0"
+  },
+  "smoker": {
+    "rules": {
+      "no-banned-files": "error"
+    }
+  }
+}

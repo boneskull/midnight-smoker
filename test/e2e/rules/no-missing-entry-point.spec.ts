@@ -1,6 +1,6 @@
 import unexpected from 'unexpected';
 import type {PackedPackage} from '../../../src';
-import {RuleSeverities, type RawRuleConfig} from '../../../src/rules';
+import {CheckSeverities, type RawCheckOptions} from '../../../src/rules';
 import noMissingEntryPoint from '../../../src/rules/builtin/no-missing-entry-point';
 import {setupRuleTest, applyRules} from './rule-helpers';
 
@@ -8,7 +8,7 @@ const expect = unexpected.clone();
 
 describe('midnight-smoker', function () {
   describe('rules', function () {
-    let ruleConfig: RawRuleConfig;
+    let ruleConfig: RawCheckOptions;
     let pkg: PackedPackage;
 
     describe('no-missing-entry-point', function () {
@@ -31,7 +31,7 @@ describe('midnight-smoker', function () {
                     pkgJson: expect.it('to be an object'),
                     pkgJsonPath: expect.it('to be a string'),
                     pkgPath: expect.it('to be a string'),
-                    severity: RuleSeverities.ERROR,
+                    severity: CheckSeverities.ERROR,
                   },
                 },
               ],
@@ -60,7 +60,7 @@ describe('midnight-smoker', function () {
                       pkgJson: expect.it('to be an object'),
                       pkgJsonPath: expect.it('to be a string'),
                       pkgPath: expect.it('to be a string'),
-                      severity: RuleSeverities.ERROR,
+                      severity: CheckSeverities.ERROR,
                     },
                   },
                 ],
@@ -106,7 +106,7 @@ describe('midnight-smoker', function () {
                       pkgJson: expect.it('to be an object'),
                       pkgJsonPath: expect.it('to be a string'),
                       pkgPath: expect.it('to be a string'),
-                      severity: RuleSeverities.ERROR,
+                      severity: CheckSeverities.ERROR,
                     },
                   },
                 ],

@@ -18,10 +18,10 @@ export function normalizeStringArray(value?: string | string[]): string[] {
     : [];
 }
 
-export function castArray<T>(value: T | T[]): T[] {
+export function castArray<T>(value: T | T[]): NonNullable<T>[] {
   return (value ? (Array.isArray(value) ? value : [value]) : []).filter(
     Boolean,
-  );
+  ) as NonNullable<T>[];
 }
 
 /**

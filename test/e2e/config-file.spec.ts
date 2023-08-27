@@ -11,7 +11,28 @@ describe('midnight-smoker', function () {
       const cwd = path.join(__dirname, 'fixture', 'config-esm');
 
       it('should respect the config file', async function () {
-        const {stdout} = await execSmoker(['smoke', '--json', '--no-checks'], {
+        const {stdout} = await execSmoker(['smoke', '--no-checks'], {
+          cwd,
+        });
+        const result = JSON.parse(stdout);
+        expect(result, 'to satisfy', {
+          results: {
+            scripts: expect
+              .it('to have length', 2)
+              .and('to satisfy', [
+                {rawResult: {command: /npm/}},
+                {rawResult: {command: /yarn/}},
+              ]),
+          },
+        });
+      });
+    });
+
+    describe('when config is within package.json', async function () {
+      const cwd = path.join(__dirname, 'fixture', 'config-package-json');
+
+      it('should respect the config file', async function () {
+        const {stdout} = await execSmoker(['smoke'], {
           cwd,
         });
         const result = JSON.parse(stdout);

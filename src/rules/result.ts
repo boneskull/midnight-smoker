@@ -1,4 +1,5 @@
 import type {StaticCheckContext, StaticRuleDef} from './rule';
+import type {CheckSeverity} from './severity';
 
 export interface CheckResult {
   rule: StaticRuleDef;
@@ -18,6 +19,8 @@ export interface CheckFailure extends CheckResult {
   message: string;
   data?: CheckResultData;
   failed: true;
+
+  severity: CheckSeverity;
 }
 
 export interface CheckOk extends CheckResult {

@@ -1,13 +1,14 @@
 import path from 'node:path';
 import fs from 'node:fs';
 import {PackedPackage, Smoker} from '../../../src';
-import {RawRuleConfig} from '../../../src/rules/rule-config';
+import {RawCheckOptions, zCheckOptions} from '../../../src/rules/check-options';
 import {RuleCont} from '../../../src/rules/rule';
 import {EventEmitter} from 'node:events';
-import {BuiltinRuleConts} from '../../../src/rules/builtin';
 
-export function setupRuleTest(fixtureName: string, config: RawRuleConfig = {}) {
-  const ruleConfig = config;
+export function setupRuleTest(
+  fixtureName: string,
+  config: RawCheckOptions = {},
+) {
   const installPath = path.join(__dirname, 'fixture', fixtureName);
   try {
     fs.statSync(installPath);
@@ -19,11 +20,11 @@ export function setupRuleTest(fixtureName: string, config: RawRuleConfig = {}) {
     installPath,
     tarballFilepath: '',
   };
-  return {ruleConfig, pkg};
+  return {ruleConfig: config, pkg};
 }
 
 export async function applyRules(
-  config: RawRuleConfig,
+  config: RawCheckOptions,
   {installPath: pkgPath}: PackedPackage,
   ruleCont: RuleCont,
 ) {
@@ -31,6 +32,6 @@ export async function applyRules(
     new EventEmitter(),
     ruleCont,
     pkgPath,
-    config,
+    zCheckOptions.parse(config),
   );
 }

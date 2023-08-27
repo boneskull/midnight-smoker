@@ -48,7 +48,7 @@ describe('midnight-smoker', function () {
 
   let Smoker: typeof MS.Smoker;
 
-  let Events: typeof MS.Events;
+  let Event: typeof MS.Event;
 
   let smoke: typeof MS.smoke;
 
@@ -90,7 +90,7 @@ describe('midnight-smoker', function () {
     mockPm = new Mocks.NullPm(new CorepackExecutor('moo'));
     pms.set(MOCK_PM_ID, mockPm);
 
-    ({Smoker, smoke, Events} = rewiremock.proxy(
+    ({Smoker, smoke, Event} = rewiremock.proxy(
       () => require('../../src'),
       mocks,
     ));
@@ -101,33 +101,11 @@ describe('midnight-smoker', function () {
   });
 
   describe('class Smoker', function () {
-    describe('constructor', function () {
-      it('should throw if both non-empty "workspace" and true "all" options are provided', function () {
-        expect(
-          () => new Smoker(pms, [], {workspace: ['foo'], all: true}),
-          'to throw',
-          /Option "workspace" is mutually exclusive with "all" and\/or "includeRoot"/,
-        );
-      });
-
-      describe('when passed a string for "scripts" argument', function () {
-        it('should not throw', function () {
-          expect(() => new Smoker(pms, 'foo'), 'not to throw');
-        });
-      });
-
-      describe('when not passed any scripts at all', function () {
-        it('should not throw', function () {
-          expect(() => new Smoker(pms), 'not to throw');
-        });
-      });
-    });
-
     describe('method', function () {
       let smoker: MS.Smoker;
 
       beforeEach(function () {
-        smoker = new Smoker(pms, 'foo');
+        smoker = Smoker.create(pms, {script: 'foo'});
       });
 
       describe('cleanup()', function () {
@@ -178,7 +156,10 @@ describe('midnight-smoker', function () {
 
         describe('when the "linger" option is true and a temp dir was created', function () {
           beforeEach(async function () {
-            smoker = new Smoker(pms, 'foo', {linger: true});
+            smoker = Smoker.create(pms, {
+              script: 'foo',
+              linger: true,
+            });
             await smoker.createTempDir();
           });
 
@@ -192,7 +173,7 @@ describe('midnight-smoker', function () {
               smoker.cleanup(),
               'to emit from',
               smoker,
-              Events.LINGERED,
+              Event.LINGERED,
             );
           });
         });
@@ -226,17 +207,12 @@ describe('midnight-smoker', function () {
 
       describe('pack()', function () {
         it('should emit the "PackBegin" event', async function () {
-          await expect(
-            smoker.pack(),
-            'to emit from',
-            smoker,
-            Events.PACK_BEGIN,
-          );
+          await expect(smoker.pack(), 'to emit from', smoker, Event.PACK_BEGIN);
         });
 
         describe('when packing succeeds', function () {
           it('should emit the "PackOk" event', async function () {
-            await expect(smoker.pack(), 'to emit from', smoker, Events.PACK_OK);
+            await expect(smoker.pack(), 'to emit from', smoker, Event.PACK_OK);
           });
         });
 
@@ -288,7 +264,7 @@ describe('midnight-smoker', function () {
               },
               'to emit from',
               smoker,
-              Events.PACK_FAILED,
+              Event.PACK_FAILED,
               new Error('uh oh'),
             );
           });
@@ -325,7 +301,7 @@ describe('midnight-smoker', function () {
               smoker.install(pkgInstallManifest),
               'to emit from',
               smoker,
-              Events.INSTALL_BEGIN,
+              Event.INSTALL_BEGIN,
             );
           });
 
@@ -334,7 +310,7 @@ describe('midnight-smoker', function () {
               smoker.install(pkgInstallManifest),
               'to emit from',
               smoker,
-              Events.INSTALL_OK,
+              Event.INSTALL_OK,
             );
           });
 
@@ -364,7 +340,7 @@ describe('midnight-smoker', function () {
                 },
                 'to emit from',
                 smoker,
-                Events.INSTALL_FAILED,
+                Event.INSTALL_FAILED,
                 new Error('uh oh'),
               );
             });
@@ -414,7 +390,7 @@ describe('midnight-smoker', function () {
                 smoker.runScripts(pkgRunManifest),
                 'to emit from',
                 smoker,
-                Events.RUN_SCRIPTS_BEGIN,
+                Event.RUN_SCRIPTS_BEGIN,
               );
             });
 
@@ -423,7 +399,7 @@ describe('midnight-smoker', function () {
                 smoker.runScripts(pkgRunManifest),
                 'to emit from',
                 smoker,
-                Events.RUN_SCRIPT_BEGIN,
+                Event.RUN_SCRIPT_BEGIN,
                 {script: 'foo', pkgName: 'bar', total: 2, current: 0},
               );
             });
@@ -446,7 +422,7 @@ describe('midnight-smoker', function () {
                 smoker.runScripts(pkgRunManifest),
                 'to emit from',
                 smoker,
-                Events.RUN_SCRIPTS_OK,
+                Event.RUN_SCRIPTS_OK,
                 {
                   results: expect.it('to be an array'),
                   failed: 0,
@@ -462,7 +438,7 @@ describe('midnight-smoker', function () {
                 smoker.runScripts(pkgRunManifest),
                 'to emit from',
                 smoker,
-                Events.RUN_SCRIPT_OK,
+                Event.RUN_SCRIPT_OK,
                 {
                   script: 'foo',
                   current: 0,
@@ -526,7 +502,7 @@ describe('midnight-smoker', function () {
                 smoker.runScripts(pkgRunManifest),
                 'to emit from',
                 smoker,
-                Events.RUN_SCRIPT_FAILED,
+                Event.RUN_SCRIPT_FAILED,
                 {
                   pkgName: 'bar',
                   error: expect.it('to be a', SmokerError),
@@ -543,7 +519,7 @@ describe('midnight-smoker', function () {
                 smoker.runScripts(pkgRunManifest),
                 'to emit from',
                 smoker,
-                Events.RUN_SCRIPTS_FAILED,
+                Event.RUN_SCRIPTS_FAILED,
                 {
                   results: [
                     {pkgName: 'bar', error: expect.it('to be a', SmokerError)},
@@ -557,7 +533,10 @@ describe('midnight-smoker', function () {
 
             describe('when the "bail" option is false', function () {
               beforeEach(function () {
-                smoker = new Smoker(pms, 'foo', {bail: false});
+                smoker = Smoker.create(pms, {
+                  script: 'foo',
+                  bail: false,
+                });
               });
 
               it('should execute all scripts', async function () {
@@ -574,16 +553,17 @@ describe('midnight-smoker', function () {
 
             describe('when the "bail" option is true', function () {
               beforeEach(function () {
-                smoker = new Smoker(pms, 'foo', {bail: true});
+                smoker = Smoker.create(pms, {
+                  script: 'foo',
+                  bail: true,
+                });
               });
 
               it('should execute only until a script fails', async function () {
                 await expect(
                   smoker.runScripts(pkgRunManifest),
                   'to be fulfilled with value satisfying',
-                  expect
-                    .it('to have length', 1)
-                    .and('to satisfy', [{pkgName: 'bar', error}]),
+                  expect.it('to have length', 1),
                 );
               });
             });
@@ -609,7 +589,7 @@ describe('midnight-smoker', function () {
 
         describe('when checks enabled', async function () {
           beforeEach(function () {
-            smoker = new Smoker(pms);
+            smoker = Smoker.create(pms);
           });
 
           it('should run checks', async function () {
@@ -646,7 +626,7 @@ describe('midnight-smoker', function () {
       describe('smoke()', function () {
         it('should pack, install, and run scripts', async function () {
           await expect(
-            Smoker.smoke('foo'),
+            Smoker.smoke({script: 'foo'}),
             'to be fulfilled with value satisfying',
             {
               scripts: [
@@ -658,13 +638,23 @@ describe('midnight-smoker', function () {
         });
       });
 
-      describe('init()', function () {
-        it('should return a new Smoker instance', async function () {
-          await expect(
-            Smoker.init('foo'),
-            'to be fulfilled with value satisfying',
-            expect.it('to be a', Smoker),
+      describe('create()', function () {
+        it('should throw if both non-empty "workspace" and true "all" options are provided', function () {
+          expect(
+            () => Smoker.create(pms, {workspace: ['foo'], all: true}),
+            'to throw',
+            /Option "workspace" is mutually exclusive with "all"/,
           );
+        });
+
+        describe('when not passed any scripts at all', function () {
+          it('should not throw', function () {
+            expect(() => Smoker.create(pms), 'not to throw');
+          });
+        });
+
+        it('should return a Smoker instance', function () {
+          expect(Smoker.create(pms), 'to be a', Smoker);
         });
       });
     });

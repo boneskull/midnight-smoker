@@ -1,0 +1,12 @@
+{
+  "name": "config-esm",
+  "version": "1.0.0",
+  "scripts": {
+    "smoke": "exit 0"
+  },
+  "smoker": {
+    "pm": ["npm@latest", "yarn@1"],
+    "json": true,
+    "checks": false
+  }
+}
