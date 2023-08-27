@@ -58,7 +58,7 @@
     "test": "run-s test:unit test:smoke",
     "test:ci": "run-s test:unit test:smoke test:e2e",
     "test:unit": "mocha \"test/unit/**/*.spec.ts\"",
-    "pretest:e2e": "run-s rebuild",
+    "pretest:e2e": "run-s build",
     "test:e2e": "mocha --timeout 20s --slow 10s \"test/e2e/**/*.spec.ts\"",
     "test:smoke": "node ./bin/smoker.js smoke:ts smoke:js --add ts-node --add @tsconfig/node16",
     "test:update-snapshots": "cross-env SNAPSHOT_UPDATE=1 npm run test:e2e -- --fgrep \"[snapshot]\"",
@@ -87,10 +87,12 @@
     "chalk": "4.1.2",
     "corepack": "0.20.0",
     "debug": "4.3.4",
+    "deepmerge": "4.3.1",
     "execa": "5.1.1",
     "glob": "10.3.3",
     "is-file-esm": "1.0.0",
     "lilconfig": "2.1.0",
+    "log-symbols": "4.1.0",
     "ora": "5.4.1",
     "pluralize": "8.0.0",
     "read-pkg-up": "7.0.1",
@@ -99,7 +101,8 @@
     "strict-event-emitter-types": "2.0.0",
     "which": "3.0.1",
     "yargs": "17.7.2",
-    "zod": "3.22.2"
+    "zod": "3.22.2",
+    "zod-validation-error": "1.5.0"
   },
   "devDependencies": {
     "@commitlint/cli": "17.7.1",

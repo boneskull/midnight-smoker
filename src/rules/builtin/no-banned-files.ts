@@ -5,13 +5,14 @@
  * @module
  */
 
-import fs from 'node:fs/promises';
-import {createRule} from '../rule';
-import type {CheckFailure} from '../result';
-import path from 'node:path';
 import createDebug from 'debug';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import {z} from 'zod';
+import {zNonEmptyStringArray} from '../../schema-util';
 import {findDataDir} from '../../util';
+import type {CheckFailure} from '../result';
+import {createRule} from '../rule';
 
 const debug = createDebug('midnight-smoker:rule:no-banned-files');
 
@@ -82,8 +83,8 @@ const noBannedFiles = createRule({
   async check({pkgPath, fail}, opts) {
     const queue: string[] = [pkgPath];
     const failed: CheckFailure[] = [];
-    const allow = new Set(opts?.allow ?? []);
-    const deny = new Set(opts?.deny ?? []);
+    const allow = new Set(opts.allow);
+    const deny = new Set(opts.deny);
 
     while (queue.length) {
       const dir = queue.pop()!;
@@ -120,14 +121,8 @@ const noBannedFiles = createRule({
   name: 'no-banned-files',
   description: 'Bans certain files from being published',
   schema: z.object({
-    allow: z
-      .array(z.string().min(1))
-      .optional()
-      .describe('Allow these banned files'),
-    deny: z
-      .array(z.string().min(1))
-      .optional()
-      .describe('Deny these additional files'),
+    allow: zNonEmptyStringArray.describe('Allow these banned files'),
+    deny: zNonEmptyStringArray.describe('Deny these additional files'),
   }),
 });
 

@@ -1,10 +1,11 @@
 import type {
   InstallError,
   PackError,
+  RuleError,
   ScriptError,
   SmokeFailedError,
 } from './error';
-import type {CheckFailure, CheckOk, RuleConfig} from './rules';
+import type {CheckFailure, CheckOk, CheckOptions} from './rules';
 import type {
   InstallManifest,
   RunManifest,
@@ -55,13 +56,13 @@ export interface RunScriptFailedEventData extends RunScriptEventData {
 }
 
 export interface RunChecksBeginEventData {
-  config: RuleConfig;
+  config: CheckOptions;
   total: number;
 }
 
 export interface RunCheckEventData {
   rule: string;
-  config: RuleConfig[keyof RuleConfig];
+  config: CheckOptions[keyof CheckOptions];
   current: number;
   total: number;
 }
@@ -76,7 +77,7 @@ export type RunCheckOkEventData = RunCheckEventData;
 
 export interface RunChecksEndEventData {
   total: number;
-  config: RuleConfig;
+  config: CheckOptions;
   passed: CheckOk[];
   failed: CheckFailure[];
 }
@@ -84,7 +85,7 @@ export interface RunChecksEndEventData {
 export type RunChecksFailedEventData = RunChecksEndEventData;
 export type RunChecksOkEventData = RunChecksEndEventData;
 
-export interface SmokerEvents {
+export interface SmokerEvent {
   InstallBegin: InstallEventData;
   InstallFailed: InstallError;
   InstallOk: InstallEventData;
@@ -92,6 +93,7 @@ export interface SmokerEvents {
   PackBegin: PackBeginEventData;
   PackFailed: PackError;
   PackOk: PackOkEventData;
+  RuleError: RuleError;
   RunCheckBegin: RunCheckEventData;
   RunCheckFailed: RunCheckFailedEventData;
   RunCheckOk: RunCheckOkEventData;
@@ -109,27 +111,28 @@ export interface SmokerEvents {
   SmokeOk: SmokeResults;
 }
 
-export const Events = {
-  SMOKE_BEGIN: 'SmokeBegin',
-  SMOKE_OK: 'SmokeOk',
-  SMOKE_FAILED: 'SmokeFailed',
-  PACK_BEGIN: 'PackBegin',
-  PACK_FAILED: 'PackFailed',
-  PACK_OK: 'PackOk',
+export const Event = {
   INSTALL_BEGIN: 'InstallBegin',
   INSTALL_FAILED: 'InstallFailed',
   INSTALL_OK: 'InstallOk',
-  RUN_SCRIPTS_BEGIN: 'RunScriptsBegin',
-  RUN_SCRIPTS_FAILED: 'RunScriptsFailed',
-  RUN_SCRIPTS_OK: 'RunScriptsOk',
-  RUN_SCRIPT_BEGIN: 'RunScriptBegin',
-  RUN_SCRIPT_FAILED: 'RunScriptFailed',
-  RUN_SCRIPT_OK: 'RunScriptOk',
   LINGERED: 'Lingered',
-  RUN_CHECKS_BEGIN: 'RunChecksBegin',
-  RUN_CHECKS_FAILED: 'RunChecksFailed',
-  RUN_CHECKS_OK: 'RunChecksOk',
+  PACK_BEGIN: 'PackBegin',
+  PACK_FAILED: 'PackFailed',
+  PACK_OK: 'PackOk',
+  RULE_ERROR: 'RuleError',
   RUN_CHECK_BEGIN: 'RunCheckBegin',
   RUN_CHECK_FAILED: 'RunCheckFailed',
   RUN_CHECK_OK: 'RunCheckOk',
-} as const satisfies Record<string, keyof SmokerEvents>;
+  RUN_CHECKS_BEGIN: 'RunChecksBegin',
+  RUN_CHECKS_FAILED: 'RunChecksFailed',
+  RUN_CHECKS_OK: 'RunChecksOk',
+  RUN_SCRIPT_BEGIN: 'RunScriptBegin',
+  RUN_SCRIPT_FAILED: 'RunScriptFailed',
+  RUN_SCRIPT_OK: 'RunScriptOk',
+  RUN_SCRIPTS_BEGIN: 'RunScriptsBegin',
+  RUN_SCRIPTS_FAILED: 'RunScriptsFailed',
+  RUN_SCRIPTS_OK: 'RunScriptsOk',
+  SMOKE_BEGIN: 'SmokeBegin',
+  SMOKE_FAILED: 'SmokeFailed',
+  SMOKE_OK: 'SmokeOk',
+} as const satisfies Record<string, keyof SmokerEvent>;

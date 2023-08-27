@@ -7,6 +7,7 @@ import {z} from 'zod';
 import {castArray} from '../../util';
 import {CheckFailure} from '../result';
 import {createRule} from '../rule';
+import {zTrue} from '../../schema-util';
 
 const EXPORTS_FIELD = 'exports';
 const CONDITIONAL_EXPORT_DEFAULT = 'default';
@@ -28,15 +29,6 @@ function isESMPkg(pkgJson: PackageJson) {
 
 const noMissingExports = createRule({
   async check({pkgJson, pkgPath, fail}, opts) {
-    opts = {
-      glob: true,
-      require: true,
-      import: true,
-      types: true,
-      order: true,
-      ...opts,
-    };
-
     if (!pkgJson[EXPORTS_FIELD]) {
       if (isESMPkg(pkgJson)) {
         return [
@@ -72,7 +64,7 @@ const noMissingExports = createRule({
 
       // use glob only if there's a glob pattern.  premature optimization?
       if (glob.hasMagic(relativePath, {magicalBraces: true})) {
-        if (opts?.glob === false) {
+        if (opts.glob === false) {
           return fail(
             displayExportName
               ? `Export "${displayExportName}" contains a glob pattern`
@@ -110,7 +102,7 @@ const noMissingExports = createRule({
 
       if (
         baseExportName === CONDITIONAL_EXPORT_IMPORT &&
-        opts?.import &&
+        opts.import &&
         !(await isESMFile(filepath)).esm
       ) {
         return fail(
@@ -120,7 +112,7 @@ const noMissingExports = createRule({
         );
       } else if (
         baseExportName === CONDITIONAL_EXPORT_REQUIRE &&
-        opts?.require &&
+        opts.require &&
         (await isESMFile(filepath)).esm
       ) {
         return fail(
@@ -130,7 +122,7 @@ const noMissingExports = createRule({
         );
       } else if (
         baseExportName === CONDITIONAL_EXPORT_TYPES &&
-        opts?.types &&
+        opts.types &&
         !path.extname(relativePath).endsWith('.d.ts')
       ) {
         return fail(
@@ -150,7 +142,7 @@ const noMissingExports = createRule({
       if (!exports || typeof exports === 'string' || Array.isArray(exports)) {
         return;
       }
-      if (opts?.order && CONDITIONAL_EXPORT_DEFAULT in exports) {
+      if (opts.order && CONDITIONAL_EXPORT_DEFAULT in exports) {
         const keys = Object.keys(exports);
         if (keys[keys.length - 1] !== CONDITIONAL_EXPORT_DEFAULT) {
           return [
@@ -232,39 +224,19 @@ const noMissingExports = createRule({
   name: 'no-missing-exports',
   description: `Checks that all files in the "${EXPORTS_FIELD}" field (if present) exist`,
   schema: z.object({
-    types: z
-      .boolean()
-      .default(true)
-      .optional()
-      .describe(
-        `Assert a "${CONDITIONAL_EXPORT_TYPES}" conditional export matches a file with a .d.ts extension`,
-      ),
-    require: z
-      .boolean()
-      .default(true)
-      .optional()
-      .describe(
-        `Assert a "${CONDITIONAL_EXPORT_REQUIRE}" conditional export matches a CJS script`,
-      ),
-    import: z
-      .boolean()
-      .default(true)
-      .optional()
-      .describe(
-        `Assert an "${CONDITIONAL_EXPORT_IMPORT}" conditional export matches a ESM module`,
-      ),
-    order: z
-      .boolean()
-      .default(true)
-      .optional()
-      .describe(
-        `Assert conditional export "${CONDITIONAL_EXPORT_DEFAULT}", if present, is the last export`,
-      ),
-    glob: z
-      .boolean()
-      .default(true)
-      .optional()
-      .describe('Allow glob patterns in subpath exports'),
+    types: zTrue.describe(
+      `Assert a "${CONDITIONAL_EXPORT_TYPES}" conditional export matches a file with a .d.ts extension`,
+    ),
+    require: zTrue.describe(
+      `Assert a "${CONDITIONAL_EXPORT_REQUIRE}" conditional export matches a CJS script`,
+    ),
+    import: zTrue.describe(
+      `Assert an "${CONDITIONAL_EXPORT_IMPORT}" conditional export matches a ESM module`,
+    ),
+    order: zTrue.describe(
+      `Assert conditional export "${CONDITIONAL_EXPORT_DEFAULT}", if present, is the last export`,
+    ),
+    glob: zTrue.describe('Allow glob patterns in subpath exports'),
   }),
 });
 

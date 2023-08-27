@@ -1,6 +1,4 @@
-exports[
-  'midnight-smoker smoker CLI script single script when the script succeeds should produce expected output [snapshot] 1'
-] = `
+exports['midnight-smoker smoker CLI script single script when the script succeeds should produce expected output [snapshot] 1'] = `
 💨 midnight-smoker v<version>
 - Packing current project…
 ✔ Packed 1 unique package using npm@<version>…
@@ -9,11 +7,9 @@ exports[
 - Running script 0/1…
 ✔ Successfully ran 1 script
 ✔ Lovey-dovey! 💖
-`;
+`
 
-exports[
-  'midnight-smoker smoker CLI script single script when the script fails should produce expected output [snapshot] 1'
-] = `
+exports['midnight-smoker smoker CLI script single script when the script fails should produce expected output [snapshot] 1'] = `
 💨 midnight-smoker v<version>
 - Packing current project…
 ✔ Packed 1 unique package using npm@<version>…
@@ -29,11 +25,9 @@ exports[
 
 
 ✖ 🤮 Maurice!
-`;
+`
 
-exports[
-  'midnight-smoker smoker CLI script multiple scripts when the scripts succeed should produce expected output [snapshot] 1'
-] = `
+exports['midnight-smoker smoker CLI script multiple scripts when the scripts succeed should produce expected output [snapshot] 1'] = `
 💨 midnight-smoker v<version>
 - Packing current project…
 ✔ Packed 1 unique package using npm@<version>…
@@ -42,11 +36,9 @@ exports[
 - Running script 0/2…
 ✔ Successfully ran 2 scripts
 ✔ Lovey-dovey! 💖
-`;
+`
 
-exports[
-  'midnight-smoker smoker CLI option --help should show help text [snapshot] 1'
-] = `
+exports['midnight-smoker smoker CLI option --help should show help text [snapshot] 1'] = `
 smoker [scripts..]
 
 Run tests against a package as it would be published
@@ -61,10 +53,10 @@ Behavior:
   --include-root  Include the workspace root; must provide '--all'     [boolean]
   --json          Output JSON only                                     [boolean]
   --pm            Run script(s) with a specific package manager;
-                  <npm|yarn|pnpm>[@version]      [array] [default: "npm@latest"]
+                  <npm|yarn|pnpm>[@version]    [array] [default: ["npm@latest"]]
   --loose         Ignore missing scripts (used with --all)             [boolean]
   --workspace     Run script in a specific workspace or workspaces       [array]
-  --checks        Run built-in checks                  [boolean] [default: true]
+  --checks        Run built-in checks                                  [boolean]
 
 Options:
   --version  Show version number                                       [boolean]
@@ -72,103 +64,140 @@ Options:
   --help     Show help                                                 [boolean]
 
 For more info, see https://github.com/boneskull/midnight-smoker
-`;
+`
 
-exports[
-  'midnight-smoker smoker CLI option --json when the script succeeds should produce expected script output [snapshot] 1'
-] = {
-  scripts: [
+exports['midnight-smoker smoker CLI option --json when the script succeeds should produce expected script output [snapshot] 1'] = {
+  "scripts": [
     {
-      pkgName: 'single-script',
-      script: 'smoke',
-      rawResult: {
-        command:
-          '<path/to/>/bin/node <path/to/>/.bin/corepack npm@9.8.1 run smoke',
-        escapedCommand:
-          '"<path/to/>/bin/node" "<path/to/>/.bin/corepack" "npm@9.8.1" run smoke',
-        exitCode: 0,
-        stdout: '\n> single-script@1.0.0 smoke\n> exit 0\n',
-        stderr: '',
-        failed: false,
-        timedOut: false,
-        isCanceled: false,
-        killed: false,
+      "pkgName": "single-script",
+      "script": "smoke",
+      "rawResult": {
+        "command": "<path/to/>/bin/node <path/to/>/.bin/corepack npm@9.8.1 run smoke",
+        "escapedCommand": "\"<path/to/>/bin/node\" \"<path/to/>/.bin/corepack\" \"npm@9.8.1\" run smoke",
+        "exitCode": 0,
+        "stdout": "\n> single-script@1.0.0 smoke\n> exit 0\n",
+        "stderr": "",
+        "failed": false,
+        "timedOut": false,
+        "isCanceled": false,
+        "killed": false
       },
-      cwd: '<cwd>',
-    },
+      "cwd": "<cwd>"
+    }
   ],
-  checks: {
-    failed: [],
-    passed: [
+  "checks": {
+    "failed": [],
+    "passed": [
       {
-        rule: {
-          name: 'no-missing-pkg-files',
-          description:
-            'Checks that files referenced in package.json exist in the tarball',
+        "rule": {
+          "name": "no-missing-pkg-files",
+          "description": "Checks that files referenced in package.json exist in the tarball"
         },
-        context: {
-          pkgJson: '<some/path>',
-          pkg: '<some/path>',
-          severity: 'error',
+        "context": {
+          "pkgJson": "<some/path>",
+          "pkg": "<some/path>",
+          "severity": "error"
         },
-        failed: false,
+        "failed": false
       },
       {
-        rule: {
-          name: 'no-banned-files',
-          description: 'Bans certain files from being published',
+        "rule": {
+          "name": "no-banned-files",
+          "description": "Bans certain files from being published"
         },
-        context: {
-          pkgJson: '<some/path>',
-          pkg: '<some/path>',
-          severity: 'error',
+        "context": {
+          "pkgJson": "<some/path>",
+          "pkg": "<some/path>",
+          "severity": "error"
         },
-        failed: false,
+        "failed": false
       },
       {
-        rule: {
-          name: 'no-missing-entry-point',
-          description:
-            'Checks that the package contains an entry point; only applies to CJS packages without an "exports" field',
+        "rule": {
+          "name": "no-missing-entry-point",
+          "description": "Checks that the package contains an entry point; only applies to CJS packages without an \"exports\" field"
         },
-        context: {
-          pkgJson: '<some/path>',
-          pkg: '<some/path>',
-          severity: 'error',
+        "context": {
+          "pkgJson": "<some/path>",
+          "pkg": "<some/path>",
+          "severity": "error"
         },
-        failed: false,
+        "failed": false
       },
       {
-        rule: {
-          name: 'no-missing-exports',
-          description:
-            'Checks that all files in the "exports" field (if present) exist',
+        "rule": {
+          "name": "no-missing-exports",
+          "description": "Checks that all files in the \"exports\" field (if present) exist"
         },
-        context: {
-          pkgJson: '<some/path>',
-          pkg: '<some/path>',
-          severity: 'error',
+        "context": {
+          "pkgJson": "<some/path>",
+          "pkg": "<some/path>",
+          "severity": "error"
         },
-        failed: false,
-      },
+        "failed": false
+      }
+    ]
+  },
+  "opts": {
+    "add": [],
+    "all": false,
+    "bail": false,
+    "includeRoot": false,
+    "json": true,
+    "linger": false,
+    "verbose": false,
+    "workspace": [],
+    "pm": [
+      "npm@latest"
     ],
-  },
-  opts: {
-    _: [],
-    json: true,
-    scripts: ['smoke'],
-    add: [],
-    pm: ['npm@latest'],
-    workspace: [],
-    checks: true,
-    $0: 'smoker',
-    verbose: false,
-  },
-};
+    "script": [
+      "smoke"
+    ],
+    "scripts": [
+      "smoke"
+    ],
+    "loose": false,
+    "checks": true,
+    "rules": {
+      "no-banned-files": {
+        "severity": "error",
+        "opts": {
+          "allow": [],
+          "deny": []
+        }
+      },
+      "no-missing-pkg-files": {
+        "severity": "error",
+        "opts": {
+          "bin": true,
+          "browser": true,
+          "types": true,
+          "fields": [
+            "bin",
+            "browser",
+            "types"
+          ]
+        }
+      },
+      "no-missing-entry-point": {
+        "severity": "error",
+        "opts": {}
+      },
+      "no-missing-exports": {
+        "severity": "error",
+        "opts": {
+          "types": true,
+          "require": true,
+          "import": true,
+          "order": true,
+          "glob": true
+        }
+      }
+    }
+  }
+}
 
-exports[
-  'midnight-smoker smoker CLI option --json when the script fails should provide helpful result [snapshot] 1'
-] = `
+exports['midnight-smoker smoker CLI option --json when the script fails should provide helpful result [snapshot] 1'] = `
 {
   "results": {
     "scripts": [
@@ -220,19 +249,57 @@ exports[
       "failed": []
     },
     "opts": {
-      "_": [],
-      "json": true,
-      "checks": false,
-      "scripts": [
-        "smoke"
-      ],
       "add": [],
+      "all": false,
+      "bail": false,
+      "includeRoot": false,
+      "json": true,
+      "linger": false,
+      "verbose": false,
+      "workspace": [],
       "pm": [
         "npm@latest"
       ],
-      "workspace": [],
-      "$0": "smoker",
-      "verbose": false
+      "script": [
+        "smoke"
+      ],
+      "scripts": [
+        "smoke"
+      ],
+      "loose": false,
+      "checks": false,
+      "rules": {
+        "no-banned-files": {
+          "severity": "error",
+          "opts": {
+            "allow": [],
+            "deny": []
+          }
+        },
+        "no-missing-pkg-files": {
+          "severity": "error",
+          "opts": {
+            "bin": true,
+            "browser": true,
+            "types": true,
+            "fields": []
+          }
+        },
+        "no-missing-entry-point": {
+          "severity": "error",
+          "opts": {}
+        },
+        "no-missing-exports": {
+          "severity": "error",
+          "opts": {
+            "types": true,
+            "require": true,
+            "import": true,
+            "order": true,
+            "glob": true
+          }
+        }
+      }
     }
   },
   "stats": {
@@ -246,4 +313,43 @@ exports[
     "passedChecks": null
   }
 }
-`;
+`
+
+exports['midnight-smoker smoker CLI check when a check fails when the rule severity is "error" should produce expected output [snapshot] 1'] = `
+💨 midnight-smoker v<version>
+- Packing current project…
+✔ Packed 1 unique package using npm@<version>…
+- Installing 1 unique package from tarball using npm@<version>…
+✔ Installed 1 unique package from tarball
+- Running 0/4 checks…
+✖ 1 check of 4 failed
+ℹ Check failures in package check-error:
+» ✖ Banned file found: id_rsa (Private SSH key)
+
+✖ 🤮 Maurice!
+`
+
+exports['midnight-smoker smoker CLI check when a check fails when the rule severity is "warn" should produce expected output [snapshot] 1'] = `
+💨 midnight-smoker v<version>
+- Packing current project…
+✔ Packed 1 unique package using npm@<version>…
+- Installing 1 unique package from tarball using npm@<version>…
+✔ Installed 1 unique package from tarball
+- Running 0/4 checks…
+✖ 1 check of 4 failed
+ℹ Check failures in package check-warn:
+» ⚠ Banned file found: id_rsa (Private SSH key)
+
+✔ Lovey-dovey! 💖
+`
+
+exports['midnight-smoker smoker CLI check when a check fails when the rule severity is "off" should produce expected output [snapshot] 1'] = `
+💨 midnight-smoker v<version>
+- Packing current project…
+✔ Packed 1 unique package using npm@<version>…
+- Installing 1 unique package from tarball using npm@<version>…
+✔ Installed 1 unique package from tarball
+- Running 0/3 checks…
+✔ Successfully ran 3 checks
+✔ Lovey-dovey! 💖
+`

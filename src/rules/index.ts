@@ -1,4 +1,4 @@
 export * from './rule';
-export * from './rule-config';
+export * from './check-options';
 export * from './severity';
 export type * from './result';

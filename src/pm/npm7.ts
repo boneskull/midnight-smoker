@@ -134,6 +134,7 @@ export class Npm7 extends GenericNpmPackageManager implements PackageManager {
     try {
       packResult = await this.executor.exec(packArgs);
     } catch (err) {
+      this.debug('(pack) Failed: %O', err);
       throw new PackError(
         `Package manager "${this.name}" failed to pack`,
         this.name,

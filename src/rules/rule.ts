@@ -1,8 +1,7 @@
 import type {PackageJson} from 'read-pkg-up';
 import {z} from 'zod';
-import type {RuleSeverity} from './rule-config';
 import type {CheckFailure} from './result';
-import {RuleSeverities, RuleSeveritySchema} from './severity';
+import {CheckSeverities, zCheckSeverity, type CheckSeverity} from './severity';
 
 /**
  * The bits of a {@linkcode CheckContext} suitable for serialization.
@@ -12,7 +11,7 @@ export interface StaticCheckContext {
   pkgJson: PackageJson;
   pkgJsonPath: string;
   pkgPath: string;
-  severity: RuleSeverity;
+  severity: CheckSeverity;
 }
 
 /**
@@ -31,11 +30,11 @@ export type CheckContextFailFn = (message: string, data?: any) => CheckFailure;
  */
 export class CheckContext<
   const Name extends string = string,
-  Schema extends z.ZodTypeAny = z.ZodUndefined,
+  Schema extends z.ZodTypeAny = z.ZodTypeAny,
 > implements StaticCheckContext
 {
   /**
-   * The parsed `package.json` for the package being checked.
+   * The (parse as )d `package.json` for the package being checked.
    *
    * _Not_ normalized.
    */
@@ -53,7 +52,7 @@ export class CheckContext<
   /**
    * The severity level for this rule (as chosen by the user)
    */
-  public readonly severity: RuleSeverity;
+  public readonly severity: CheckSeverity;
 
   /**
    * The `fail` function as provided to the `Rule`'s {@linkcode RuleCheckFn}.
@@ -75,11 +74,12 @@ export class CheckContext<
    */
   private createFailFn(rule: Rule<Name, Schema>): CheckContextFailFn {
     return (message, data) => ({
-      rule,
+      rule: rule.toJSON(),
       message,
       data,
       context: this,
       failed: true,
+      severity: this.severity,
     });
   }
 
@@ -101,61 +101,50 @@ export class CheckContext<
  * The bits of a {@linkcode RuleDef} suitable for passing the API edge
  */
 export interface StaticRuleDef<Name extends string = string> {
-  readonly defaultSeverity?: RuleSeverity;
+  readonly defaultSeverity?: CheckSeverity;
   readonly description: string;
   readonly name: Name;
 }
-
-/**
- * The parsed and validated options for a {@linkcode Rule}.
- */
-export type RuleOpts<Schema extends z.ZodTypeAny = z.ZodUndefined> =
-  z.infer<Schema>;
 
 /**
  * The type _returned or fulfilled_ by the {@linkcode Rule.check} method.
  */
 export type RuleCheckFnResult = CheckFailure[] | undefined;
 
+export type RuleOptions<Schema extends z.ZodTypeAny> = z.infer<Schema>;
+
 /**
  * The function which actually performs the check within a {@linkcode Rule}
  * @public
  */
-export type RuleCheckFn<
-  Name extends string = string,
-  Schema extends z.ZodTypeAny = z.ZodUndefined,
-> = (
+export type RuleCheckFn<Name extends string, Schema extends z.ZodTypeAny> = (
   ctx: CheckContext<Name, Schema>,
-  opts?: RuleOpts<Schema>,
+  opts: RuleOptions<Schema>,
 ) => Promise<RuleCheckFnResult> | RuleCheckFnResult;
 
 /**
  * The raw definition of a {@linkcode Rule}, as defined by a implementor.
  * @public
  */
-export interface RuleDef<
-  Name extends string = string,
-  Schema extends z.ZodTypeAny = z.ZodUndefined,
-> extends StaticRuleDef<Name> {
+export interface RuleDef<Name extends string, Schema extends z.ZodTypeAny>
+  extends StaticRuleDef<Name> {
   /**
    * The function which actually performs the check.
    */
-  readonly check: RuleCheckFn<Name, Schema>;
+  check: RuleCheckFn<Name, Schema>;
 
   /**
    * Options schema for this rule, if any
    */
-  readonly schema?: Schema;
+  schema: Schema;
 }
 
 /**
  * Represents a _Rule_, which performs a check upon an installed (from tarball) package.
  * @internal
  */
-export class Rule<
-  const Name extends string = string,
-  Schema extends z.ZodTypeAny = z.ZodUndefined,
-> implements RuleDef<Name, Schema>
+export class Rule<const Name extends string, Schema extends z.ZodTypeAny>
+  implements RuleDef<Name, Schema>
 {
   /**
    * The name for this rule.
@@ -171,7 +160,7 @@ export class Rule<
   /**
    * The default severity for this rule if not supplied by the user
    */
-  public readonly defaultSeverity: RuleSeverity;
+  public readonly defaultSeverity: CheckSeverity;
 
   /**
    * The function which actually performs the check.
@@ -186,30 +175,36 @@ export class Rule<
   /**
    * A composable schema handling the default severity for this rule
    */
-  private readonly ruleSeveritySchema: z.ZodDefault<typeof RuleSeveritySchema>;
+  private readonly zDefaultRuleSeverity: z.ZodDefault<typeof zCheckSeverity>;
+
+  public readonly defaultOptions: RuleOptions<Schema>;
 
   constructor(def: RuleDef<Name, Schema>) {
     this.name = def.name;
     this.description = def.description;
-    this.defaultSeverity = def.defaultSeverity ?? RuleSeverities.ERROR;
+    this.defaultSeverity = def.defaultSeverity ?? CheckSeverities.ERROR;
     this.check = def.check;
-    // TODO determine if this is Bad
-    this.schema = def.schema ?? (z.undefined() as Schema);
-    this.ruleSeveritySchema = RuleSeveritySchema.default(this.defaultSeverity);
+    this.schema = def.schema;
+    this.zDefaultRuleSeverity = zCheckSeverity.default(this.defaultSeverity);
+    this.defaultOptions = this.schema.parse({});
   }
 
   /**
    * Returns the entire schema for the value of this rule in the `RuleConfig` object.
    */
-  get ruleSchema() {
-    return z
-      .union([
-        this.ruleSeveritySchema,
-        this.schema,
-        z.tuple([this.schema]),
-        z.tuple([this.schema, this.ruleSeveritySchema]),
-      ])
-      .optional();
+  get zRuleSchema() {
+    const {zDefaultRuleSeverity, schema: zSchema} = this;
+
+    return z.union([
+      zDefaultRuleSeverity.transform((severity) => ({
+        severity,
+        opts: this.defaultOptions,
+      })),
+      zSchema.transform((opts) => ({severity: this.defaultSeverity, opts})),
+      z
+        .tuple([zSchema, zDefaultRuleSeverity])
+        .transform(([opts, severity]) => ({severity, opts})),
+    ]);
   }
 
   /**
@@ -222,7 +217,7 @@ export class Rule<
     return <R>(
       cont: <
         const Name extends string,
-        Schema extends z.ZodTypeAny = z.ZodUndefined,
+        Schema extends z.ZodTypeAny = z.ZodTypeAny,
       >(
         rule: Rule<Name, Schema>,
       ) => R,
@@ -250,10 +245,7 @@ export class Rule<
  * @see {@link https://jalo.website/existential-types-in-typescript-through-continuations}
  */
 export type RuleCont = <R>(
-  cont: <
-    const Name extends string,
-    Schema extends z.ZodTypeAny = z.ZodUndefined,
-  >(
+  cont: <const Name extends string, Schema extends z.ZodTypeAny = z.ZodTypeAny>(
     rule: Rule<Name, Schema>,
   ) => R,
 ) => R;
@@ -267,7 +259,7 @@ export type RuleCont = <R>(
  */
 export function createRule<
   const Name extends string,
-  Schema extends z.ZodTypeAny = z.ZodUndefined,
+  Schema extends z.ZodTypeAny = z.ZodTypeAny,
 >(ruleDef: RuleDef<Name, Schema>): Rule<Name, Schema> {
   return new Rule(ruleDef);
 }

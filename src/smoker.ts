@@ -1,12 +1,10 @@
 /* eslint-disable no-labels */
-import {yellow} from 'chalk';
 import createDebug from 'debug';
 import {EventEmitter} from 'node:events';
 import fs from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import StrictEventEmitter from 'strict-event-emitter-types';
-import {z} from 'zod';
 import {
   DirCreationError,
   DirDeletionError,
@@ -14,11 +12,17 @@ import {
   InvalidArgError,
   PackageManagerError,
   PackageManagerIdError,
+  RuleError,
   SmokeFailedError,
   type InstallError,
   type PackError,
 } from './error';
-import {Events, type InstallEventData, type SmokerEvents} from './events';
+import {Event, type InstallEventData, type SmokerEvent} from './event';
+import {
+  parseOptions,
+  type RawSmokerOptions,
+  type SmokerOptions,
+} from './options';
 import {
   loadPackageManagers,
   type InstallResults,
@@ -26,12 +30,11 @@ import {
 } from './pm';
 import {
   CheckContext,
-  DEFAULT_RULE_CONFIG,
-  RuleConfigSchema,
-  type RawRuleConfig,
-  type RuleConfig,
+  CheckSeverities,
+  type CheckOptions,
   type RuleCont,
   type StaticCheckContext,
+  RuleOptions,
 } from './rules';
 import {BuiltinRuleConts} from './rules/builtin';
 import {
@@ -39,53 +42,26 @@ import {
   type CheckOk,
   type CheckResults,
 } from './rules/result';
-import type {
-  InstallManifest,
-  PkgInstallManifest,
-  PkgRunManifest,
-  RunManifest,
-  RunScriptResult,
-  SmokeOptions,
-  SmokeResults,
-  SmokerOptions,
+import {
+  type InstallManifest,
+  type PkgInstallManifest,
+  type PkgRunManifest,
+  type RunManifest,
+  type RunScriptResult,
+  type SmokeResults,
 } from './types';
-import {normalizeStringArray, readPackageJson} from './util';
+import {readPackageJson} from './util';
 
 const debug = createDebug('midnight-smoker:smoker');
 
 export const TMP_DIR_PREFIX = 'midnight-smoker-';
 
-type TSmokerEmitter = StrictEventEmitter<EventEmitter, SmokerEvents>;
+type TSmokerEmitter = StrictEventEmitter<EventEmitter, SmokerEvent>;
 
 function createStrictEventEmitterClass() {
   const TypedEmitter: {new (): TSmokerEmitter} = EventEmitter as any;
   return TypedEmitter;
 }
-
-const {
-  SMOKE_BEGIN,
-  SMOKE_OK,
-  SMOKE_FAILED,
-  PACK_BEGIN,
-  PACK_FAILED,
-  PACK_OK,
-  INSTALL_BEGIN,
-  INSTALL_FAILED,
-  INSTALL_OK,
-  RUN_SCRIPTS_BEGIN,
-  RUN_SCRIPTS_FAILED,
-  RUN_SCRIPTS_OK,
-  RUN_SCRIPT_BEGIN,
-  RUN_SCRIPT_FAILED,
-  RUN_SCRIPT_OK,
-  LINGERED,
-  RUN_CHECKS_BEGIN,
-  RUN_CHECKS_FAILED,
-  RUN_CHECKS_OK,
-  RUN_CHECK_BEGIN,
-  RUN_CHECK_FAILED,
-  RUN_CHECK_OK,
-} = Events;
 
 export class Smoker extends createStrictEventEmitterClass() {
   /**
@@ -121,7 +97,7 @@ export class Smoker extends createStrictEventEmitterClass() {
    */
   private readonly workspaces: string[];
 
-  public readonly ruleConfig: RuleConfig;
+  public readonly ruleConfig: CheckOptions;
   /**
    * List of scripts to run in each workspace
    */
@@ -134,66 +110,73 @@ export class Smoker extends createStrictEventEmitterClass() {
 
   private readonly originalOpts: SmokerOptions;
 
-  constructor(
+  private constructor(
     public readonly pms: Map<string, PackageManager>,
-    scripts: string | string[] = [],
-    opts: SmokerOptions = {},
+    opts: SmokerOptions,
   ) {
     super();
-    this.originalOpts = opts;
-    this.scripts = normalizeStringArray(scripts);
-    opts = {...opts};
+    const {
+      script,
+      linger,
+      includeRoot,
+      add,
+      bail,
+      all,
+      workspace,
+      checks,
+      rules,
+    } = opts;
+    this.originalOpts = Object.freeze(opts);
 
-    this.linger = Boolean(opts.linger);
-    this.includeWorkspaceRoot = Boolean(opts.includeRoot);
-    if (this.includeWorkspaceRoot) {
-      opts.all = true;
-    }
-    this.add = normalizeStringArray(opts.add);
-    this.bail = Boolean(opts.bail);
-    this.allWorkspaces = Boolean(opts.all);
-    this.workspaces = normalizeStringArray(opts.workspace);
+    this.scripts = script;
+    this.linger = linger;
+    this.includeWorkspaceRoot = includeRoot;
+    this.add = add;
+    this.bail = bail;
+    this.allWorkspaces = all;
+    this.workspaces = workspace;
+    this.checks = checks;
+    this.ruleConfig = rules;
+
     if (this.allWorkspaces && this.workspaces.length) {
       throw new InvalidArgError(
         'Option "workspace" is mutually exclusive with "all" and/or "includeRoot"',
       );
     }
-    this.checks = opts.checks !== false;
+
     this.pmIds = new WeakMap();
     for (const [pmId, pm] of pms) {
       this.pmIds.set(pm, pmId);
     }
     this.tempDirs = new Set();
-    this.ruleConfig = RuleConfigSchema.parse({
-      ...DEFAULT_RULE_CONFIG,
-      ...opts.rules,
-    });
   }
 
-  public static async init(
-    scripts: string | string[] = [],
-    opts: SmokeOptions = {},
-  ) {
-    const {pm, verbose, loose, all} = opts;
-
+  public static async init(opts: RawSmokerOptions = {}) {
+    const smokerOpts = parseOptions(opts);
+    const {verbose, pm, loose} = smokerOpts;
     const pms = await loadPackageManagers(pm, {
       verbose,
-      loose: all && loose,
+      loose,
     });
 
-    return new Smoker(pms, scripts, opts);
+    return Smoker.create(pms, smokerOpts);
+  }
+
+  public static create(
+    pms: Map<string, PackageManager>,
+    opts: RawSmokerOptions | SmokerOptions = {},
+  ) {
+    return new Smoker(pms, parseOptions(opts));
   }
 
   /**
    * Run the smoke test scripts!
-   * @param scripts - One or more npm scripts to run
    * @param opts - Options
    */
   public static async smoke(
-    scripts: string | string[] = [],
-    opts: SmokeOptions = {},
+    opts: RawSmokerOptions = {},
   ): Promise<SmokeResults> {
-    const smoker = await Smoker.init(scripts, opts);
+    const smoker = await Smoker.init(opts);
     return smoker.smoke();
   }
 
@@ -202,7 +185,7 @@ export class Smoker extends createStrictEventEmitterClass() {
    *
    * If the {@linkcode SmokeOptions.linger} option is set to `true`, this method
    * will _not_ clean up the directories, but will instead emit a
-   * {@linkcode SmokerEvents.Lingered|Lingered} event.
+   * {@linkcode SmokerEvent.Lingered|Lingered} event.
    */
   public async cleanup(): Promise<void> {
     if (!this.linger) {
@@ -226,7 +209,7 @@ export class Smoker extends createStrictEventEmitterClass() {
       );
     } else if (this.tempDirs.size) {
       await Promise.resolve();
-      this.emit(LINGERED, [...this.tempDirs]);
+      this.emit(Event.LINGERED, [...this.tempDirs]);
     }
   }
 
@@ -264,7 +247,7 @@ export class Smoker extends createStrictEventEmitterClass() {
     await Promise.resolve();
 
     const installData = this.buildInstallEventData(manifests);
-    this.emit(INSTALL_BEGIN, installData);
+    this.emit(Event.INSTALL_BEGIN, installData);
 
     const installResults: InstallResults = new Map();
     for (const [pm, manifest] of manifests) {
@@ -285,12 +268,12 @@ export class Smoker extends createStrictEventEmitterClass() {
         installResults.set(pm, [manifest, result]);
       } catch (err) {
         const error = err as InstallError;
-        this.emit(INSTALL_FAILED, error);
+        this.emit(Event.INSTALL_FAILED, error);
         throw error;
       }
     }
 
-    this.emit(INSTALL_OK, installData);
+    this.emit(Event.INSTALL_OK, installData);
 
     return installResults;
   }
@@ -301,7 +284,7 @@ export class Smoker extends createStrictEventEmitterClass() {
   public async pack(): Promise<PkgInstallManifest> {
     await Promise.resolve();
 
-    this.emit(PACK_BEGIN, {packageManagers: [...this.pms.keys()]});
+    this.emit(Event.PACK_BEGIN, {packageManagers: [...this.pms.keys()]});
 
     const manifestMap: PkgInstallManifest = new Map();
 
@@ -318,11 +301,11 @@ export class Smoker extends createStrictEventEmitterClass() {
         });
         manifestMap.set(pm, manifest);
       } catch (err) {
-        this.emit(PACK_FAILED, err as PackError);
+        this.emit(Event.PACK_FAILED, err as PackError);
         throw err;
       }
     }
-    this.emit(PACK_OK, this.buildInstallEventData(manifestMap));
+    this.emit(Event.PACK_OK, this.buildInstallEventData(manifestMap));
     return manifestMap;
   }
 
@@ -330,26 +313,25 @@ export class Smoker extends createStrictEventEmitterClass() {
    * @internal
    * @param ruleCont - Rule continuation
    * @param pkgPath - Path to installed package
-   * @param config - Parsed rule config
+   * @param checkOpts - Parsed rule options
    * @returns Results of a single check
    */
   public async runCheck(
     ruleCont: RuleCont,
     pkgPath: string,
-    config: RawRuleConfig,
+    checkOpts: CheckOptions,
   ): Promise<CheckResults> {
     return ruleCont(async (rule) => {
-      let {name: ruleName, defaultSeverity: severity, schema} = rule;
-      const configForRule = config[ruleName as keyof typeof config];
+      const {name: ruleName} = rule;
+      const ruleOpts: RuleOptions<typeof rule.schema> =
+        checkOpts[ruleName as keyof CheckOptions];
+      const {severity, opts} = ruleOpts;
 
-      let opts: z.infer<typeof schema> | undefined;
-      if (typeof configForRule === 'string') {
-        severity = configForRule;
-      } else if (Array.isArray(configForRule)) {
-        opts = configForRule[0];
-        severity = (configForRule[1] as typeof severity) ?? severity;
-      } else {
-        opts = configForRule;
+      // XXX might be something better to do here. this won't happen during
+      // expected non-test operation
+      /* istanbul ignore next */
+      if (severity === CheckSeverities.OFF) {
+        return {failed: [], passed: []};
       }
 
       const {packageJson: pkgJson, path: pkgJsonPath} = await readPackageJson({
@@ -364,15 +346,44 @@ export class Smoker extends createStrictEventEmitterClass() {
         severity,
       };
 
-      debug(`Running rule %s with context %O`, ruleName, staticCtx);
+      debug(
+        `Running rule %s with context %O and opts %O`,
+        ruleName,
+        {
+          pkgJsonPath,
+          pkgPath,
+          severity,
+          pkgName: pkgJson.name,
+        },
+        opts,
+      );
       const context = new CheckContext(rule, staticCtx);
 
       let result: CheckFailure[] | undefined;
       try {
         result = await rule.check(context, opts);
       } catch (err) {
-        console.error(yellow(`Warning: error running rule ${ruleName}:`));
-        console.error(err);
+        this.emit(
+          Event.RULE_ERROR,
+          new RuleError(
+            `Rule "${ruleName}" threw an exception`,
+            staticCtx,
+            ruleName,
+            err as Error,
+          ),
+        );
+        return {
+          failed: [
+            {
+              message: String(err),
+              failed: true,
+              severity,
+              rule,
+              context: staticCtx,
+            },
+          ],
+          passed: [],
+        };
       }
 
       if (result?.length) {
@@ -399,19 +410,23 @@ export class Smoker extends createStrictEventEmitterClass() {
     await Promise.resolve();
 
     const runnableRules = BuiltinRuleConts.filter((ruleCont) =>
-      ruleCont((rule) => ruleConfig.isRuleEnabled(rule.name)),
+      ruleCont(
+        (rule) =>
+          ruleConfig[rule.name as keyof typeof ruleConfig].severity !==
+          CheckSeverities.OFF,
+      ),
     );
 
     const total = runnableRules.length;
     let current = 0;
 
-    this.emit(RUN_CHECKS_BEGIN, {config: ruleConfig, total});
+    this.emit(Event.RUN_CHECKS_BEGIN, {config: ruleConfig, total});
 
     // run against multiple package managers??
     for (const ruleCont of runnableRules) {
       const ruleName = ruleCont((rule) => rule.name);
-      const configForRule = ruleConfig[ruleName as keyof RawRuleConfig];
-      this.emit(RUN_CHECK_BEGIN, {
+      const configForRule = ruleConfig[ruleName as keyof typeof ruleConfig];
+      this.emit(Event.RUN_CHECK_BEGIN, {
         rule: ruleName,
         config: configForRule,
         current,
@@ -426,7 +441,7 @@ export class Smoker extends createStrictEventEmitterClass() {
             ruleConfig,
           );
           if (failed.length) {
-            this.emit(RUN_CHECK_FAILED, {
+            this.emit(Event.RUN_CHECK_FAILED, {
               rule: ruleName,
               config: configForRule,
               current,
@@ -434,7 +449,7 @@ export class Smoker extends createStrictEventEmitterClass() {
               failed,
             });
           } else {
-            this.emit(RUN_CHECK_OK, {
+            this.emit(Event.RUN_CHECK_OK, {
               rule: ruleName,
               config: configForRule,
               current,
@@ -458,9 +473,9 @@ export class Smoker extends createStrictEventEmitterClass() {
     };
 
     if (allFailed.length) {
-      this.emit(RUN_CHECKS_FAILED, evtData);
+      this.emit(Event.RUN_CHECKS_FAILED, evtData);
     } else {
-      this.emit(RUN_CHECKS_OK, evtData);
+      this.emit(Event.RUN_CHECKS_OK, evtData);
     }
 
     return {failed: allFailed, passed: allPassed};
@@ -492,7 +507,7 @@ export class Smoker extends createStrictEventEmitterClass() {
     );
 
     await Promise.resolve();
-    this.emit(RUN_SCRIPTS_BEGIN, {
+    this.emit(Event.RUN_SCRIPTS_BEGIN, {
       manifest: pkgRunManifestForEmit,
       total: totalScripts,
     });
@@ -514,7 +529,7 @@ export class Smoker extends createStrictEventEmitterClass() {
         const {script} = runManifest;
         const {pkgName} = runManifest.packedPkg;
         scripts.push(script);
-        this.emit(RUN_SCRIPT_BEGIN, {
+        this.emit(Event.RUN_SCRIPT_BEGIN, {
           script,
           pkgName,
           total: totalScripts,
@@ -530,7 +545,7 @@ export class Smoker extends createStrictEventEmitterClass() {
               pkgName,
               result,
             );
-            this.emit(RUN_SCRIPT_FAILED, {
+            this.emit(Event.RUN_SCRIPT_FAILED, {
               ...result,
               script,
               error: result.error,
@@ -542,7 +557,7 @@ export class Smoker extends createStrictEventEmitterClass() {
               break BAIL;
             }
           } else {
-            this.emit(RUN_SCRIPT_OK, {
+            this.emit(Event.RUN_SCRIPT_OK, {
               ...result,
               script,
               current,
@@ -562,7 +577,7 @@ export class Smoker extends createStrictEventEmitterClass() {
     const failed = results.filter((result) => result.error).length;
     const passed = results.length - failed;
 
-    this.emit(failed ? RUN_SCRIPTS_FAILED : RUN_SCRIPTS_OK, {
+    this.emit(failed ? Event.RUN_SCRIPTS_FAILED : Event.RUN_SCRIPTS_OK, {
       results,
       manifest: pkgRunManifestForEmit,
       total: totalScripts,
@@ -600,8 +615,12 @@ export class Smoker extends createStrictEventEmitterClass() {
    * @param results Results from {@linkcode smoke}
    * @returns Whether the results indicate a failure
    */
-  public isSmokeFailure({scripts, checks}: SmokeResults) {
-    return checks.failed.length || scripts.some((r) => r.error);
+  public isSmokeFailure({scripts, checks}: SmokeResults): boolean {
+    return (
+      checks.failed.some(
+        (checkFailure) => checkFailure.severity === CheckSeverities.ERROR,
+      ) || scripts.some((runScriptResult) => runScriptResult.error)
+    );
   }
 
   /**
@@ -611,7 +630,7 @@ export class Smoker extends createStrictEventEmitterClass() {
   public async smoke(): Promise<SmokeResults> {
     // do not emit synchronously
     await Promise.resolve();
-    this.emit(SMOKE_BEGIN);
+    this.emit(Event.SMOKE_BEGIN);
 
     try {
       // PACK
@@ -643,11 +662,11 @@ export class Smoker extends createStrictEventEmitterClass() {
 
       if (this.isSmokeFailure(smokeResults)) {
         this.emit(
-          SMOKE_FAILED,
+          Event.SMOKE_FAILED,
           new SmokeFailedError('🤮 Maurice!', {results: smokeResults}),
         );
       } else {
-        this.emit(SMOKE_OK, smokeResults);
+        this.emit(Event.SMOKE_OK, smokeResults);
       }
 
       return smokeResults;
@@ -661,7 +680,7 @@ export class Smoker extends createStrictEventEmitterClass() {
   /**
    * This is only here because it's a fair amount of work to mash the data into a format more suitable for display.
    *
-   * This is used by the events {@linkcode SmokerEvents.InstallBegin}, {@linkcode SmokerEvents.InstallOk}, and {@linkcode SmokerEvents.PackOk}.
+   * This is used by the events {@linkcode SmokerEvent.InstallBegin}, {@linkcode SmokerEvent.InstallOk}, and {@linkcode SmokerEvent.PackOk}.
    * @param pkgInstallManifest What to install and with what package manager
    * @returns Something to be emitted
    */
