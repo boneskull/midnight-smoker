@@ -62,20 +62,7 @@
     "test:e2e": "mocha --timeout 20s --slow 10s \"test/e2e/**/*.spec.ts\"",
     "test:smoke": "node ./bin/smoker.js smoke:ts smoke:js --add ts-node --add @tsconfig/node16",
     "test:update-snapshots": "cross-env SNAPSHOT_UPDATE=1 npm run test:e2e -- --fgrep \"[snapshot]\"",
-    "update-schema": "ts-node ./scripts/generate-schema.ts && git add -A schema/midnight-smoker.schema.json"
-  },
-  "lint-staged": {
-    "*.{js,ts}": [
-      "eslint --fix",
-      "prettier --write"
-    ],
-    "*.md": [
-      "markdownlint-cli2-fix",
-      "prettier --write"
-    ],
-    "*.yml": [
-      "prettier --write"
-    ]
+    "update-schema": "ts-node ./scripts/generate-schema.ts && prettier --write ./schema/midnight-smoker.schema.json"
   },
   "prettier": {
     "bracketSpacing": false,

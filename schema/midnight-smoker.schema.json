@@ -128,6 +128,16 @@
                   "default": true,
                   "description": "Check the \"types\" field (if it exists)"
                 },
+                "unpkg": {
+                  "$ref": "#/$defs/defaultTrue",
+                  "default": true,
+                  "description": "Check the \"unpkg\" field (if it exists)"
+                },
+                "module": {
+                  "$ref": "#/$defs/defaultTrue",
+                  "default": true,
+                  "description": "Check the \"module\" field (if it exists)"
+                },
                 "fields": {
                   "$ref": "#/$defs/arrayOfNonEmptyStrings",
                   "default": [],
@@ -234,6 +244,8 @@
           "bin": true,
           "browser": true,
           "types": true,
+          "unpkg": true,
+          "module": true,
           "fields": []
         },
         "no-banned-files": {
