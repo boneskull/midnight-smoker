@@ -21,16 +21,20 @@ const EXPLICIT_FIELD_FLAGS = [
 ] as const;
 
 const noMissingPkgFiles = createRule({
-  async check({pkgJson: pkg, pkgPath, fail}, opts) {
-    let fieldsToCheck = opts.fields ?? [];
+  async check({pkgJson, pkgPath, fail}, opts) {
+    let fields = opts.fields ?? [];
 
+    // add any explicit fields to the list of fields to check.
+    // these are kept separate so someone doesn't overwrite them by providing `fields`
     for (const field of EXPLICIT_FIELD_FLAGS) {
       if (opts[field] !== false) {
-        fieldsToCheck.push(field);
+        fields.push(field);
       }
     }
 
-    fieldsToCheck = [...new Set(fieldsToCheck)];
+    fields = [...new Set(fields)]; // unique
+
+    debug(`Checking fields: %O`, fields);
 
     /**
      * @param relativePath Path from package root to file
@@ -56,27 +60,70 @@ const noMissingPkgFiles = createRule({
       }
     };
 
-    const res = await Promise.all(
-      fieldsToCheck
-        .filter((field) => field in pkg)
-        .map(async (field) => {
-          const value = pkg[field];
-          if (value) {
-            if (typeof value === 'string') {
-              return checkFile(value, field);
-            }
-            if (!Array.isArray(value) && typeof value === 'object') {
-              return Promise.all(
-                Object.entries(value).map(([name, relativePath]) =>
-                  checkFile(relativePath, field, name),
-                ),
-              );
-            }
+    interface PkgFilepathInfo {
+      /**
+       * Fieldname in `package.json`
+       */
+      field: string;
+      /**
+       * Assumed to be a relative path
+       */
+      relativePath: string;
+      /**
+       * Present if the field is an object (e.g., `bin` as an object instead of `string`); the object key
+       */
+      name?: string;
+    }
+
+    /**
+     * Assuming a relative filepath is the value of a field in `package.json` _or_ the value
+     * is a `Record<string, string>` (e.g., `bin`), return an array of {@linkcode PkgFilepathInfo} objects to check for existence.
+     * @param currentInfo - List of {@linkcode PkgFilepathInfo} objects to append to
+     * @param field - Fieldname
+     * @returns New array with any new objects appended
+     */
+    const filenameReducer = (
+      currentInfo: Readonly<PkgFilepathInfo[]>,
+      field: string,
+    ): Readonly<PkgFilepathInfo[]> => {
+      let newInfo = [...currentInfo];
+      if (field in pkgJson) {
+        const relativePath = pkgJson[field];
+        if (relativePath) {
+          if (typeof relativePath === 'string') {
+            newInfo = [...newInfo, {relativePath, field}];
+          } else if (
+            !Array.isArray(relativePath) &&
+            typeof relativePath === 'object'
+          ) {
+            newInfo = [
+              ...newInfo,
+              ...Object.entries(relativePath)
+                .filter(([, relativePath]) => typeof relativePath === 'string')
+                .map(([name, relativePath]) => ({
+                  relativePath: relativePath as string,
+                  field,
+                  name,
+                })),
+            ];
           }
-        }),
+        }
+      }
+      return newInfo;
+    };
+
+    /**
+     * Array of {@linkcode CheckFailure} or `undefined` (if the file exists)
+     */
+    const res = await Promise.all(
+      fields
+        .reduce(filenameReducer, [] as PkgFilepathInfo[])
+        .map(({relativePath, field, name}) =>
+          checkFile(relativePath, field, name),
+        ),
     );
 
-    return res.flat().filter(Boolean) as CheckFailure[];
+    return res.filter(Boolean) as CheckFailure[];
   },
   name: 'no-missing-pkg-files',
   description:
