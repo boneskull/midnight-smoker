@@ -8,18 +8,28 @@ import {zNonEmptyStringArray, zTrue} from '../../schema-util';
 
 const debug = createDebug('midnight-smoker:rule:no-missing-pkg-files');
 
+/**
+ * Each of these is a flag in the options object, which can be set to `false` to
+ * avoid checking the value (relative filepath) exists.
+ */
+const EXPLICIT_FIELD_FLAGS = [
+  'bin',
+  'browser',
+  'types',
+  'unpkg',
+  'module',
+] as const;
+
 const noMissingPkgFiles = createRule({
   async check({pkgJson: pkg, pkgPath, fail}, opts) {
     let fieldsToCheck = opts.fields ?? [];
-    if (opts.bin !== false) {
-      fieldsToCheck.push('bin');
+
+    for (const field of EXPLICIT_FIELD_FLAGS) {
+      if (opts[field] !== false) {
+        fieldsToCheck.push(field);
+      }
     }
-    if (opts.browser !== false) {
-      fieldsToCheck.push('browser');
-    }
-    if (opts.types !== false) {
-      fieldsToCheck.push('types');
-    }
+
     fieldsToCheck = [...new Set(fieldsToCheck)];
 
     /**
@@ -75,6 +85,8 @@ const noMissingPkgFiles = createRule({
     bin: zTrue.describe('Check the "bin" field (if it exists)'),
     browser: zTrue.describe('Check the "browser" field (if it exists)'),
     types: zTrue.describe('Check the "types" field (if it exists)'),
+    unpkg: zTrue.describe('Check the "unpkg" field (if it exists)'),
+    module: zTrue.describe('Check the "module" field (if it exists)'),
     fields: zNonEmptyStringArray.describe(
       'Check files referenced by these additional top-level fields',
     ),
