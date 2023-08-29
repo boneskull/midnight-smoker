@@ -56,7 +56,7 @@
     "lint:staged": "lint-staged",
     "prepare": "run-p husky-install rebuild",
     "pretest:e2e": "run-s build",
-    "preversion": "run-s update-schema",
+    "preversion": "run-s update-schema && git add -A ./schema/midnight-smoker.schema.json",
     "rebuild": "run-s clean build",
     "smoke:js": "node ./bin/smoker.js --version",
     "smoke:ts": "ts-node -D ./src/cli.ts --version",
