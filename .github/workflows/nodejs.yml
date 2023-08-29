@@ -21,8 +21,6 @@ jobs:
       - name: Install dependencies
         uses: bahmutov/npm-install@5e78a2c1fa3203b777a67764f15380aa7c80d015 # v1.8.34
         with:
-          install-command: npm install --foreground-scripts
+          install-command: npm ci --foreground-scripts
       - name: Test Suite
         run: npm run test:ci
-      - name: Check Lockfile
-        run: npm ci
