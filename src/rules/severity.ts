@@ -19,5 +19,3 @@ export const zCheckSeverity = z
   .default(CheckSeverities.ERROR);
 
 export type CheckSeverity = z.infer<typeof zCheckSeverity>;
-
-export type EnabledCheckSeverity = Extract<CheckSeverity, 'error' | 'warn'>;
