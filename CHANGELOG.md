@@ -1,5 +1,29 @@
 # Changelog
 
+## [7.0.0](https://github.com/boneskull/midnight-smoker/compare/v6.1.1...v7.0.0) (2023-08-29)
+
+
+### ⚠ BREAKING CHANGES
+
+* The `Smoker` class can no longer be instantiated directly; use `Smoker.init()`.  The `verbose` option will now cause a fatal error to throw its exception to the terminal. Rule configuration is now `severity string`, `rule-specific options`, or a tuple of `[rule-specifc options, severity string]`.  It can no longer be `[rule-specific options` nor `[severity string]`.  The config file schema has changed to reflect this.  Type `SmokeOptions` removed and is now the same type as `SmokerOptions`.
+
+### Features
+
+* **rules:** no-missing-pkg-files checks "unpkg" and "module" fields by default ([6df6087](https://github.com/boneskull/midnight-smoker/commit/6df6087d0b3f9ba573cf39ca3cfd03b68394b062))
+
+
+### Bug Fixes
+
+* **checks:** the "warn" severity is respected; closes [#333](https://github.com/boneskull/midnight-smoker/issues/333) ([faf6a91](https://github.com/boneskull/midnight-smoker/commit/faf6a9173b6eb28d710bf0e36198b5b8ed65b845))
+* **deps:** update dependency @types/semver to v7.5.1 ([03277db](https://github.com/boneskull/midnight-smoker/commit/03277db3022c520d5ee636d6fce58da091dedb1b))
+* **deps:** update dependency corepack to v0.20.0 ([7ef49b2](https://github.com/boneskull/midnight-smoker/commit/7ef49b2b5d20966cdc4b5b9e1c1dbb232a481170))
+* **deps:** update dependency which to v4 ([b566df4](https://github.com/boneskull/midnight-smoker/commit/b566df4ccaf16052034463601b3d8cb636f25d92))
+
+
+### Miscellaneous Chores
+
+* consolidate option parsing ([faf6a91](https://github.com/boneskull/midnight-smoker/commit/faf6a9173b6eb28d710bf0e36198b5b8ed65b845))
+
 ## [6.1.1](https://github.com/boneskull/midnight-smoker/compare/v6.1.0...v6.1.1) (2023-08-25)
 
 
