@@ -86,7 +86,7 @@
     "semver": "7.5.4",
     "source-map-support": "0.5.21",
     "strict-event-emitter-types": "2.0.0",
-    "which": "3.0.1",
+    "which": "4.0.0",
     "yargs": "17.7.2",
     "zod": "3.22.2",
     "zod-validation-error": "1.5.0"
