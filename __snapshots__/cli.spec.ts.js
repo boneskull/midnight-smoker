@@ -172,10 +172,14 @@ exports['midnight-smoker smoker CLI option --json when the script succeeds shoul
           "bin": true,
           "browser": true,
           "types": true,
+          "unpkg": true,
+          "module": true,
           "fields": [
             "bin",
             "browser",
-            "types"
+            "types",
+            "unpkg",
+            "module"
           ]
         }
       },
@@ -282,6 +286,8 @@ exports['midnight-smoker smoker CLI option --json when the script fails should p
             "bin": true,
             "browser": true,
             "types": true,
+            "unpkg": true,
+            "module": true,
             "fields": []
           }
         },
