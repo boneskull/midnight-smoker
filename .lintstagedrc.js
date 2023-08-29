@@ -9,4 +9,5 @@ module.exports = {
    */
   '(./src/rules/**/*.ts|src/options.ts|./scripts/generate-schema.ts|./package.json|./package-lock.json)':
     () => ['npm run update-schema'],
+  '!(package-lock)*.json': ['prettier --write'],
 };
