@@ -1,6 +1,6 @@
 {
   "name": "midnight-smoker",
-  "version": "7.0.0",
+  "version": "7.0.1",
   "description": "Run smoke tests against packages as they would be published",
   "repository": {
     "type": "git",
