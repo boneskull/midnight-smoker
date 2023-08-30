@@ -1,8 +1,10 @@
+import {red} from 'chalk';
 import createDebug from 'debug';
 import type {SemVer} from 'semver';
 import {InstallError} from '../error';
 import type {InstallManifest} from '../types';
 import type {CorepackExecutor} from './corepack';
+import type {ExecError} from './executor';
 import {Npm7} from './npm7';
 import type {
   InstallResult,
@@ -79,19 +81,31 @@ export class Npm9 extends Npm7 implements PackageManager {
       installResult = await this.executor.exec(installArgs, {
         cwd: tarballRootDir,
       });
-    } catch (err) {
+    } catch (e) {
+      const err = e as ExecError;
+      let parsed: {error: {summary: string}} | undefined;
+      try {
+        this.debug('Trying to parse stdout: %s', err.stdout);
+        parsed = JSON.parse(err.stdout);
+      } catch {
+        // ignore
+      }
+      if (parsed?.error) {
+        throw new InstallError(
+          `Package manager "${this.name}" failed to install packages:\n\n${red(
+            parsed.error.summary,
+          )}`,
+          this.name,
+          {
+            error: err as Error,
+            output: err.stderr,
+          },
+        );
+      }
       throw new InstallError(
         `Package manager "${this.name}" failed to install packages`,
         this.name,
         {error: err as Error},
-      );
-    }
-    if (installResult.exitCode) {
-      this.debug('(install) Failed: %O', installResult);
-      throw new InstallError(
-        `Package manager "${this.name}" failed to install packages`,
-        this.name,
-        {exitCode: installResult.exitCode},
       );
     }
 

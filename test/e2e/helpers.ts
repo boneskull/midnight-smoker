@@ -2,10 +2,12 @@
  * E2E test harness helpers
  * @module
  */
+
 import createDebug from 'debug';
 import {node as execa, type NodeOptions} from 'execa';
 import path from 'node:path';
 import {inspect} from 'node:util';
+import stripAnsi from 'strip-ansi';
 import type {RawRunScriptResult} from '../../src';
 
 const debug = createDebug('midnight-smoker:test:e2e');
@@ -42,17 +44,20 @@ export function dump(obj: any): void {
 /**
  * Strips a bunch of stuff out of a CLI output string that is dependent upon
  * local paths and current versions, etc; stuff that isn't suitable for snapshots.
- * @param stdout String of CLI output
+ * @param str String of CLI output; usually either `stdout` or `stderr`
  * @param stripPmVersions If true, replace `version` in `(npm|yarn|pnpm)@<version>` with the string `<version>`.
  * @returns Fixed output
  */
-export function fixupOutput(stdout: string, stripPmVersions = true) {
-  let result = stdout
+export function fixupOutput(str: string, stripPmVersions = true) {
+  let result = stripAnsi(str)
     // strip the paths to npm/node/corepack in command
     .replace(
       /(?:[^" ]+?)(\/(\.)?bin\/(node|npm|corepack)(?:\.exe|\.cmd)?)/g,
       '<path/to/>$1',
     )
+    .replace(/--pack-destination=\S+/g, '--pack-destination=<path/to/dir>')
+    // I hope I don't get a CVE for this one
+    .replace(/(?<=\s)\S+?\.(log|tgz|txt)/g, '<path/to/some>.$1')
     // strip the versions since it will change
     .replace(/midnight-smoker v\d+\.\d+\.\d+/g, 'midnight-smoker v<version>')
     .replace(/--version\\n\\n\d+\.\d+\.\d+/g, '--version\\n\\n<version>')

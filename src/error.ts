@@ -4,8 +4,8 @@
  */
 
 import {bold} from 'chalk';
-import {SmokeResults} from './types';
 import {StaticCheckContext} from '.';
+import {SmokeResults} from './types';
 
 /**
  * Options for {@link SmokerError} with a generic `Cause` type for `cause` prop.
@@ -56,6 +56,7 @@ export class InvalidArgError extends SmokerError<{arg?: string}> {
 }
 
 export class NotImplementedError extends SmokerError {
+  public readonly name = 'NotImplementedError';
   constructor(message: string) {
     super(message, {code: 'ESMOKER_NOTIMPLEMENTED'});
   }
@@ -64,6 +65,8 @@ export class NotImplementedError extends SmokerError {
 export class DirCreationError extends SmokerError<{
   error: NodeJS.ErrnoException;
 }> {
+  public readonly name = 'DirCreationError';
+
   constructor(message: string, error: NodeJS.ErrnoException) {
     super(message, {code: 'ESMOKER_DIRCREATION', cause: {error}});
   }
@@ -73,6 +76,7 @@ export class DirDeletionError extends SmokerError<{
   dir: string;
   error: NodeJS.ErrnoException;
 }> {
+  public readonly name = 'DirDeletionError';
   constructor(message: string, dir: string, error: NodeJS.ErrnoException) {
     super(message, {code: 'ESMOKER_DIRDELETION', cause: {dir, error}});
   }
@@ -81,6 +85,7 @@ export class DirDeletionError extends SmokerError<{
 export class PackageManagerIdError extends SmokerError<{
   pmId: string;
 }> {
+  public readonly name = 'PackageManagerIdError';
   constructor() {
     super(
       'Could not find package manager ID; please report this bug at https://github.com/boneskull/midnight-smoker/issues/new',
@@ -93,6 +98,7 @@ export class PackageManagerError extends SmokerError<{
   error: Error;
   pmId: string;
 }> {
+  public readonly name = 'PackageManagerError';
   constructor(message: string, pmId: string, error: Error) {
     super(message, {code: 'ESMOKER_PACKAGEMANAGER', cause: {pmId, error}});
   }
@@ -248,12 +254,6 @@ export class UnknownDistTagError extends SmokerError<{
 }> {
   constructor(message: string, pkgName: string, tag: string) {
     super(message, {code: 'ESMOKER_UNKNOWNDISTTAG', cause: {pkgName, tag}});
-  }
-}
-
-export class FatalError extends SmokerError<{error: Error}> {
-  constructor(message: string, error: Error) {
-    super(message, {code: 'ESMOKER_FATAL', cause: {error}});
   }
 }
 

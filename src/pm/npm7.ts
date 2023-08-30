@@ -1,10 +1,11 @@
+import {red} from 'chalk';
 import createDebug from 'debug';
 import path from 'node:path';
 import type {SemVer} from 'semver';
 import {InstallError, PackError, PackParseError} from '../error';
 import type {InstallManifest} from '../types';
 import type {CorepackExecutor} from './corepack';
-import type {ExecResult} from './executor';
+import type {ExecError, ExecResult} from './executor';
 import {GenericNpmPackageManager} from './npm';
 import type {
   InstallResult,
@@ -83,7 +84,27 @@ export class Npm7 extends GenericNpmPackageManager implements PackageManager {
       installResult = await this.executor.exec(installArgs, {
         cwd: tarballRootDir,
       });
-    } catch (err) {
+    } catch (e) {
+      const err = e as ExecError;
+      let parsed: {error: {summary: string}} | undefined;
+      try {
+        this.debug('Trying to parse stdout: %s', err.stdout);
+        parsed = JSON.parse(err.stdout);
+      } catch {
+        // ignore
+      }
+      if (parsed?.error) {
+        throw new InstallError(
+          `Package manager "${this.name}" failed to install packages:\n\n${red(
+            parsed.error.summary,
+          )}`,
+          this.name,
+          {
+            error: err as Error,
+            output: err.stderr,
+          },
+        );
+      }
       throw new InstallError(
         `Package manager "${this.name}" failed to install packages`,
         this.name,
@@ -133,8 +154,29 @@ export class Npm7 extends GenericNpmPackageManager implements PackageManager {
 
     try {
       packResult = await this.executor.exec(packArgs);
-    } catch (err) {
+    } catch (e) {
+      const err = e as ExecError;
       this.debug('(pack) Failed: %O', err);
+      // in some cases we can get something more user-friendly via the JSON output
+      let parsed: {error: {summary: string}} | undefined;
+      try {
+        this.debug('Trying to parse stdout: %s', err.stdout);
+        parsed = JSON.parse(err.stdout);
+      } catch {
+        // ignore
+      }
+      if (parsed?.error) {
+        throw new PackError(
+          `Package manager "${this.name}" failed to pack:\n\n${red(
+            parsed.error.summary,
+          )}`,
+          this.name,
+          {
+            error: err as Error,
+            output: err.stderr,
+          },
+        );
+      }
       throw new PackError(
         `Package manager "${this.name}" failed to pack`,
         this.name,
@@ -144,6 +186,8 @@ export class Npm7 extends GenericNpmPackageManager implements PackageManager {
       );
     }
 
+    // I am not sure why exitCode would be non-zero here.  keep an eye on this;
+    // it might never be called
     if (packResult.exitCode) {
       this.debug('(pack) Failed: %O', packResult);
       throw new PackError(

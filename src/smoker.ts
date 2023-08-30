@@ -8,7 +8,6 @@ import StrictEventEmitter from 'strict-event-emitter-types';
 import {
   DirCreationError,
   DirDeletionError,
-  FatalError,
   InvalidArgError,
   PackageManagerError,
   PackageManagerIdError,
@@ -31,10 +30,10 @@ import {
 import {
   CheckContext,
   CheckSeverities,
+  RuleOptions,
   type CheckOptions,
   type RuleCont,
   type StaticCheckContext,
-  RuleOptions,
 } from './rules';
 import {BuiltinRuleConts} from './rules/builtin';
 import {
@@ -670,8 +669,6 @@ export class Smoker extends createStrictEventEmitterClass() {
       }
 
       return smokeResults;
-    } catch (err) {
-      throw new FatalError('midnight-smoker failed unexpectedly', err as Error);
     } finally {
       await this.cleanup();
     }
