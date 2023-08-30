@@ -1,0 +1,4 @@
+{
+  "name": "pack-error",
+  "description": "npm wants a version field or else"
+}

@@ -2,10 +2,10 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import snapshot from 'snap-shot-it';
 import unexpected from 'unexpected';
+import type {RawRunScriptResult} from '../../src/types';
 import {readPackageJson} from '../../src/util';
 import assertions from '../assertions';
 import {execSmoker, fixupOutput} from './helpers';
-import type {RawRunScriptResult} from '../../src/types';
 
 const expect = unexpected.clone().use(assertions);
 
@@ -147,6 +147,79 @@ describe('midnight-smoker', function () {
       });
     });
 
+    describe('when packing fails', function () {
+      const cwd = path.join(__dirname, 'fixture', 'pack-error');
+      let result: RawRunScriptResult;
+
+      before(async function () {
+        try {
+          await execSmoker([], {
+            cwd,
+          });
+          expect.fail('should have failed');
+        } catch (err) {
+          result = err as RawRunScriptResult;
+        }
+      });
+
+      it('should provide a reason [snapshot]', async function () {
+        snapshot(fixupOutput(result.stderr));
+      });
+
+      describe('when in verbose mode', function () {
+        before(async function () {
+          try {
+            await execSmoker(['--verbose'], {
+              cwd,
+            });
+            expect.fail('should have failed');
+          } catch (err) {
+            result = err as RawRunScriptResult;
+          }
+        });
+
+        it('should provide more detail [snapshot]', async function () {
+          snapshot(fixupOutput(result.stderr));
+        });
+      });
+    });
+
+    describe('when installation fails', function () {
+      const cwd = path.join(__dirname, 'fixture', 'install-error');
+      let result: RawRunScriptResult;
+
+      before(async function () {
+        try {
+          result = await execSmoker([], {
+            cwd,
+          });
+        } catch (err) {
+          result = err as RawRunScriptResult;
+        }
+      });
+
+      it('should provide a reason [snapshot]', async function () {
+        snapshot(fixupOutput(result.stderr));
+      });
+
+      describe('when in verbose mode', function () {
+        before(async function () {
+          try {
+            await execSmoker(['--verbose'], {
+              cwd,
+            });
+            expect.fail('should have failed');
+          } catch (err) {
+            result = err as RawRunScriptResult;
+          }
+        });
+
+        it('should provide more detail [snapshot]', async function () {
+          snapshot(fixupOutput(result.stderr));
+        });
+      });
+    });
+
     describe('option', function () {
       describe('--version', function () {
         it('should print version and exit', async function () {
@@ -226,8 +299,8 @@ describe('midnight-smoker', function () {
           before(async function () {
             try {
               await execSmoker(['smoke', '--json', '--no-checks'], {cwd});
-            } catch (e) {
-              result = e as RawRunScriptResult;
+            } catch (err) {
+              result = err as RawRunScriptResult;
             }
           });
 

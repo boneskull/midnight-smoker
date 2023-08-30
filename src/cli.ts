@@ -1,7 +1,8 @@
-import {blue, cyan, red, white, yellow} from 'chalk';
+import {blue, cyan, dim, red, white, yellow} from 'chalk';
 import createDebug from 'debug';
 import deepMerge from 'deepmerge';
 import {error, info, warning} from 'log-symbols';
+import {inspect} from 'node:util';
 import ora from 'ora';
 import pluralize from 'pluralize';
 import {hideBin} from 'yargs/helpers';
@@ -267,8 +268,8 @@ async function main(args: string[]): Promise<void> {
                 msg += '…';
                 spinner.succeed(msg);
               })
-              .once(Event.PACK_FAILED, (err) => {
-                spinner.fail(err.message);
+              .once(Event.PACK_FAILED, () => {
+                spinner.fail('Failed while packing!');
                 process.exitCode = 1;
               })
               .once(
@@ -299,8 +300,8 @@ async function main(args: string[]): Promise<void> {
                   spinner.start(msg);
                 },
               )
-              .once(Event.INSTALL_FAILED, (err) => {
-                spinner.fail(err.message);
+              .once(Event.INSTALL_FAILED, () => {
+                spinner.fail('Failed while installing!');
                 process.exitCode = 1;
               })
               .once(Event.INSTALL_OK, ({uniquePkgs}) => {
@@ -418,7 +419,20 @@ async function main(args: string[]): Promise<void> {
                   console.error(`» ${yellow(dir)}`);
                 }
               });
-            await smoker.smoke();
+
+            try {
+              await smoker.smoke();
+            } catch (e) {
+              const err = e as Error;
+              console.error();
+              if (verbose) {
+                console.error(inspect(err, {depth: null, colors: true}));
+              } else {
+                console.error(err.message);
+                console.error(dim('(use --verbose for more details)'));
+              }
+              process.exitCode = 1;
+            }
           }
         },
       )
@@ -435,10 +449,8 @@ async function main(args: string[]): Promise<void> {
       .strict()
       .parseAsync();
   } catch (err) {
-    if (verbose) {
-      throw err;
-    }
-    console.error(error, red(err));
+    // I think anything here would happen before we started smoking
+    console.error(err);
     process.exitCode = 1;
   }
 }
