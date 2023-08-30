@@ -122,8 +122,13 @@ async function main(args: string[]): Promise<void> {
           if (opts.pm?.some((pm) => pm.startsWith('pnpm'))) {
             throw new NotImplementedError('pnpm is currently unsupported');
           }
+          verbose = Boolean(
+            opts.verbose || createDebug.enabled('midnight-smoker'),
+          );
+          if (verbose) {
+            createDebug.enable('midnight-smoker');
+          }
           debug('Final options: %O', opts);
-          verbose = Boolean(opts.verbose);
 
           const smoker = await Smoker.init(opts);
 
