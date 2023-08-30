@@ -1,5 +1,13 @@
 # Changelog
 
+## [7.0.1](https://github.com/boneskull/midnight-smoker/compare/v7.0.0...v7.0.1) (2023-08-30)
+
+
+### Bug Fixes
+
+* **errors:** better error output ([51b0002](https://github.com/boneskull/midnight-smoker/commit/51b000231cba2130bd95de2c79b6011ce2da60eb))
+* **verbose:** fix verbose mode ([4afd125](https://github.com/boneskull/midnight-smoker/commit/4afd1254009eead6ef535ee2209336e1d4d06f8e))
+
 ## [7.0.0](https://github.com/boneskull/midnight-smoker/compare/v6.1.1...v7.0.0) (2023-08-29)
 
 
