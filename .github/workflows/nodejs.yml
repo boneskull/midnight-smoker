@@ -17,7 +17,7 @@ jobs:
         with:
           node-version: ${{ matrix.node_version }}
       - name: Upgrade npm
-        run: npm i -g npm@latest
+        run: npm i -g npm@9 # upgrade to 'latest' when Node.js v16 is dropped
       - name: Install dependencies
         uses: bahmutov/npm-install@5e78a2c1fa3203b777a67764f15380aa7c80d015 # v1.8.34
         with:
