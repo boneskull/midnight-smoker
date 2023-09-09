@@ -1,5 +1,12 @@
 # Changelog
 
+## [7.0.2](https://github.com/boneskull/midnight-smoker/compare/v7.0.1...v7.0.2) (2023-09-09)
+
+
+### Bug Fixes
+
+* **deps:** update dependency glob to v10.3.4 ([fd3a8af](https://github.com/boneskull/midnight-smoker/commit/fd3a8af9c000efc2b8fd8fa56fde5e46bcea1d2e))
+
 ## [7.0.1](https://github.com/boneskull/midnight-smoker/compare/v7.0.0...v7.0.1) (2023-08-30)
 
 
