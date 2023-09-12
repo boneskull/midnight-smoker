@@ -19,7 +19,7 @@ jobs:
       - name: Upgrade npm
         run: npm i -g npm@9 # upgrade to 'latest' when Node.js v16 is dropped
       - name: Install dependencies
-        uses: bahmutov/npm-install@5e78a2c1fa3203b777a67764f15380aa7c80d015 # v1.8.34
+        uses: bahmutov/npm-install@c46e3830503dcb831cf4aee3f26b4e6bce8cc9d2 # v1.8.35
         with:
           install-command: npm ci --foreground-scripts
       - name: Test Suite
