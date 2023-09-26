@@ -1,5 +1,17 @@
 # Changelog
 
+## [7.0.3](https://github.com/boneskull/midnight-smoker/compare/v7.0.2...v7.0.3) (2023-09-26)
+
+
+### Bug Fixes
+
+* **deps:** update definitelytyped ([d66b6d6](https://github.com/boneskull/midnight-smoker/commit/d66b6d6476f81b29eb3091075f1637ee3bb8f883))
+* **deps:** update dependency @types/semver to v7.5.2 ([c8bc0a1](https://github.com/boneskull/midnight-smoker/commit/c8bc0a12439f9e6480d64d6ff98f05c3d07d609d))
+* **deps:** update dependency glob to v10.3.5 ([33b8869](https://github.com/boneskull/midnight-smoker/commit/33b88697e8708656e814adc1bb100d94b7d37581))
+* **deps:** update dependency glob to v10.3.6 ([0d1d95c](https://github.com/boneskull/midnight-smoker/commit/0d1d95c1dde5186255cbe2298dae808d725f5425))
+* **deps:** update dependency glob to v10.3.7 ([166a8c2](https://github.com/boneskull/midnight-smoker/commit/166a8c254de4852b3e9c6dbc0f0dcf24e33ef2ef))
+* **deps:** update dependency glob to v10.3.9 ([71dbefa](https://github.com/boneskull/midnight-smoker/commit/71dbefad5fbd952a8e77d0c12a2c43c9d167cc08))
+
 ## [7.0.2](https://github.com/boneskull/midnight-smoker/compare/v7.0.1...v7.0.2) (2023-09-09)
 
 
