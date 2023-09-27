@@ -1,8 +1,4 @@
 {
-  "extends": "@tsconfig/node16/tsconfig.json",
   "files": [],
-  "ts-node": {
-    "transpileOnly": true
-  },
-  "references": [{"path": "./src"}, {"path": "./test"}]
+  "references": [{"path": "./packages/midnight-smoker"}]
 }

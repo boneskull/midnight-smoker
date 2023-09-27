@@ -10,20 +10,20 @@ extends:
   - 'prettier'
 
 ignorePatterns:
-  - 'node_modules/**/*'
-  - 'coverage/**/*'
-  - 'dist/**/*'
-  - '__snapshots__/**/*'
+  - '**/node_modules/**/*'
+  - '**/coverage/**/*'
+  - '**/dist/**/*'
+  - '**/__snapshots__/**/*'
 
 overrides:
   - files:
-      - 'bin/**/*'
+      - 'packages/midnight-smoker/bin/**/*'
     parserOptions:
       sourceType: 'module'
   - env:
       mocha: true
     files:
-      - 'test/**/*'
+      - 'packages/*/test/**/*'
     rules:
       '@typescript-eslint/no-unused-vars': 'off'
 
