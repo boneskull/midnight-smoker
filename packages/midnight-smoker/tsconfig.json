@@ -1,0 +1,11 @@
+{
+  "extends": "@tsconfig/node16/tsconfig.json",
+  "files": [],
+  "ts-node": {
+    "transpileOnly": true
+  },
+  "compilerOptions": {
+    "composite": true
+  },
+  "references": [{"path": "./src"}, {"path": "./test"}]
+}

@@ -1,7 +1,6 @@
 {
-  "name": "midnight-smoker",
-  "version": "7.0.3",
-  "description": "Run smoke tests against packages as they would be published",
+  "name": "midnight-smoker-monorepo",
+  "version": "0.0.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/boneskull/midnight-smoker"
@@ -12,90 +11,41 @@
   },
   "author": "Christopher Hiller <boneskull@boneskull.com> (https://boneskull.com/)",
   "license": "Apache-2.0",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
   "engines": {
     "node": "^16.20.0 || ^18.0.0 || ^20.0.0",
     "npm": ">=7"
   },
-  "bin": {
-    "smoker": "./bin/smoker.js"
-  },
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "files": [
-    "./data",
-    "./dist",
-    "./schema",
-    "./src",
-    "!**/*.tsbuildinfo"
-  ],
-  "keywords": [
-    "test",
-    "testing",
-    "smoke",
-    "smoketest",
-    "user",
-    "enduser",
-    "production",
-    "publish",
-    "package",
-    "npm",
-    "ci",
-    "workspace",
-    "workspaces"
-  ],
   "scripts": {
     "build": "tsc -b",
     "clean": "tsc -b --clean",
     "dev": "tsc -b --watch",
     "husky-install": "husky install",
-    "lint": "run-p lint:eslint lint:md",
+    "lint": "npm run --workspaces --if-present lint",
     "lint:commit": "commitlint",
     "lint:eslint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "lint:md": "markdownlint-cli2 \"README.md\"",
+    "lint:md": "markdownlint-cli2 \"README.md\" \"packages/*/README.md\"",
     "lint:staged": "lint-staged",
     "prepare": "run-p husky-install rebuild",
     "pretest:e2e": "run-s build",
-    "preversion": "run-s update-schema && git add -A ./schema/midnight-smoker.schema.json",
     "rebuild": "run-s clean build",
-    "smoke:js": "node ./bin/smoker.js --version",
-    "smoke:ts": "ts-node -D ./src/cli.ts --version",
-    "test": "run-s test:unit test:smoke",
-    "test:ci": "run-s test:unit test:smoke test:e2e",
-    "test:e2e": "mocha --timeout 20s --slow 10s \"test/e2e/**/*.spec.ts\"",
-    "test:smoke": "node ./bin/smoker.js smoke:ts smoke:js --add ts-node --add @tsconfig/node16",
-    "test:unit": "mocha \"test/unit/**/*.spec.ts\"",
-    "test:update-snapshots": "cross-env SNAPSHOT_UPDATE=1 npm run test:e2e -- --fgrep \"[snapshot]\"",
-    "update-schema": "ts-node ./scripts/generate-schema.ts && prettier --write ./schema/midnight-smoker.schema.json"
+    "test": "npm test --workspaces --if-present",
+    "test:ci": "npm run --workspaces --if-present test:ci",
+    "test:e2e": "npm run --workspaces --if-present test:e2e",
+    "test:smoke": "npm run --workspaces --if-present test:smoke",
+    "test:unit": "npm run --workspaces --if-present test:unit",
+    "test:update-snapshots": "npm run --workspaces --if-present test:update-snapshots",
+    "update-schema": "npm run --workspace midnight-smoker update-schema"
   },
-  "dependencies": {
-    "@types/semver": "7.5.3",
-    "chalk": "4.1.2",
-    "corepack": "0.21.0",
-    "debug": "4.3.4",
-    "deepmerge": "4.3.1",
-    "execa": "5.1.1",
-    "glob": "10.3.10",
-    "is-file-esm": "1.0.0",
-    "lilconfig": "2.1.0",
-    "log-symbols": "4.1.0",
-    "ora": "5.4.1",
-    "pluralize": "8.0.0",
-    "read-pkg-up": "7.0.1",
-    "semver": "7.5.4",
-    "source-map-support": "0.5.21",
-    "strict-event-emitter-types": "2.0.0",
-    "which": "4.0.0",
-    "yargs": "17.7.2",
-    "zod": "3.22.4",
-    "zod-validation-error": "1.5.0"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@commitlint/cli": "17.7.2",
     "@commitlint/config-conventional": "17.7.0",
     "@tsconfig/node16": "16.1.1",
-    "@types/debug": "4.1.9",
-    "@types/is-file-esm": "1.0.1",
     "@types/mocha": "10.0.2",
     "@types/node": "18.18.4",
     "@types/pluralize": "0.0.31",
@@ -124,13 +74,10 @@
     "rewiremock": "3.14.5",
     "sinon": "16.1.0",
     "snap-shot-it": "7.9.10",
-    "strip-ansi": "5.2.0",
     "ts-node": "10.9.1",
     "typescript": "5.2.2",
     "unexpected": "13.2.1",
-    "unexpected-eventemitter": "2.4.0",
-    "unexpected-sinon": "11.1.0",
-    "zod-to-json-schema": "3.21.4"
+    "unexpected-sinon": "11.1.0"
   },
   "overrides": {
     "debug": "4.3.4"
