@@ -102,7 +102,7 @@
     "@types/sinon": "10.0.17",
     "@types/source-map-support": "0.5.8",
     "@types/which": "3.0.0",
-    "@types/yargs": "17.0.25",
+    "@types/yargs": "17.0.26",
     "@typescript-eslint/eslint-plugin": "6.7.3",
     "@typescript-eslint/parser": "6.7.3",
     "cross-env": "7.0.3",
