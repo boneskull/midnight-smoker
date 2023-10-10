@@ -1,6 +1,6 @@
 /**
  * All the errors
- * @module
+ * @packageDocumentation
  */
 
 import {bold} from 'chalk';

@@ -2,7 +2,7 @@
 
 /**
  * Script to generate/update the JSON schema for `SmokerOptions`
- * @module
+ * @packageDocumentation
  */
 
 import {writeFileSync} from 'node:fs';

@@ -1,6 +1,6 @@
 /**
  * Handles severity of rules
- * @module
+ * @packageDocumentation
  */
 
 import {z} from 'zod';

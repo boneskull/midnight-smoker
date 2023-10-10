@@ -1,6 +1,6 @@
 /**
  * Handles parsing of options (CLI, API, or config file) for `midnight-smoker`
- * @module
+ * @packageDocumentation
  */
 import createDebug from 'debug';
 import z, {type ZodError} from 'zod';

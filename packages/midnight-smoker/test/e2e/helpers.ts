@@ -1,6 +1,6 @@
 /**
  * E2E test harness helpers
- * @module
+ * @packageDocumentation
  */
 
 import createDebug from 'debug';

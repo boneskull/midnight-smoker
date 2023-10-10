@@ -1,6 +1,6 @@
 /**
  * Gotta have a "util" module
- * @module
+ * @packageDocumentation
  */
 import path from 'node:path';
 import readPkgUp, {type ReadResult} from 'read-pkg-up';
