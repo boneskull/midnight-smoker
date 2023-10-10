@@ -9,12 +9,6 @@ extends:
   - 'plugin:@typescript-eslint/recommended'
   - 'prettier'
 
-ignorePatterns:
-  - '**/node_modules/**/*'
-  - '**/coverage/**/*'
-  - '**/dist/**/*'
-  - '**/__snapshots__/**/*'
-
 overrides:
   - files:
       - 'packages/midnight-smoker/bin/**/*'
