@@ -6,6 +6,7 @@ import path from 'node:path';
 import readPkgUp, {type ReadResult} from 'read-pkg-up';
 import {MissingPackageJsonError, UnreadablePackageJsonError} from './error';
 
+export type {ReadResult as ReadPackageJsonResult};
 /**
  * Trims all strings in an array and removes empty strings.
  * Returns empty array if input is falsy.
@@ -128,17 +129,19 @@ export interface ReadPackageJsonOpts {
  * @returns Object with `packageJson` and `path` properties or `undefined` if not in `strict` mode
  */
 export async function readPackageJson(
+  opts: ReadPackageJsonOpts & {strict: true; normalize: true},
+): Promise<readPkgUp.NormalizedReadResult>;
+export async function readPackageJson(
   opts: ReadPackageJsonOpts & {strict: true},
 ): Promise<readPkgUp.ReadResult>;
 export async function readPackageJson(
   opts?: ReadPackageJsonOpts,
 ): Promise<readPkgUp.ReadResult | undefined>;
-export async function readPackageJson({
-  cwd,
-  normalize,
-  strict,
-}: ReadPackageJsonOpts = {}): Promise<readPkgUp.ReadResult | undefined> {
-  cwd ??= process.cwd();
+export async function readPackageJson(
+  opts: ReadPackageJsonOpts & {normalize: true; strict?: false},
+): Promise<readPkgUp.NormalizedReadResult | undefined>;
+export async function readPackageJson(opts: ReadPackageJsonOpts = {}) {
+  const {cwd = process.cwd(), normalize, strict} = opts;
   if (readPackageJson.cache.has({cwd, normalize})) {
     return readPackageJson.cache.get({cwd, normalize});
   }
@@ -163,7 +166,7 @@ export async function readPackageJson({
 
 readPackageJson.cache = new Map<
   ReadPackageJsonOpts,
-  readPkgUp.ReadResult | undefined
+  readPkgUp.ReadResult | readPkgUp.NormalizedReadResult | undefined
 >();
 
 /**
