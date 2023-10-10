@@ -83,7 +83,7 @@
     "@types/is-file-esm": "1.0.1",
     "@types/pluralize": "0.0.31",
     "@types/which": "3.0.0",
-    "@types/yargs": "17.0.25",
+    "@types/yargs": "17.0.28",
     "strip-ansi": "5.2.0",
     "unexpected-eventemitter": "2.4.0",
     "zod-to-json-schema": "3.21.4"
