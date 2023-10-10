@@ -34,7 +34,10 @@ export abstract class SmokerError<Cause extends object | void = void>
   public readonly cause?: Cause;
 
   constructor(message: string, opts?: SmokerErrorOpts<Cause>) {
-    super(message, opts);
+    super(message);
+    // XXX I guess Node's `Error` constructor is broken, since it should accept
+    // a second parameter `ErrorOptions` having a `cause` prop??
+    this.cause = opts?.cause;
     this.code = opts?.code;
   }
 
