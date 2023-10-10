@@ -56,7 +56,7 @@ export class Npm9 extends Npm7 implements PackageManager {
   }
 
   public static load(executor: CorepackExecutor, opts?: PackageManagerOpts) {
-    return new Npm7(executor, opts);
+    return new Npm9(executor, opts);
   }
 
   public async install(manifest: InstallManifest): Promise<InstallResult> {

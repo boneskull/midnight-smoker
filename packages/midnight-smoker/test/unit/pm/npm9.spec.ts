@@ -84,6 +84,7 @@ describe('midnight-smoker', function () {
             expect(execStub, 'to have a call satisfying', [
               [
                 'install',
+                '--no-audit',
                 '--no-package-lock',
                 '--install-strategy=shallow',
                 ...manifest.packedPkgs.map((pkg) => pkg.tarballFilepath),

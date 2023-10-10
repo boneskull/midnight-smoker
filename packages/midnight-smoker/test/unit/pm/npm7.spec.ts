@@ -300,6 +300,7 @@ describe('midnight-smoker', function () {
             expect(execStub, 'to have a call satisfying', [
               [
                 'install',
+                '--no-audit',
                 '--no-package-lock',
                 '--global-style',
                 ...manifest.packedPkgs.map((pkg) => pkg.tarballFilepath),
