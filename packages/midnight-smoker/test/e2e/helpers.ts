@@ -3,14 +3,14 @@
  * @packageDocumentation
  */
 
-import createDebug from 'debug';
+import Debug from 'debug';
 import {node as execa, type NodeOptions} from 'execa';
 import path from 'node:path';
 import {inspect} from 'node:util';
 import stripAnsi from 'strip-ansi';
 import type {RawRunScriptResult} from '../../src';
 
-const debug = createDebug('midnight-smoker:test:e2e');
+const debug = Debug('midnight-smoker:test:e2e');
 
 /**
  * If running in Wallaby, we'll need this

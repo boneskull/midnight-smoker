@@ -1,5 +1,5 @@
 /* eslint-disable no-labels */
-import createDebug from 'debug';
+import Debug from 'debug';
 import {EventEmitter} from 'node:events';
 import fs from 'node:fs/promises';
 import {tmpdir} from 'node:os';
@@ -51,7 +51,7 @@ import {
 } from './types';
 import {readPackageJson} from './util';
 
-const debug = createDebug('midnight-smoker:smoker');
+const debug = Debug('midnight-smoker:smoker');
 
 export const TMP_DIR_PREFIX = 'midnight-smoker-';
 

@@ -1,5 +1,5 @@
 import {red} from 'chalk';
-import createDebug from 'debug';
+import Debug from 'debug';
 import path from 'node:path';
 import type {SemVer} from 'semver';
 import {InstallError, PackError, PackParseError} from '../error';
@@ -44,14 +44,14 @@ export interface NpmPackItem {
 }
 
 export class Npm7 extends GenericNpmPackageManager implements PackageManager {
-  protected debug: createDebug.Debugger;
+  protected debug: Debug.Debugger;
 
   public static readonly bin = 'npm';
   public readonly name = 'npm';
 
   constructor(executor: CorepackExecutor, opts: PackageManagerOpts = {}) {
     super(executor, opts);
-    this.debug = createDebug(`midnight-smoker:pm:npm7`);
+    this.debug = Debug(`midnight-smoker:pm:npm7`);
   }
 
   public static accepts(semver: SemVer) {

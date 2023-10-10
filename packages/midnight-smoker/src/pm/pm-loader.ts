@@ -1,4 +1,4 @@
-import createDebugger from 'debug';
+import Debug from 'debug';
 import {type SemVer} from 'semver';
 import type {
   PackageManager,
@@ -10,7 +10,7 @@ import {UnsupportedPackageManagerError} from '../error';
 import {CorepackExecutor} from './corepack';
 import {normalizeVersion} from './version';
 
-const debug = createDebugger('midnight-smoker:pm:loader');
+const debug = Debug('midnight-smoker:pm:loader');
 
 export function initPMLoader(builtinPms: PackageManagerModule[] = []) {
   return async function loadPackageManagers(

@@ -1,4 +1,4 @@
-import createDebug from 'debug';
+import Debug from 'debug';
 import path from 'node:path';
 import type {SemVer} from 'semver';
 import {InstallError, PackError, RunScriptError} from '../error';
@@ -26,13 +26,13 @@ interface WorkspaceInfo {
 }
 
 export class YarnBerry extends YarnClassic implements PackageManager {
-  protected readonly debug: createDebug.Debugger;
+  protected readonly debug: Debug.Debugger;
 
   public readonly name = 'yarn';
 
   constructor(executor: CorepackExecutor, opts: PackageManagerOpts = {}) {
     super(executor, opts);
-    this.debug = createDebug(`midnight-smoker:pm:yarn2`);
+    this.debug = Debug(`midnight-smoker:pm:yarn2`);
   }
 
   public static accepts(semver: SemVer) {

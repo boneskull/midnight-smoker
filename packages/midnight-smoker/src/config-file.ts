@@ -1,8 +1,8 @@
-import createDebug from 'debug';
+import Debug from 'debug';
 import {lilconfig, type Options as LilconfigOpts} from 'lilconfig';
 import {RawSmokerOptions} from './options';
 
-const debug = createDebug('midnight-smoker:config');
+const debug = Debug('midnight-smoker:config');
 
 async function loadEsm(filepath: string) {
   return import(filepath);

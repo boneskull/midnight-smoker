@@ -2,13 +2,13 @@
  * Handles parsing of options (CLI, API, or config file) for `midnight-smoker`
  * @packageDocumentation
  */
-import createDebug from 'debug';
+import Debug from 'debug';
 import z, {type ZodError} from 'zod';
 import {fromZodError} from 'zod-validation-error';
 import {zCheckOptions} from './rules';
 import {zFalse, zStringOrArray, zTrue} from './schema-util';
 
-const debug = createDebug('midnight-smoker:options');
+const debug = Debug('midnight-smoker:options');
 
 /**
  * @internal

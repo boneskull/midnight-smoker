@@ -1,5 +1,5 @@
 import {blue, cyan, dim, red, white, yellow} from 'chalk';
-import createDebug from 'debug';
+import Debug from 'debug';
 import deepMerge from 'deepmerge';
 import {error, info, warning} from 'log-symbols';
 import {inspect} from 'node:util';
@@ -16,7 +16,7 @@ import {Smoker} from './smoker';
 import type {SmokerJsonOutput, SmokerStats} from './types';
 import {readPackageJson} from './util';
 
-const debug = createDebug('midnight-smoker:cli');
+const debug = Debug('midnight-smoker:cli');
 
 const BEHAVIOR_GROUP = 'Behavior:';
 
@@ -123,11 +123,9 @@ async function main(args: string[]): Promise<void> {
           if (opts.pm?.some((pm) => pm.startsWith('pnpm'))) {
             throw new NotImplementedError('pnpm is currently unsupported');
           }
-          verbose = Boolean(
-            opts.verbose || createDebug.enabled('midnight-smoker'),
-          );
+          verbose = Boolean(opts.verbose || Debug.enabled('midnight-smoker'));
           if (verbose) {
-            createDebug.enable('midnight-smoker');
+            Debug.enable('midnight-smoker');
           }
           debug('Final options: %O', opts);
 

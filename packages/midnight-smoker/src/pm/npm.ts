@@ -1,4 +1,4 @@
-import createDebug from 'debug';
+import Debug from 'debug';
 import {RunScriptError, UnknownScriptError} from '../error';
 import type {InstallManifest, RunManifest, RunScriptResult} from '../types';
 import {CorepackExecutor} from './corepack';
@@ -12,7 +12,7 @@ import type {
 } from './pm';
 
 export abstract class GenericNpmPackageManager implements PackageManager {
-  protected abstract debug: createDebug.Debugger;
+  protected abstract debug: Debug.Debugger;
 
   public readonly name = 'npm';
 

@@ -1,5 +1,5 @@
 import {red} from 'chalk';
-import createDebug from 'debug';
+import Debug from 'debug';
 import type {SemVer} from 'semver';
 import {InstallError} from '../error';
 import type {InstallManifest} from '../types';
@@ -48,7 +48,7 @@ export class Npm9 extends Npm7 implements PackageManager {
 
   constructor(executor: CorepackExecutor, opts?: PackageManagerOpts) {
     super(executor, opts);
-    this.debug = createDebug(`midnight-smoker:pm:npm9`);
+    this.debug = Debug(`midnight-smoker:pm:npm9`);
   }
 
   public static accepts(semver: SemVer) {
