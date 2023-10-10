@@ -73,6 +73,7 @@ export class Npm7 extends GenericNpmPackageManager implements PackageManager {
     // otherwise we get a deprecation warning
     const installArgs = [
       'install',
+      '--no-audit',
       '--no-package-lock',
       '--global-style',
       ...packedPkgs.map(({tarballFilepath}) => tarballFilepath),

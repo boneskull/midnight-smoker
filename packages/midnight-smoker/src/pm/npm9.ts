@@ -59,7 +59,9 @@ export class Npm9 extends Npm7 implements PackageManager {
     return new Npm9(executor, opts);
   }
 
-  public async install(manifest: InstallManifest): Promise<InstallResult> {
+  public override async install(
+    manifest: InstallManifest,
+  ): Promise<InstallResult> {
     const {packedPkgs, tarballRootDir} = manifest;
     if (!packedPkgs?.length) {
       throw new TypeError('(install) Non-empty "packedPkgs" arg is required');
@@ -70,6 +72,7 @@ export class Npm9 extends Npm7 implements PackageManager {
     // otherwise we get a deprecation warning
     const installArgs = [
       'install',
+      '--no-audit',
       '--no-package-lock',
       '--install-strategy=shallow',
       ...packedPkgs.map(({tarballFilepath}) => tarballFilepath),
