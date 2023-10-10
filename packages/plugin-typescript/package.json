@@ -1,0 +1,48 @@
+{
+  "name": "@midnight-smoker/plugin-typescript",
+  "version": "0.1.0",
+  "description": "TypeScript plugin for midnight-smoker",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/boneskull/midnight-smoker",
+    "directory": "packages/plugin-typescript"
+  },
+  "homepage": "https://github.com/boneskull/midnight-smoker/tree/main/packages/plugin-typescript",
+  "bugs": {
+    "url": "https://github.com/boneskull/midnight-smoker/issues"
+  },
+  "author": "Christopher Hiller <boneskull@boneskull.com> (https://boneskull.com/)",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": "^16.20.0 || ^18.0.0 || ^20.0.0",
+    "npm": ">=7"
+  },
+  "main": "./dist/index.js",
+  "types": "/dist/index.d.ts",
+  "files": [
+    "dist",
+    "src",
+    "template"
+  ],
+  "keywords": [
+    "ts",
+    "typescript",
+    "midnight-smoker",
+    "smoker",
+    "smoke",
+    "test",
+    "testing"
+  ],
+  "scripts": {},
+  "peerDependencies": {
+    "midnight-smoker": "^7.0.0",
+    "typescript": "^5.0.0"
+  },
+  "devDependencies": {
+    "@tsconfig/node-lts": "18.12.5",
+    "@tsconfig/node16": "16.1.1",
+    "@tsconfig/node20": "20.1.2",
+    "execa": "5.1.1",
+    "midnight-smoker": "7.0.3"
+  }
+}

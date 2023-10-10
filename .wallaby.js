@@ -27,7 +27,7 @@ module.exports = () => {
         instrument: false,
       },
       {
-        pattern: './packages/*/test/**/fixture/**/*',
+        pattern: './packages/plugin-typescript/template/**/*',
         instrument: false,
       },
       {
