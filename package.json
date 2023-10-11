@@ -80,7 +80,7 @@
   },
   "overrides": {
     "debug": "4.3.4",
-    "marked": "9.1.0"
+    "marked": "9.1.1"
   },
   "prettier": {
     "bracketSpacing": false,
