@@ -1,6 +1,6 @@
 {
   "name": "midnight-smoker",
-  "version": "7.0.3",
+  "version": "7.0.4",
   "description": "Smoke test your package tarball (instead of failing miserably)",
   "repository": {
     "type": "git",
