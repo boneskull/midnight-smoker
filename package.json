@@ -23,12 +23,14 @@
     "build": "tsc -b",
     "clean": "tsc -b --clean",
     "dev": "tsc -b --watch",
+    "dev:docs": "npx docsify-cli serve docs",
+    "docs:build": "shx cp ./packages/midnight-smoker/README.md ./docs/README.md",
     "husky-install": "husky install",
     "lint": "npm run --workspaces --if-present lint",
     "lint:commit": "commitlint",
     "lint:eslint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "lint:md": "markdownlint-cli2 \"README.md\" \"packages/*/README.md\"",
+    "lint:md": "markdownlint-cli2 \"README.md\" \"packages/*/README.md\" \"docs/**/*.md\" \"!docs/README.md\"",
     "lint:staged": "lint-staged",
     "prepare": "run-p husky-install rebuild",
     "pretest:e2e": "run-s build",
@@ -41,7 +43,6 @@
     "test:update-snapshots": "npm run --workspaces --if-present test:update-snapshots",
     "update-schema": "npm run --workspace midnight-smoker update-schema"
   },
-  "dependencies": {},
   "devDependencies": {
     "@commitlint/cli": "17.7.2",
     "@commitlint/config-conventional": "17.7.0",
@@ -72,6 +73,7 @@
     "prettier-plugin-organize-imports": "3.2.3",
     "prettier-plugin-pkg": "0.18.0",
     "rewiremock": "3.14.5",
+    "shx": "0.3.4",
     "sinon": "16.1.0",
     "snap-shot-it": "7.9.10",
     "ts-node": "10.9.1",
@@ -80,7 +82,8 @@
     "unexpected-sinon": "11.1.0"
   },
   "overrides": {
-    "debug": "4.3.4"
+    "debug": "4.3.4",
+    "marked": "9.1.0"
   },
   "prettier": {
     "bracketSpacing": false,
