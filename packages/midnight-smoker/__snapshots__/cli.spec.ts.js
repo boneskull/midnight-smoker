@@ -63,8 +63,7 @@ Options:
   --verbose  Verbose output                                            [boolean]
   --help     Show help                                                 [boolean]
 
-For more info, see
-https://github.com/boneskull/midnight-smoker/tree/main/packages/midnight-smoker
+For more info, see https://boneskull.github.io/midnight-smoker
 `
 
 exports['midnight-smoker smoker CLI option --json when the script succeeds should produce expected script output [snapshot] 1'] = {
@@ -225,7 +224,7 @@ exports['midnight-smoker smoker CLI option --json when the script fails should p
         "error": {
           "message": "Script \\"smoke\\" in package \\"fail\\" failed",
           "name": "Error",
-          "stack": "Error: Script \\"smoke\\" in package \\"fail\\" failed\\n    at Npm7.runScript (<path/to/file>:<line>:<col>)\\n    at processTicksAndRejections (<path/to/file>:<line>:<col>)\\n    at Smoker.runScripts (<path/to/file>:<line>:<col>)\\n    at Smoker.smoke (<path/to/file>:<line>:<col>)\\n    at Object.handler (<path/to/file>:<line>:<col>)",
+          "stack": "Error: Script \\"smoke\\" in package \\"fail\\" failed\\n    at Npm9.runScript (<path/to/file>:<line>:<col>)\\n    at processTicksAndRejections (<path/to/file>:<line>:<col>)\\n    at Smoker.runScripts (<path/to/file>:<line>:<col>)\\n    at Smoker.smoke (<path/to/file>:<line>:<col>)\\n    at Object.handler (<path/to/file>:<line>:<col>)",
           "cause": {
             "script": "smoke",
             "pkgName": "fail",
@@ -380,13 +379,12 @@ exports['midnight-smoker smoker CLI when packing fails when in verbose mode shou
 PackError: Package manager "npm" failed to pack:
 
 Invalid package, must have name and version
-    at Npm7.pack (<path/to/file>:<line>:<col>)
+    at Npm9.pack (<path/to/file>:<line>:<col>)
     at processTicksAndRejections (<path/to/file>:<line>:<col>)
     at Smoker.pack (<path/to/file>:<line>:<col>)
     at Smoker.smoke (<path/to/file>:<line>:<col>)
     at Object.handler (<path/to/file>:<line>:<col>) {
-  code: 'ESMOKER_PACK',
-  [cause]: {
+  cause: {
     pm: 'npm',
     error: Error: Command failed with exit code 1: <path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> pack --json --pack-destination=<path/to/dir> --foreground-scripts=false
     npm ERR! Invalid package, must have name and version
@@ -403,7 +401,7 @@ Invalid package, must have name and version
         at handlePromise (<path/to/file>:<line>:<col>)
         at processTicksAndRejections (<path/to/file>:<line>:<col>)
         at CorepackExecutor.exec (<path/to/file>:<line>:<col>)
-        at Npm7.pack (<path/to/file>:<line>:<col>)
+        at Npm9.pack (<path/to/file>:<line>:<col>)
         at Smoker.pack (<path/to/file>:<line>:<col>)
         at Smoker.smoke (<path/to/file>:<line>:<col>)
         at Object.handler (<path/to/file>:<line>:<col>) {
@@ -431,7 +429,8 @@ Invalid package, must have name and version
     output: 'npm ERR! Invalid package, must have name and version\\n' +
       '\\n' +
       'npm ERR! A complete log of this run can be found in: <path/to/some>.log'
-  }
+  },
+  code: 'ESMOKER_PACK'
 }
 `
 
@@ -454,16 +453,14 @@ exports['midnight-smoker smoker CLI when installation fails when in verbose mode
 ✖ Failed while installing!
 
 InstallError: Package manager "npm" failed to install packages
-    at Npm7.install (<path/to/file>:<line>:<col>)
+    at Npm9.install (<path/to/file>:<line>:<col>)
     at processTicksAndRejections (<path/to/file>:<line>:<col>)
     at Smoker.install (<path/to/file>:<line>:<col>)
     at Smoker.smoke (<path/to/file>:<line>:<col>)
     at Object.handler (<path/to/file>:<line>:<col>) {
-  code: 'ESMOKER_INSTALL',
-  [cause]: {
+  cause: {
     pm: 'npm',
-    error: Error: Command failed with exit code 1: <path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> install --no-package-lock --global-style <path/to/some>.tgz
-    npm WARN config global-style This option has been deprecated in favor of \`--install-strategy=shallow\`
+    error: Error: Command failed with exit code 1: <path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> install --no-audit --no-package-lock --install-strategy=shallow <path/to/some>.tgz
     npm ERR! code ERESOLVE
     npm ERR! ERESOLVE unable to resolve dependency tree
     npm ERR! 
@@ -490,19 +487,18 @@ InstallError: Package manager "npm" failed to install packages
         at handlePromise (<path/to/file>:<line>:<col>)
         at processTicksAndRejections (<path/to/file>:<line>:<col>)
         at CorepackExecutor.exec (<path/to/file>:<line>:<col>)
-        at Npm7.install (<path/to/file>:<line>:<col>)
+        at Npm9.install (<path/to/file>:<line>:<col>)
         at Smoker.install (<path/to/file>:<line>:<col>)
         at Smoker.smoke (<path/to/file>:<line>:<col>)
         at Object.handler (<path/to/file>:<line>:<col>) {
-      shortMessage: 'Command failed with exit code 1: <path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> install --no-package-lock --global-style <path/to/some>.tgz',
-      command: <path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> install --no-package-lock --global-style <path/to/some>.tgz',
-      escapedCommand: '"<path/to/>/bin/node" "<path/to/>/.bin/corepack" "npm@<version>" install --no-package-lock --global-style <path/to/some>.tgz"',
+      shortMessage: 'Command failed with exit code 1: <path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> install --no-audit --no-package-lock --install-strategy=shallow <path/to/some>.tgz',
+      command: <path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> install --no-audit --no-package-lock --install-strategy=shallow <path/to/some>.tgz',
+      escapedCommand: '"<path/to/>/bin/node" "<path/to/>/.bin/corepack" "npm@<version>" install --no-audit --no-package-lock "--install-strategy=shallow" <path/to/some>.tgz"',
       exitCode: 1,
       signal: undefined,
       signalDescription: undefined,
       stdout: '',
-      stderr: 'npm WARN config global-style This option has been deprecated in favor of \`--install-strategy=shallow\`\\n' +
-        'npm ERR! code ERESOLVE\\n' +
+      stderr: 'npm ERR! code ERESOLVE\\n' +
         'npm ERR! ERESOLVE unable to resolve dependency tree\\n' +
         'npm ERR! \\n' +
         'npm ERR! While resolving: undefined@undefined\\n' +
@@ -529,6 +525,7 @@ InstallError: Package manager "npm" failed to install packages
       isCanceled: false,
       killed: false
     }
-  }
+  },
+  code: 'ESMOKER_INSTALL'
 }
 `
