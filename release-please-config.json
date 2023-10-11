@@ -3,5 +3,6 @@
   "packages": {
     "packages/midnight-smoker": {}
   },
-  "plugins": ["node-workspace"]
+  "plugins": ["node-workspace"],
+  "extra-files": ["packages/midnight-smoker/README.md"]
 }
