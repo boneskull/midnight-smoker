@@ -123,7 +123,7 @@ const noMissingExports = createRule({
       } else if (
         baseExportName === CONDITIONAL_EXPORT_TYPES &&
         opts.types &&
-        !path.extname(relativePath).endsWith('.d.ts')
+        !relativePath.endsWith('.d.ts')
       ) {
         return fail(
           baseExportName
