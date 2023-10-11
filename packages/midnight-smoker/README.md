@@ -1,6 +1,6 @@
 # 💨 midnight-smoker
 
-> Test the thing you're about to publish
+> Smoke test your package tarball (instead of failing miserably)
 
 ## Overview
 

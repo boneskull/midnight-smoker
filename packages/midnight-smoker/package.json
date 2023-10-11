@@ -1,13 +1,13 @@
 {
   "name": "midnight-smoker",
   "version": "7.0.3",
-  "description": "Run smoke tests against packages as they would be published",
+  "description": "Smoke test your package tarball (instead of failing miserably)",
   "repository": {
     "type": "git",
     "url": "https://github.com/boneskull/midnight-smoker",
     "directory": "packages/midnight-smoker"
   },
-  "homepage": "https://github.com/boneskull/midnight-smoker/tree/main/packages/midnight-smoker",
+  "homepage": "https://boneskull.github.io/midnight-smoker",
   "bugs": {
     "url": "https://github.com/boneskull/midnight-smoker/issues"
   },
