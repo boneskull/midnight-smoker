@@ -71,7 +71,7 @@
     "prettier-plugin-pkg": "0.18.0",
     "rewiremock": "3.14.5",
     "shx": "0.3.4",
-    "sinon": "16.1.0",
+    "sinon": "16.1.1",
     "snap-shot-it": "7.9.10",
     "ts-node": "10.9.1",
     "typescript": "5.2.2",
