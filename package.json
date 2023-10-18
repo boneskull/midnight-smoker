@@ -80,7 +80,7 @@
   },
   "overrides": {
     "debug": "4.3.4",
-    "type-fest": "4.4.0"
+    "type-fest": "4.5.0"
   },
   "prettier": {
     "bracketSpacing": false,
