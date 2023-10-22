@@ -384,6 +384,7 @@ Invalid package, must have name and version
     at Smoker.pack (<path/to/file>:<line>:<col>)
     at Smoker.smoke (<path/to/file>:<line>:<col>)
     at Object.handler (<path/to/file>:<line>:<col>) {
+  code: 'ESMOKER_PACK',
   cause: {
     pm: 'npm',
     error: Error: Command failed with exit code 1: <path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> pack --json --pack-destination=<path/to/dir> --foreground-scripts=false
@@ -429,8 +430,7 @@ Invalid package, must have name and version
     output: 'npm ERR! Invalid package, must have name and version\\n' +
       '\\n' +
       'npm ERR! A complete log of this run can be found in: <path/to/some>.log'
-  },
-  code: 'ESMOKER_PACK'
+  }
 }
 `
 
@@ -458,6 +458,7 @@ InstallError: Package manager "npm" failed to install packages
     at Smoker.install (<path/to/file>:<line>:<col>)
     at Smoker.smoke (<path/to/file>:<line>:<col>)
     at Object.handler (<path/to/file>:<line>:<col>) {
+  code: 'ESMOKER_INSTALL',
   cause: {
     pm: 'npm',
     error: Error: Command failed with exit code 1: <path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> install --no-audit --no-package-lock --install-strategy=shallow <path/to/some>.tgz
@@ -525,7 +526,6 @@ InstallError: Package manager "npm" failed to install packages
       isCanceled: false,
       killed: false
     }
-  },
-  code: 'ESMOKER_INSTALL'
+  }
 }
 `
