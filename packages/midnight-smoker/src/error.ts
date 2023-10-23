@@ -10,8 +10,7 @@ import {SmokeResults} from './types';
 /**
  * Options for {@link SmokerError} with a generic `Cause` type for `cause` prop.
  */
-export interface SmokerErrorOpts<Cause extends object | void = void>
-  extends ErrorOptions {
+export interface SmokerErrorOpts<Cause extends object | void = void> {
   code?: string;
   cause?: Cause;
 }
