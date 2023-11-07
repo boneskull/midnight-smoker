@@ -79,7 +79,7 @@
     "zod-validation-error": "2.1.0"
   },
   "devDependencies": {
-    "@types/debug": "4.1.10",
+    "@types/debug": "4.1.11",
     "@types/is-file-esm": "1.0.2",
     "@types/pluralize": "0.0.32",
     "@types/which": "3.0.1",
