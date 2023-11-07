@@ -80,8 +80,8 @@
   },
   "devDependencies": {
     "@types/debug": "4.1.11",
-    "@types/is-file-esm": "1.0.2",
-    "@types/pluralize": "0.0.32",
+    "@types/is-file-esm": "1.0.3",
+    "@types/pluralize": "0.0.33",
     "@types/which": "3.0.1",
     "@types/yargs": "17.0.30",
     "strip-ansi": "5.2.0",

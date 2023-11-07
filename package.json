@@ -47,7 +47,7 @@
     "@commitlint/cli": "17.8.1",
     "@commitlint/config-conventional": "17.8.1",
     "@tsconfig/node16": "16.1.1",
-    "@types/mocha": "10.0.3",
+    "@types/mocha": "10.0.4",
     "@types/node": "18.18.8",
     "@types/sinon": "10.0.20",
     "@types/source-map-support": "0.5.9",
