@@ -57,7 +57,7 @@
     "update-schema": "ts-node ./scripts/generate-schema.ts && prettier --write ./schema/midnight-smoker.schema.json"
   },
   "dependencies": {
-    "@types/semver": "7.5.5",
+    "@types/semver": "7.5.6",
     "chalk": "4.1.2",
     "corepack": "0.23.0",
     "debug": "4.3.4",
@@ -82,8 +82,8 @@
     "@types/debug": "4.1.12",
     "@types/is-file-esm": "1.0.3",
     "@types/pluralize": "0.0.33",
-    "@types/which": "3.0.2",
-    "@types/yargs": "17.0.31",
+    "@types/which": "3.0.3",
+    "@types/yargs": "17.0.32",
     "strip-ansi": "5.2.0",
     "unexpected-eventemitter": "2.4.0",
     "zod-to-json-schema": "3.22.0"
