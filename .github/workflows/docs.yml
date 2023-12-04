@@ -32,7 +32,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       - name: Setup Pages
-        uses: actions/configure-pages@f156874f8191504dae5b037505266ed5dda6c382 # v3
+        uses: actions/configure-pages@b8130d9ab958b325bbde9786d62f2c97a9885a0e # v3
       - name: Install dependencies
         uses: bahmutov/npm-install@2509f13e8485d88340a789a3f7ca11aaac47c9fc # v1.8.36
         with:
