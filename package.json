@@ -67,6 +67,7 @@
     "mocha": "10.2.0",
     "npm-run-all": "4.1.5",
     "prettier": "3.1.1",
+    "prettier-plugin-jsdoc": "1.1.1",
     "prettier-plugin-organize-imports": "3.2.4",
     "prettier-plugin-pkg": "0.18.0",
     "rewiremock": "3.14.5",
@@ -88,7 +89,10 @@
     "singleQuote": true,
     "plugins": [
       "prettier-plugin-organize-imports",
-      "prettier-plugin-pkg"
-    ]
+      "prettier-plugin-pkg",
+      "prettier-plugin-jsdoc"
+    ],
+    "jsdocCommentLineStrategy": "multiline",
+    "tsdoc": true
   }
 }
