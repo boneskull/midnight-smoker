@@ -1,0 +1,15 @@
+{
+  "name": "plugin-rule-ok",
+  "version": "1.0.0",
+  "description": "should pass the rule in the plugin-rule example",
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "start": "smoker"
+  },
+  "smoker": {
+    "plugin": [
+      "../../index.js"
+    ]
+  }
+}

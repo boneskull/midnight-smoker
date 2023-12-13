@@ -1,0 +1,21 @@
+{
+  "name": "plugin-rule-ignore",
+  "version": "1.0.0",
+  "description": "should be ignored by the plugin-rule example (and would fail otherwise)",
+  "main": "index.js",
+  "scripts": {
+    "start": "smoker"
+  },
+  "smoker": {
+    "plugin": [
+      "../../index.js"
+    ],
+    "rules": {
+      "example-rule-plugin/no-public-pkgs": {
+        "ignore": [
+          "plugin-rule-ignore"
+        ]
+      }
+    }
+  }
+}
