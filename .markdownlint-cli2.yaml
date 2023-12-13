@@ -1,0 +1,22 @@
+config:
+  ul-style:
+    style: dash
+  ul-indent:
+    indent: 2
+  commands-show-output: false
+  no-bare-urls: false
+  line-length: false
+  no-emphasis-as-header: false
+  no-duplicate-header: false
+  header-increment: false
+  no-blanks-blockquote: false
+ignores:
+  - '**/node_modules/**'
+  - 'docs/README.md' # generated
+  - 'docs/**/_*.md' # special
+  - '**/CHANGELOG.md' # generated
+outputFormatters:
+  - - 'markdownlint-cli2-formatter-pretty'
+    - appendLink: true
+showFound: true
+noProgress: false
