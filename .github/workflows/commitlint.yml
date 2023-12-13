@@ -7,8 +7,21 @@ permissions:
 jobs:
   commitlint:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node_version: [20]
     steps:
       - name: Checkout
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - name: Use Node.js ${{ matrix.node_version }}
+        uses: actions/setup-node@5e21ff4d9bc1a8cf6de233a3057d20ec6b3fb69d # v3.8.1
+        with:
+          node-version: ${{ matrix.node_version }}
+      - name: Install dependencies
+        uses: bahmutov/npm-install@c46e3830503dcb831cf4aee3f26b4e6bce8cc9d2 # v1.8.35
+        with:
+          install-command: npm ci --foreground-scripts
       - name: Run commitlint
         uses: wagoid/commitlint-github-action@0d749a1a91d4770e983a7b8f83d4a3f0e7e0874e # v5.4.4
+        env:
+          NODE_PATH: ${{ github.workspace }}/node_modules
