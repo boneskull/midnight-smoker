@@ -1,68 +1,55 @@
 /* eslint-disable no-labels */
 import Debug from 'debug';
-import {EventEmitter} from 'node:events';
+import {isFunction} from 'lodash';
+import {Console} from 'node:console';
 import fs from 'node:fs/promises';
-import {tmpdir} from 'node:os';
-import path from 'node:path';
-import StrictEventEmitter from 'strict-event-emitter-types';
 import {
-  DirCreationError,
-  DirDeletionError,
-  InvalidArgError,
-  PackageManagerError,
-  PackageManagerIdError,
-  RuleError,
-  SmokeFailedError,
-  type InstallError,
-  type PackError,
-} from './error';
-import {Event, type InstallEventData, type SmokerEvent} from './event';
+  RuleSeverities,
+  RunRulesManifest,
+  type RunRulesResult,
+} from './component';
 import {
-  parseOptions,
-  type RawSmokerOptions,
-  type SmokerOptions,
-} from './options';
+  PkgManagerController,
+  SmokerPkgManagerController,
+} from './component/package-manager/controller';
+import {createRuleRunnerNotifiers} from './component/rule-runner/rule-runner-notifier';
+import type {
+  PkgManagerInstallManifest,
+  RunScriptResult,
+} from './component/schema/pkg-manager-schema';
+import {InstallResult} from './component/schema/pkg-manager-schema';
+import {InvalidArgError} from './error/common-error';
+import {InstallError} from './error/install-error';
+import {PackError} from './error/pack-error';
+import {ReporterError} from './error/reporter-error';
+import {RuleError} from './error/rule-error';
+import {ScriptError} from './error/script-error';
+import {CleanupError, SmokeFailedError} from './error/smoker-error';
 import {
-  loadPackageManagers,
-  type InstallResults,
-  type PackageManager,
-} from './pm';
-import {
-  CheckContext,
-  CheckSeverities,
-  RuleOptions,
-  type CheckOptions,
-  type RuleCont,
-  type StaticCheckContext,
-} from './rules';
-import {BuiltinRuleConts} from './rules/builtin';
-import {
-  type CheckFailure,
-  type CheckOk,
-  type CheckResults,
-} from './rules/result';
-import {
-  type InstallManifest,
-  type PkgInstallManifest,
-  type PkgRunManifest,
-  type RunManifest,
-  type RunScriptResult,
-  type SmokeResults,
-} from './types';
-import {readPackageJson} from './util';
+  InstallEvent,
+  PackEvent,
+  RunScriptEvent,
+  SmokerEvent,
+} from './event/event-constants';
+import {SmokerEvents, type SmokeResults} from './event/event-types';
+import {StrictEmitter, createStrictEmitter} from './event/strict-emitter';
+import {OptionParser} from './options';
+import {type RawSmokerOptions, type SmokerOptions} from './options/options';
+import {BLESSED_PLUGINS, isBlessedPlugin} from './plugin/blessed';
+import {PluginRegistry} from './plugin/registry';
+import {castArray} from './schema-util';
+import {readSmokerPkgJson} from './util';
 
 const debug = Debug('midnight-smoker:smoker');
 
-export const TMP_DIR_PREFIX = 'midnight-smoker-';
+export type SmokerEmitter = StrictEmitter<SmokerEvents>;
 
-type TSmokerEmitter = StrictEventEmitter<EventEmitter, SmokerEvent>;
-
-function createStrictEventEmitterClass() {
-  const TypedEmitter: {new (): TSmokerEmitter} = EventEmitter as any;
-  return TypedEmitter;
+export interface SmokerCapabilities {
+  registry?: PluginRegistry;
+  pmController?: PkgManagerController;
 }
 
-export class Smoker extends createStrictEventEmitterClass() {
+export class Smoker extends createStrictEmitter<SmokerEvents>() {
   /**
    * List of extra dependencies to install
    */
@@ -76,6 +63,10 @@ export class Smoker extends createStrictEventEmitterClass() {
    */
   private readonly bail: boolean;
   /**
+   * Whether or not to run checks
+   */
+  private readonly enableChecks: boolean;
+  /**
    * Whether to include the workspace root
    */
   private readonly includeWorkspaceRoot;
@@ -84,34 +75,36 @@ export class Smoker extends createStrictEventEmitterClass() {
    */
   private readonly linger: boolean;
   /**
-   * Mapping of {@linkcode PackageManager} instances to their identifiers of the form `<npm|yarn|pnpm>@<version>`
+   * Mapping of plugin identifiers (names) to plugin "instances", which can
+   * contain a collection of rules and other stuff (in the future)
    */
-  private readonly pmIds: WeakMap<PackageManager, string>;
+  private readonly pluginRegistry: PluginRegistry;
   /**
-   * List of temp directories created
+   * @internal
    */
-  private readonly tempDirs: Set<string>;
+  private readonly pmController: PkgManagerController;
+  private readonly reporters: Set<string>;
   /**
    * List of specific workspaces to run against
    */
   private readonly workspaces: string[];
 
-  public readonly ruleConfig: CheckOptions;
+  private reporterDelegate?: Readonly<SmokerEmitter>;
+
+  /**
+   * Used for emitting {@link SmokerEvent.SmokeOk} or
+   * {@link SmokerEvent.SmokeFailed}
+   */
+  public readonly opts: Readonly<SmokerOptions>;
   /**
    * List of scripts to run in each workspace
    */
   public readonly scripts: string[];
 
-  /**
-   * Whether or not to run builtin checks
-   */
-  private readonly checks: boolean;
-
-  private readonly originalOpts: SmokerOptions;
-
   private constructor(
-    public readonly pms: Map<string, PackageManager>,
     opts: SmokerOptions,
+    pluginRegistry = PluginRegistry.create(),
+    pmController?: PkgManagerController,
   ) {
     super();
     const {
@@ -123,9 +116,9 @@ export class Smoker extends createStrictEventEmitterClass() {
       all,
       workspace,
       checks,
-      rules,
+      reporter: reporters,
     } = opts;
-    this.originalOpts = Object.freeze(opts);
+    this.opts = Object.freeze(opts);
 
     this.scripts = script;
     this.linger = linger;
@@ -134,583 +127,481 @@ export class Smoker extends createStrictEventEmitterClass() {
     this.bail = bail;
     this.allWorkspaces = all;
     this.workspaces = workspace;
-    this.checks = checks;
-    this.ruleConfig = rules;
+    this.enableChecks = checks;
+    this.reporters = new Set(reporters);
 
+    /**
+     * Normally, the CLI will intercept this before we get here
+     */
     if (this.allWorkspaces && this.workspaces.length) {
       throw new InvalidArgError(
         'Option "workspace" is mutually exclusive with "all" and/or "includeRoot"',
       );
     }
 
-    this.pmIds = new WeakMap();
-    for (const [pmId, pm] of pms) {
-      this.pmIds.set(pm, pmId);
-    }
-    this.tempDirs = new Set();
-  }
+    this.pluginRegistry = pluginRegistry;
+    this.pmController =
+      pmController ??
+      new SmokerPkgManagerController(pluginRegistry, opts.pkgManager, {
+        verbose: opts.verbose,
+        loose: opts.loose,
+        executorId: opts.executor,
+      });
 
-  public static async init(opts: RawSmokerOptions = {}) {
-    const smokerOpts = parseOptions(opts);
-    const {verbose, pm, loose} = smokerOpts;
-    const pms = await loadPackageManagers(pm, {
-      verbose,
-      loose,
-    });
-
-    return Smoker.create(pms, smokerOpts);
-  }
-
-  public static create(
-    pms: Map<string, PackageManager>,
-    opts: RawSmokerOptions | SmokerOptions = {},
-  ) {
-    return new Smoker(pms, parseOptions(opts));
+    debug(
+      'Smoker instantiated with %d plugins',
+      this.pluginRegistry.plugins.length,
+    );
+    debug(`${this.pluginRegistry}`);
   }
 
   /**
-   * Run the smoke test scripts!
+   * Initializes a {@link Smoker} instance.
+   */
+  public static async create(this: void, opts?: RawSmokerOptions) {
+    const {pluginRegistry, options} = await Smoker.bootstrap(opts);
+    return new Smoker(options, pluginRegistry);
+  }
+
+  /**
+   * Initializes a {@link Smoker} instance with the provided capabilities.
+   *
+   * This is intended to be used mainly for testing or interally. Generally, ou
+   * will want to use {@link Smoker.create} instead.
+   *
+   * @param opts - Raw Smoker options
+   * @param caps - Capabilities
+   * @returns A new Smoker instance
+   */
+  public static async createWithCapabilities(
+    this: void,
+    opts?: RawSmokerOptions,
+    {registry, pmController}: SmokerCapabilities = {},
+  ) {
+    const {pluginRegistry, options} = await Smoker.bootstrap(opts, registry);
+    return new Smoker(options, pluginRegistry, pmController);
+  }
+
+  public static async getReporters(this: void, opts?: RawSmokerOptions) {
+    const smoker = await Smoker.create(opts);
+    return smoker.getReporters();
+  }
+
+  public static async getRules(this: void, opts?: RawSmokerOptions) {
+    const smoker = await Smoker.create(opts);
+    return smoker.getRules();
+  }
+
+  /**
+   * Instantiate `Smoker` and immediately run.
+   *
    * @param opts - Options
    */
   public static async smoke(
+    this: void,
     opts: RawSmokerOptions = {},
-  ): Promise<SmokeResults> {
-    const smoker = await Smoker.init(opts);
+  ): Promise<SmokeResults | undefined> {
+    const smoker = await Smoker.create(opts);
     return smoker.smoke();
   }
 
   /**
-   * Cleans up any temp directories created by {@linkcode createTempDir}.
+   * Cleans up temp directories associated with package managers.
    *
-   * If the {@linkcode SmokeOptions.linger} option is set to `true`, this method
+   * If the {@linkcode SmokerOptions.linger} option is set to `true`, this method
    * will _not_ clean up the directories, but will instead emit a
-   * {@linkcode SmokerEvent.Lingered|Lingered} event.
+   * {@linkcode SmokerEvent.Lingered Lingered} event.
+   *
+   * @todo The specific cleanup mechanism should be moved to the package manager
+   *   implementation.
    */
   public async cleanup(): Promise<void> {
+    const pkgManagers = await this.pmController.getPkgManagers();
     if (!this.linger) {
       await Promise.all(
-        [...this.tempDirs].map(async (tempdir) => {
+        pkgManagers.map(async (pm) => {
+          const {tmpdir} = pm;
           try {
-            await fs.rm(tempdir, {recursive: true, force: true});
+            await fs.rm(tmpdir, {recursive: true, force: true});
           } catch (e) {
             const err = e as NodeJS.ErrnoException;
             if (err.code !== 'ENOENT') {
-              throw new DirDeletionError(
-                `Failed to clean temp directory ${tempdir}`,
-                tempdir,
+              throw new CleanupError(
+                `Failed to clean temp directory ${tmpdir}`,
+                tmpdir,
                 err,
               );
             }
-          } finally {
-            this.tempDirs.delete(tempdir);
           }
         }),
       );
-    } else if (this.tempDirs.size) {
+    } else if (pkgManagers.length) {
+      const lingered = pkgManagers.map((pm) => pm.tmpdir);
+      debug('Leaving %d temp dirs on disk: %O', lingered.length, lingered);
       await Promise.resolve();
-      this.emit(Event.LINGERED, [...this.tempDirs]);
+      this.emit(
+        SmokerEvent.Lingered,
+        pkgManagers.map((pm) => pm.tmpdir),
+      );
     }
   }
 
   /**
-   * Creates a temp dir and adds it to the set of temp dirs to be cleaned up later
-   * @returns New temp dir path
+   * Creates a listener delegate for this instance.
+   *
+   * This is used to give `Listener` functions something they can listen for
+   * events on but not screw with anything else. Kind of a half-measure until
+   * `Listeners` become components in their own right.
+   *
+   * This doesn't lock down the instance that much. Maybe we should just return
+   * an object of `{once, on}` bound to `Smoker`.
+   *
+   * @returns {SmokerEmitter} The created listener delegate.
+   * @internal
    */
-  public async createTempDir(): Promise<string> {
-    // TODO EMIT
-    try {
-      const prefix = path.join(tmpdir(), TMP_DIR_PREFIX);
-      const tempdir = await fs.mkdtemp(prefix);
-      this.tempDirs.add(tempdir);
-      return tempdir;
-    } catch (err) {
-      throw new DirCreationError(
-        'Failed to create temp directory',
-        err as NodeJS.ErrnoException,
-      );
+  public createReporterDelegate(): Readonly<SmokerEmitter> {
+    const delegate: SmokerEmitter =
+      new (class extends createStrictEmitter<SmokerEvents>() {})();
+    const emit = delegate.emit.bind(delegate);
+    for (const event of Object.values(SmokerEvent)) {
+      this.on(event, (...args) => {
+        emit(event, ...args);
+      });
     }
+    delegate.emit = new Proxy(delegate.emit, {
+      apply() {},
+    });
+    return delegate;
+  }
+
+  public getEnabledReporterDefs() {
+    return this.pluginRegistry.reporters.filter(
+      (listener) =>
+        this.reporters.has(listener.id) ||
+        (listener.when ? listener.when(this.opts) : false),
+    );
+  }
+
+  public getReporters() {
+    return this.pluginRegistry.reporters.filter(
+      (listener) => listener.isReporter !== false,
+    );
+  }
+
+  public getRules() {
+    return this.pluginRegistry.getAllRules();
   }
 
   /**
    * Installs from tarball in a temp dir
    */
-  public async install(manifests: PkgInstallManifest): Promise<InstallResults> {
-    if (!manifests?.size) {
-      throw new InvalidArgError(
-        'Non-empty "manifests" arg is required',
-        'manifests',
-      );
+  public async install(
+    installManifests: PkgManagerInstallManifest[],
+  ): Promise<InstallResult[]> {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (!installManifests?.length) {
+      throw new InvalidArgError('Non-empty "manifests" arg is required', {
+        argName: 'manifests',
+      });
     }
 
-    // ensure we emit asynchronously
-    await Promise.resolve();
+    for (const evt of Object.values(InstallEvent)) {
+      this.pmController.addListener(evt, (...args) => {
+        this.emit(evt, ...args);
+      });
+    }
 
-    const installData = this.buildInstallEventData(manifests);
-    this.emit(Event.INSTALL_BEGIN, installData);
-
-    const installResults: InstallResults = new Map();
-    for (const [pm, manifest] of manifests) {
-      try {
-        const manifestWithAdds = {
-          ...manifest,
-          additionalDeps: this.add ?? [],
-        };
-        debug(
-          'Installing package(s) %O using %s',
-          [
-            ...manifestWithAdds.packedPkgs.map((p) => p.pkgName),
-            ...manifestWithAdds.additionalDeps,
-          ],
-          this.pmIds.get(pm),
-        );
-        const result = await pm.install(manifestWithAdds);
-        installResults.set(pm, [manifest, result]);
-      } catch (err) {
-        const error = err as InstallError;
-        this.emit(Event.INSTALL_FAILED, error);
-        throw error;
+    try {
+      return await this.pmController.install(installManifests, this.add);
+    } finally {
+      for (const evt of Object.values(InstallEvent)) {
+        this.pmController.removeAllListeners(evt);
       }
     }
+  }
 
-    this.emit(Event.INSTALL_OK, installData);
+  public async loadListeners(): Promise<void> {
+    if (this.reporterDelegate) {
+      return;
+    }
+    const {opts} = this;
+    const reporterDefs = this.getEnabledReporterDefs();
+    const emitter = (this.reporterDelegate = this.createReporterDelegate());
 
-    return installResults;
+    const pkgJson = await readSmokerPkgJson();
+    await Promise.all([
+      reporterDefs.map(async (def) => {
+        let stdout: NodeJS.WritableStream = process.stdout;
+        let stderr: NodeJS.WritableStream = process.stderr;
+        if (def.stdout) {
+          if (isFunction(def.stdout)) {
+            stdout = await def.stdout();
+          } else {
+            stdout = def.stdout;
+          }
+        }
+        if (def.stderr) {
+          if (isFunction(def.stderr)) {
+            stderr = await def.stderr();
+          } else {
+            stderr = def.stderr;
+          }
+        }
+
+        const console = new Console({stdout, stderr});
+
+        try {
+          await def.reporter({
+            emitter,
+            opts,
+            pkgJson,
+            console,
+            stdout,
+            stderr,
+          });
+        } catch (err) {
+          throw new ReporterError(err as Error, def);
+        }
+      }),
+    ]);
   }
 
   /**
    * For each package manager, creates a tarball for one or more packages
    */
-  public async pack(): Promise<PkgInstallManifest> {
-    await Promise.resolve();
+  public async pack(): Promise<PkgManagerInstallManifest[]> {
+    for (const evt of Object.values(PackEvent)) {
+      this.pmController.addListener(evt, (...args) => {
+        this.emit(evt, ...args);
+      });
+    }
 
-    this.emit(Event.PACK_BEGIN, {packageManagers: [...this.pms.keys()]});
-
-    const manifestMap: PkgInstallManifest = new Map();
-
-    for await (const pm of this.pms.values()) {
-      const dest = await this.createTempDir();
-
-      let manifest: InstallManifest;
-      try {
-        debug('Packing into %s using %s', dest, this.pmIds.get(pm));
-        manifest = await pm.pack(dest, {
-          allWorkspaces: this.allWorkspaces,
-          includeWorkspaceRoot: this.includeWorkspaceRoot,
-          workspaces: this.workspaces,
-        });
-        manifestMap.set(pm, manifest);
-      } catch (err) {
-        this.emit(Event.PACK_FAILED, err as PackError);
-        throw err;
+    try {
+      return await this.pmController.pack({
+        allWorkspaces: this.allWorkspaces,
+        workspaces: this.workspaces,
+        includeWorkspaceRoot: this.includeWorkspaceRoot,
+      });
+    } finally {
+      for (const evt of Object.values(PackEvent)) {
+        this.pmController.removeAllListeners(evt);
       }
     }
-    this.emit(Event.PACK_OK, this.buildInstallEventData(manifestMap));
-    return manifestMap;
   }
 
   /**
-   * @internal
-   * @param ruleCont - Rule continuation
-   * @param pkgPath - Path to installed package
-   * @param checkOpts - Parsed rule options
-   * @returns Results of a single check
+   * Runs automated checks against the installed packages
+   *
+   * @param installResults - The result of {@link Smoker.install}
+   * @returns Result of running all enabled rules on all installed packages
    */
-  public async runCheck(
-    ruleCont: RuleCont,
-    pkgPath: string,
-    checkOpts: CheckOptions,
-  ): Promise<CheckResults> {
-    return ruleCont(async (rule) => {
-      const {name: ruleName} = rule;
-      const ruleOpts: RuleOptions<typeof rule.schema> =
-        checkOpts[ruleName as keyof CheckOptions];
-      const {severity, opts} = ruleOpts;
-
-      // XXX might be something better to do here. this won't happen during
-      // expected non-test operation
-      /* istanbul ignore next */
-      if (severity === CheckSeverities.OFF) {
-        return {failed: [], passed: []};
-      }
-
-      const {packageJson: pkgJson, path: pkgJsonPath} = await readPackageJson({
-        cwd: pkgPath,
-        strict: true,
-      });
-
-      const staticCtx: StaticCheckContext = {
-        pkgJson,
-        pkgJsonPath,
-        pkgPath,
-        severity,
-      };
-
-      debug(
-        `Running rule %s with context %O and opts %O`,
-        ruleName,
-        {
-          pkgJsonPath,
-          pkgPath,
-          severity,
-          pkgName: pkgJson.name,
-        },
-        opts,
-      );
-      const context = new CheckContext(rule, staticCtx);
-
-      let result: CheckFailure[] | undefined;
-      try {
-        result = await rule.check(context, opts);
-      } catch (err) {
-        this.emit(
-          Event.RULE_ERROR,
-          new RuleError(
-            `Rule "${ruleName}" threw an exception`,
-            staticCtx,
-            ruleName,
-            err as Error,
-          ),
-        );
-        return {
-          failed: [
-            {
-              message: String(err),
-              failed: true,
-              severity,
-              rule,
-              context: staticCtx,
-            },
-          ],
-          passed: [],
-        };
-      }
-
-      if (result?.length) {
-        return {
-          failed: result,
-          passed: [],
-        };
-      }
-      const ok: CheckOk = {
-        rule,
-        context,
-        failed: false,
-      };
-      return {failed: [], passed: [ok]};
-    });
-  }
-
   public async runChecks(
-    installResults: InstallResults,
-  ): Promise<CheckResults> {
-    const allFailed: CheckFailure[] = [];
-    const allPassed: CheckOk[] = [];
-    const {ruleConfig} = this;
-    await Promise.resolve();
-
-    const runnableRules = BuiltinRuleConts.filter((ruleCont) =>
-      ruleCont(
-        (rule) =>
-          ruleConfig[rule.name as keyof typeof ruleConfig].severity !==
-          CheckSeverities.OFF,
-      ),
+    installResults: InstallResult[],
+  ): Promise<RunRulesResult> {
+    const rules = this.pluginRegistry.getAllRules(
+      (rule) => this.opts.rules[rule.id].severity !== RuleSeverities.Off,
     );
 
-    const total = runnableRules.length;
-    let current = 0;
+    debug('Running enabled rules: %s', rules.map((rule) => rule.id).join(', '));
 
-    this.emit(Event.RUN_CHECKS_BEGIN, {config: ruleConfig, total});
+    const runRulesManifest: RunRulesManifest = installResults.flatMap(
+      ({installManifests}) => {
+        // we don't need to inspect the same package twice, so we pick the first
+        // installPath for each pkgName encountered. we also want to ignore
+        // "additional dependencies".
+        const uniquePkgNameMap = installManifests.reduce<Map<string, string>>(
+          (acc, {isAdditional, spec, installPath, pkgName}) => {
+            if (!isAdditional && !acc.has(pkgName)) {
+              /* istanbul ignore next */
+              if (!installPath) {
+                throw new TypeError(
+                  `Expected an installPath for ${pkgName} (${spec})`,
+                );
+              }
+              acc.set(pkgName, installPath);
+            }
+            return acc;
+          },
+          new Map(),
+        );
+        return [...uniquePkgNameMap.values()];
+      },
+    );
 
-    // run against multiple package managers??
-    for (const ruleCont of runnableRules) {
-      const ruleName = ruleCont((rule) => rule.name);
-      const configForRule = ruleConfig[ruleName as keyof typeof ruleConfig];
-      this.emit(Event.RUN_CHECK_BEGIN, {
-        rule: ruleName,
-        config: configForRule,
-        current,
-        total,
-      });
-
-      for (const [{packedPkgs}] of installResults.values()) {
-        for (const {installPath: pkgPath} of packedPkgs) {
-          const {failed, passed} = await this.runCheck(
-            ruleCont,
-            pkgPath,
-            ruleConfig,
-          );
-          if (failed.length) {
-            this.emit(Event.RUN_CHECK_FAILED, {
-              rule: ruleName,
-              config: configForRule,
-              current,
-              total,
-              failed,
-            });
-          } else {
-            this.emit(Event.RUN_CHECK_OK, {
-              rule: ruleName,
-              config: configForRule,
-              current,
-              total,
-            });
-          }
-
-          allFailed.push(...failed);
-          allPassed.push(...passed);
-
-          current++;
-        }
-      }
-    }
-
-    const evtData = {
-      config: ruleConfig,
-      total,
-      passed: allPassed,
-      failed: allFailed,
-    };
-
-    if (allFailed.length) {
-      this.emit(Event.RUN_CHECKS_FAILED, evtData);
-    } else {
-      this.emit(Event.RUN_CHECKS_OK, evtData);
-    }
-
-    return {failed: allFailed, passed: allPassed};
+    const ruleRunner = this.pluginRegistry.getRuleRunner();
+    return ruleRunner(
+      createRuleRunnerNotifiers(this),
+      rules,
+      this.opts.rules,
+      runRulesManifest,
+    );
   }
 
   /**
    * Runs the script for each package in `packItems`
    */
   public async runScripts(
-    pkgRunManifest: PkgRunManifest,
+    installResults: InstallResult[],
   ): Promise<RunScriptResult[]> {
-    if (!pkgRunManifest) {
-      throw new TypeError('(runScripts) "pkgRunManifest" arg is required');
+    for (const evt of Object.values(RunScriptEvent)) {
+      this.pmController.on(evt, (...args) => {
+        this.emit(evt, ...args);
+      });
     }
 
-    const pkgRunManifestForEmit: Record<string, RunManifest[]> = {};
-    for (const [pm, runManifests] of pkgRunManifest) {
-      const pmId = this.pmIds.get(pm);
-      if (!pmId) {
-        /* istanbul ignore next */
-        throw new PackageManagerIdError();
-      }
-      pkgRunManifestForEmit[pmId] = [...runManifests];
-    }
-
-    const totalScripts = [...pkgRunManifest].reduce(
-      (count, [, runManifests]) => count + runManifests.size,
-      0,
-    );
-
-    await Promise.resolve();
-    this.emit(Event.RUN_SCRIPTS_BEGIN, {
-      manifest: pkgRunManifestForEmit,
-      total: totalScripts,
-    });
-
-    const {bail} = this;
-    let current = 0;
-    const scripts: string[] = [];
-    const results: RunScriptResult[] = [];
-
-    BAIL: for await (const [pm, runManifests] of pkgRunManifest) {
-      const pmId = this.pmIds.get(pm);
-
-      if (!pmId) {
-        /* istanbul ignore next */
-        throw new PackageManagerIdError();
-      }
-      for await (const runManifest of runManifests) {
-        let result: RunScriptResult;
-        const {script} = runManifest;
-        const {pkgName} = runManifest.packedPkg;
-        scripts.push(script);
-        this.emit(Event.RUN_SCRIPT_BEGIN, {
-          script,
-          pkgName,
-          total: totalScripts,
-          current,
-        });
-        try {
-          result = await pm.runScript(runManifest);
-          results.push(result);
-          if (result.error) {
-            debug(
-              'Script "%s" failed in package "%s": %O',
-              script,
-              pkgName,
-              result,
-            );
-            this.emit(Event.RUN_SCRIPT_FAILED, {
-              ...result,
-              script,
-              error: result.error,
-              current: current++,
-              total: totalScripts,
-            });
-
-            if (bail) {
-              break BAIL;
-            }
-          } else {
-            this.emit(Event.RUN_SCRIPT_OK, {
-              ...result,
-              script,
-              current,
-              total: totalScripts,
-            });
-          }
-        } catch (err) {
-          throw new PackageManagerError(
-            `Package manager "${pmId}" failed to run script "${script}`,
-            pmId,
-            err as Error,
-          );
-        }
+    try {
+      return await this.pmController.runScripts(this.scripts, installResults, {
+        bail: this.bail,
+      });
+    } finally {
+      for (const evt of Object.values(RunScriptEvent)) {
+        this.pmController.removeAllListeners(evt);
       }
     }
-
-    const failed = results.filter((result) => result.error).length;
-    const passed = results.length - failed;
-
-    this.emit(failed ? Event.RUN_SCRIPTS_FAILED : Event.RUN_SCRIPTS_OK, {
-      results,
-      manifest: pkgRunManifestForEmit,
-      total: totalScripts,
-      failed,
-      passed,
-    });
-
-    return results;
-  }
-
-  /**
-   * Converts install results to a {@linkcode PkgRunManifest} for {@linkcode runScripts}
-   * @param installResults Results of {@linkcode install}
-   * @returns Package managers and scripts to run for each unpacked package
-   */
-  private buildPkgRunManifest(installResults: InstallResults): PkgRunManifest {
-    const pkgRunManifest: PkgRunManifest = new Map();
-    for (const [pm, [{packedPkgs}]] of installResults) {
-      const runManifests: Set<RunManifest> = new Set();
-      for (const packedPkg of packedPkgs) {
-        for (const script of this.scripts) {
-          runManifests.add({
-            script,
-            packedPkg,
-          });
-        }
-      }
-      pkgRunManifest.set(pm, runManifests);
-    }
-    return pkgRunManifest;
-  }
-
-  /**
-   * Returns `true` if any of the scripts failed or any of the checks failed
-   * @param results Results from {@linkcode smoke}
-   * @returns Whether the results indicate a failure
-   */
-  public isSmokeFailure({scripts, checks}: SmokeResults): boolean {
-    return (
-      checks.failed.some(
-        (checkFailure) => checkFailure.severity === CheckSeverities.ERROR,
-      ) || scripts.some((runScriptResult) => runScriptResult.error)
-    );
   }
 
   /**
    * Pack, install, run checks (optionally), and run scripts (optionally)
+   *
    * @returns Results
    */
-  public async smoke(): Promise<SmokeResults> {
-    // do not emit synchronously
-    await Promise.resolve();
-    this.emit(Event.SMOKE_BEGIN);
-
+  public async smoke(): Promise<SmokeResults | undefined> {
     try {
-      // PACK
-      const pkgInstallManifest = await this.pack();
-
-      // INSTALL
-      const installResults = await this.install(pkgInstallManifest);
-
-      let ruleResults: CheckResults = {passed: [], failed: []};
+      await this.loadListeners();
+      this.emit(SmokerEvent.SmokeBegin, {
+        plugins: this.pluginRegistry.plugins,
+        opts: this.opts,
+      });
+      let packError: PackError | undefined;
+      let installError: InstallError | undefined;
+      let pkgManagerInstallManifests: PkgManagerInstallManifest[] | undefined;
+      let installResults: InstallResult[] | undefined;
+      let ruleResults: RunRulesResult | undefined;
       let runScriptResults: RunScriptResult[] = [];
 
-      // RUN CHECKS
-      if (this.checks) {
-        ruleResults = await this.runChecks(installResults);
+      // PACK
+      try {
+        pkgManagerInstallManifests = await this.pack();
+      } catch (err) {
+        packError = err as PackError;
       }
 
-      // RUN SCRIPTS
-      if (this.scripts.length) {
-        const pkgRunManifest = this.buildPkgRunManifest(installResults);
-        runScriptResults = await this.runScripts(pkgRunManifest);
+      if (pkgManagerInstallManifests) {
+        // INSTALL
+        try {
+          installResults = await this.install(pkgManagerInstallManifests);
+        } catch (err) {
+          installError = err as InstallError;
+        }
+      }
+
+      if (installResults) {
+        // RUN CHECKS
+        if (this.enableChecks) {
+          ruleResults = await this.runChecks(installResults);
+        }
+
+        // RUN SCRIPTS
+        if (this.scripts.length) {
+          runScriptResults = await this.runScripts(installResults);
+        }
       }
 
       // END
       const smokeResults: SmokeResults = {
         scripts: runScriptResults,
         checks: ruleResults,
-        opts: this.originalOpts,
+        opts: this.opts,
       };
 
-      if (this.isSmokeFailure(smokeResults)) {
+      const aggregateErrors = () => {
+        const runScriptErrors = runScriptResults
+          .filter((result) => result.error)
+          .map((result) => result.error) as ScriptError[];
+        const ruleErrors = (ruleResults?.issues
+          .filter((issue) => issue.severity === RuleSeverities.Error)
+          .map((issue) => issue.error) ?? []) as RuleError[];
+
+        const errors: Array<
+          InstallError | PackError | ScriptError | RuleError
+        > = [...runScriptErrors, ...ruleErrors];
+        if (packError) {
+          errors.push(packError);
+        }
+        if (installError) {
+          errors.push(installError);
+        }
+        return errors;
+      };
+
+      // this triggers the "Lingered" event which must happen before
+      // the final "SmokeOK" or "SmokeFailed" event, or there could be a race condition.
+      try {
+        await this.cleanup();
+      } catch {
+        // TODO: handle
+      }
+
+      const errors = aggregateErrors();
+
+      if (errors.length) {
         this.emit(
-          Event.SMOKE_FAILED,
-          new SmokeFailedError('🤮 Maurice!', {results: smokeResults}),
+          SmokerEvent.SmokeFailed,
+          new SmokeFailedError('🤮 Maurice!', errors, {results: smokeResults}),
         );
       } else {
-        this.emit(Event.SMOKE_OK, smokeResults);
+        this.emit(SmokerEvent.SmokeOk, smokeResults);
       }
 
       return smokeResults;
+    } catch (e) {
+      const err = e as Error;
+      this.emit(SmokerEvent.UnknownError, err);
     } finally {
-      await this.cleanup();
+      this.emit(SmokerEvent.End);
+      this.unloadListeners();
     }
   }
 
+  public unloadListeners(): void {
+    this.reporterDelegate?.removeAllListeners();
+  }
+
   /**
-   * This is only here because it's a fair amount of work to mash the data into a format more suitable for display.
+   * Boots up the smoker with the provided options and plugin registry.
    *
-   * This is used by the events {@linkcode SmokerEvent.InstallBegin}, {@linkcode SmokerEvent.InstallOk}, and {@linkcode SmokerEvent.PackOk}.
-   * @param pkgInstallManifest What to install and with what package manager
-   * @returns Something to be emitted
+   * Several things have to happen, in order, before we can start smoking:
+   *
+   * 1. Builtin plugins must {@link PluginRegistry.loadPlugins be loaded}
+   * 2. External plugins then must be loaded.
+   * 3. The registry should refuse further registrations.
+   * 4. {@link OptionParser.parse Parse} the options.
+   *
+   * @param opts - The options for the smoker.
+   * @param registry - The plugin registry for the smoker.
+   * @returns An object containing the plugin registry and parsed options.
+   * @internal
    */
-  private buildInstallEventData(
-    pkgInstallManifest: PkgInstallManifest,
-  ): InstallEventData {
-    const uniquePkgs = new Set<string>();
-    const pmIds = new Set<string>();
-    const manifests: InstallManifest[] = [];
-    const additionalDeps = new Set<string>();
-    for (const [pm, manifest] of pkgInstallManifest) {
-      const id = this.pmIds.get(pm);
-      if (!id) {
-        /* istanbul ignore next */
-        throw new PackageManagerIdError();
-      }
-      pmIds.add(id);
-      manifests.push(manifest);
-      for (const {pkgName} of manifest.packedPkgs) {
-        uniquePkgs.add(pkgName);
-      }
-      if (manifest.additionalDeps) {
-        for (const dep of manifest.additionalDeps) {
-          additionalDeps.add(dep);
-        }
-      }
-    }
+  private static async bootstrap(
+    this: void,
+    opts: RawSmokerOptions = {},
+    registry = PluginRegistry.create(),
+  ) {
+    const plugins = castArray(opts.plugin).filter(
+      (requested) => !isBlessedPlugin(requested),
+    );
+    debug('Requested external plugins: %O', plugins);
+    // this must be done in sequence to protect the blessed plugins
+    await registry.loadPlugins(BLESSED_PLUGINS);
+    await registry.loadPlugins(plugins);
+    // disable new registrations
+    registry.close();
+
+    debug('Loaded %d plugin(s)', registry.plugins.length);
 
     return {
-      uniquePkgs: [...uniquePkgs],
-      packageManagers: [...pmIds],
-      additionalDeps: [...additionalDeps],
-      manifests,
+      pluginRegistry: registry,
+      options: OptionParser.create(registry).parse(opts),
     };
   }
 }

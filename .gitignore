@@ -67,3 +67,4 @@ dist
 *.tsbuildinfo
 
 docs/README.md
+docs/api

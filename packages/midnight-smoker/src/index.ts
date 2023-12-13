@@ -1,12 +1,19 @@
-import {Smoker} from './smoker';
+/**
+ * Main entry point for `midnight-smoker`.
+ *
+ * Contains:
+ *
+ * - The {@link Smoker} class.
+ * - The {@link smoke} function (alias for {@link Smoker.smoke}).
+ * - Sundry types to support it all.
+ *
+ * @module midnight-smoker
+ * @packageDocumentation
+ */
 
-export const {smoke} = Smoker;
-export {readConfigFile} from './config-file';
-export type * from './error';
-export * from './event';
-export {parseOptions} from './options';
-export type * from './pm';
-export type * from './rules';
-export {CheckSeverities} from './rules';
-export type * from './types';
+import {Smoker} from './smoker';
+export {PkgManagerInstallManifest} from './component/schema/pkg-manager-schema';
+export type {SmokeResults} from './event/event-types';
+export type * from './options';
 export {Smoker};
+export const {smoke} = Smoker;

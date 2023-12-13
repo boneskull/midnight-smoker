@@ -1,11 +1,9 @@
 {
-  "extends": "@tsconfig/node16/tsconfig.json",
+  "extends": "../../.config/tsconfig.workspace.json",
   "files": [],
-  "ts-node": {
-    "transpileOnly": true
-  },
-  "compilerOptions": {
-    "composite": true
-  },
-  "references": [{"path": "./src"}, {"path": "./test"}]
+  "includes": [],
+  "references": [
+    {"path": "./src/tsconfig.json"},
+    {"path": "./test/tsconfig.json"}
+  ]
 }

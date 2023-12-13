@@ -1,8 +1,0 @@
-{
-  "name": "install-error",
-  "version": "1.0.0",
-  "description": "this should be hard to install",
-  "peerDependencies": {
-    "install-error": "2.0.0"
-  }
-}

@@ -1,0 +1,4 @@
+{
+  "extends": "../../../.config/tsconfig.workspace.json",
+  "files": ["git-deny-patterns.json"]
+}

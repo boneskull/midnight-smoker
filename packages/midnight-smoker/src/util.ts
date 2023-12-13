@@ -1,29 +1,18 @@
 /**
  * Gotta have a "util" module
+ *
  * @packageDocumentation
  */
+
+import {isFunction, isObject} from 'lodash';
+import {Module} from 'node:module';
 import path from 'node:path';
-import readPkgUp, {type ReadResult} from 'read-pkg-up';
-import {MissingPackageJsonError, UnreadablePackageJsonError} from './error';
-
-export type {ReadResult as ReadPackageJsonResult};
-/**
- * Trims all strings in an array and removes empty strings.
- * Returns empty array if input is falsy.
- */
-export function normalizeStringArray(value?: string | string[]): string[] {
-  return value
-    ? castArray(value)
-        .map((item) => item.trim())
-        .filter(Boolean)
-    : [];
-}
-
-export function castArray<T>(value: T | T[]): NonNullable<T>[] {
-  return (value ? (Array.isArray(value) ? value : [value]) : []).filter(
-    Boolean,
-  ) as NonNullable<T>[];
-}
+import readPkgUp from 'read-pkg-up';
+import type {Opaque, PackageJson} from 'type-fest';
+import {
+  MissingPackageJsonError,
+  UnreadablePackageJsonError,
+} from './util-error';
 
 /**
  * Regex string to match a package name.
@@ -41,9 +30,10 @@ const PKG_NAME_REGEX = new RegExp(`${PKG_NAME_REGEX_STR}$`);
 /**
  * Regex to match a package name with a spec.
  *
- * @remarks This does not attempt to validate a semver string, though it could.
- * If it did, it'd also need to allow any valid package tag.  I'm not sure what
- * the latter is, but the former can be found on
+ * @remarks
+ * This does not attempt to validate a semver string, though it could. If it
+ * did, it'd also need to allow any valid package tag. I'm not sure what the
+ * latter is, but the former can be found on
  * {@link https://stackoverflow.com/a/72900791|StackOverflow}.
  */
 const PKG_NAME_WITH_SPEC_REGEX = new RegExp(`${PKG_NAME_REGEX_STR}@.+$`);
@@ -52,7 +42,8 @@ const PKG_NAME_WITH_SPEC_REGEX = new RegExp(`${PKG_NAME_REGEX_STR}@.+$`);
  * Fields in `package.json` that might have a dependency we want to install as
  * an isolated package to help run smoke tests.
  *
- * @remarks Order is important; changing this should be a breaking change
+ * @remarks
+ * Order is important; changing this should be a breaking change
  */
 const DEP_FIELDS = [
   'devDependencies',
@@ -122,28 +113,35 @@ export interface ReadPackageJsonOpts {
   strict?: boolean;
 }
 
+export type ReadPackageJsonResult = readPkgUp.ReadResult;
+
+export type ReadPackageJsonNormalizedResult = readPkgUp.NormalizedReadResult;
+
 /**
  * Reads closest `package.json` from some dir
+ *
  * @param cwd Dir to read from
  * @param Options
- * @returns Object with `packageJson` and `path` properties or `undefined` if not in `strict` mode
+ * @returns Object with `packageJson` and `path` properties or `undefined` if
+ *   not in `strict` mode
  */
 export async function readPackageJson(
   opts: ReadPackageJsonOpts & {strict: true; normalize: true},
-): Promise<readPkgUp.NormalizedReadResult>;
+): Promise<ReadPackageJsonNormalizedResult>;
 export async function readPackageJson(
   opts: ReadPackageJsonOpts & {strict: true},
-): Promise<readPkgUp.ReadResult>;
+): Promise<ReadPackageJsonResult>;
 export async function readPackageJson(
   opts?: ReadPackageJsonOpts,
-): Promise<readPkgUp.ReadResult | undefined>;
+): Promise<ReadPackageJsonResult | undefined>;
 export async function readPackageJson(
   opts: ReadPackageJsonOpts & {normalize: true; strict?: false},
-): Promise<readPkgUp.NormalizedReadResult | undefined>;
+): Promise<ReadPackageJsonNormalizedResult | undefined>;
 export async function readPackageJson(opts: ReadPackageJsonOpts = {}) {
-  const {cwd = process.cwd(), normalize, strict} = opts;
-  if (readPackageJson.cache.has({cwd, normalize})) {
-    return readPackageJson.cache.get({cwd, normalize});
+  const {cwd = process.cwd(), normalize = false, strict} = opts;
+  const cacheKey = `cwd=${cwd};normalize=${normalize}`;
+  if (readPackageJson.cache.has(cacheKey)) {
+    return readPackageJson.cache.get(cacheKey)!;
   }
   try {
     const result = await readPkgUp({cwd, normalize});
@@ -153,7 +151,7 @@ export async function readPackageJson(opts: ReadPackageJsonOpts = {}) {
         cwd,
       );
     }
-    readPackageJson.cache.set({cwd, normalize}, result);
+    readPackageJson.cache.set(cacheKey, result);
     return result;
   } catch (err) {
     throw new UnreadablePackageJsonError(
@@ -165,16 +163,19 @@ export async function readPackageJson(opts: ReadPackageJsonOpts = {}) {
 }
 
 readPackageJson.cache = new Map<
-  ReadPackageJsonOpts,
+  string,
   readPkgUp.ReadResult | readPkgUp.NormalizedReadResult | undefined
 >();
 
 /**
  * Reads closest `package.json` from some dir (synchronously)
+ *
+ * @remarks
+ * Use {@linkcode readPackageJson} instead if possible
  * @param cwd Dir to read from
  * @param Options
- * @returns Object with `packageJson` and `path` properties or `undefined` if not in `strict` mode
- * @remarks Use {@linkcode readPackageJson} instead if possible
+ * @returns Object with `packageJson` and `path` properties or `undefined` if
+ *   not in `strict` mode
  */
 export function readPackageJsonSync(
   opts: ReadPackageJsonOpts & {strict: true},
@@ -216,14 +217,110 @@ readPackageJsonSync.cache = new Map<
 >();
 
 let dataDir: string;
+
 export async function findDataDir(): Promise<string> {
   if (dataDir) {
     return dataDir;
   }
   const {path: packagePath} = (await readPackageJson({
     cwd: __dirname,
-  })) as ReadResult;
+  }))!;
   const root = path.dirname(packagePath);
   dataDir = path.join(root, 'data');
   return dataDir;
+}
+
+/**
+ * Resolves module at `moduleId` from `fromDir` dir
+ *
+ * @param moduleId - Module identifier
+ * @param fromDir - Dir to resolve from; defaults to CWD
+ * @returns Resolved module path
+ */
+export function resolveFrom(moduleId: string, fromDir = process.cwd()): string {
+  return Module.createRequire(path.join(fromDir, 'index.js')).resolve(moduleId);
+}
+
+/**
+ * Resolves module at `moduleId` from `fromDir` dir
+ *
+ * @param moduleId - Module identifier
+ * @param fromDir - Dir to resolve from; defaults to CWD
+ * @returns Resolved module path
+ */
+export function requireFrom(
+  moduleId: string,
+  fromDir = process.cwd(),
+): unknown {
+  return Module.createRequire(path.join(fromDir, 'index.js'))(moduleId);
+}
+
+/**
+ * A branded string referring to a unique identifier.
+ */
+export type UniqueId = Opaque<string, 'UniqueId'>;
+
+/**
+ * A function which generates a {@link UniqueId}
+ */
+export type UniqueIdFactory = () => UniqueId;
+
+/**
+ * Returns a {@link UniqueIdFactory}, which generates a unique ID each time it is
+ * called.
+ *
+ * @param prefix - A prefix to prepend to each ID
+ * @returns The unique ID factory, which makes this function factory factory.
+ */
+export function uniqueIdFactoryFactory(prefix = ''): UniqueIdFactory {
+  let nextId = 0;
+
+  return function generateId(): UniqueId {
+    return `${prefix}${nextId++}` as UniqueId;
+  };
+}
+
+/**
+ * Cached `package.json` for this package.
+ */
+let cachedPkgJson: PackageJson | undefined;
+
+/**
+ * Reads the `package.json` in this package.
+ *
+ * Used to surface some information (`version`, `homepage`, etc.) to user.
+ */
+export async function readSmokerPkgJson(): Promise<PackageJson> {
+  if (cachedPkgJson) {
+    return cachedPkgJson;
+  }
+  const {packageJson: pkgJson} = await readPackageJson({
+    cwd: __dirname,
+    strict: true,
+  });
+  cachedPkgJson = pkgJson;
+  return pkgJson;
+}
+
+function isSerializable<T>(value: T): value is T & {toJSON: () => unknown} {
+  return isObject(value) && 'toJSON' in value && isFunction(value.toJSON);
+}
+
+/**
+ * Serializes a value to JSON-able if it is serializable.
+ *
+ * This should be used where we have a `ThingOne` and a `ThingTwo implements
+ * ThingOne` and `ThingTwo.toJSON()` returns a `ThingOne`, and we want the
+ * `ThingOne` only. Yes, this is a convention.
+ *
+ * @param value - The value to be serialized.
+ * @returns The serialized value if it is serializable, otherwise the original
+ *   value.
+ */
+export function serialize<T>(value: T) {
+  const serializableValue = value as T & {toJSON: () => T};
+  if (isSerializable(value)) {
+    return serializableValue.toJSON();
+  }
+  return value;
 }

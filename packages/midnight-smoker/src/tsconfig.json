@@ -1,13 +1,11 @@
 {
-  "extends": "@tsconfig/node16/tsconfig.json",
+  "extends": "../../../.config/tsconfig.src.json",
   "compilerOptions": {
-    "types": ["node"],
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
     "outDir": "../dist",
-    "rootDir": ".",
-    "composite": true
+    "paths": {
+      "../data": ["../data"]
+    }
   },
-  "include": ["."]
+  "include": ["."],
+  "references": [{"path": "../data/tsconfig.json"}]
 }

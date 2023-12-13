@@ -1,0 +1,6 @@
+{
+  "name": "plugin-rule-ok",
+  "version": "1.0.0",
+  "description": "should pass the rule in the plugin-rule fixture",
+  "private": true
+}

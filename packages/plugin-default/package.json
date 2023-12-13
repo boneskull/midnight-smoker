@@ -1,0 +1,77 @@
+{
+  "name": "@midnight-smoker/plugin-default",
+  "version": "0.0.0",
+  "description": "Default behavior for midnight-smoker",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/boneskull/midnight-smoker",
+    "directory": "packages/plugin-default"
+  },
+  "homepage": "https://github.com/boneskull/midnight-smoker/tree/main/packages/plugin-default",
+  "bugs": {
+    "url": "https://github.com/boneskull/midnight-smoker/issues"
+  },
+  "author": "Christopher Hiller <boneskull@boneskull.com> (https://boneskull.com/)",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": "^16.20.0 || ^18.0.0 || ^20.0.0",
+    "npm": ">=7"
+  },
+  "main": "./dist/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "typedoc": "./src/index.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "./data",
+    "./dist",
+    "./src",
+    "CHANGELOG.md",
+    "!*.tsbuildinfo",
+    "!tsconfig.json"
+  ],
+  "keywords": [
+    "ts",
+    "typescript",
+    "midnight-smoker",
+    "smoker",
+    "smoke",
+    "test",
+    "testing"
+  ],
+  "scripts": {
+    "test": "run-p test:unit",
+    "test:e2e": "mocha \"test/e2e/**/*.spec.ts\" -p --timeout 5s --slow 2500",
+    "test:smoke": "smoker",
+    "test:snapshots-only": "npm run test:e2e -- --fgrep \"[snapshot]\"",
+    "test:unit": "mocha \"test/unit/**/*.spec.ts\"",
+    "test:update-snapshots": "cross-env SNAPSHOT_UPDATE=1 npm run test:e2e -- --fgrep \"[snapshot]\""
+  },
+  "peerDependencies": {
+    "midnight-smoker": "^7.0.4"
+  },
+  "dependencies": {
+    "chalk": "4.1.2",
+    "corepack": "0.23.0",
+    "debug": "4.3.4",
+    "execa": "5.1.1",
+    "is-file-esm": "1.0.0",
+    "json-stable-stringify": "1.0.2",
+    "log-symbols": "4.1.0",
+    "ora": "5.4.1",
+    "pluralize": "8.0.0",
+    "stringify-object": "3.3.0",
+    "type-fest": "4.8.2"
+  },
+  "devDependencies": {
+    "@midnight-smoker/test-util": "file:../test-util",
+    "@types/is-file-esm": "1.0.1",
+    "midnight-smoker": "7.0.4",
+    "semver": "7.5.4"
+  },
+  "access": "public"
+}

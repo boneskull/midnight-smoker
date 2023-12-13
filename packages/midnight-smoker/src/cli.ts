@@ -1,456 +1,257 @@
-import {blue, cyan, dim, red, white, yellow} from 'chalk';
 import Debug from 'debug';
-import deepMerge from 'deepmerge';
-import {error, info, warning} from 'log-symbols';
-import {inspect} from 'node:util';
-import ora from 'ora';
-import pluralize from 'pluralize';
+import terminalLink from 'terminal-link';
+import type {ArgumentsCamelCase, Argv} from 'yargs';
 import {hideBin} from 'yargs/helpers';
 import yargs from 'yargs/yargs';
+import {createTable, mergeOptions} from './cli-util';
+import {kComponentId} from './component/component';
 import {readConfigFile} from './config-file';
-import {NotImplementedError} from './error';
-import {Event, type SmokerEvent} from './event';
-import {DEFAULT_PACKAGE_MANAGER_ID} from './options';
-import type {CheckFailure} from './rules/result';
+import {DEFAULT_PACKAGE_MANAGER_SPEC} from './constants';
+import {isSmokerError} from './error/base-error';
+import {NotImplementedError} from './error/common-error';
+import {isBlessedPlugin} from './plugin/blessed';
 import {Smoker} from './smoker';
-import type {SmokerJsonOutput, SmokerStats} from './types';
-import {readPackageJson} from './util';
+import {readSmokerPkgJson} from './util';
 
 const debug = Debug('midnight-smoker:cli');
 
 const BEHAVIOR_GROUP = 'Behavior:';
 
 /**
+ * Reusable config for array-type options
+ */
+const ARRAY_OPT_CFG = {
+  requiresArg: true,
+  array: true,
+  type: 'string',
+} as const;
+
+/**
+ * The `plugin` option is needed by all commands
+ */
+const PLUGIN_OPT = {
+  alias: ['P', 'plugins'],
+  describe: 'Plugin(s) to use',
+  group: BEHAVIOR_GROUP,
+  ...ARRAY_OPT_CFG,
+} as const;
+
+/**
  * Main entry point for the CLI script
+ *
  * @param args Raw command-line arguments array
  */
 async function main(args: string[]): Promise<void> {
   const y = yargs(args);
+  const [pkgJson, config] = await Promise.all([
+    readSmokerPkgJson(),
+    readConfigFile(),
+  ]);
 
-  const result = await readPackageJson({cwd: __dirname});
-  if (!result) {
-    throw new Error(
-      'midnight-smoker could not find its own package.json! bogus',
-    );
-  }
-  const {packageJson} = result;
-  const {version, homepage} = packageJson;
+  /**
+   * Merges parsed `argv` with the loaded `config` object--with `argv` taking
+   * precedence--and assigns the result to `argv`.
+   *
+   * @template T - Type of the parsed `argv` object
+   * @param argv - Parsed options from `yargs`
+   */
+  const mergeOpts = <T extends ArgumentsCamelCase<any>>(argv: T) => {
+    mergeOptions(argv, config);
+  };
 
-  let verbose = false;
-  try {
-    const config = await readConfigFile();
+  /**
+   * A {@link yargs.CommandBuilder} which adds the `--plugin` option.
+   *
+   * @remarks
+   * This is here because the `@types/yargs` does not understand "global"
+   * options; we have to add it to each command.
+   * @param yargs - Yargs instance
+   * @returns The modified `yargs` instance
+   */
+  const builderWithPlugins = <T extends Argv<U>, U>(yargs: T) =>
+    yargs.options({
+      plugin: PLUGIN_OPT,
+    });
 
-    await y
-      .scriptName('smoker')
-      .command(
-        '* [scripts..]',
-        'Run tests against a package as it would be published',
-        (yargs) => {
-          /**
-           * Reusable config for array-type options
-           */
-          const arrayOptConfig = {
-            requiresArg: true,
-            array: true,
+  await y
+    .scriptName('smoker')
+    .command(
+      '* [scripts..]',
+      'Run tests against a package as it would be published',
+      (yargs) =>
+        yargs
+          .positional('scripts', {
+            describe: 'Custom script(s) to run (from package.json)',
             type: 'string',
-          } as const;
+          })
+          // WARNING: do not use yargs' default values. they will override
+          // any settings in config files.
+          .options({
+            add: {
+              describe: 'Additional dependency to provide to script(s)',
+              group: BEHAVIOR_GROUP,
+              ...ARRAY_OPT_CFG,
+            },
+            all: {
+              describe: 'Run in all workspaces',
+              group: BEHAVIOR_GROUP,
+              type: 'boolean',
+            },
+            bail: {
+              alias: ['fail-fast'],
+              describe: 'When running scripts, halt on first error',
+              group: BEHAVIOR_GROUP,
+              type: 'boolean',
+            },
+            'include-root': {
+              describe: "Include the workspace root; must provide '--all'",
+              group: BEHAVIOR_GROUP,
+              implies: 'all',
+              type: 'boolean',
+            },
+            json: {
+              describe: 'Output JSON only. Alias for "--reporter=json"',
+              group: BEHAVIOR_GROUP,
+              type: 'boolean',
+            },
+            linger: {
+              describe: 'Do not clean up temp dir(s) after completion',
+              group: BEHAVIOR_GROUP,
+              hidden: true,
+              type: 'boolean',
+            },
+            'pkg-manager': {
+              alias: ['p', 'pm'],
+              describe: 'Use a specific package manager',
+              group: BEHAVIOR_GROUP,
+              defaultDescription: DEFAULT_PACKAGE_MANAGER_SPEC,
+              ...ARRAY_OPT_CFG,
+            },
+            loose: {
+              alias: 'if-present',
+              describe: 'Ignore missing scripts (used with --all)',
+              type: 'boolean',
+              group: BEHAVIOR_GROUP,
+              implies: 'all',
+            },
+            workspace: {
+              alias: ['w'],
+              describe: 'Run script in a specific workspace or workspaces',
+              group: BEHAVIOR_GROUP,
+              ...ARRAY_OPT_CFG,
+            },
+            checks: {
+              alias: 'check',
+              describe: 'Run built-in checks',
+              group: BEHAVIOR_GROUP,
+              type: 'boolean',
+              defaultDescription: 'true',
+            },
+            reporter: {
+              alias: ['r'],
+              describe: 'Reporter(s) to use',
+              group: BEHAVIOR_GROUP,
+              defaultDescription: 'console',
+              ...ARRAY_OPT_CFG,
+            },
+            plugin: PLUGIN_OPT,
+            verbose: {
+              describe: 'Enable verbose output',
+              type: 'boolean',
+              default: Debug.enabled('midnight-smoker'),
+              global: true,
+            },
+          }),
+      async (opts) => {
+        if (opts.pkgManager?.some((pm) => pm.startsWith('pnpm'))) {
+          throw new NotImplementedError('pnpm is currently unsupported');
+        }
 
-          return yargs
-            .positional('scripts', {
-              describe: 'Script(s) in package.json to run',
-              type: 'string',
-            })
-            .options({
-              add: {
-                describe: 'Additional dependency to provide to script(s)',
-                group: BEHAVIOR_GROUP,
-                ...arrayOptConfig,
-              },
-              all: {
-                describe: 'Run script in all workspaces',
-                group: BEHAVIOR_GROUP,
-                type: 'boolean',
-              },
-              bail: {
-                describe: 'When running scripts, halt on first error',
-                group: BEHAVIOR_GROUP,
-                type: 'boolean',
-              },
-              'include-root': {
-                describe: "Include the workspace root; must provide '--all'",
-                group: BEHAVIOR_GROUP,
-                implies: 'all',
-                type: 'boolean',
-              },
-              json: {
-                describe: 'Output JSON only',
-                group: BEHAVIOR_GROUP,
-                type: 'boolean',
-              },
-              linger: {
-                describe: 'Do not clean up temp dir(s) after completion',
-                group: BEHAVIOR_GROUP,
-                hidden: true,
-                type: 'boolean',
-              },
-              pm: {
-                describe:
-                  'Run script(s) with a specific package manager; <npm|yarn|pnpm>[@version]',
-                group: BEHAVIOR_GROUP,
-                default: [DEFAULT_PACKAGE_MANAGER_ID],
-                ...arrayOptConfig,
-              },
-              loose: {
-                describe: 'Ignore missing scripts (used with --all)',
-                type: 'boolean',
-                group: BEHAVIOR_GROUP,
-                implies: 'all',
-              },
-              workspace: {
-                describe: 'Run script in a specific workspace or workspaces',
-                group: BEHAVIOR_GROUP,
-                ...arrayOptConfig,
-              },
-              checks: {
-                describe: 'Run built-in checks',
-                group: BEHAVIOR_GROUP,
-                type: 'boolean',
-              },
-            });
-        },
-        async (argv) => {
-          const opts = deepMerge(config, argv);
-          if (opts.pm?.some((pm) => pm.startsWith('pnpm'))) {
-            throw new NotImplementedError('pnpm is currently unsupported');
-          }
-          verbose = Boolean(opts.verbose || Debug.enabled('midnight-smoker'));
-          if (verbose) {
-            Debug.enable('midnight-smoker');
-          }
-          debug('Final options: %O', opts);
+        debug('Final raw options: %O', opts);
 
-          const smoker = await Smoker.init(opts);
-
-          if (opts.json) {
-            // if we don't have any scripts, the script-related ones will remain null
-            let totalPackages = null;
-            let totalScripts = null;
-            let totalPackageManagers = null;
-            let failedScripts = null;
-            let passedScripts = null;
-            let totalChecks = null;
-            let failedChecks = null;
-            let passedChecks = null;
-
-            smoker
-              .once(Event.INSTALL_BEGIN, ({uniquePkgs, packageManagers}) => {
-                totalPackages = uniquePkgs.length;
-                totalPackageManagers = packageManagers.length;
-              })
-              .once(Event.INSTALL_FAILED, () => {
-                process.exitCode = 1;
-              })
-              .once(Event.RUN_SCRIPTS_BEGIN, ({total}) => {
-                totalScripts = total;
-              })
-              .once(Event.RUN_SCRIPTS_FAILED, ({failed, passed}) => {
-                failedScripts = failed;
-                passedScripts = passed;
-                smoker.removeAllListeners(Event.RUN_SCRIPTS_OK);
-                process.exitCode = 1;
-              })
-              .once(Event.RUN_SCRIPTS_OK, ({passed}) => {
-                passedScripts = passed;
-                failedScripts = 0;
-                smoker.removeAllListeners(Event.RUN_SCRIPTS_FAILED);
-              })
-              .once(Event.RUN_CHECKS_BEGIN, ({total}) => {
-                totalChecks = total;
-              })
-              .once(Event.RUN_CHECKS_FAILED, ({failed, passed}) => {
-                failedChecks = failed.length;
-                passedChecks = passed.length;
-                smoker.removeAllListeners(Event.RUN_CHECKS_OK);
-              })
-              .on(Event.RUN_CHECK_FAILED, ({config}) => {
-                if (config.severity === 'error') {
-                  process.exitCode = 1;
-                }
-              })
-              .once(Event.RUN_CHECKS_OK, ({passed}) => {
-                passedChecks = passed.length;
-                failedChecks = 0;
-                smoker.removeAllListeners(Event.RUN_CHECKS_FAILED);
-              })
-              .once(Event.SMOKE_OK, () => {
-                smoker.removeAllListeners();
-              })
-              .once(Event.SMOKE_FAILED, () => {
-                smoker.removeAllListeners();
-              });
-
-            let output: SmokerJsonOutput;
-            try {
-              const results = await smoker.smoke();
-
-              const stats: SmokerStats = {
-                totalPackages,
-                totalPackageManagers,
-                totalScripts,
-                failedScripts,
-                passedScripts,
-                totalChecks,
-                failedChecks,
-                passedChecks,
-              };
-
-              output = {results, stats};
-            } catch (err) {
-              const stats: SmokerStats = {
-                totalPackages,
-                totalPackageManagers,
-                totalScripts,
-                failedScripts,
-                passedScripts,
-                totalChecks,
-                failedChecks,
-                passedChecks,
-              };
-
-              output = {error: (err as Error).message, stats};
-            } finally {
-              smoker.removeAllListeners();
+        // opts should _not_ be used after this.
+        let smoker: Smoker;
+        try {
+          smoker = await Smoker.create(opts);
+          debug('Final options: %O', smoker.opts);
+        } catch (err) {
+          if (isSmokerError(err)) {
+            if (opts.json || opts.reporter?.includes('json')) {
+              console.log(err.toJSON());
+            } else {
+              console.error(err.format(opts.verbose));
             }
-
-            console.log(JSON.stringify(output, null, 2));
+            process.exitCode = 1;
+            return;
           } else {
-            const spinner = ora();
-            const scriptFailedEvts: SmokerEvent['RunScriptFailed'][] = [];
-            const checkFailedEvts: SmokerEvent['RunCheckFailed'][] = [];
-
-            smoker
-              .once(Event.SMOKE_BEGIN, () => {
-                console.error(
-                  `💨 ${blue('midnight-smoker')} ${white(`v${version}`)}`,
-                );
-              })
-              .once(Event.PACK_BEGIN, () => {
-                let what: string;
-                if (opts.workspace?.length) {
-                  what = pluralize('workspace', opts.workspace.length, true);
-                } else if (opts.all) {
-                  what = 'all workspaces';
-                  if (opts.includeRoot) {
-                    what += ' (and the workspace root)';
-                  }
-                } else {
-                  what = 'current project';
-                }
-                spinner.start(`Packing ${what}…`);
-              })
-              .once(Event.PACK_OK, ({uniquePkgs, packageManagers}) => {
-                let msg = `Packed ${pluralize(
-                  'unique package',
-                  uniquePkgs.length,
-                  true,
-                )} using `;
-                if (packageManagers.length > 1) {
-                  msg += `${pluralize(
-                    'package manager',
-                    packageManagers.length,
-                    true,
-                  )}`;
-                } else {
-                  msg += `${packageManagers[0]}`;
-                }
-                msg += '…';
-                spinner.succeed(msg);
-              })
-              .once(Event.PACK_FAILED, () => {
-                spinner.fail('Failed while packing!');
-                process.exitCode = 1;
-              })
-              .once(
-                Event.INSTALL_BEGIN,
-                ({uniquePkgs, packageManagers, additionalDeps}) => {
-                  let msg = `Installing ${pluralize(
-                    'unique package',
-                    uniquePkgs.length,
-                    true,
-                  )} from tarball`;
-                  if (additionalDeps.length) {
-                    msg += ` with ${pluralize(
-                      'additional dependency',
-                      additionalDeps.length,
-                      true,
-                    )}`;
-                  }
-                  if (packageManagers.length > 1) {
-                    msg += ` using ${pluralize(
-                      'package manager',
-                      packageManagers.length,
-                      true,
-                    )}`;
-                  } else {
-                    msg += ` using ${packageManagers[0]}`;
-                  }
-                  msg += '…';
-                  spinner.start(msg);
-                },
-              )
-              .once(Event.INSTALL_FAILED, () => {
-                spinner.fail('Failed while installing!');
-                process.exitCode = 1;
-              })
-              .once(Event.INSTALL_OK, ({uniquePkgs}) => {
-                spinner.succeed(
-                  `Installed ${pluralize(
-                    'unique package',
-                    uniquePkgs.length,
-                    true,
-                  )} from tarball`,
-                );
-              })
-              .once(Event.RUN_CHECKS_BEGIN, ({total}) => {
-                spinner.start(`Running 0/${total} checks…`);
-              })
-              .on(Event.RUN_CHECK_BEGIN, ({current, total}) => {
-                spinner.text = `Running check ${current}/${total}…`;
-              })
-              .on(Event.RUN_CHECK_FAILED, (evt) => {
-                checkFailedEvts.push(evt);
-                if (evt.config.severity === 'error') {
-                  process.exitCode = 1;
-                }
-              })
-              .once(Event.RUN_CHECKS_OK, ({total}) => {
-                spinner.succeed(
-                  `Successfully ran ${pluralize('check', total, true)}`,
-                );
-              })
-              .once(Event.RUN_CHECKS_FAILED, ({total, failed}) => {
-                spinner.fail(
-                  `${pluralize(
-                    'check',
-                    failed.length,
-                    true,
-                  )} of ${total} failed`,
-                );
-
-                // TODO: move this crunching somewhere else
-                const failedByPackage = checkFailedEvts
-                  .map((evt) => evt.failed)
-                  .flat()
-                  .reduce(
-                    (acc, failed) => {
-                      const pkgName =
-                        failed.context.pkgJson.name ?? failed.context.pkgPath;
-                      acc[pkgName] = [...(acc[pkgName] ?? []), failed];
-                      return acc;
-                    },
-                    {} as Record<string, CheckFailure[]>,
-                  );
-
-                for (const [pkgName, failed] of Object.entries(
-                  failedByPackage,
-                )) {
-                  let text = `Check failures in package ${cyan(pkgName)}:\n`;
-                  for (const {message, severity} of failed) {
-                    if (severity === 'error') {
-                      text += `» ${error} ${red(message)}\n`;
-                    } else {
-                      text += `» ${warning} ${yellow(message)}\n`;
-                    }
-                  }
-                  spinner.info(text);
-                }
-              })
-              .on(Event.RULE_ERROR, (err) => {
-                spinner.fail(err.message);
-                process.exitCode = 1;
-              })
-              .once(Event.RUN_SCRIPTS_BEGIN, ({total}) => {
-                spinner.start(`Running script 0/${total}…`);
-              })
-              .on(Event.RUN_SCRIPT_BEGIN, ({current, total}) => {
-                spinner.text = `Running script ${current}/${total}…`;
-              })
-              .on(Event.RUN_SCRIPT_FAILED, (evt) => {
-                scriptFailedEvts.push(evt);
-                process.exitCode = 1;
-              })
-              .once(Event.RUN_SCRIPTS_OK, ({total}) => {
-                spinner.succeed(
-                  `Successfully ran ${pluralize('script', total, true)}`,
-                );
-              })
-              .once(Event.RUN_SCRIPTS_FAILED, ({total, failed: failures}) => {
-                spinner.fail(
-                  `${failures} of ${total} ${pluralize(
-                    'script',
-                    total,
-                  )} failed`,
-                );
-                for (const evt of scriptFailedEvts) {
-                  spinner.info(
-                    `${red('Script failure')} details for package "${cyan(
-                      evt.pkgName,
-                    )}":\n» ${yellow(evt.error)}\n`,
-                  );
-                }
-                process.exitCode = 1;
-              })
-              .once(Event.SMOKE_FAILED, (err) => {
-                spinner.fail(err?.message ?? err);
-              })
-              .once(Event.SMOKE_OK, () => {
-                spinner.succeed('Lovey-dovey! 💖');
-              })
-              .once(Event.LINGERED, (dirs) => {
-                console.error(
-                  `${info} Lingering ${pluralize(
-                    'temp directory',
-                    dirs.length,
-                  )}:\n`,
-                );
-                for (const dir of dirs) {
-                  console.error(`» ${yellow(dir)}`);
-                }
-              });
-
-            try {
-              await smoker.smoke();
-            } catch (e) {
-              const err = e as Error;
-              console.error();
-              if (verbose) {
-                console.error(inspect(err, {depth: null, colors: true}));
-              } else {
-                console.error(err.message);
-                console.error(dim('(use --verbose for more details)'));
-              }
-              process.exitCode = 1;
-            }
+            throw err;
           }
-        },
-      )
-      .options({
-        verbose: {
-          describe: 'Verbose output',
-          type: 'boolean',
-          global: true,
-        },
-      })
-      .epilog(`For more info, see ${homepage}\n`)
-      .showHelpOnFail(false)
-      .help()
-      .strict()
-      .parseAsync();
-  } catch (err) {
-    // I think anything here would happen before we started smoking
-    console.error(err);
-    process.exitCode = 1;
-  }
+        }
+        await smoker.smoke();
+      },
+      [mergeOpts],
+    )
+    .command(
+      'list-reporters',
+      'List available reporters',
+      builderWithPlugins,
+      async (opts) => {
+        const reporters = await Smoker.getReporters(opts);
+
+        const table = createTable(
+          reporters.map((reporter) => [
+            reporter.name,
+            reporter.description,
+            isBlessedPlugin(reporter[kComponentId].pluginName)
+              ? '(builtin)'
+              : reporter[kComponentId].pluginName,
+          ]),
+          ['Name', 'Description', 'Plugin'],
+        );
+
+        console.log(`${table}`);
+      },
+      [mergeOpts],
+    )
+    .command(
+      'list-rules',
+      'List available rules',
+      builderWithPlugins,
+      async (opts) => {
+        const rules = await Smoker.getRules(opts);
+
+        const headers = terminalLink.isSupported
+          ? ['Name', 'Description', 'Plugin']
+          : ['Name', 'Description', 'Plugin', 'URL'];
+
+        const data = rules.map((rule) => {
+          const row: (undefined | string)[] = [
+            rule.toString(),
+            rule.description,
+            isBlessedPlugin(rule[kComponentId].pluginName)
+              ? '(builtin)'
+              : rule[kComponentId].pluginName,
+          ];
+          if (!terminalLink.isSupported) {
+            row.push(rule.url);
+          }
+          return row;
+        });
+
+        const table = createTable(data, headers);
+
+        console.log(`${table}`);
+      },
+      [mergeOpts],
+    )
+    .epilog(`For more info, visit ${pkgJson.homepage}\n`)
+    .showHelpOnFail(false)
+    .help()
+    .strict()
+    .parseAsync();
 }
 
-main(hideBin(process.argv));
+main(hideBin(process.argv)).catch((err) => {
+  console.error(err);
+  process.exitCode = 1;
+});

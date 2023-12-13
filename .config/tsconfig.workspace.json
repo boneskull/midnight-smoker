@@ -1,0 +1,10 @@
+{
+  "extends": "@tsconfig/node16/tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "composite": true,
+    "customConditions": ["typedoc"],
+    "resolveJsonModule": true
+  },
+  "ts-node": {"transpileOnly": true}
+}

@@ -1,14 +1,14 @@
+import {execSmoker} from '@midnight-smoker/test-util';
 import path from 'node:path';
 import unexpected from 'unexpected';
 import assertions from '../assertions';
-import {execSmoker} from './helpers';
 
 const expect = unexpected.clone().use(assertions);
 
-describe('midnight-smoker', function () {
+describe('midnight-smoker [E2E]', function () {
   describe('config file support', function () {
-    describe('when config file is ESM', async function () {
-      const cwd = path.join(__dirname, 'fixture', 'config-esm');
+    describe('when config file is ESM', function () {
+      const cwd = path.join(__dirname, 'fixture', 'config-file', 'config-esm');
 
       it('should respect the config file', async function () {
         const {stdout} = await execSmoker(['smoke', '--no-checks'], {
@@ -28,8 +28,13 @@ describe('midnight-smoker', function () {
       });
     });
 
-    describe('when config is within package.json', async function () {
-      const cwd = path.join(__dirname, 'fixture', 'config-package-json');
+    describe('when config is within package.json', function () {
+      const cwd = path.join(
+        __dirname,
+        'fixture',
+        'config-file',
+        'config-package-json',
+      );
 
       it('should respect the config file', async function () {
         const {stdout} = await execSmoker(['smoke'], {
@@ -49,8 +54,13 @@ describe('midnight-smoker', function () {
       });
     });
 
-    describe('when an config file contains a "script" prop', async function () {
-      const cwd = path.join(__dirname, 'fixture', 'config-script');
+    describe('when an config file contains a "script" prop', function () {
+      const cwd = path.join(
+        __dirname,
+        'fixture',
+        'config-file',
+        'config-script',
+      );
 
       it('should run script from config file', async function () {
         // includes json: true
@@ -76,8 +86,13 @@ describe('midnight-smoker', function () {
       });
     });
 
-    describe('when an config file contains a "scripts" prop', async function () {
-      const cwd = path.join(__dirname, 'fixture', 'config-scripts');
+    describe('when an config file contains a "scripts" prop', function () {
+      const cwd = path.join(
+        __dirname,
+        'fixture',
+        'config-file',
+        'config-scripts',
+      );
 
       it('should run scripts from config file', async function () {
         const {stdout} = await execSmoker(['--no-checks'], {cwd});

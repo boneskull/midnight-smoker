@@ -1,18 +1,202 @@
-import {z} from 'zod';
-import {castArray} from './util';
+import {camelCase, isFunction, isObject, kebabCase} from 'lodash';
+import {EventEmitter} from 'node:events';
+import type {
+  CamelCase,
+  Class,
+  Entries,
+  KebabCase,
+  PackageJson,
+} from 'type-fest';
+import z from 'zod';
 
-export const zString = z.string().min(1).trim();
-export const zFalse = z.boolean().default(false);
-
-export const zTrue = z.boolean().default(true);
-export const zStringOrArray = z
-  .union([zString, z.array(zString)])
-  .default([])
-  .transform(castArray);
+function isSerializable<T>(value: T): value is T & {toJSON: () => unknown} {
+  return isObject(value) && 'toJSON' in value && isFunction(value.toJSON);
+}
 
 /**
- * Schema representing an array of non-empty strings.
+ * Casts a defined value to an array of non-`undefined` values.
  *
- * _**Not** a non-empty array of strings_.
+ * If `value` is `undefined`, returns an empty array. If `value` is an `Array`,
+ * returns the compacted array. Otherwise, returns an array with `value` as the
+ * only element.
+ *
+ * @param value Any value
+ * @returns An array, for sure!
  */
-export const zNonEmptyStringArray = z.array(zString).default([]);
+export function castArray<T>(value: T | T[]): NonNullable<T>[] {
+  return (value ? (Array.isArray(value) ? value : [value]) : []).filter(
+    Boolean,
+  ) as NonNullable<T>[];
+}
+
+/**
+ * Schema representing a non-empty string
+ */
+export const zNonEmptyString = z
+  .string()
+  .min(1)
+  .trim()
+  .describe('A non-empty string');
+
+/**
+ * Schema representing a `boolean` which defaults to `false`
+ */
+export const zDefaultFalse = z
+  .boolean()
+  .default(false)
+  .describe('A boolean defaulting to false');
+
+/**
+ * Schema representing a `boolean` which defaults to `true`
+ */
+export const zDefaultTrue = z
+  .boolean()
+  .default(true)
+  .describe('A boolean defaulting to true');
+
+/**
+ * Array of non-empty strings
+ */
+export const zNonEmptyStringArray = z
+  .array(zNonEmptyString)
+  .describe('An array of non-empty strings');
+
+/**
+ * Schema representing a non-empty string or array of non-empty strings, which
+ * is then cast to an array
+ */
+export const zNonEmptyStringOrArrayThereof = z
+  .union([zNonEmptyString, zNonEmptyStringArray])
+  .default([])
+  .transform(castArray)
+  .pipe(z.array(zNonEmptyString))
+  .describe(
+    'A non-empty string or array of non-empty strings, normalized to an array',
+  );
+
+/**
+ * Schema _very_ roughly representing a `package.json` file.
+ *
+ * @see {@link PackageJson}
+ */
+export const zPackageJson = z
+  .custom<PackageJson>((val) => typeof val === 'object' && !Array.isArray(val))
+  .describe('package.json contents');
+
+/**
+ * Schema representing an empty object
+ */
+export const zEmptyObject = z.object({}).describe('Empty object');
+
+export const zNonNegativeInteger = z
+  .number()
+  .int()
+  .gte(0)
+  .describe('Integer greater than or equal to 0');
+
+/**
+ * Returns a schema that tests if a value is an instance of a given class.
+ *
+ * @template E - The class type to check against.
+ * @param ctor - The class constructor to check against.
+ * @returns A custom zod validator function that checks if the value is an
+ *   instance of the given class.
+ * @todo Determine if this is something we should be in the business of doing at
+ *   all
+ */
+export function instanceofSchema<E extends Class<any>>(ctor: E) {
+  return z.custom<InstanceType<E>>((val) => val instanceof ctor);
+}
+
+/**
+ * Returns a schema which transforms a schema such that if a schema's output is
+ * an object, and that object has a `toJSON` method, call it.
+ *
+ * `midnight-smoker` has a convention where many classes implement a "static"
+ * interface, and the `toJSON` method returns such a type. This type is used for
+ * passing thru the module edge; e.g., via an `EventEmitter`.
+ *
+ * @param schema - The schema to use for serialization.
+ * @returns The serialized object.
+ */
+export function serializeObject<T extends z.ZodTypeAny>(schema: T) {
+  return schema
+    .transform((val: unknown) =>
+      isSerializable(val) ? (val.toJSON() as z.infer<T>) : val,
+    )
+    .pipe(schema);
+}
+
+/**
+ * Wraps a Zod schema in type `T` and validates the schema against it.
+ *
+ * Caveats:
+ *
+ * - Does not support `ZodEffect` schemas.
+ * - Does not ensure that `T` is assignable to `z.input<T>`
+ *
+ * @param schema - Any Zod schema
+ * @returns A Zod schema which validates against type `T`
+ * @todo Solve the above caveats, if possible
+ */
+export function customSchema<T>(schema?: z.ZodTypeAny) {
+  if (schema) {
+    return z.custom<T>((value) => schema.safeParse(value).success);
+  }
+  return z.custom<T>();
+}
+
+/**
+ * Schema for a {@link AbortSignal}
+ */
+export const zAbortSignal = instanceofSchema(AbortSignal);
+
+/**
+ * Rough schema for a {@link EventEmitter}-like object.
+ *
+ * This is not an `instanceof` check against Node.js' `EventEmitter` because
+ * alternative implementations may be used.
+ */
+export const zEventEmitter = customSchema<EventEmitter>(
+  z
+    .object({on: z.function(), once: z.function(), emit: z.function()})
+    .passthrough(),
+);
+
+/**
+ * Represents an object with keys transformed to dual casing (camel case and
+ * kebab case).
+ *
+ * @template T - The original object type.
+ */
+
+export type DualCasedObject<T> = {
+  [K in keyof T as K | CamelCase<K> | KebabCase<K>]: T[K];
+};
+
+/**
+ * Creates a new object with the same keys as `obj`, but with each key
+ * duplicated both as camelCase and kebab-case.
+ *
+ * @param obj - Any object
+ * @returns New object with probably more keys
+ */
+
+export function toDualCasedObject<T extends object>(obj: T) {
+  return (Object.entries(obj) as Entries<T>).reduce(
+    (acc, [key, value]) => {
+      return {
+        ...acc,
+        [key]: value,
+        [camelCase(key) as CamelCase<typeof key>]: value,
+        [kebabCase(key) as KebabCase<typeof key>]: value,
+      };
+    },
+    // eslint-disable-next-line @typescript-eslint/prefer-reduce-type-parameter
+    {} as DualCasedObject<T>,
+  );
+}
+
+export function dualCasedObjectSchema<T extends z.AnyZodObject>(schema: T) {
+  return schema.extend(toDualCasedObject(schema.shape));
+}

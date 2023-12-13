@@ -1,3 +1,9 @@
+import {
+  ExecaMock,
+  NullPm,
+  createExecaMock,
+  registerRule,
+} from '@midnight-smoker/test-util';
 import type {mkdir, mkdtemp, rm, stat} from 'node:fs/promises';
 import path from 'node:path';
 import rewiremock from 'rewiremock/node';
@@ -5,17 +11,29 @@ import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedEventEmitter from 'unexpected-eventemitter';
 import unexpectedSinon from 'unexpected-sinon';
-import type * as MS from '../../src';
-import * as Errors from '../../src/error';
-import {SmokerError} from '../../src/error';
-import {CorepackExecutor} from '../../src/pm/corepack';
+import z from 'zod';
+import {PkgManagerController} from '../../src/component/package-manager/controller';
+import {
+  InstallResult,
+  PackageManager,
+  PkgManagerInstallManifest,
+} from '../../src/component/schema/pkg-manager-schema';
+import {
+  InstallEvent,
+  PackEvent,
+  SmokerEvent,
+} from '../../src/event/event-constants';
+import {PluginRegistry} from '../../src/plugin/registry';
+import type * as MS from '../../src/smoker';
 import * as Mocks from './mocks';
+import {NullPkgManagerController} from './mocks/null-pm-controller';
 
 const expect = unexpected
   .clone()
   .use(unexpectedSinon)
   .use(unexpectedEventEmitter);
 
+// TODO: replace this shit with memfs
 interface NodeFsPromisesMocks {
   mkdir: sinon.SinonStubbedMember<typeof mkdir>;
   mkdtemp: sinon.SinonStubbedMember<typeof mkdtemp>;
@@ -23,46 +41,38 @@ interface NodeFsPromisesMocks {
   stat: sinon.SinonStubbedMember<typeof stat>;
 }
 
-export const MOCK_PM = '/bin/nullpm';
 const MOCK_PM_ID = 'nullpm@1.0.0';
-const MOCK_TMPROOT = '/some/tmp';
-export const MOCK_TMPDIR = path.join(MOCK_TMPROOT, 'midnight-smoker-');
 
-type SmokerSpecMocks = {
+const {MOCK_TMPDIR} = Mocks;
+
+interface SmokerSpecMocks {
   'node:fs/promises': NodeFsPromisesMocks;
   'node:console': sinon.SinonStubbedInstance<typeof console>;
-  debug: sinon.SinonStub<any, sinon.SinonStub>;
-  'node:os': {tmpdir: sinon.SinonStub<any, string>};
-  execa: Mocks.ExecaMock;
+  debug?: Mocks.DebugMock;
+  execa: ExecaMock;
   'read-pkg-up': sinon.SinonStub<
     any,
     Promise<{packageJson: {name: 'foo'}; path: '/some/path/to/package.json'}>
   >;
-  '../../src/pm': {
-    loadPackageManagers: sinon.SinonStub<any, Map<string, MS.PackageManager>>;
-  };
-};
+}
 
 describe('midnight-smoker', function () {
   let sandbox: sinon.SinonSandbox;
 
   let Smoker: typeof MS.Smoker;
 
-  let Event: typeof MS.Event;
-
-  let smoke: typeof MS.smoke;
-
   let mocks: SmokerSpecMocks;
 
-  let mockPm: Mocks.NullPm;
+  let nullPm: NullPm;
 
-  let pms: Map<string, MS.PackageManager>;
+  let pkgManagerMap: Map<string, PackageManager>;
+
+  let pmController: sinon.SinonStubbedInstance<PkgManagerController>;
 
   beforeEach(function () {
     sandbox = createSandbox();
-    pms = new Map();
-    const execaMock = Mocks.createExecaMock();
-
+    pkgManagerMap = new Map();
+    const execaMock = createExecaMock();
     mocks = {
       'node:fs/promises': {
         rm: sandbox.stub<Parameters<typeof rm>>().resolves(),
@@ -74,26 +84,22 @@ describe('midnight-smoker', function () {
       },
       execa: execaMock,
       'node:console': sandbox.stub(console),
-      'node:os': {
-        tmpdir: sandbox.stub().returns(MOCK_TMPROOT),
-      },
-      debug: sandbox.stub().returns(sandbox.stub()),
+      debug: Mocks.mockDebug,
       'read-pkg-up': sandbox.stub().returns({
         packageJson: {name: 'foo'},
         path: '/some/path/to/package.json',
       }),
-      '../../src/pm': {
-        loadPackageManagers: sandbox.stub().resolves(pms),
-      },
     };
 
-    mockPm = new Mocks.NullPm(new CorepackExecutor('moo'));
-    pms.set(MOCK_PM_ID, mockPm);
+    // don't stub out debug statements if running in wallaby
+    if (process.env.WALLABY_PROJECT_DIR) {
+      delete mocks.debug;
+    }
 
-    ({Smoker, smoke, Event} = rewiremock.proxy(
-      () => require('../../src'),
-      mocks,
-    ));
+    nullPm = new NullPm(MOCK_PM_ID);
+    pkgManagerMap.set(MOCK_PM_ID, nullPm);
+
+    ({Smoker} = rewiremock.proxy(() => require('../../src/smoker'), mocks));
   });
 
   afterEach(function () {
@@ -103,24 +109,30 @@ describe('midnight-smoker', function () {
   describe('class Smoker', function () {
     describe('method', function () {
       let smoker: MS.Smoker;
+      let registry: PluginRegistry;
 
-      beforeEach(function () {
-        smoker = Smoker.create(pms, {script: 'foo'});
+      beforeEach(async function () {
+        registry = PluginRegistry.create();
+        pmController = sandbox.createStubInstance(NullPkgManagerController);
+        // sandbox.stub(registry, 'loadPackageManagers').resolves(pkgManagerMap);
+
+        smoker = await Smoker.createWithCapabilities(
+          {script: 'foo'},
+          {registry, pmController},
+        );
       });
 
       describe('cleanup()', function () {
-        describe('when `createTempDir()` has not yet been called', function () {
-          it('should not attempt to prune the temp directories', async function () {
-            await smoker.cleanup();
-            await expect(mocks['node:fs/promises'].rm, 'was not called');
+        describe('when a package manager has been loaded', function () {
+          beforeEach(function () {
+            pmController.getPkgManagers.resolves([nullPm]);
           });
-        });
-
-        describe('when `createTempDir() has been successfully called', function () {
-          it('should attempt to prune the temp directory', async function () {
-            await smoker.createTempDir();
+          it('should attempt to prune all temp dirs owned by loaded package managers', async function () {
             await smoker.cleanup();
-            await expect(mocks['node:fs/promises'].rm, 'was called once');
+            await expect(mocks['node:fs/promises'].rm, 'was called once').and(
+              'to have a call satisfying',
+              [nullPm.tmpdir, {recursive: true, force: true}],
+            );
           });
 
           describe('when it fails to prune the temp directory', function () {
@@ -130,7 +142,6 @@ describe('midnight-smoker', function () {
               });
 
               it('should reject', async function () {
-                await smoker.createTempDir();
                 await expect(
                   smoker.cleanup(),
                   'to be rejected with error satisfying',
@@ -147,7 +158,6 @@ describe('midnight-smoker', function () {
               });
 
               it('should not reject', async function () {
-                await smoker.createTempDir();
                 await expect(smoker.cleanup(), 'to be fulfilled');
               });
             });
@@ -156,11 +166,11 @@ describe('midnight-smoker', function () {
 
         describe('when the "linger" option is true and a temp dir was created', function () {
           beforeEach(async function () {
-            smoker = Smoker.create(pms, {
-              script: 'foo',
-              linger: true,
-            });
-            await smoker.createTempDir();
+            registry = PluginRegistry.create();
+            smoker = await Smoker.createWithCapabilities(
+              {script: 'foo', linger: true},
+              {registry},
+            );
           });
 
           it('should not attempt to prune the temp directories', async function () {
@@ -173,488 +183,279 @@ describe('midnight-smoker', function () {
               smoker.cleanup(),
               'to emit from',
               smoker,
-              Event.LINGERED,
-            );
-          });
-        });
-      });
-
-      describe('createTempDir()', function () {
-        describe('when mkdtemp() is successful', function () {
-          it('should return the path to the temp directory', async function () {
-            await expect(
-              smoker.createTempDir(),
-              'to be fulfilled with',
-              MOCK_TMPDIR,
-            );
-          });
-        });
-
-        describe('when mkdtemp() fails', function () {
-          beforeEach(function () {
-            mocks['node:fs/promises'].mkdtemp.rejects();
-          });
-
-          it('should reject', async function () {
-            await expect(
-              smoker.createTempDir(),
-              'to be rejected with error satisfying',
-              /Failed to create temp directory/i,
+              SmokerEvent.Lingered,
             );
           });
         });
       });
 
       describe('pack()', function () {
-        it('should emit the "PackBegin" event', async function () {
-          await expect(smoker.pack(), 'to emit from', smoker, Event.PACK_BEGIN);
-        });
+        const packEvents = Object.keys(PackEvent);
 
         describe('when packing succeeds', function () {
-          it('should emit the "PackOk" event', async function () {
-            await expect(smoker.pack(), 'to emit from', smoker, Event.PACK_OK);
+          let actualManifest: PkgManagerInstallManifest[];
+          const expectedManifest = [
+            {
+              pkgManager: nullPm,
+              spec: `${MOCK_TMPDIR}/bar.tgz`,
+              pkgName: 'bar',
+              cwd: MOCK_TMPDIR,
+              isAdditional: false,
+            },
+          ];
+          beforeEach(async function () {
+            pmController.pack.resolves(expectedManifest);
+            actualManifest = await smoker.pack();
           });
-        });
 
-        it('should return an InstallManifest object', async function () {
-          const manifestMap = await smoker.pack();
+          it('should delegate to the PkgManagerController', function () {
+            expect(pmController.pack, 'was called once');
+          });
 
-          await expect([...manifestMap], 'to equal', [
-            [
-              mockPm,
-              {
-                packedPkgs: [
-                  {
-                    tarballFilepath: `${MOCK_TMPDIR}/bar.tgz`,
-                    installPath: `${MOCK_TMPDIR}/node_modules/bar`,
-                    pkgName: 'bar',
-                  },
-                  {
-                    tarballFilepath: `${MOCK_TMPDIR}/baz.tgz`,
-                    installPath: `${MOCK_TMPDIR}/node_modules/baz`,
-                    pkgName: 'baz',
-                  },
-                ],
-                tarballRootDir: MOCK_TMPDIR,
-              },
-            ],
-          ]);
+          it('should subscribe to all relevant events', function () {
+            expect(
+              pmController.addListener,
+              'was called times',
+              packEvents.length,
+            );
+          });
+          it('should unsubscribe from all relevant events', function () {
+            expect(
+              pmController.removeAllListeners,
+              'was called times',
+              packEvents.length,
+            );
+          });
+
+          it('should return the result of PkgManagerController.pack()', async function () {
+            expect(actualManifest, 'to be', expectedManifest);
+          });
         });
 
         describe('when packing fails', function () {
-          beforeEach(function () {
-            sandbox.stub(mockPm, 'pack').rejects(new Error('uh oh'));
+          beforeEach(async function () {
+            pmController.pack.rejects(new Error('yikes'));
+            await expect(smoker.pack(), 'to be rejected');
           });
 
-          it('should reject', async function () {
-            await expect(
-              smoker.pack(),
-              'to be rejected with error satisfying',
-              new Error('uh oh'),
+          it('should unsubscribe from all relevant events', function () {
+            expect(
+              pmController.removeAllListeners,
+              'was called times',
+              packEvents.length,
             );
           });
+        });
+      });
 
-          it('should emit the "PackFailed" event', async function () {
-            await expect(
-              async () => {
-                // we have to eat the error to catch the event due to zalgo
-                try {
-                  await smoker.pack();
-                } catch {}
+      describe('install()', function () {
+        const installEvents = Object.keys(InstallEvent);
+
+        describe('when installation succeeds', function () {
+          let actualResult: InstallResult[];
+          const expectedResult: InstallResult[] = [
+            {
+              rawResult: {} as any,
+              installManifests: [
+                {
+                  pkgManager: nullPm,
+                  isAdditional: false,
+                  spec: 'foo@1.0.0',
+                  pkgName: 'foo',
+                  cwd: MOCK_TMPDIR,
+                  installPath: path.join(MOCK_TMPDIR, 'node_modules', 'foo'),
+                },
+                {
+                  pkgManager: nullPm,
+                  isAdditional: false,
+                  spec: 'bar@1.0.0',
+                  pkgName: 'bar',
+                  cwd: MOCK_TMPDIR,
+                  installPath: path.join(MOCK_TMPDIR, 'node_modules', 'bar'),
+                },
+              ],
+            },
+          ];
+          beforeEach(async function () {
+            pmController.install.resolves(expectedResult);
+            actualResult = await smoker.install([
+              {
+                pkgManager: nullPm,
+                spec: `${MOCK_TMPDIR}/bar.tgz`,
+                pkgName: 'bar',
+                cwd: MOCK_TMPDIR,
+                isAdditional: false,
               },
-              'to emit from',
-              smoker,
-              Event.PACK_FAILED,
-              new Error('uh oh'),
-            );
-          });
-        });
-
-        describe('install()', function () {
-          let pkgInstallManifest: MS.PkgInstallManifest;
-
-          beforeEach(function () {
-            pkgInstallManifest = new Map([
-              [
-                mockPm,
-                {
-                  packedPkgs: [
-                    {
-                      tarballFilepath: `${MOCK_TMPDIR}/bar.tgz`,
-                      installPath: `${MOCK_TMPDIR}/node_modules/bar`,
-                      pkgName: 'bar',
-                    },
-                    {
-                      tarballFilepath: `${MOCK_TMPDIR}/baz.tgz`,
-                      installPath: `${MOCK_TMPDIR}/node_modules/baz`,
-                      pkgName: 'baz',
-                    },
-                  ],
-                  tarballRootDir: MOCK_TMPDIR,
-                },
-              ],
             ]);
           });
 
-          it('should emit the "InstallBegin" event', async function () {
-            await expect(
-              smoker.install(pkgInstallManifest),
-              'to emit from',
-              smoker,
-              Event.INSTALL_BEGIN,
+          it('should delegate to the PkgManagerController', function () {
+            expect(pmController.install, 'was called once');
+          });
+
+          it('should subscribe to all relevant events', function () {
+            expect(
+              pmController.addListener,
+              'was called times',
+              installEvents.length,
+            );
+          });
+          it('should unsubscribe from all relevant events', function () {
+            expect(
+              pmController.removeAllListeners,
+              'was called times',
+              installEvents.length,
             );
           });
 
-          it('should emit the "InstallOk" event', async function () {
-            await expect(
-              smoker.install(pkgInstallManifest),
-              'to emit from',
-              smoker,
-              Event.INSTALL_OK,
-            );
-          });
-
-          describe('when called without argument', function () {
-            it('should reject', async function () {
-              await expect(
-                // @ts-expect-error invalid args
-                smoker.install(),
-                'to be rejected with error satisfying',
-                {code: 'ESMOKER_INVALIDARG'},
-              );
-            });
-          });
-
-          describe(`when the PackageManager's installation fails`, function () {
-            beforeEach(function () {
-              sandbox.stub(mockPm, 'install').rejects(new Error('uh oh'));
-            });
-
-            it('should emit "InstallFailed" event', async function () {
-              await expect(
-                async () => {
-                  // we have to eat the error to catch the event due to zalgo
-                  try {
-                    await smoker.install(pkgInstallManifest);
-                  } catch {}
-                },
-                'to emit from',
-                smoker,
-                Event.INSTALL_FAILED,
-                new Error('uh oh'),
-              );
-            });
-
-            it('should reject', async function () {
-              await expect(
-                smoker.install(pkgInstallManifest),
-                'to be rejected with error satisfying',
-                new Error('uh oh'),
-              );
-            });
+          it('should return the result of PkgManagerController.pack()', async function () {
+            expect(actualResult, 'to be', expectedResult);
           });
         });
 
-        describe('runScripts()', function () {
-          let pkgRunManifest: MS.PkgRunManifest;
-
-          beforeEach(function () {
-            pkgRunManifest = new Map([
-              [
-                mockPm,
-                new Set([
-                  {
-                    packedPkg: {
-                      tarballFilepath: `${MOCK_TMPDIR}/bar.tgz`,
-                      installPath: `${MOCK_TMPDIR}/node_modules/bar`,
-                      pkgName: 'bar',
-                    },
-                    script: 'foo',
-                  },
-                  {
-                    packedPkg: {
-                      tarballFilepath: `${MOCK_TMPDIR}/baz.tgz`,
-                      installPath: `${MOCK_TMPDIR}/node_modules/baz`,
-                      pkgName: 'baz',
-                    },
-                    script: 'foo',
-                  },
-                ]),
-              ],
-            ]);
-          });
-
-          describe('when the arguments are correct', function () {
-            it('should emit the "RunScriptsBegin" event', async function () {
-              await expect(
-                smoker.runScripts(pkgRunManifest),
-                'to emit from',
-                smoker,
-                Event.RUN_SCRIPTS_BEGIN,
-              );
-            });
-
-            it('should emit the "RunScriptBegin" event (for the first script)', async function () {
-              await expect(
-                smoker.runScripts(pkgRunManifest),
-                'to emit from',
-                smoker,
-                Event.RUN_SCRIPT_BEGIN,
-                {script: 'foo', pkgName: 'bar', total: 2, current: 0},
-              );
-            });
-          });
-
-          describe('when called without "pkgRunManifest" argument', function () {
-            it('should reject', async function () {
-              await expect(
-                // @ts-expect-error invalid args
-                smoker.runScripts(),
-                'to be rejected with error satisfying',
-                new TypeError('(runScripts) "pkgRunManifest" arg is required'),
-              );
-            });
-          });
-
-          describe('when the scripts succeed', function () {
-            it('should emit the "RunScriptsOk" event', async function () {
-              await expect(
-                smoker.runScripts(pkgRunManifest),
-                'to emit from',
-                smoker,
-                Event.RUN_SCRIPTS_OK,
+        describe('when installation fails', function () {
+          beforeEach(async function () {
+            pmController.install.rejects(new Error('yikes'));
+            await expect(
+              smoker.install([
                 {
-                  results: expect.it('to be an array'),
-                  failed: 0,
-                  passed: 2,
-                },
-              );
-            });
-
-            it('should emit the "RunScriptOk" event (for the first script)', async function () {
-              // XXX: this emits twice; one for each package. the unexpected plugin
-              // does not support this and only sees the first one
-              await expect(
-                smoker.runScripts(pkgRunManifest),
-                'to emit from',
-                smoker,
-                Event.RUN_SCRIPT_OK,
-                {
-                  script: 'foo',
-                  current: 0,
-                  total: 2,
-                  rawResult: {},
+                  pkgManager: nullPm,
+                  spec: `${MOCK_TMPDIR}/bar.tgz`,
                   pkgName: 'bar',
+                  cwd: MOCK_TMPDIR,
+                  isAdditional: false,
                 },
-              );
-            });
-
-            it(`should resolve with an array of run results`, async function () {
-              await expect(
-                smoker.runScripts(pkgRunManifest),
-                'to be fulfilled with value satisfying',
-                [{pkgName: 'bar'}, {pkgName: 'baz'}],
-              );
-            });
+              ]),
+              'to be rejected',
+            );
           });
 
-          describe('when the PackageManager rejects', function () {
-            beforeEach(function () {
-              sandbox.stub(mockPm, 'runScript').rejects(new Error('oh noes'));
-            });
-
-            it('should reject', async function () {
-              await expect(
-                smoker.runScripts(pkgRunManifest),
-                'to be rejected with error satisfying',
-                {code: 'ESMOKER_PACKAGEMANAGER', cause: {pmId: MOCK_PM_ID}},
-              );
-            });
-          });
-
-          describe('when a script fails', function () {
-            let error: Errors.ScriptError;
-            beforeEach(function () {
-              error = new Errors.RunScriptError(
-                'oh noes',
-                'some-script',
-                'bar',
-                MOCK_PM_ID,
-                {error: new Error()},
-              );
-              sandbox
-                .stub(mockPm, 'runScript')
-                .callThrough()
-                .onFirstCall()
-                .callsFake(async (runManifest) => {
-                  return {
-                    pkgName: runManifest.packedPkg.pkgName,
-                    error,
-                    script: runManifest.script,
-                    rawResult: {} as MS.RawRunScriptResult,
-                    cwd: '/some/path',
-                  };
-                });
-            });
-
-            it('should emit the "RunScriptFailed" event', async function () {
-              await expect(
-                smoker.runScripts(pkgRunManifest),
-                'to emit from',
-                smoker,
-                Event.RUN_SCRIPT_FAILED,
-                {
-                  pkgName: 'bar',
-                  error: expect.it('to be a', SmokerError),
-                  script: 'foo',
-                  current: 0,
-                  total: 2,
-                  rawResult: {},
-                },
-              );
-            });
-
-            it('should emit the "RunScriptsFailed" event', async function () {
-              await expect(
-                smoker.runScripts(pkgRunManifest),
-                'to emit from',
-                smoker,
-                Event.RUN_SCRIPTS_FAILED,
-                {
-                  results: [
-                    {pkgName: 'bar', error: expect.it('to be a', SmokerError)},
-                    {pkgName: 'baz', error: undefined},
-                  ],
-                  failed: 1,
-                  passed: 1,
-                },
-              );
-            });
-
-            describe('when the "bail" option is false', function () {
-              beforeEach(function () {
-                smoker = Smoker.create(pms, {
-                  script: 'foo',
-                  bail: false,
-                });
-              });
-
-              it('should execute all scripts', async function () {
-                await expect(
-                  smoker.runScripts(pkgRunManifest),
-                  'to be fulfilled with value satisfying',
-                  [
-                    {pkgName: 'bar', error},
-                    {pkgName: 'baz', error: undefined},
-                  ],
-                );
-              });
-            });
-
-            describe('when the "bail" option is true', function () {
-              beforeEach(function () {
-                smoker = Smoker.create(pms, {
-                  script: 'foo',
-                  bail: true,
-                });
-              });
-
-              it('should execute only until a script fails', async function () {
-                await expect(
-                  smoker.runScripts(pkgRunManifest),
-                  'to be fulfilled with value satisfying',
-                  expect.it('to have length', 1),
-                );
-              });
-            });
+          it('should unsubscribe from all relevant events', function () {
+            expect(
+              pmController.removeAllListeners,
+              'was called times',
+              installEvents.length,
+            );
           });
         });
       });
 
       describe('smoke()', function () {
+        beforeEach(async function () {
+          sandbox.stub(smoker, 'loadListeners').resolves();
+          sandbox.stub(smoker, 'runScripts').resolves([]);
+          sandbox.stub(smoker, 'runChecks').resolves({passed: [], issues: []});
+          sandbox.stub(smoker, 'pack').resolves([]);
+          sandbox.stub(smoker, 'install').resolves([]);
+          await smoker.smoke();
+        });
+
+        it('should install packages', function () {
+          expect(smoker.pack, 'was called once');
+        });
+
+        it('should pack packages', function () {
+          expect(smoker.pack, 'was called once');
+        });
+
         describe('when provided scripts', function () {
-          it('should pack, install, and run scripts', async function () {
-            await expect(
-              smoker.smoke(),
-              'to be fulfilled with value satisfying',
-              {
-                scripts: [
-                  {pkgName: 'bar', script: 'foo'},
-                  {pkgName: 'baz', script: 'foo'},
-                ],
-              },
-            );
+          it('should run scripts', function () {
+            expect(smoker.runScripts, 'was called once');
           });
         });
 
-        describe('when checks enabled', async function () {
-          beforeEach(function () {
-            smoker = Smoker.create(pms);
-          });
-
-          it('should run checks', async function () {
-            await expect(
-              smoker.smoke(),
-              'to be fulfilled with value satisfying',
-              {
-                checks: {
-                  passed: expect.it('to have items satisfying', {
-                    rule: {
-                      name: expect.it('to be a string'),
-                      description: expect.it('to be a string'),
-                    },
-                    context: {
-                      pkgJson: expect.it('to be an object'),
-                      pkgJsonPath: expect.it('to be a string'),
-                      pkgPath: expect.it('to be a string'),
-                      severity: expect.it('to be one of', [
-                        'error',
-                        'warn',
-                        'off',
-                      ]),
-                    },
-                  }),
-                },
-              },
-            );
+        describe('when checks enabled', function () {
+          it('it should run checks', function () {
+            expect(smoker.runChecks, 'was called once');
           });
         });
       });
     });
 
     describe('static method', function () {
+      let registry: PluginRegistry;
+
+      beforeEach(async function () {
+        registry = PluginRegistry.create();
+        await registerRule(
+          {
+            name: 'test-rule',
+            schema: z.object({foo: z.string().default('bar')}),
+          },
+          registry,
+        );
+        sandbox.stub(registry, 'loadPlugins').resolves(registry);
+      });
+
       describe('smoke()', function () {
-        it('should pack, install, and run scripts', async function () {
-          await expect(
-            Smoker.smoke({script: 'foo'}),
-            'to be fulfilled with value satisfying',
-            {
-              scripts: [
-                {pkgName: 'bar', script: 'foo'},
-                {pkgName: 'baz', script: 'foo'},
-              ],
-            },
-          );
+        let smokerStub: sinon.SinonStubbedInstance<MS.Smoker>;
+
+        beforeEach(async function () {
+          smokerStub = sandbox.createStubInstance(Smoker);
+          sandbox.stub(Smoker, 'create').resolves(smokerStub);
+          await Smoker.smoke({script: 'foo'});
+        });
+
+        it('should delegate to Smoker.create()', async function () {
+          expect(Smoker.create, 'was called once');
+        });
+
+        it('should delegate to Smoker.prototype.smoke()', async function () {
+          expect(smokerStub.smoke, 'was called once');
         });
       });
 
       describe('create()', function () {
-        it('should throw if both non-empty "workspace" and true "all" options are provided', function () {
-          expect(
-            () => Smoker.create(pms, {workspace: ['foo'], all: true}),
-            'to throw',
+        it('should throw if both non-empty "workspace" and true "all" options are provided', async function () {
+          await expect(
+            Smoker.create({workspace: ['foo'], all: true}),
+            'to be rejected with error satisfying',
             /Option "workspace" is mutually exclusive with "all"/,
           );
         });
 
         describe('when not passed any scripts at all', function () {
-          it('should not throw', function () {
-            expect(() => Smoker.create(pms), 'not to throw');
+          it('should not throw', async function () {
+            await expect(Smoker.create({}), 'to be fulfilled');
           });
         });
 
-        it('should return a Smoker instance', function () {
-          expect(Smoker.create(pms), 'to be a', Smoker);
+        it('should return a Smoker instance', async function () {
+          await expect(
+            Smoker.create({}),
+            'to be fulfilled with value satisfying',
+            expect.it('to be a', Smoker),
+          );
+        });
+      });
+
+      describe('createWithCapabilities()', function () {
+        it('should throw if both non-empty "workspace" and true "all" options are provided', async function () {
+          await expect(
+            Smoker.createWithCapabilities(
+              {workspace: ['foo'], all: true},
+              {registry},
+            ),
+            'to be rejected with error satisfying',
+            /Option "workspace" is mutually exclusive with "all"/,
+          );
+        });
+
+        describe('when not passed any scripts at all', function () {
+          it('should not throw', async function () {
+            await expect(
+              Smoker.createWithCapabilities({}, {registry}),
+              'to be fulfilled',
+            );
+          });
+        });
+
+        it('should return a Smoker instance', async function () {
+          await expect(
+            Smoker.createWithCapabilities({}, {registry}),
+            'to be fulfilled with value satisfying',
+            expect.it('to be a', Smoker),
+          );
         });
       });
     });

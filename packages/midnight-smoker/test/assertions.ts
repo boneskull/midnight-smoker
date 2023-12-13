@@ -1,4 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 import type {ExecaReturnValue} from 'execa';
+import {isBoolean, isInteger, isObject, isString} from 'lodash';
 import type unexpected from 'unexpected';
 import {readPackageJsonSync} from '../src/util';
 
@@ -13,13 +17,17 @@ export default {
         base: 'object',
         identify(v: any): v is ExecaReturnValue {
           return (
-            v &&
-            typeof v === 'object' &&
-            typeof v.command === 'string' &&
-            typeof v.exitCode === 'number' &&
-            typeof v.stdout === 'string' &&
-            typeof v.stderr === 'string' &&
-            typeof v.failed === 'boolean'
+            isObject(v) &&
+            'command' in v &&
+            isString(v.command) &&
+            'exitCode' in v &&
+            isInteger(v.exitCode) &&
+            'stdout' in v &&
+            isString(v.stdout) &&
+            'stderr' in v &&
+            isString(v.stderr) &&
+            'failed' in v &&
+            isBoolean(v.failed)
           );
         },
       })

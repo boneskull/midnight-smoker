@@ -1,0 +1,9 @@
+{
+  "name": "package-manager-field",
+  "private": true,
+  "version": "1.0.0",
+  "packageManager": "npm@7.24.0",
+  "scripts": {
+    "smoke": "exit 0"
+  }
+}
