@@ -1,5 +1,26 @@
 # Changelog
 
+## [8.0.0](https://github.com/boneskull/midnight-smoker/compare/v7.0.4...v8.0.0) (2023-12-17)
+
+
+### ⚠ BREAKING CHANGES
+
+* Given a boatload of deps are dropping it, We have to drop it too.
+
+### Bug Fixes
+
+* **deps:** update dependency corepack to v0.22.0 ([c5fea52](https://github.com/boneskull/midnight-smoker/commit/c5fea527522f9bddfeec2f5c3179c3e0eb5407f3))
+* **deps:** update dependency corepack to v0.23.0 ([d63576e](https://github.com/boneskull/midnight-smoker/commit/d63576ed4c8581350fd96d708d9216b2f4107af8))
+* **deps:** update dependency lilconfig to v3 ([9c6737f](https://github.com/boneskull/midnight-smoker/commit/9c6737f394e2195d0f50c908befe7fcb634d9716))
+* **deps:** update dependency zod to v3.22.4 ([24da8fe](https://github.com/boneskull/midnight-smoker/commit/24da8fe7aa13143b9416e54b8527e3087772329e))
+* **deps:** update dependency zod-validation-error to v2 ([b3f5fa8](https://github.com/boneskull/midnight-smoker/commit/b3f5fa8d41207b2eb6389f55741af3024803b4dd))
+* **deps:** update dependency zod-validation-error to v2.1.0 ([0e16699](https://github.com/boneskull/midnight-smoker/commit/0e166992f0fbd00e97d2d93810fe3de5abebc390))
+
+
+### Miscellaneous Chores
+
+* drop Node.js v16 ([1bc5a7e](https://github.com/boneskull/midnight-smoker/commit/1bc5a7ec060f55211efa12adaf27ed92feaf3439))
+
 ## [7.0.4](https://github.com/boneskull/midnight-smoker/compare/v7.0.3...v7.0.4) (2023-10-11)
 
 

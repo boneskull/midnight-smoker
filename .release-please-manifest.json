@@ -1,3 +1,4 @@
 {
-  "packages/midnight-smoker": "7.0.4"
+  "packages/midnight-smoker": "7.0.4",
+  ".": "8.0.0"
 }
