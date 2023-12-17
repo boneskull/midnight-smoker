@@ -4,7 +4,7 @@
   "description": "Smoke test your package tarball (instead of failing miserably)",
   "repository": {
     "type": "git",
-    "url": "https://github.com/boneskull/midnight-smoker",
+    "url": "git+https://github.com/boneskull/midnight-smoker.git",
     "directory": "packages/midnight-smoker"
   },
   "homepage": "https://boneskull.github.io/midnight-smoker",
@@ -18,7 +18,7 @@
     "npm": ">=8.6.0"
   },
   "bin": {
-    "smoker": "./bin/smoker.js"
+    "smoker": "bin/smoker.js"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
