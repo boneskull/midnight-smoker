@@ -32,6 +32,6 @@ jobs:
       - name: Install dependencies
         uses: bahmutov/npm-install@2509f13e8485d88340a789a3f7ca11aaac47c9fc # v1.8.36
         with:
-          install-command: npm ci --ignore-scripts
+          install-command: npm ci --foreground-scripts
       - name: Lint
         run: npm run lint
