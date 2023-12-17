@@ -2,244 +2,461 @@
   "type": "object",
   "properties": {
     "add": {
-      "$ref": "#/$defs/stringOrStringArray",
-      "description": "Add an extra package to the list of packages to be installed."
+      "allOf": [
+        {
+          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0"
+        },
+        {
+          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/1"
+        }
+      ],
+      "description": "Add an extra package to the list of packages to be installed"
     },
     "all": {
       "$ref": "#/$defs/defaultFalse",
       "default": false,
-      "description": "Operate on all workspaces. The root workspace is omitted unless `includeRoot` is `true`."
+      "description": "Operate on all workspaces. The root workspace is omitted unless `includeRoot` is `true`"
     },
     "bail": {
       "$ref": "#/$defs/defaultFalse",
       "default": false,
-      "description": "Fail on first script failure."
+      "description": "Fail on first script failure"
     },
     "includeRoot": {
       "$ref": "#/$defs/defaultFalse",
       "default": false,
-      "description": "Operate on the root workspace. Only has an effect if `all` is `true`."
+      "description": "Operate on the root workspace. Only has an effect if `all` is `true`"
+    },
+    "include-root": {
+      "$ref": "#/properties/includeRoot"
     },
     "json": {
       "$ref": "#/$defs/defaultFalse",
       "default": false,
-      "description": "Output JSON only."
+      "description": "Output JSON only"
     },
     "linger": {
       "$ref": "#/$defs/defaultFalse",
       "default": false,
-      "description": "Do not delete temp directories after completion."
+      "description": "Do not delete temp directories after completion"
     },
     "verbose": {
       "$ref": "#/$defs/defaultFalse",
       "default": false,
-      "description": "Verbose logging."
+      "description": "Verbose logging"
     },
     "workspace": {
-      "$ref": "#/$defs/stringOrStringArray",
-      "description": "One or more workspaces to run scripts in."
+      "allOf": [
+        {
+          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0"
+        },
+        {
+          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/1"
+        }
+      ],
+      "description": "One or more workspaces to run scripts in"
     },
-    "pm": {
-      "$ref": "#/$defs/stringOrStringArray",
+    "pkgManager": {
+      "$ref": "#/$defs/arrayOfNonEmptyStrings",
       "default": "npm@latest",
-      "description": "Package manager(s) to use."
+      "description": "Package manager(s) to use"
+    },
+    "pkg-manager": {
+      "$ref": "#/properties/pkgManager"
     },
     "script": {
-      "$ref": "#/$defs/stringOrStringArray",
-      "description": "Script(s) to run. Alias of `scripts`."
+      "allOf": [
+        {
+          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0"
+        },
+        {
+          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/1"
+        }
+      ],
+      "description": "Script(s) to run. Alias of `scripts`"
     },
     "scripts": {
-      "$ref": "#/$defs/stringOrStringArray",
-      "description": "Script(s) to run. Alias of `script`."
+      "allOf": [
+        {
+          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0"
+        },
+        {
+          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/1"
+        }
+      ],
+      "description": "Script(s) to run. Alias of `script`"
     },
     "loose": {
       "$ref": "#/$defs/defaultFalse",
       "default": false,
-      "description": "If `true`, fail if a workspace is missing a script."
+      "description": "If `true`, fail if a workspace is missing a script"
     },
     "checks": {
       "$ref": "#/$defs/defaultTrue",
       "default": true,
-      "description": "If `false`, run no builtin checks."
+      "description": "If `false`, run no builtin checks"
     },
     "rules": {
       "type": "object",
       "properties": {
         "no-banned-files": {
-          "anyOf": [
+          "allOf": [
             {
-              "$ref": "#/$defs/severity",
-              "default": "error",
-              "description": "Severity of a rule. `off` disables the rule, `warn` will warn on violations, and `error` will error on violations."
-            },
-            {
-              "type": "object",
-              "properties": {
-                "allow": {
-                  "$ref": "#/$defs/arrayOfNonEmptyStrings",
-                  "default": [],
-                  "description": "Allow these banned files"
-                },
-                "deny": {
-                  "$ref": "#/$defs/arrayOfNonEmptyStrings",
-                  "default": [],
-                  "description": "Deny these additional files"
-                }
-              },
-              "additionalProperties": false
-            },
-            {
-              "type": "array",
-              "minItems": 2,
-              "maxItems": 2,
-              "items": [
+              "anyOf": [
                 {
-                  "$ref": "#/properties/rules/properties/no-banned-files/anyOf/1"
-                },
-                {
-                  "$ref": "#/properties/rules/properties/no-banned-files/anyOf/0"
-                }
-              ]
-            }
-          ]
-        },
-        "no-missing-pkg-files": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/severity",
-              "default": "error",
-              "description": "Severity of a rule. `off` disables the rule, `warn` will warn on violations, and `error` will error on violations."
-            },
-            {
-              "type": "object",
-              "properties": {
-                "bin": {
-                  "$ref": "#/$defs/defaultTrue",
-                  "default": true,
-                  "description": "Check the \"bin\" field (if it exists)"
-                },
-                "browser": {
-                  "$ref": "#/$defs/defaultTrue",
-                  "default": true,
-                  "description": "Check the \"browser\" field (if it exists)"
-                },
-                "types": {
-                  "$ref": "#/$defs/defaultTrue",
-                  "default": true,
-                  "description": "Check the \"types\" field (if it exists)"
-                },
-                "unpkg": {
-                  "$ref": "#/$defs/defaultTrue",
-                  "default": true,
-                  "description": "Check the \"unpkg\" field (if it exists)"
-                },
-                "module": {
-                  "$ref": "#/$defs/defaultTrue",
-                  "default": true,
-                  "description": "Check the \"module\" field (if it exists)"
-                },
-                "fields": {
-                  "$ref": "#/$defs/arrayOfNonEmptyStrings",
-                  "default": [],
-                  "description": "Check files referenced by these additional top-level fields"
-                }
-              },
-              "additionalProperties": false
-            },
-            {
-              "type": "array",
-              "minItems": 2,
-              "maxItems": 2,
-              "items": [
-                {
-                  "$ref": "#/properties/rules/properties/no-missing-pkg-files/anyOf/1"
+                  "type": "object",
+                  "properties": {
+                    "allow": {
+                      "allOf": [
+                        {
+                          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0"
+                        },
+                        {
+                          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/1"
+                        }
+                      ],
+                      "description": "Allow these banned files"
+                    },
+                    "deny": {
+                      "allOf": [
+                        {
+                          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0"
+                        },
+                        {
+                          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/1"
+                        }
+                      ],
+                      "description": "Deny these additional files"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "default": {
+                    "allow": [],
+                    "deny": []
+                  }
                 },
                 {
-                  "$ref": "#/properties/rules/properties/no-missing-pkg-files/anyOf/0"
+                  "$ref": "#/$defs/severity",
+                  "default": "error",
+                  "description": "Severity of a rule. `off` disables the rule, `warn` will warn on violations, and `error` will error (non-zero exit code) on violations."
+                },
+                {
+                  "type": "array",
+                  "minItems": 2,
+                  "maxItems": 2,
+                  "items": [
+                    {
+                      "$ref": "#/properties/rules/properties/no-banned-files/allOf/0/anyOf/1"
+                    },
+                    {
+                      "$ref": "#/properties/rules/properties/no-banned-files/allOf/0/anyOf/0"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "severity": {
+                      "$ref": "#/properties/rules/properties/no-banned-files/allOf/0/anyOf/1"
+                    },
+                    "opts": {
+                      "$ref": "#/properties/rules/properties/no-banned-files/allOf/0/anyOf/0"
+                    }
+                  },
+                  "additionalProperties": false
                 }
-              ]
+              ],
+              "description": "Rule-specific options"
+            },
+            {
+              "$ref": "#/properties/rules/properties/no-banned-files/allOf/0/anyOf/3"
             }
           ]
         },
         "no-missing-entry-point": {
-          "anyOf": [
+          "allOf": [
             {
-              "$ref": "#/$defs/severity",
-              "default": "error",
-              "description": "Severity of a rule. `off` disables the rule, `warn` will warn on violations, and `error` will error on violations."
-            },
-            {},
-            {
-              "type": "array",
-              "minItems": 2,
-              "maxItems": 2,
-              "items": [
+              "anyOf": [
                 {
-                  "$ref": "#/properties/rules/properties/no-missing-entry-point/anyOf/1"
+                  "type": "object",
+                  "properties": {},
+                  "additionalProperties": true,
+                  "description": "Empty object",
+                  "default": {}
                 },
                 {
-                  "$ref": "#/properties/rules/properties/no-missing-entry-point/anyOf/0"
+                  "$ref": "#/$defs/severity",
+                  "default": "error",
+                  "description": "Severity of a rule. `off` disables the rule, `warn` will warn on violations, and `error` will error (non-zero exit code) on violations."
+                },
+                {
+                  "type": "array",
+                  "minItems": 2,
+                  "maxItems": 2,
+                  "items": [
+                    {
+                      "$ref": "#/properties/rules/properties/no-missing-entry-point/allOf/0/anyOf/1"
+                    },
+                    {
+                      "$ref": "#/properties/rules/properties/no-missing-entry-point/allOf/0/anyOf/0"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "severity": {
+                      "$ref": "#/properties/rules/properties/no-missing-entry-point/allOf/0/anyOf/1"
+                    },
+                    "opts": {
+                      "$ref": "#/properties/rules/properties/no-missing-entry-point/allOf/0/anyOf/0"
+                    }
+                  },
+                  "additionalProperties": false
                 }
-              ]
+              ],
+              "description": "Empty object"
+            },
+            {
+              "$ref": "#/properties/rules/properties/no-missing-entry-point/allOf/0/anyOf/3"
             }
           ]
         },
         "no-missing-exports": {
-          "anyOf": [
+          "allOf": [
             {
-              "$ref": "#/$defs/severity",
-              "default": "error",
-              "description": "Severity of a rule. `off` disables the rule, `warn` will warn on violations, and `error` will error on violations."
-            },
-            {
-              "type": "object",
-              "properties": {
-                "types": {
-                  "$ref": "#/$defs/defaultTrue",
-                  "default": true,
-                  "description": "Assert a \"types\" conditional export matches a file with a .d.ts extension"
-                },
-                "require": {
-                  "$ref": "#/$defs/defaultTrue",
-                  "default": true,
-                  "description": "Assert a \"require\" conditional export matches a CJS script"
-                },
-                "import": {
-                  "$ref": "#/$defs/defaultTrue",
-                  "default": true,
-                  "description": "Assert an \"import\" conditional export matches a ESM module"
-                },
-                "order": {
-                  "$ref": "#/$defs/defaultTrue",
-                  "default": true,
-                  "description": "Assert conditional export \"default\", if present, is the last export"
-                },
-                "glob": {
-                  "$ref": "#/$defs/defaultTrue",
-                  "default": true,
-                  "description": "Allow glob patterns in subpath exports"
-                }
-              },
-              "additionalProperties": false
-            },
-            {
-              "type": "array",
-              "minItems": 2,
-              "maxItems": 2,
-              "items": [
+              "anyOf": [
                 {
-                  "$ref": "#/properties/rules/properties/no-missing-exports/anyOf/1"
+                  "type": "object",
+                  "properties": {
+                    "types": {
+                      "$ref": "#/$defs/defaultTrue",
+                      "default": true,
+                      "description": "Assert a \"types\" conditional export matches a file with a .d.ts extension"
+                    },
+                    "require": {
+                      "$ref": "#/$defs/defaultTrue",
+                      "default": true,
+                      "description": "Assert a \"require\" conditional export matches a CJS script"
+                    },
+                    "import": {
+                      "$ref": "#/$defs/defaultTrue",
+                      "default": true,
+                      "description": "Assert an \"import\" conditional export matches a ESM module"
+                    },
+                    "order": {
+                      "$ref": "#/$defs/defaultTrue",
+                      "default": true,
+                      "description": "Assert conditional export \"default\", if present, is the last export"
+                    },
+                    "glob": {
+                      "$ref": "#/$defs/defaultTrue",
+                      "default": true,
+                      "description": "Allow glob patterns in subpath exports"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "default": {
+                    "types": true,
+                    "require": true,
+                    "import": true,
+                    "order": true,
+                    "glob": true
+                  }
                 },
                 {
-                  "$ref": "#/properties/rules/properties/no-missing-exports/anyOf/0"
+                  "$ref": "#/$defs/severity",
+                  "default": "error",
+                  "description": "Severity of a rule. `off` disables the rule, `warn` will warn on violations, and `error` will error (non-zero exit code) on violations."
+                },
+                {
+                  "type": "array",
+                  "minItems": 2,
+                  "maxItems": 2,
+                  "items": [
+                    {
+                      "$ref": "#/properties/rules/properties/no-missing-exports/allOf/0/anyOf/1"
+                    },
+                    {
+                      "$ref": "#/properties/rules/properties/no-missing-exports/allOf/0/anyOf/0"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "severity": {
+                      "$ref": "#/properties/rules/properties/no-missing-exports/allOf/0/anyOf/1"
+                    },
+                    "opts": {
+                      "$ref": "#/properties/rules/properties/no-missing-exports/allOf/0/anyOf/0"
+                    }
+                  },
+                  "additionalProperties": false
                 }
-              ]
+              ],
+              "description": "Rule-specific options"
+            },
+            {
+              "$ref": "#/properties/rules/properties/no-missing-exports/allOf/0/anyOf/3"
+            }
+          ]
+        },
+        "no-missing-pkg-files": {
+          "allOf": [
+            {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "bin": {
+                      "$ref": "#/$defs/defaultTrue",
+                      "default": true,
+                      "description": "Check the \"bin\" field (if it exists)"
+                    },
+                    "browser": {
+                      "$ref": "#/$defs/defaultTrue",
+                      "default": true,
+                      "description": "Check the \"browser\" field (if it exists)"
+                    },
+                    "types": {
+                      "$ref": "#/$defs/defaultTrue",
+                      "default": true,
+                      "description": "Check the \"types\" field (if it exists)"
+                    },
+                    "unpkg": {
+                      "$ref": "#/$defs/defaultTrue",
+                      "default": true,
+                      "description": "Check the \"unpkg\" field (if it exists)"
+                    },
+                    "module": {
+                      "$ref": "#/$defs/defaultTrue",
+                      "default": true,
+                      "description": "Check the \"module\" field (if it exists)"
+                    },
+                    "fields": {
+                      "allOf": [
+                        {
+                          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0"
+                        },
+                        {
+                          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/1"
+                        }
+                      ],
+                      "description": "Check files referenced by these additional top-level fields"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "default": {
+                    "bin": true,
+                    "browser": true,
+                    "types": true,
+                    "unpkg": true,
+                    "module": true,
+                    "fields": []
+                  }
+                },
+                {
+                  "$ref": "#/$defs/severity",
+                  "default": "error",
+                  "description": "Severity of a rule. `off` disables the rule, `warn` will warn on violations, and `error` will error (non-zero exit code) on violations."
+                },
+                {
+                  "type": "array",
+                  "minItems": 2,
+                  "maxItems": 2,
+                  "items": [
+                    {
+                      "$ref": "#/properties/rules/properties/no-missing-pkg-files/allOf/0/anyOf/1"
+                    },
+                    {
+                      "$ref": "#/properties/rules/properties/no-missing-pkg-files/allOf/0/anyOf/0"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "severity": {
+                      "$ref": "#/properties/rules/properties/no-missing-pkg-files/allOf/0/anyOf/1"
+                    },
+                    "opts": {
+                      "$ref": "#/properties/rules/properties/no-missing-pkg-files/allOf/0/anyOf/0"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "Rule-specific options"
+            },
+            {
+              "$ref": "#/properties/rules/properties/no-missing-pkg-files/allOf/0/anyOf/3"
             }
           ]
         }
       },
-      "additionalProperties": false,
+      "additionalProperties": {
+        "allOf": [
+          {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": true,
+                "description": "Empty object",
+                "default": {}
+              },
+              {
+                "$ref": "#/$defs/severity",
+                "default": "error",
+                "description": "Severity of a rule. `off` disables the rule, `warn` will warn on violations, and `error` will error (non-zero exit code) on violations."
+              },
+              {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": [
+                  {
+                    "$ref": "#/properties/rules/additionalProperties/allOf/0/anyOf/1"
+                  },
+                  {
+                    "$ref": "#/properties/rules/additionalProperties/allOf/0/anyOf/0"
+                  }
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "severity": {
+                    "$ref": "#/properties/rules/additionalProperties/allOf/0/anyOf/1"
+                  },
+                  "opts": {
+                    "$ref": "#/properties/rules/additionalProperties/allOf/0/anyOf/0"
+                  }
+                },
+                "additionalProperties": false
+              }
+            ],
+            "description": "Empty object"
+          },
+          {
+            "$ref": "#/properties/rules/additionalProperties/allOf/0/anyOf/3"
+          }
+        ]
+      },
+      "description": "Rule configuration for automated checks",
       "default": {
+        "no-banned-files": {
+          "allow": [],
+          "deny": []
+        },
+        "no-missing-exports": {
+          "types": true,
+          "require": true,
+          "import": true,
+          "order": true,
+          "glob": true
+        },
         "no-missing-pkg-files": {
           "bin": true,
           "browser": true,
@@ -247,21 +464,55 @@
           "unpkg": true,
           "module": true,
           "fields": []
-        },
-        "no-banned-files": {
-          "allow": [],
-          "deny": []
-        },
-        "no-missing-entry-point": {},
-        "no-missing-exports": {
-          "types": true,
-          "require": true,
-          "import": true,
-          "order": true,
-          "glob": true
         }
-      },
-      "description": "Rule configuration for checks"
+      }
+    },
+    "plugin": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0"
+        },
+        {
+          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/1"
+        }
+      ],
+      "description": "One or more plugins to load"
+    },
+    "executor": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Component ID of Executor implementation",
+      "default": "default"
+    },
+    "ruleRunner": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Component ID of RuleRunner implementation",
+      "default": "default"
+    },
+    "rule-runner": {
+      "$ref": "#/properties/ruleRunner"
+    },
+    "scriptRunner": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Component ID of ScriptRunner implementation",
+      "default": "default"
+    },
+    "script-runner": {
+      "$ref": "#/properties/scriptRunner"
+    },
+    "reporter": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0"
+        },
+        {
+          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/1"
+        }
+      ],
+      "description": "Component ID of Reporter implementation",
+      "default": ["console"]
     }
   },
   "additionalProperties": false,
@@ -269,39 +520,46 @@
   "$defs": {
     "defaultTrue": {
       "type": "boolean",
-      "default": true
+      "default": true,
+      "description": "A boolean defaulting to true"
     },
     "defaultFalse": {
       "type": "boolean",
-      "default": false
+      "default": false,
+      "description": "A boolean defaulting to false"
     },
-    "stringOrStringArray": {
-      "anyOf": [
+    "arrayOfNonEmptyStrings": {
+      "allOf": [
         {
-          "type": "string",
-          "minLength": 1
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "description": "A non-empty string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0/anyOf/0"
+              },
+              "description": "An array of non-empty strings"
+            }
+          ],
+          "default": []
         },
         {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/stringOrStringArray/anyOf/0"
+            "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0/anyOf/0"
           }
         }
       ],
-      "default": []
-    },
-    "arrayOfNonEmptyStrings": {
-      "type": "array",
-      "items": {
-        "$ref": "#/$defs/stringOrStringArray/anyOf/0"
-      },
-      "default": []
+      "description": "A non-empty string or array of non-empty strings, normalized to an array"
     },
     "severity": {
       "type": "string",
-      "enum": ["off", "warn", "error"],
-      "description": "Severity of a rule. `off` disables the rule, `warn` will warn on violations, and `error` will error on violations.",
-      "default": "error"
+      "enum": ["error", "warn", "off"],
+      "description": "Severity of a rule. `off` disables the rule, `warn` will warn on violations, and `error` will error (non-zero exit code) on violations."
     }
   },
   "$schema": "http://json-schema.org/draft-07/schema#"

@@ -7,10 +7,5 @@
       "midnight-smoker": ["../../midnight-smoker"]
     }
   },
-  "include": ["."],
-  "references": [
-    {
-      "path": "../../midnight-smoker/src/tsconfig.json"
-    }
-  ]
+  "include": ["."]
 }

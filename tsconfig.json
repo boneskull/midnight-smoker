@@ -2,8 +2,9 @@
   "extends": "./.config/tsconfig.workspace.json",
   "files": [],
   "references": [
-    {"path": "./packages/midnight-smoker/tsconfig.json"},
+    {"path": "./packages/midnight-smoker/src/tsconfig.json"},
+    {"path": "./packages/test-util/tsconfig.json"},
     {"path": "./packages/plugin-default/tsconfig.json"},
-    {"path": "./packages/test-util/tsconfig.json"}
+    {"path": "./packages/midnight-smoker/test/tsconfig.json"}
   ]
 }

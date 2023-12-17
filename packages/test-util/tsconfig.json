@@ -1,5 +1,10 @@
 {
   "extends": "../../.config/tsconfig.workspace.json",
   "files": [],
-  "references": [{"path": "./src/tsconfig.json"}]
+  "references": [
+    {
+      "path": "../midnight-smoker/src/tsconfig.json"
+    },
+    {"path": "./src/tsconfig.json"}
+  ]
 }
