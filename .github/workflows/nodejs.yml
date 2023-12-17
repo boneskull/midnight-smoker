@@ -4,11 +4,11 @@ on: [push, pull_request]
 
 jobs:
   build:
-    name: Test on node ${{ matrix.node_version }} and ${{ matrix.os }}
+    name: Node.js v${{ matrix.node_version }} / ${{ matrix.os }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node_version: [16, 18, 20]
+        node_version: [18, 20]
         os: [ubuntu-latest, windows-latest]
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
@@ -17,7 +17,7 @@ jobs:
         with:
           node-version: ${{ matrix.node_version }}
       - name: Upgrade npm
-        run: npm i -g npm@9 # upgrade to 'latest' when Node.js v16 is dropped
+        run: npm i -g npm
       - name: Install dependencies
         uses: bahmutov/npm-install@2509f13e8485d88340a789a3f7ca11aaac47c9fc # v1.8.36
         with:
@@ -32,18 +32,6 @@ jobs:
       - name: Install dependencies
         uses: bahmutov/npm-install@2509f13e8485d88340a789a3f7ca11aaac47c9fc # v1.8.36
         with:
-          install-command: npm ci --foreground-scripts
+          install-command: npm ci --ignore-scripts
       - name: Lint
         run: npm run lint
-  node16:
-    name: Check prod deps for Node.js v16
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
-      - uses: actions/setup-node@8f152de45cc393bb48ce5d89d36b731f54556e65 # v4.0.0
-        with:
-          node-version: 16
-      - name: Install dependencies
-        uses: bahmutov/npm-install@2509f13e8485d88340a789a3f7ca11aaac47c9fc # v1.8.36
-        with:
-          install-command: npm ci --foreground-scripts --omit=dev --engine-strict
