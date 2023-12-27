@@ -4,7 +4,7 @@
   "description": "Default behavior for midnight-smoker",
   "repository": {
     "type": "git",
-    "url": "https://github.com/boneskull/midnight-smoker",
+    "url": "git+https://github.com/boneskull/midnight-smoker.git",
     "directory": "packages/plugin-default"
   },
   "homepage": "https://github.com/boneskull/midnight-smoker/tree/main/packages/plugin-default",
@@ -14,8 +14,8 @@
   "author": "Christopher Hiller <boneskull@boneskull.com> (https://boneskull.com/)",
   "license": "Apache-2.0",
   "engines": {
-    "node": "^16.20.0 || ^18.0.0 || ^20.0.0",
-    "npm": ">=7"
+    "node": "^18.0.0 || ^20.0.0",
+    "npm": ">=8.6.0"
   },
   "main": "./dist/index.js",
   "exports": {
@@ -52,7 +52,7 @@
     "test:update-snapshots": "cross-env SNAPSHOT_UPDATE=1 npm run test:e2e -- --fgrep \"[snapshot]\""
   },
   "peerDependencies": {
-    "midnight-smoker": "^7.0.4"
+    "midnight-smoker": "^8.0.0"
   },
   "dependencies": {
     "chalk": "4.1.2",
@@ -71,7 +71,7 @@
     "@midnight-smoker/test-util": "file:../test-util",
     "@types/is-file-esm": "1.0.1",
     "@types/stringify-object": "3.3.1",
-    "midnight-smoker": "7.0.4",
+    "midnight-smoker": "8.0.0",
     "semver": "7.5.4"
   },
   "access": "public"

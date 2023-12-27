@@ -4,7 +4,7 @@
   "description": "Test utilities for midnight-smoker plugins",
   "repository": {
     "type": "git",
-    "url": "https://github.com/boneskull/midnight-smoker",
+    "url": "git+https://github.com/boneskull/midnight-smoker.git",
     "directory": "packages/test-util"
   },
   "homepage": "https://github.com/boneskull/midnight-smoker/tree/main/packages/test-util",
@@ -14,8 +14,8 @@
   "author": "Christopher Hiller <boneskull@boneskull.com> (https://boneskull.com/)",
   "license": "Apache-2.0",
   "engines": {
-    "node": "^16.20.0 || ^18.0.0 || ^20.0.0",
-    "npm": ">=7"
+    "node": "^18.0.0 || ^20.0.0",
+    "npm": ">=8.6.0"
   },
   "main": "./dist/index.js",
   "exports": {
@@ -47,7 +47,7 @@
     "test:smoke": "smoker"
   },
   "peerDependencies": {
-    "midnight-smoker": "^7.0.4"
+    "midnight-smoker": "^8.0.0"
   },
   "dependencies": {
     "debug": "4.3.4",
@@ -57,7 +57,7 @@
     "strip-ansi": "5.2.0"
   },
   "devDependencies": {
-    "midnight-smoker": "7.0.4"
+    "midnight-smoker": "8.0.0"
   },
   "access": "public"
 }

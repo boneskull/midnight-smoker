@@ -10,7 +10,7 @@ describe('@midnight-smoker/plugin-default', function () {
       it('should fail (for now)', async function () {
         const cwd = path.join(__dirname, 'fixture', 'single-script');
         await expect(
-          execSmoker(['smoke', `--pm=pnpm`, '--json', '--no-checks'], {
+          execSmoker(['run', `--pm=pnpm`, '--json', '--no-lint'], {
             cwd,
           }),
           'to be rejected with error satisfying',

@@ -1,7 +1,10 @@
 import {PackageJson} from 'type-fest';
+import {RuleError} from '../../error/rule-error';
 import {serialize} from '../../util';
+import {Component} from '../component';
 import {RuleIssue} from './issue';
-import type {StaticRule, StaticRuleContext} from './static';
+import {SomeRule} from './rule';
+import type {StaticRuleContext} from './static';
 
 /**
  * The `addIssue` function that a {@linkcode RuleCheckFn} uses to create a
@@ -31,7 +34,7 @@ export class RuleContext implements StaticRuleContext {
    */
   readonly #issues: RuleIssue[] = [];
   protected constructor(
-    private readonly rule: StaticRule,
+    private readonly rule: Component<SomeRule>,
     staticCtx: StaticRuleContext,
   ) {
     this.staticCtx = Object.freeze({...staticCtx});
@@ -86,7 +89,7 @@ export class RuleContext implements StaticRuleContext {
    * Creates a {@link RuleContext}.
    */
   public static create(
-    rule: StaticRule,
+    rule: Component<SomeRule>,
     staticCtx: StaticRuleContext,
   ): Readonly<RuleContext> {
     return Object.freeze(new RuleContext(rule, serialize(staticCtx)));
@@ -100,12 +103,23 @@ export class RuleContext implements StaticRuleContext {
    * @param err - Error to add as an issue
    */
   public addIssueFromError(err: Error): void {
+    const error = new RuleError(
+      `Rule "${this.rule.id}" threw an exception`,
+      this.toJSON(),
+      this.rule.id,
+      err,
+    );
+
+    const {message} = error;
+    const rule = serialize(this.rule);
+    const context = serialize(this);
+
     this.#addIssue(
       RuleIssue.create({
-        message: `${err.message}\n\n${err.stack}`,
-        error: err,
-        rule: serialize(this.rule),
-        context: serialize(this),
+        message,
+        error,
+        rule,
+        context,
       }),
     );
   }

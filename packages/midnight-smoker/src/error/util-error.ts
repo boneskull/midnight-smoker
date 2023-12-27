@@ -1,4 +1,4 @@
-import {BaseSmokerError} from './error/base-error';
+import {BaseSmokerError} from './base-error';
 
 /**
  * @group Errors

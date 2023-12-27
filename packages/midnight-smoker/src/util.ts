@@ -12,7 +12,7 @@ import type {Opaque, PackageJson} from 'type-fest';
 import {
   MissingPackageJsonError,
   UnreadablePackageJsonError,
-} from './util-error';
+} from './error/util-error';
 
 /**
  * Regex string to match a package name.

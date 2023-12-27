@@ -1,9 +1,7 @@
 import unexpected from 'unexpected';
+import {Component, SomeRule} from '../../../../src/component';
 import {RuleContext} from '../../../../src/component/rule/context';
-import {
-  StaticRule,
-  StaticRuleContext,
-} from '../../../../src/component/rule/static';
+import {StaticRuleContext} from '../../../../src/component/rule/static';
 
 const expect = unexpected.clone();
 
@@ -11,12 +9,13 @@ describe('midnight-smoker', function () {
   describe('component', function () {
     describe('rule', function () {
       describe('RuleContext', function () {
-        const rule: StaticRule = {
+        const rule = {
+          id: 'example-rule',
           name: 'example-rule',
           description: 'This is an example rule',
           defaultSeverity: 'error',
           url: 'https://example.com/rules/example-rule',
-        };
+        } as Component<SomeRule>;
         const staticCtx: StaticRuleContext = {
           pkgJson: {
             name: 'example-package',
@@ -94,8 +93,8 @@ describe('midnight-smoker', function () {
               // "to equal" would be used here if we wanted to instantiate a RuleIssue.
               expect(context.issues, 'to satisfy', [
                 {
-                  message: `${error.message}\n\n${error.stack}`,
-                  error,
+                  message: 'Rule "example-rule" threw an exception',
+                  error: {cause: error},
                   rule,
                   context: staticCtx,
                 },
@@ -108,8 +107,8 @@ describe('midnight-smoker', function () {
               // "to equal" would be used here if we wanted to instantiate a RuleIssue.
               expect(context.issues, 'to satisfy', [
                 {
-                  message: `${error.message}\n\n${error.stack}`,
-                  error,
+                  message: 'Rule "example-rule" threw an exception',
+                  error: {cause: error},
                   rule,
                   context: staticCtx,
                 },

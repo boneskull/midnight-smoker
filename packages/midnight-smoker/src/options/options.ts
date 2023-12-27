@@ -24,6 +24,12 @@ export const zBaseSmokerOptions = z
         'Operate on all workspaces. The root workspace is omitted unless `includeRoot` is `true`',
       ),
       bail: zDefaultFalse.describe('Fail on first script failure'),
+      lint: zDefaultTrue.describe(
+        'If `false`, do not lint when running custom scripts',
+      ),
+      executor: zNonEmptyString
+        .describe('Component ID of Executor implementation')
+        .default(DEFAULT_COMPONENT_ID),
       includeRoot: zDefaultFalse.describe(
         'Operate on the root workspace. Only has an effect if `all` is `true`',
       ),
@@ -31,39 +37,35 @@ export const zBaseSmokerOptions = z
       linger: zDefaultFalse.describe(
         'Do not delete temp directories after completion',
       ),
-      verbose: zDefaultFalse.describe('Verbose logging'),
-      workspace: zNonEmptyStringOrArrayThereof.describe(
-        'One or more workspaces to run scripts in',
+      loose: zDefaultFalse.describe(
+        'If `true`, fail if a workspace is missing a script',
       ),
       pkgManager: zNonEmptyStringOrArrayThereof
         .default(DEFAULT_PACKAGE_MANAGER_SPEC)
         .describe('Package manager(s) to use'),
-      script: zNonEmptyStringOrArrayThereof.describe(
-        'Script(s) to run. Alias of `scripts`',
-      ),
-      scripts: zNonEmptyStringOrArrayThereof.describe(
-        'Script(s) to run. Alias of `script`',
-      ),
-      loose: zDefaultFalse.describe(
-        'If `true`, fail if a workspace is missing a script',
-      ),
-      checks: zDefaultTrue.describe('If `false`, run no builtin checks'),
-      rules: zBaseRuleOptionsRecord.default({}),
       plugin: zNonEmptyStringOrArrayThereof.describe(
         'One or more plugins to load',
       ),
-      executor: zNonEmptyString
-        .describe('Component ID of Executor implementation')
-        .default(DEFAULT_COMPONENT_ID),
-      ruleRunner: zNonEmptyString
-        .describe('Component ID of RuleRunner implementation')
-        .default(DEFAULT_COMPONENT_ID),
-      scriptRunner: zNonEmptyString
-        .describe('Component ID of ScriptRunner implementation')
-        .default(DEFAULT_COMPONENT_ID),
       reporter: zNonEmptyStringOrArrayThereof
         .describe('Component ID of Reporter implementation')
         .default(['console']),
+      ruleRunner: zNonEmptyString
+        .describe('Component ID of RuleRunner implementation')
+        .default(DEFAULT_COMPONENT_ID),
+      rules: zBaseRuleOptionsRecord.default({}),
+      script: zNonEmptyStringOrArrayThereof.describe(
+        'Script(s) to run. Alias of `scripts`',
+      ),
+      scriptRunner: zNonEmptyString
+        .describe('Component ID of ScriptRunner implementation')
+        .default(DEFAULT_COMPONENT_ID),
+      scripts: zNonEmptyStringOrArrayThereof.describe(
+        'Script(s) to run. Alias of `script`',
+      ),
+      verbose: zDefaultFalse.describe('Verbose logging'),
+      workspace: zNonEmptyStringOrArrayThereof.describe(
+        'One or more workspaces to run scripts in',
+      ),
     }),
   )
   .describe('midnight-smoker options schema');

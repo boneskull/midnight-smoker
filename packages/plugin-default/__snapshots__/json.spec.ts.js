@@ -4,12 +4,12 @@ exports['@midnight-smoker/plugin-default reporter json when the script succeeds 
       "add": [],
       "all": false,
       "bail": false,
-      "checks": false,
       "executor": "default",
       "include-root": false,
       "includeRoot": false,
       "json": true,
       "linger": false,
+      "lint": false,
       "loose": false,
       "pkg-manager": [
         "npm@latest"
@@ -108,12 +108,12 @@ exports['@midnight-smoker/plugin-default reporter json when the script fails sho
           "add": [],
           "all": false,
           "bail": false,
-          "checks": false,
           "executor": "default",
           "include-root": false,
           "includeRoot": false,
           "json": true,
           "linger": false,
+          "lint": false,
           "loose": false,
           "pkg-manager": [
             "npm@latest"
@@ -276,7 +276,7 @@ exports['@midnight-smoker/plugin-default reporter json when the script fails sho
     ],
     "id": "SmokeFailedError",
     "message": "🤮 Maurice!",
-    "stack": "AggregateError: 🤮 Maurice!\n<loc>:<line>:<col>\n<loc>:<line>:<col>"
+    "stack": "AggregateError: 🤮 Maurice!\n<loc>:<line>:<col>\n<loc>:<line>:<col>\n<loc>:<line>:<col>"
   },
   "stats": {
     "failedChecks": null,

@@ -1,6 +1,5 @@
 import Debug from 'debug';
 import {isEmpty, memoize} from 'lodash';
-import terminalLink from 'terminal-link';
 import z from 'zod';
 import {
   dualCasedObjectSchema,
@@ -205,9 +204,6 @@ export class Rule<
   }
 
   public toString(this: Component<Rule<Name, Schema>>) {
-    if (terminalLink.isSupported && this.url) {
-      return terminalLink(this.id, this.url);
-    }
     return this.id;
   }
 

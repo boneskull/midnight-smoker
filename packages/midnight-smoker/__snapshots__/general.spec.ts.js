@@ -15,7 +15,7 @@ undefined
 
 Stack Trace:
 PackError: Package manager npm@<version> failed to pack: Invalid package, must have name and version<loc>:<line>:<col><loc>:<line>:<col><loc>:<line>:<col>
-    at async Promise.all (index 0)<loc>:<line>:<col><loc>:<line>:<col><loc>:<line>:<col><loc>:<line>:<col> {
+    at async Promise.all (index 0)<loc>:<line>:<col><loc>:<line>:<col><loc>:<line>:<col><loc>:<line>:<col><loc>:<line>:<col> {
   context: {
     error: {
       summary: 'Invalid package, must have name and version'
@@ -56,7 +56,7 @@ undefined
 
 Stack Trace:
 InstallError: Package manager npm@<version> failed to install /<path/to/some>.tgz in dir <cwd>: Not Found - GET https://registry.npmjs.org/4923867iajhiknfdeskjusyghikuwyhwaqheakkcjzhxfksdjfhd - Not found<loc>:<line>:<col><loc>:<line>:<col><loc>:<line>:<col><loc>:<line>:<col>
-    at async Promise.all (index 0)<loc>:<line>:<col><loc>:<line>:<col><loc>:<line>:<col> {
+    at async Promise.all (index 0)<loc>:<line>:<col><loc>:<line>:<col><loc>:<line>:<col><loc>:<line>:<col> {
   context: {
     pmSpec: 'npm@<version>',
     installSpecs: [

@@ -9,7 +9,7 @@ export function createCommandTest(cwd: string, extraArgs: string[] = []) {
     describe(`requested: ${requested}`, function () {
       it('should use a matching package manager', async function () {
         const {stdout} = await execSmoker(
-          ['smoke', `--pm=${requested}`, '--no-checks', '--json', ...extraArgs],
+          ['run', `--pm=${requested}`, '--no-lint', '--json', ...extraArgs],
           {
             cwd,
           },
@@ -31,7 +31,7 @@ export function createBehaviorTest(cwd: string, extraArgs: string[] = []) {
     describe(`requested: ${spec}`, function () {
       it('should exhibit the expected behavior', async function () {
         const {stdout} = await execSmoker(
-          ['smoke', `--pm=${spec}`, '--no-checks', '--json', ...extraArgs],
+          ['run', `--pm=${spec}`, '--no-lint', '--json', ...extraArgs],
           {
             cwd,
           },

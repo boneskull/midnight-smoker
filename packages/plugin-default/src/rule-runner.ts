@@ -91,18 +91,11 @@ export class SmokerRuleRunner<T extends Rule.BaseNormalizedRuleOptionsRecord> {
             // this was in run() but moved it here because I wanted run() to be
             // static.
             // also consider combining multiple errors per rule into an AggregateError
-            issues
-              .filter((issue) => Boolean(issue.error))
-              .forEach((issue) => {
-                this.notifiers.ruleError(
-                  new this.api.Errors.RuleError(
-                    `Rule "${rule.id}" threw an exception`,
-                    context.toJSON(),
-                    rule.id,
-                    issue.error!,
-                  ),
-                );
-              });
+            for (const issue of issues) {
+              if (issue.error) {
+                this.notifiers.ruleError(issue.error);
+              }
+            }
 
             this.notifiers.ruleFailed({
               rule: rule.id,

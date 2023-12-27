@@ -1,8 +1,12 @@
 import {bold, cyan, yellow} from 'chalk';
 import Table from 'cli-table3';
 import deepmerge from 'deepmerge';
+import {isError, merge, pick} from 'lodash';
 import stringWidth from 'string-width';
 import {MergeDeep, Primitive} from 'type-fest';
+import {ArgumentsCamelCase} from 'yargs';
+import {BaseSmokerError} from '../error/base-error';
+import {RawSmokerOptions} from '../options/options';
 
 /**
  * Creates a table (for display in the console) with the given items and
@@ -78,4 +82,65 @@ export function mergeOptions<T extends object, U extends object>(
   config: U,
 ): MergeDeep<T, U> {
   return Object.assign(argv, deepmerge(config, argv) as MergeDeep<T, U>);
+}
+
+export function createConfigMerge<
+  Opts extends RawSmokerOptions,
+  Props extends keyof Opts,
+>(config: Opts, props?: Props[]) {
+  const picked: Pick<Opts, Props> = props?.length
+    ? pick(config, props)
+    : config;
+
+  /**
+   * Merges parsed `argv` with the loaded `config` object--with `argv` taking
+   * precedence--and assigns the result to `argv`.
+   *
+   * @template T - Type of the parsed `argv` object
+   * @param argv - Parsed options from `yargs`
+   */
+  return async (argv: ArgumentsCamelCase<Opts>) => {
+    merge(argv, picked);
+  };
+}
+
+/**
+ * Error reporter of last resort.
+ *
+ * Does not set `process.exitCode`.
+ *
+ * @param err - Error thrown somewhere in the command handlers
+ * @param verbose - If `true`, output more information
+ * @param json - If `true`, _only_ output JSON and output to STDOUT instead of
+ *   STDERR
+ */
+export function handleRejection(err: unknown, verbose = false, json = false) {
+  if (json) {
+    let output: {error: any};
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+      output = {error: (err as any).toJSON()};
+    } catch {
+      output = {error: BaseSmokerError.prototype.toJSON.call(err)};
+    }
+    // if we cannot serialize the error, just throw it, and give us an "A" for effort
+    try {
+      console.log(JSON.stringify(output));
+    } catch {
+      throw err;
+    }
+  } else {
+    let output: any;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+      output = (err as any).format(verbose);
+    } catch {
+      if (isError(err)) {
+        try {
+          output = BaseSmokerError.prototype.format.call(err, verbose);
+        } catch {}
+      }
+    }
+    console.error(output ?? err);
+  }
 }

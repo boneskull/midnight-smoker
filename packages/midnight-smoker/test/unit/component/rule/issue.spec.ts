@@ -10,6 +10,7 @@ import {
   StaticRule,
   StaticRuleContext,
 } from '../../../../src/component/rule/static';
+import {RuleError} from '../../../../src/error/rule-error';
 
 const expect = unexpected.clone();
 
@@ -41,7 +42,12 @@ describe('midnight-smoker', function () {
             context: exampleStaticRuleContext,
             message: 'Test message',
             data: {foo: 'bar'},
-            error: new Error('Test error'),
+            error: new RuleError(
+              'Test error',
+              exampleStaticRuleContext,
+              'example-rule',
+              new Error('Test error'),
+            ),
           };
           issue = new RuleIssue(params);
         });

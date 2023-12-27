@@ -35,7 +35,7 @@ describe('@midnight-smoker/plugin-default', function () {
         let result: Executor.ExecResult;
 
         before(async function () {
-          result = await execSmoker(['smoke', '--json', '--no-checks'], {
+          result = await execSmoker(['run', 'smoke', '--json', '--no-lint'], {
             cwd,
           });
         });
@@ -71,7 +71,7 @@ describe('@midnight-smoker/plugin-default', function () {
 
         before(async function () {
           try {
-            await execSmoker(['smoke', '--json', '--no-checks'], {cwd});
+            await execSmoker(['run', 'smoke', '--json', '--no-lint'], {cwd});
           } catch (err) {
             result = err as Executor.ExecResult;
           }

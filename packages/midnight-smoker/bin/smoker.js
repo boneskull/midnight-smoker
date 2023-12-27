@@ -2,4 +2,4 @@
 
 require('source-map-support').install();
 
-require('../dist/cli.js');
+require('../dist/cli/index.js');

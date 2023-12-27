@@ -8,7 +8,7 @@ import {BaseSmokerError} from './base-error';
 export class RuleError extends BaseSmokerError<
   {
     context: StaticRuleContext;
-    ruleName: string;
+    ruleId: string;
   },
   Error
 > {
@@ -16,9 +16,9 @@ export class RuleError extends BaseSmokerError<
   constructor(
     message: string,
     context: StaticRuleContext,
-    ruleName: string,
+    ruleId: string,
     error: Error,
   ) {
-    super(message, {context, ruleName}, error);
+    super(message, {context, ruleId}, error);
   }
 }

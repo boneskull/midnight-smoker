@@ -11,7 +11,7 @@ describe('midnight-smoker [E2E]', function () {
       const cwd = path.join(__dirname, 'fixture', 'config-file', 'config-esm');
 
       it('should respect the config file', async function () {
-        const {stdout} = await execSmoker(['smoke', '--no-checks'], {
+        const {stdout} = await execSmoker(['run', '--no-lint'], {
           cwd,
         });
         const result = JSON.parse(stdout);
@@ -64,7 +64,7 @@ describe('midnight-smoker [E2E]', function () {
 
       it('should run script from config file', async function () {
         // includes json: true
-        const {stdout} = await execSmoker(['--no-checks'], {cwd});
+        const {stdout} = await execSmoker(['--no-lint'], {cwd});
         const result = JSON.parse(stdout);
         expect(result, 'to satisfy', {
           results: {
@@ -75,7 +75,7 @@ describe('midnight-smoker [E2E]', function () {
 
       describe('when the CLI also contains a script', function () {
         it('should run all scripts', async function () {
-          const {stdout} = await execSmoker(['smoke', '--no-checks'], {cwd});
+          const {stdout} = await execSmoker(['run', '--no-lint'], {cwd});
           const result = JSON.parse(stdout);
           expect(result, 'to satisfy', {
             results: {
@@ -95,7 +95,7 @@ describe('midnight-smoker [E2E]', function () {
       );
 
       it('should run scripts from config file', async function () {
-        const {stdout} = await execSmoker(['--no-checks'], {cwd});
+        const {stdout} = await execSmoker(['--no-lint'], {cwd});
         const result = JSON.parse(stdout);
         expect(result, 'to satisfy', {
           results: {
@@ -106,7 +106,7 @@ describe('midnight-smoker [E2E]', function () {
 
       describe('when the CLI also contains a script', function () {
         it('should run all scripts', async function () {
-          const {stdout} = await execSmoker(['smoke', '--no-checks'], {cwd});
+          const {stdout} = await execSmoker(['run', '--no-lint'], {cwd});
           const result = JSON.parse(stdout);
           expect(result, 'to satisfy', {
             results: {

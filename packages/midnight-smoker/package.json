@@ -1,7 +1,7 @@
 {
   "name": "midnight-smoker",
   "version": "8.0.0",
-  "description": "Smoke test your package tarball (instead of failing miserably)",
+  "description": "Smoke test & lint your package artifacts (instead of failing miserably)",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/boneskull/midnight-smoker.git",
@@ -68,7 +68,7 @@
     "test": "run-s test:unit test:smoke",
     "test:ci": "run-s test:unit test:smoke test:e2e",
     "test:e2e": "mocha -p --timeout 20s --slow 10s \"test/e2e/**/*.spec.ts\"",
-    "test:smoke": "node ./bin/smoker.js smoke:ts smoke:js --add ts-node --add @tsconfig/node16",
+    "test:smoke": "node ./bin/smoker.js run smoke:ts smoke:js --add ts-node --add @tsconfig/node16",
     "test:snapshots-only": "npm run test:e2e -- --fgrep \"[snapshot]\"",
     "test:unit": "mocha \"test/unit/**/*.spec.ts\"",
     "test:update-snapshots": "cross-env SNAPSHOT_UPDATE=1 npm run test:e2e -- --fgrep \"[snapshot]\"",

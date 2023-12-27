@@ -37,12 +37,9 @@ describe('midnight-smoker [E2E]', function () {
         );
 
         it('should use the default package manager', async function () {
-          const {stdout} = await execSmoker(
-            ['smoke', '--json', '--no-checks'],
-            {
-              cwd,
-            },
-          );
+          const {stdout} = await execSmoker(['run', '--json', '--no-lint'], {
+            cwd,
+          });
           const {results} = JSON.parse(fixupOutput(stdout, false));
           expect(results, 'to satisfy', {
             scripts: expect
@@ -69,12 +66,9 @@ describe('midnight-smoker [E2E]', function () {
         });
 
         it('should use the default package manager', async function () {
-          const {stdout} = await execSmoker(
-            ['smoke', '--json', '--no-checks'],
-            {
-              cwd,
-            },
-          );
+          const {stdout} = await execSmoker(['run', '--json', '--no-lint'], {
+            cwd,
+          });
           const {results} = JSON.parse(fixupOutput(stdout, false));
           expect(results, 'to satisfy', {
             scripts: expect
@@ -132,7 +126,7 @@ describe('midnight-smoker [E2E]', function () {
 
         before(async function () {
           const {stdout, failed: f} = await execSmoker(
-            ['smoke', '--add=cross-env', '--linger', '--no-checks', '--json'],
+            ['run', '--add=cross-env', '--linger', '--no-lint', '--json'],
             {
               cwd,
             },

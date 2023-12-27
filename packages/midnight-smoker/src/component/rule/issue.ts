@@ -4,7 +4,8 @@
  * @packageDocumentation
  */
 
-import z from 'zod';
+import {z} from 'zod';
+import {RuleError} from '../../error/rule-error';
 import {instanceofSchema, zNonEmptyString} from '../../schema-util';
 import {uniqueIdFactoryFactory} from '../../util';
 import {RuleSeverities, zRuleSeverity} from './severity';
@@ -33,9 +34,10 @@ export interface RuleIssueParams<
    */
   data?: unknown;
   /**
-   * An `Error` which was caught during the execution of the rule, if any
+   * A {@link RuleError} which was caught during the execution of the rule, if
+   * any
    */
-  error?: Error;
+  error?: RuleError;
   /**
    * The message for this issue
    */
@@ -68,7 +70,7 @@ export class RuleIssue implements StaticRuleIssue {
   /**
    * {@inheritDoc RuleIssueParams.error}
    */
-  public readonly error?: Error;
+  public readonly error?: RuleError;
   /**
    * Unique identifier; created within constructor
    */

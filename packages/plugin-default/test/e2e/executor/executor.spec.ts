@@ -27,7 +27,7 @@ describe('@midnight-smoker/plugin-default', function () {
         describe('when the requested package manager differs', function () {
           it('should run the requested package manager', async function () {
             const {stdout} = await execSmoker(
-              ['smoke', '--pm=npm@latest', '--json', '--no-checks'],
+              ['run', '--pm=npm@latest', '--json', '--no-lint'],
               {
                 cwd,
               },

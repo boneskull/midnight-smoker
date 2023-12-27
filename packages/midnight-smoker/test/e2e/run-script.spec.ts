@@ -19,7 +19,9 @@ describe('midnight-smoker [E2E]', function () {
 
       describe('when the script succeeds', function () {
         it('should produce expected output [snapshot]', async function () {
-          const {stderr} = await execSmoker(['smoke', '--no-checks'], {cwd});
+          const {stderr} = await execSmoker(['run', 'smoke', '--no-lint'], {
+            cwd,
+          });
           snapshot(fixupOutput(stderr));
         });
       });
@@ -31,7 +33,7 @@ describe('midnight-smoker [E2E]', function () {
 
         before(async function () {
           try {
-            result = await execSmoker(['smoke', '--no-checks'], {
+            result = await execSmoker(['run', 'smoke', '--no-lint'], {
               cwd,
             });
           } catch (e) {
@@ -55,7 +57,7 @@ describe('midnight-smoker [E2E]', function () {
       describe('when the scripts succeed', function () {
         it('should produce expected output [snapshot]', async function () {
           const {stderr} = await execSmoker(
-            ['smoke:a', 'smoke:b', '--no-checks'],
+            ['run', 'smoke:a', 'smoke:b', '--no-lint'],
             {cwd},
           );
           snapshot(fixupOutput(stderr));

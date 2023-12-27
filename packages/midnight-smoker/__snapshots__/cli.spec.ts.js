@@ -1,41 +1,35 @@
 exports['midnight-smoker [E2E] command-line interface option --help should show help text [snapshot] 1'] = `
-smoker [scripts..]
+smoker
 
-Run tests against a package as it would be published
+Lint package artifacts
 
 Commands:
-  smoker [scripts..]     Run tests against a package as it would be published
-                                                                       [default]
-  smoker list-reporters  List available reporters
-  smoker list-rules      List available rules
+  smoker lint                    Lint package artifacts                [default]
+  smoker list-reporters          List available reporters
+  smoker list-rules              List available rules
+  smoker run-script <scripts..>  Run custom script(s) against package artifacts
+                                                                  [aliases: run]
 
-Positionals:
-  scripts  Custom script(s) to run (from package.json)                  [string]
-
-Behavior:
-      --add                  Additional dependency to provide to script(s)
+Input:
+      --all                Run in all workspaces                       [boolean]
+      --include-root       Include the workspace root; must provide '--all'
+                                                                       [boolean]
+  -w, --workspace          Run script in a specific workspace or workspaces
                                                                          [array]
-      --all                  Run in all workspaces                     [boolean]
-      --bail, --fail-fast    When running scripts, halt on first error [boolean]
-      --include-root         Include the workspace root; must provide '--all'
-                                                                       [boolean]
-      --json                 Output JSON only. Alias for "--reporter=json"
-                                                                       [boolean]
-  -p, --pkg-manager, --pm    Use a specific package manager
+  -p, --pkg-manager, --pm  Use a specific package manager
                                                    [array] [default: npm@latest]
-      --loose, --if-present  Ignore missing scripts (used with --all)  [boolean]
-  -w, --workspace            Run script in a specific workspace or workspaces
-                                                                         [array]
-      --checks, --check      Run built-in checks       [boolean] [default: true]
-  -r, --reporter             Reporter(s) to use       [array] [default: console]
-  -P, --plugin, --plugins    Plugin(s) to use                            [array]
+
+Output:
+      --json      Output JSON only. Alias for "--reporter=json"        [boolean]
+  -r, --reporter  Reporter(s) to use                  [array] [default: console]
+      --verbose   Enable verbose output               [boolean] [default: false]
 
 Options:
-      --version  Show version number                                   [boolean]
-      --help     Show help                                             [boolean]
-      --verbose  Enable verbose output                [boolean] [default: false]
+      --version            Show version number                         [boolean]
+  -P, --plugin, --plugins  Plugin(s) to use                              [array]
+      --help               Show help                                   [boolean]
 
-For more info, visit https://boneskull.github.io/midnight-smoker
+Maybe you should read the docs at: https://boneskull.github.io/midnight-smoker
 `
 
 exports['midnight-smoker [E2E] command-line interface command list-reporters should list reporters [snapshot] 1'] = `

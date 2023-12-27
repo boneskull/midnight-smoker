@@ -14,8 +14,8 @@ import {
 import {type RuleOk} from '../component/rule/rule-result';
 import {RuleSeverity} from '../component/rule/severity';
 import {type StaticRuleContext} from '../component/rule/static';
+import {DirCreationError} from '../error/util-error';
 import {readPackageJson, readPackageJsonSync} from '../util';
-import {DirCreationError} from '../util-error';
 
 export {
   ReadPackageJsonNormalizedResult,
@@ -54,11 +54,9 @@ async function createStaticRuleContext(
  * @returns A new {@link RuleContext}
  */
 export async function createRuleContext<
-  const Name extends string,
-  Schema extends RuleOptionSchema | void = void,
   Cfg extends BaseNormalizedRuleOptions = BaseNormalizedRuleOptions,
 >(
-  rule: Component<Rule<Name, Schema>>,
+  rule: Component<SomeRule>,
   pkgPath: string,
   ruleConfig: Cfg,
 ): Promise<Readonly<RuleContext>> {

@@ -49,6 +49,14 @@ export interface SmokerCapabilities {
   pmController?: PkgManagerController;
 }
 
+type SetupResult =
+  | {
+      error: PackError | InstallError;
+    }
+  | {
+      installResults: InstallResult[];
+    };
+
 export class Smoker extends createStrictEmitter<SmokerEvents>() {
   /**
    * List of extra dependencies to install
@@ -115,7 +123,7 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
       bail,
       all,
       workspace,
-      checks,
+      lint: checks,
       reporter: reporters,
     } = opts;
     this.opts = Object.freeze(opts);
@@ -182,11 +190,23 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
     return new Smoker(options, pluginRegistry, pmController);
   }
 
+  /**
+   * Initializes a {@link Smoker} instance and returns a list of reporters.
+   *
+   * @param opts - Raw Smoker options (including `plugin`)
+   * @returns List of reporters
+   */
   public static async getReporters(this: void, opts?: RawSmokerOptions) {
     const smoker = await Smoker.create(opts);
     return smoker.getReporters();
   }
 
+  /**
+   * Initializes a {@link Smoker} instance and returns a list of rules.
+   *
+   * @param opts - Raw Smoker options (including `plugin`)
+   * @returns List of rules
+   */
   public static async getRules(this: void, opts?: RawSmokerOptions) {
     const smoker = await Smoker.create(opts);
     return smoker.getRules();
@@ -460,6 +480,117 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
     }
   }
 
+  private async preRun(): Promise<SetupResult> {
+    await this.loadListeners();
+
+    this.emit(SmokerEvent.SmokeBegin, {
+      plugins: this.pluginRegistry.plugins,
+      opts: this.opts,
+    });
+
+    let packError: PackError | undefined;
+    let installError: InstallError | undefined;
+    let pkgManagerInstallManifests: PkgManagerInstallManifest[] | undefined;
+    let installResults: InstallResult[];
+
+    // PACK
+    try {
+      pkgManagerInstallManifests = await this.pack();
+    } catch (err) {
+      packError = err as PackError;
+      return {error: packError};
+    }
+
+    // INSTALL
+    try {
+      installResults = await this.install(pkgManagerInstallManifests);
+    } catch (err) {
+      installError = err as InstallError;
+      return {error: installError};
+    }
+    return {installResults};
+  }
+
+  public async lint(): Promise<SmokeResults | undefined> {
+    try {
+      const setupResult = await this.preRun();
+
+      let ruleResults: RunRulesResult | undefined;
+      const runScriptResults: RunScriptResult[] = [];
+
+      if ('installResults' in setupResult) {
+        const {installResults} = setupResult;
+        ruleResults = await this.runChecks(installResults);
+      }
+
+      return await this.postRun(setupResult, ruleResults, runScriptResults);
+    } catch (e) {
+      const err = e as Error;
+      this.emit(SmokerEvent.UnknownError, err);
+    } finally {
+      this.emit(SmokerEvent.End);
+      this.unloadListeners();
+    }
+  }
+
+  private async postRun(
+    setupResult: SetupResult,
+    ruleResults?: RunRulesResult,
+    runScriptResults: RunScriptResult[] = [],
+  ) {
+    // END
+    const smokeResults: SmokeResults = {
+      scripts: runScriptResults,
+      checks: ruleResults,
+      opts: this.opts,
+    };
+
+    const aggregateErrors = () => {
+      const runScriptErrors = runScriptResults.reduce<ScriptError[]>(
+        (acc, result) => (result.error ? [...acc, result.error] : acc),
+        [],
+      );
+
+      const ruleErrors = castArray(ruleResults?.issues).reduce<RuleError[]>(
+        (acc, issue) => {
+          return issue.severity === RuleSeverities.Error
+            ? [...acc, issue.error as RuleError]
+            : acc;
+        },
+        [],
+      );
+
+      const errors: Array<InstallError | PackError | ScriptError | RuleError> =
+        [];
+      if ('error' in setupResult) {
+        errors.push(setupResult.error);
+      }
+      errors.push(...runScriptErrors, ...ruleErrors);
+      return errors;
+    };
+
+    // this triggers the "Lingered" event which must happen before
+    // the final "SmokeOK" or "SmokeFailed" event, or there could be a race condition.
+    try {
+      await this.cleanup();
+    } catch {
+      // TODO: handle
+    }
+
+    const errors = aggregateErrors();
+
+    if (errors.length) {
+      this.emit(
+        SmokerEvent.SmokeFailed,
+        new SmokeFailedError('🤮 Maurice!', errors, {results: smokeResults}),
+      );
+    } else {
+      this.emit(SmokerEvent.SmokeOk, smokeResults);
+    }
+
+    return smokeResults;
+  }
+
   /**
    * Pack, install, run checks (optionally), and run scripts (optionally)
    *
@@ -467,35 +598,13 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
    */
   public async smoke(): Promise<SmokeResults | undefined> {
     try {
-      await this.loadListeners();
-      this.emit(SmokerEvent.SmokeBegin, {
-        plugins: this.pluginRegistry.plugins,
-        opts: this.opts,
-      });
-      let packError: PackError | undefined;
-      let installError: InstallError | undefined;
-      let pkgManagerInstallManifests: PkgManagerInstallManifest[] | undefined;
-      let installResults: InstallResult[] | undefined;
+      const setupResult = await this.preRun();
+
       let ruleResults: RunRulesResult | undefined;
       let runScriptResults: RunScriptResult[] = [];
 
-      // PACK
-      try {
-        pkgManagerInstallManifests = await this.pack();
-      } catch (err) {
-        packError = err as PackError;
-      }
-
-      if (pkgManagerInstallManifests) {
-        // INSTALL
-        try {
-          installResults = await this.install(pkgManagerInstallManifests);
-        } catch (err) {
-          installError = err as InstallError;
-        }
-      }
-
-      if (installResults) {
+      if ('installResults' in setupResult) {
+        const {installResults} = setupResult;
         // RUN CHECKS
         if (this.enableChecks) {
           ruleResults = await this.runChecks(installResults);
@@ -507,53 +616,7 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
         }
       }
 
-      // END
-      const smokeResults: SmokeResults = {
-        scripts: runScriptResults,
-        checks: ruleResults,
-        opts: this.opts,
-      };
-
-      const aggregateErrors = () => {
-        const runScriptErrors = runScriptResults
-          .filter((result) => result.error)
-          .map((result) => result.error) as ScriptError[];
-        const ruleErrors = (ruleResults?.issues
-          .filter((issue) => issue.severity === RuleSeverities.Error)
-          .map((issue) => issue.error) ?? []) as RuleError[];
-
-        const errors: Array<
-          InstallError | PackError | ScriptError | RuleError
-        > = [...runScriptErrors, ...ruleErrors];
-        if (packError) {
-          errors.push(packError);
-        }
-        if (installError) {
-          errors.push(installError);
-        }
-        return errors;
-      };
-
-      // this triggers the "Lingered" event which must happen before
-      // the final "SmokeOK" or "SmokeFailed" event, or there could be a race condition.
-      try {
-        await this.cleanup();
-      } catch {
-        // TODO: handle
-      }
-
-      const errors = aggregateErrors();
-
-      if (errors.length) {
-        this.emit(
-          SmokerEvent.SmokeFailed,
-          new SmokeFailedError('🤮 Maurice!', errors, {results: smokeResults}),
-        );
-      } else {
-        this.emit(SmokerEvent.SmokeOk, smokeResults);
-      }
-
-      return smokeResults;
+      return await this.postRun(setupResult, ruleResults, runScriptResults);
     } catch (e) {
       const err = e as Error;
       this.emit(SmokerEvent.UnknownError, err);
