@@ -1,0 +1,579 @@
+---
+title: Configuration
+description: 'Configuring midnight-smoker'
+---
+
+import {Tabs, TabItem} from '@astrojs/starlight/components';
+
+I know what you're thinking: _"I just don't have enough config files!"_ **midnight-smoker** solves this problem by providing you _the opportunity to add another one_.
+
+## Config Files
+
+Configuration may be specified in a `smoker` field in `package.json`, or one of:
+
+- `.smokerrc.(json|js|cjs|mjs)`
+- `smoker.config.(json|js|cjs|mjs)`
+- `.config/smokerrc.(json|js|cjs|mjs)`
+- `.config/smoker.config.(json|js|cjs|mjs)`
+
+## Options
+
+_Most_ options have equivalent command-line flags. Generally, if the JSON type of an option value is an _object_, the option will _not_ be available on the CLI, because this is cumbersome and awful and I hate it.
+
+:::tip[Option Naming Conventions]
+
+Option names may be specified in `camelCase` or `kebab-case`. For example, `includeRoot` and `include-root` are equivalent.
+
+For the purposes of this documentation:
+
+- `kebab-case` will be used as the canonical name
+- JSON examples will use `kebab-case`
+- JavaScript examples will use `camelCase`.
+
+:::
+
+### `add`
+
+- **Summary:** An array of packages to be installed alongside your package(s) prior to running custom smoke tests.
+- **Type:** `string | string[]`
+- **Default:** `[]`
+
+#### `add` Examples
+
+<Tabs>
+  <TabItem label="JSON">
+
+```json
+{
+  "add": ["mocha", "chai"]
+}
+```
+
+  </TabItem>
+  <TabItem label="CJS">
+
+```js
+module.exports = {
+  add: ['mocha', 'chai'],
+};
+```
+
+  </TabItem>
+  <TabItem label="ESM">
+
+```js
+export default {
+  add: ['mocha', 'chai'],
+};
+```
+
+  </TabItem>
+
+</Tabs>
+
+### `all`
+
+**Operate on all workspaces.**
+
+- **Type:** `boolean`
+- **Default:** `false`
+
+The workspace root is excluded by default. To include it, see [`include-root`](#include-root).
+
+#### `all` Examples
+
+<Tabs>
+  <TabItem label="JSON">
+
+```json
+{
+  "all": true
+}
+```
+
+  </TabItem>
+  <TabItem label="CJS">
+
+```js
+module.exports = {
+  all: true,
+};
+```
+
+  </TabItem>
+  <TabItem label="ESM">
+
+```js
+export default {
+  all: true,
+};
+```
+
+  </TabItem>
+
+</Tabs>
+
+### `bail`
+
+**When running custom scripts, abort upon the first non-zero script exit.**
+
+- **Type:** `boolean`
+- **Default:** `false`
+- **Alias:** `fail-fast`
+
+#### `bail` Examples
+
+<Tabs>
+  <TabItem label="JSON">
+
+```json
+{
+  "bail": true
+}
+```
+
+  </TabItem>
+  <TabItem label="CJS">
+
+```js
+module.exports = {
+  bail: true,
+};
+```
+
+  </TabItem>
+  <TabItem label="ESM">
+
+```js
+export default {
+  bail: true,
+};
+```
+
+  </TabItem>
+
+</Tabs>
+
+### `checks`
+
+**If `false`, do not run automated checks.**
+
+- **Type:** `boolean`
+- **Default:** `true`
+
+#### `checks` Examples
+
+<Tabs>
+  <TabItem label="JSON">
+
+```json
+{
+  "checks": false
+}
+```
+
+  </TabItem>
+  <TabItem label="CJS">
+
+```js
+module.exports = {
+  checks: false,
+};
+```
+
+  </TabItem>
+  <TabItem label="ESM">
+
+```js
+export default {
+  checks: false,
+};
+```
+
+  </TabItem>
+
+</Tabs>
+
+### `include-root`
+
+**If [`all`](#all) is `true`, operate on the workspace root as well.**
+
+- **Type:** `boolean`
+- **Default:** `false`
+
+Providing `include-root: true` without `all: true` is considered an error.
+
+#### `include-root` Examples
+
+<Tabs>
+  <TabItem label="JSON">
+
+```json
+{
+  "all": true,
+  "include-root": true
+}
+```
+
+  </TabItem>
+  <TabItem label="CJS">
+
+```js
+module.exports = {
+  all: true,
+  includeRoot: true,
+};
+```
+
+  </TabItem>
+  <TabItem label="ESM">
+
+```js
+export default {
+  all: true,
+  includeRoot: true,
+};
+```
+
+  </TabItem>
+
+</Tabs>
+
+### `json`
+
+**Output results as JSON.**
+
+- **Type:** `boolean`
+- **Default:** `false`
+
+This is an alias for `--reporter=json`; see [`reporter`](#reporter).
+
+#### `json` Examples
+
+<Tabs>
+  <TabItem label="JSON">
+
+```json
+{
+  "json": true
+}
+```
+
+  </TabItem>
+  <TabItem label="CJS">
+
+```js
+module.exports = {
+  json: true,
+};
+```
+
+  </TabItem>
+  <TabItem label="ESM">
+
+```js
+export default {
+  json: true,
+};
+```
+
+  </TabItem>
+
+</Tabs>
+
+### `linger`
+
+**After completion, `midnight-smoker` will leave its temp directories intact; the directories will be printed to `stdout`.**
+
+- **Type:** `boolean`
+- **Default:** `false`
+
+This is handy if you're having a tough time debugging a failure.
+
+:::caution[Don't Let linger Linger]
+
+`linger` is intended to be used with the command-line interface as a one-off. Leaving it in your config file could create a whole lot of temp directories.
+
+:::
+
+#### `linger` Examples
+
+<Tabs>
+  <TabItem label="JSON">
+
+```json
+{
+  "linger": true
+}
+```
+
+  </TabItem>
+  <TabItem label="CJS">
+
+```js
+module.exports = {
+  linger: true,
+};
+```
+
+  </TabItem>
+  <TabItem label="ESM">
+
+```js
+export default {
+  linger: true,
+};
+```
+
+  </TabItem>
+
+</Tabs>
+
+### `loose`
+
+**Do not fail if the specified custom script is not found in a workspace's `package.json`.**
+
+- **Type:** `boolean`
+- **Default:** `false`
+- **Alias:** `if-present`
+
+#### `loose` Examples
+
+<Tabs>
+  <TabItem label="JSON">
+
+```json
+{
+  "loose": true
+}
+```
+
+  </TabItem>
+  <TabItem label="CJS">
+
+```js
+module.exports = {
+  loose: true,
+};
+```
+
+  </TabItem>
+  <TabItem label="ESM">
+
+```js
+export default {
+  loose: true,
+};
+```
+
+  </TabItem>
+
+</Tabs>
+
+### `plugin`
+
+**Specify one or more plugins to use.**
+
+- **Type:** `string | string[]`
+- **Default:** `[]`
+
+#### `plugin` Examples
+
+<Tabs>
+  <TabItem label="JSON">
+
+```json
+{
+  "plugin": ["@midnight-smoker/plugin-typescript"]
+}
+```
+
+  </TabItem>
+  <TabItem label="CJS">
+
+```js
+module.exports = {
+  plugin: ['@midnight-smoker/plugin-typescript'],
+};
+```
+
+  </TabItem>
+  <TabItem label="ESM">
+
+```js
+export default {
+  plugin: ['@midnight-smoker/plugin-typescript'],
+};
+```
+
+  </TabItem>
+
+</Tabs>
+
+### `reporter`
+
+**Specify one or more [reporters](/reference/reporters) to use.**
+
+- **Type:** `string | string[]`
+- **Default:** `console`
+
+#### `reporter` Examples
+
+<Tabs>
+  <TabItem label="JSON">
+
+```json
+{
+  "reporter": ["json"]
+}
+```
+
+  </TabItem>
+  <TabItem label="CJS">
+
+```js
+module.exports = {
+  reporter: ['json'],
+};
+```
+
+  </TabItem>
+  <TabItem label="ESM">
+
+```js
+export default {
+  reporter: ['json'],
+};
+```
+
+  </TabItem>
+
+</Tabs>
+
+### `rules`
+
+**Rule-specific configuration.**
+
+- **Type:** _see [Rules Reference](/reference/rules)_
+
+Each rule can have its _severity_ set to one of `error`, `warn`, or `off`. Rules may also define their own options. See the [Rules Reference](/reference/rules) for more information on specific rule options.
+
+Each rule's configuration can be provided in three (3) different ways:
+
+- A `string`, which will be interpreted as the rule's severity
+- A `[severity: string, options: object]` tuple, where the first element is the rule's severity, and the second element is an object of rule-specific options
+- An `object`, which corresponds to the rule-specific options (severity will be the default `error`)
+
+#### `rules` Examples
+
+<Tabs>
+  <TabItem label="JSON">
+
+```json
+{
+  "rules": {
+    "no-banned-files": [
+      "error",
+      {
+        "deny": ["file_id.diz"],
+        "allow": ["aws_secret.txt"]
+      }
+    ],
+    "no-missing-entry-point": "off",
+    "no-missing-exports": [
+      "warn",
+      {
+        "types": false,
+        "require": false,
+        "import": false,
+        "order": false,
+        "glob": false
+      }
+    ],
+    "no-missing-pkg-files": {
+      "bin": false,
+      "browser": false,
+      "types": false,
+      "unpkg": false,
+      "module": false,
+      "fields": ["some-future-entry-point", "path-to-thing"]
+    }
+  }
+}
+```
+
+  </TabItem>
+  <TabItem label="CJS">
+
+```js
+module.exports = {
+  rules: {
+    'no-banned-files': [
+      'error',
+      {
+        deny: ['file_id.diz'],
+        allow: ['aws_secret.txt'],
+      },
+    ],
+    'no-missing-entry-point': 'off',
+    'no-missing-exports': [
+      'warn',
+      {
+        types: false,
+        require: false,
+        import: false,
+        order: false,
+        glob: false,
+      },
+    ],
+    'no-missing-pkg-files': {
+      bin: false,
+      browser: false,
+      types: false,
+      unpkg: false,
+      module: false,
+      fields: ['some-future-entry-point', 'path-to-thing'],
+    },
+  },
+};
+```
+
+  </TabItem>
+  <TabItem label="ESM">
+
+```js
+export default {
+  rules: {
+    'no-banned-files': [
+      'error',
+      {
+        deny: ['file_id.diz'],
+        allow: ['aws_secret.txt'],
+      },
+    ],
+    'no-missing-entry-point': 'off',
+    'no-missing-exports': [
+      'warn',
+      {
+        types: false,
+        require: false,
+        import: false,
+        order: false,
+        glob: false,
+      },
+    ],
+    'no-missing-pkg-files': {
+      bin: false,
+      browser: false,
+      types: false,
+      unpkg: false,
+      module: false,
+      fields: ['some-future-entry-point', 'path-to-thing'],
+    },
+  },
+};
+```
+
+  </TabItem>
+
+</Tabs>

@@ -22,6 +22,17 @@
       "default": false,
       "description": "Fail on first script failure"
     },
+    "lint": {
+      "$ref": "#/$defs/defaultTrue",
+      "default": true,
+      "description": "If `false`, do not lint when running custom scripts"
+    },
+    "executor": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Component ID of Executor implementation",
+      "default": "default"
+    },
     "includeRoot": {
       "$ref": "#/$defs/defaultFalse",
       "default": false,
@@ -40,21 +51,10 @@
       "default": false,
       "description": "Do not delete temp directories after completion"
     },
-    "verbose": {
+    "loose": {
       "$ref": "#/$defs/defaultFalse",
       "default": false,
-      "description": "Verbose logging"
-    },
-    "workspace": {
-      "allOf": [
-        {
-          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0"
-        },
-        {
-          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/1"
-        }
-      ],
-      "description": "One or more workspaces to run scripts in"
+      "description": "If `true`, fail if a workspace is missing a script"
     },
     "pkgManager": {
       "$ref": "#/$defs/arrayOfNonEmptyStrings",
@@ -64,7 +64,7 @@
     "pkg-manager": {
       "$ref": "#/properties/pkgManager"
     },
-    "script": {
+    "plugin": {
       "allOf": [
         {
           "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0"
@@ -73,9 +73,9 @@
           "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/1"
         }
       ],
-      "description": "Script(s) to run. Alias of `scripts`"
+      "description": "One or more plugins to load"
     },
-    "scripts": {
+    "reporter": {
       "allOf": [
         {
           "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0"
@@ -84,17 +84,17 @@
           "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/1"
         }
       ],
-      "description": "Script(s) to run. Alias of `script`"
+      "description": "Component ID of Reporter implementation",
+      "default": ["console"]
     },
-    "loose": {
-      "$ref": "#/$defs/defaultFalse",
-      "default": false,
-      "description": "If `true`, fail if a workspace is missing a script"
+    "ruleRunner": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Component ID of RuleRunner implementation",
+      "default": "default"
     },
-    "checks": {
-      "$ref": "#/$defs/defaultTrue",
-      "default": true,
-      "description": "If `false`, run no builtin checks"
+    "rule-runner": {
+      "$ref": "#/properties/ruleRunner"
     },
     "rules": {
       "type": "object",
@@ -467,7 +467,7 @@
         }
       }
     },
-    "plugin": {
+    "script": {
       "allOf": [
         {
           "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0"
@@ -476,22 +476,7 @@
           "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/1"
         }
       ],
-      "description": "One or more plugins to load"
-    },
-    "executor": {
-      "type": "string",
-      "minLength": 1,
-      "description": "Component ID of Executor implementation",
-      "default": "default"
-    },
-    "ruleRunner": {
-      "type": "string",
-      "minLength": 1,
-      "description": "Component ID of RuleRunner implementation",
-      "default": "default"
-    },
-    "rule-runner": {
-      "$ref": "#/properties/ruleRunner"
+      "description": "Script(s) to run. Alias of `scripts`"
     },
     "scriptRunner": {
       "type": "string",
@@ -502,7 +487,7 @@
     "script-runner": {
       "$ref": "#/properties/scriptRunner"
     },
-    "reporter": {
+    "scripts": {
       "allOf": [
         {
           "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0"
@@ -511,8 +496,23 @@
           "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/1"
         }
       ],
-      "description": "Component ID of Reporter implementation",
-      "default": ["console"]
+      "description": "Script(s) to run. Alias of `script`"
+    },
+    "verbose": {
+      "$ref": "#/$defs/defaultFalse",
+      "default": false,
+      "description": "Verbose logging"
+    },
+    "workspace": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0"
+        },
+        {
+          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/1"
+        }
+      ],
+      "description": "One or more workspaces to run scripts in"
     }
   },
   "additionalProperties": false,

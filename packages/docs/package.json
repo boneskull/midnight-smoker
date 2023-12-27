@@ -1,0 +1,21 @@
+{
+  "name": "@midnight-smoker/docs",
+  "version": "0.0.1",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "astro": "astro",
+    "build": "astro check && astro build",
+    "dev": "astro dev",
+    "preview": "astro preview",
+    "start": "astro dev"
+  },
+  "dependencies": {
+    "@astrojs/starlight": "^0.15.1",
+    "astro": "^4.0.1",
+    "sharp": "^0.32.5"
+  },
+  "devDependencies": {
+    "midnight-smoker": "8.0.0"
+  }
+}

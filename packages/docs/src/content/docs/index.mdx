@@ -1,0 +1,54 @@
+---
+title: 'midnight-smoker'
+description: 'midnight-smoker runs smoke tests, bruh'
+template: splash
+hero:
+  tagline: stop publishing broken packages. stop it
+  image:
+    file: '../../assets/logo.svg'
+    alt: 'midnight-smoker logo'
+  actions:
+    - text: Get Started
+      link: /guides/getting-started
+      icon: right-arrow
+      variant: primary
+    - text: Rule Reference
+      link: /reference/rules
+      icon: open-book
+    - text: Plugin Authoring Guide
+      link: /guides/writing-plugins
+      icon: pencil
+---
+
+import {Card, CardGrid} from '@astrojs/starlight/components';
+
+<CardGrid>
+
+<Card icon="approve-check" title="A Linter for Packages">
+  **midnight-smoker** is like a _linter for your published packages_. It ships
+  with built-in configurable _rules_ which check for common issues and
+  misconfigurations. _These are the nasties your unit and integration tests
+  can't catch._
+</Card>
+<Card title="Custom Tests" icon="setting">
+  Run custom scripts against your package _as a consumer would install it_. Go
+  where static analysis can't take you. _Then go further_. ☮️
+</Card>
+<Card title="Monorepos Welcome" icon="list-format">
+  **midnight-smoker** was written with monorepos and workspaces in mind. Use it
+  with _specific_ workspaces, _all_ of your workspaces or _no_ workspaces.
+</Card>
+<Card title="Pluggable" icon="puzzle">
+  **midnight-smoker** has first-class plugin support. Want a new rule? How about
+  several? Got a new package manager? Or XML reporter (I'm sorry)? [Write your
+  own plugin](/guides/writing-plugins) and share it.
+</Card>
+
+</CardGrid>
+
+<Card title="World Famous Package Manager Test Matrix" icon="random">
+Ever wished you could easily check compatibility with a specific version of a specific package manager?  No? OK, fine—but some of us have, anyway.
+
+You can use **midnight-smoker** and assert your target package manager installs your package properly. Or your target package manager's _last two major versions_. Or this package manager and that other one (but the old version--you know, the one everyone still uses). Or _all_ versions of all package managers, I guess?
+
+</Card>
