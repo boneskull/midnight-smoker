@@ -7,3 +7,4 @@ __snapshots__
 docs/api/
 example/
 **/.astro/**/*
+env.d.ts
