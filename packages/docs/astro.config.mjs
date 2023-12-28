@@ -1,6 +1,14 @@
+// @ts-check
+
 import starlight from '@astrojs/starlight';
 import {defineConfig} from 'astro/config';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
 import remarkCodeImport from 'remark-code-import';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const exampleDir = path.resolve(__dirname, '..', '..', 'example');
 
 // https://astro.build/config
 export default defineConfig({
@@ -35,6 +43,9 @@ export default defineConfig({
     }),
   ],
   markdown: {
-    remarkPlugins: [remarkCodeImport],
+    remarkPlugins: [
+      // @ts-expect-error - nonsense type
+      remarkCodeImport.bind(null, {rootDir: exampleDir}),
+    ],
   },
 });

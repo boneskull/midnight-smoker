@@ -61,7 +61,7 @@ Much like [ESLint](https://eslint.org), a custom rule allows the author to defin
 To define a rule, we'll use the `api.defineRule()` function. Below is an example of a trivial rule which asserts the `package.json` of a package always has a `private` property set to `true`:
 
 <!-- prettier-ignore -->
-```ts file=../_media/plugin-rule.ts
+```ts file=../../../../../../example/plugin-rule/index.ts title="plugin-rule.ts"
 ```
 
 To load your plugin, you'll need to tell `midnight-smoker` it exists. To do so, provide the `--plugin plugin-rule.ts` option to the `smoker` CLI, or add this to your config:
