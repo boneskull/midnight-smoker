@@ -23,7 +23,7 @@ export class LintCommand extends BaseCommand<CommonOptionTypes> {
     await smoker.lint();
   }
 
-  override builder(argv: Argv<GlobalOptionTypes>) {
+  override builder(argv: Argv<GlobalOptionTypes>): Argv<CommonOptionTypes> {
     return argv.options(CommonOptions);
   }
 }

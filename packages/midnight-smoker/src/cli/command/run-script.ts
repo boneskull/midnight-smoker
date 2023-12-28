@@ -1,5 +1,5 @@
 import Debug from 'debug';
-import {ArgumentsCamelCase, Argv} from 'yargs';
+import {ArgumentsCamelCase, Argv, InferredOptionTypes, Options} from 'yargs';
 import {Smoker} from '../../smoker';
 import {
   ARRAY_OPT_CFG,
@@ -39,11 +39,14 @@ const RunScriptOptions = {
     group: BEHAVIOR_GROUP,
     implies: 'all',
   },
-};
+} as const satisfies Record<string, Options>;
 
-export class RunScriptCommand extends BaseCommand<CommonOptionTypes> {
+type RunScriptOptionTypes = GlobalOptionTypes &
+  InferredOptionTypes<typeof RunScriptOptions>;
+
+export class RunScriptCommand extends BaseCommand<RunScriptOptionTypes> {
   override aliases = ['run'];
-  override command = 'run-script <scripts..>';
+  override command = 'run-script <script..>';
   override describe = 'Run custom script(s) against package artifacts';
 
   override async handler(
@@ -59,9 +62,9 @@ export class RunScriptCommand extends BaseCommand<CommonOptionTypes> {
     }
   }
 
-  override builder(argv: Argv<GlobalOptionTypes>) {
+  override builder(argv: Argv<GlobalOptionTypes>): Argv<RunScriptOptionTypes> {
     return argv
-      .positional('scripts', {
+      .positional('script', {
         describe: 'Custom script(s) to run (from package.json)',
         string: true,
         array: true,
