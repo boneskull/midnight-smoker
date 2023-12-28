@@ -1,5 +1,6 @@
 import starlight from '@astrojs/starlight';
 import {defineConfig} from 'astro/config';
+import remarkCodeImport from 'remark-code-import';
 
 // https://astro.build/config
 export default defineConfig({
@@ -33,4 +34,7 @@ export default defineConfig({
       },
     }),
   ],
+  markdown: {
+    remarkPlugins: [remarkCodeImport],
+  },
 });

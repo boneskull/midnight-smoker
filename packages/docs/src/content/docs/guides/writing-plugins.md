@@ -25,7 +25,11 @@ A plugin is a module (it needn't be an entire package, but that's fine too) with
 export type PluginFactory = (api: PluginAPI) => void | Promise<void>;
 ```
 
-> ![NOTE] Alternatively, a default export may be provided. In the case of CJS, this would correspond to `module.exports = ...`; a named `plugin` export would be `exports.plugin = ...` or `module.exports.plugin = ...`.
+:::note
+
+Alternatively, a default export may be provided. In the case of CJS, this would correspond to `module.exports = ...`; a named `plugin` export would be `exports.plugin = ...` or `module.exports.plugin = ...`.
+
+:::
 
 The `PluginAPI` object will be your main interface into `midnight-smoker`. You _shouldn't_ need to pull anything other than types (if using TypeScript) from the `midnight-smoker` package itself.
 
@@ -54,11 +58,11 @@ Since the most common use case will probably be a custom rule, let's take a look
 
 Much like [ESLint](https://eslint.org), a custom rule allows the author to define a "check" to run against a package. The rule can have its own set of options, and is user-configurable via a [config file](./README.md#config-files). Rules can be considered "errors" or "warnings" per the user's preference. The user may also disable a rule entirely.
 
-> [!WARNING] I hope you like [Zod](https://zod.dev).
-
 To define a rule, we'll use the `api.defineRule()` function. Below is an example of a trivial rule which asserts the `package.json` of a package always has a `private` property set to `true`:
 
-[plugin-rule.ts](_media/example/plugin-rule.ts ':include')
+<!-- prettier-ignore -->
+```ts file=../_media/plugin-rule.ts
+```
 
 To load your plugin, you'll need to tell `midnight-smoker` it exists. To do so, provide the `--plugin plugin-rule.ts` option to the `smoker` CLI, or add this to your config:
 
@@ -70,6 +74,10 @@ To load your plugin, you'll need to tell `midnight-smoker` it exists. To do so, 
 
 Now, when `midnight-smoker` runs its automated checks, it will run the `no-public-pkgs` rule along with the set of builtin rules.
 
-> [!NOTE] The "real" name of the rule will be scoped to the plugin's name. The plugin's name is derived from the closest `package.json`.
+:::note[Scoped Rule Names]
+
+The "real" name of the rule will be scoped to the plugin's name. The plugin's name is derived from the closest `package.json`.
+
+:::
 
 For more information about rule-related functions and types within the `PluginAPI` object, see the [reference documentation](./reference.md).

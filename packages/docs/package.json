@@ -13,6 +13,7 @@
   "dependencies": {
     "@astrojs/starlight": "^0.15.1",
     "astro": "^4.0.1",
+    "remark-code-import": "1.2.0",
     "sharp": "^0.32.5"
   },
   "devDependencies": {

@@ -18,9 +18,9 @@ Configuration may be specified in a `smoker` field in `package.json`, or one of:
 
 ## Options
 
-_Most_ options have equivalent command-line flags. Generally, if the JSON type of an option value is an _object_, the option will _not_ be available on the CLI, because this is cumbersome and awful and I hate it.
+_Most_ options have equivalent [command-line flags](/reference/cli). Generally, if the JSON type of an option value is an _object_ (i.e. more complex than `string[]`), the option will _not_ be available on the CLI, because this is cumbersome and awful and I hate it.
 
-:::tip[Option Naming Conventions]
+:::note[About Config File Option Names]
 
 Option names may be specified in `camelCase` or `kebab-case`. For example, `includeRoot` and `include-root` are equivalent.
 

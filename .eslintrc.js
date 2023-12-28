@@ -22,6 +22,16 @@ module.exports = {
   },
   overrides: [
     {
+      files: '**/*.mjs',
+      parserOptions: {
+        sourceType: 'module',
+        ecmaVersion: 'latest',
+      },
+      rules: {
+        'n/no-unsupported-features/es-syntax': 'off',
+      },
+    },
+    {
       files: '**/*.ts',
       extends: ['plugin:@typescript-eslint/strict-type-checked'],
       rules: {
@@ -76,6 +86,8 @@ module.exports = {
             ],
           },
         ],
+
+        'n/no-unsupported-features/es-syntax': 'off',
       },
 
       parser: '@typescript-eslint/parser',

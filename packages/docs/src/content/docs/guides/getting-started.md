@@ -13,7 +13,7 @@ This brief guide will help you get started with **midnight-smoker**.
 
 - Node.js versions supported: `^18.0.0 || ^20.0.0`
 - Supported package managers:
-  - `npm`: `v7.0.0+`
+  - `npm`: `8.6.0+`
   - `yarn`: any version
   - `pnpm`: (not yet supported)
 
@@ -31,7 +31,7 @@ While versions of Node.js outside the supported range _could_ work, compatibilit
 
 If you're here, you probably don't need to know how to install it, but I feel like I'm supposed to write this anyway?
 
-It's recommended to install **midnight-smoker** as a dev dependency:
+It's recommended to install `midnight-smoker` as a dev dependency:
 
 ```shell
 npm install midnight-smoker --save-dev
@@ -45,7 +45,7 @@ To run **midnight-smoker**'s builtin checks against your project, run the follow
 npx midnight-smoker
 ```
 
-You should see output akin to:
+Assuming your package isn't all jacked up, you should see output akin to:
 
 ```plain
 💨 midnight-smoker vX.Y.Z
