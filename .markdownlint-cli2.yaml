@@ -13,7 +13,7 @@ config:
 ignores:
   - '**/node_modules/**'
   - 'packages/docs/**/_*.md' # special
-  - 'packages/docs/src/content/examples/**/*.md' # special
+  - 'packages/docs/src/content/*examples/**/*.md' # special
   - '**/CHANGELOG.md' # generated
 outputFormatters:
   - - 'markdownlint-cli2-formatter-pretty'
