@@ -1,4 +1,0 @@
-- [midnight-smoker](/)
-- [Reference](./api/packages.md)
-  - [Rule Reference](./rules/index.md)
-- [Writing Plugins](writing-plugins.md)
