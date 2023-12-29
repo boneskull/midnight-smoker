@@ -3,8 +3,8 @@ import {RuleError} from '../../error/rule-error';
 import {serialize} from '../../util';
 import {Component} from '../component';
 import {RuleIssue} from './issue';
-import {SomeRule} from './rule';
-import type {StaticRuleContext} from './static';
+
+import type {StaticRule, StaticRuleContext} from './static';
 
 /**
  * The `addIssue` function that a {@linkcode RuleCheckFn} uses to create a
@@ -34,7 +34,7 @@ export class RuleContext implements StaticRuleContext {
    */
   readonly #issues: RuleIssue[] = [];
   protected constructor(
-    private readonly rule: Component<SomeRule>,
+    private readonly rule: Component<StaticRule>,
     staticCtx: StaticRuleContext,
   ) {
     this.staticCtx = Object.freeze({...staticCtx});
@@ -89,7 +89,7 @@ export class RuleContext implements StaticRuleContext {
    * Creates a {@link RuleContext}.
    */
   public static create(
-    rule: Component<SomeRule>,
+    rule: Component<StaticRule>,
     staticCtx: StaticRuleContext,
   ): Readonly<RuleContext> {
     return Object.freeze(new RuleContext(rule, serialize(staticCtx)));

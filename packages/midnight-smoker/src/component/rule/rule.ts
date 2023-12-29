@@ -369,8 +369,8 @@ export const zBaseNormalizedRuleOptionsRecord = z
   .record(zBaseNormalizedRuleOptions)
   .describe('Rule configuration for automated checks');
 
-export type BaseRuleOptions = z.infer<typeof zBaseRuleOptions>;
-export type BaseRuleOptionsRecord = z.infer<typeof zBaseRuleOptionsRecord>;
+export type BaseRuleOptions = z.input<typeof zBaseRuleOptions>;
+export type BaseRuleOptionsRecord = z.input<typeof zBaseRuleOptionsRecord>;
 
 export type BaseNormalizedRuleOptions = z.infer<
   typeof zBaseNormalizedRuleOptions

@@ -79,7 +79,7 @@ describe('@midnight-smoker/plugin-default', function () {
     });
 
     describe('when rule is disabled', function () {
-      const ruleConfig: Rule.BaseRuleOptionsRecord = {
+      const ruleConfig = {
         'test-plugin/test-rule': {severity: 'off', opts: {}},
       };
       it('should not run the disabled rule', async function () {
@@ -87,7 +87,8 @@ describe('@midnight-smoker/plugin-default', function () {
           runRuleRunner(smokerRuleRunner, registry, runRulesManifest, {
             config,
             filter: (rule) =>
-              ruleConfig[rule.id].severity !== Rule.RuleSeverities.Off,
+              ruleConfig[rule.id as keyof typeof ruleConfig].severity !==
+              Rule.RuleSeverities.Off,
           }),
           'to be fulfilled with value satisfying',
           {
