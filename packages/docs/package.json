@@ -11,12 +11,19 @@
     "start": "astro dev"
   },
   "dependencies": {
+    "@astrojs/mdx": "2.0.3",
     "@astrojs/starlight": "^0.15.1",
     "astro": "^4.0.1",
+    "html-escaper": "3.0.3",
+    "rehype": "13.0.1",
+    "rehype-autolink-headings": "7.1.0",
     "remark-code-import": "1.2.0",
-    "sharp": "^0.32.5"
+    "sharp": "^0.32.5",
+    "unified": "11.0.4",
+    "unist-util-visit": "5.0.0"
   },
   "devDependencies": {
+    "@types/html-escaper": "3.0.2",
     "midnight-smoker": "8.0.0"
   }
 }

@@ -1,10 +1,10 @@
-// @ts-check
-
+import type {RemarkPlugin} from '@astrojs/markdown-remark';
 import starlight from '@astrojs/starlight';
 import {defineConfig} from 'astro/config';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import remarkCodeImport from 'remark-code-import';
+import {rehypeAutolink} from './plugin/rehype-autolink';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -43,9 +43,8 @@ export default defineConfig({
     }),
   ],
   markdown: {
-    remarkPlugins: [
-      // @ts-expect-error - nonsense type
-      remarkCodeImport.bind(null, {rootDir: exampleDir}),
-    ],
+    remarkPlugins: [[remarkCodeImport as RemarkPlugin, {rootDir: exampleDir}]],
+
+    rehypePlugins: [...rehypeAutolink()],
   },
 });
