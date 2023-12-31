@@ -7,17 +7,11 @@ description: midnight-smoker CLI reference
 
 **midnight-smoker**'s CLI is `smoker`.
 
-Abridged information about its usage can be found by running:
+_Not_ `midnight-smoker`. That is too long.
 
-```shell
-smoker --help
-```
-
-:::note[Default Behavior]
+### Default Behavior
 
 When executed without a command, `smoker`'s default behavior is to [`lint`](#command-lint).
-
-:::
 
 ### Global Options
 
@@ -26,6 +20,12 @@ These options are always available.
 #### `--help`
 
 Show the "help" and exit.
+
+#### `--help` Example
+
+```shell title='Help!!!'
+smoker --help
+```
 
 #### `--version`
 

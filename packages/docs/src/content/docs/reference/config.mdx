@@ -7,43 +7,78 @@ import {Tabs, TabItem} from '@astrojs/starlight/components';
 
 I know what you're thinking: _"I just don't have enough config files!"_ **midnight-smoker** solves this problem by providing you _the opportunity to add another one_.
 
-## Config Files
+## Configuration Files
 
-Configuration may be specified in a `smoker` field in `package.json`, or one of:
+Configuration may be specified in the `smoker` field of your `package.json`, or one of:
 
 - `.smokerrc.(json|js|cjs|mjs)`
 - `smoker.config.(json|js|cjs|mjs)`
 - `.config/smokerrc.(json|js|cjs|mjs)`
 - `.config/smoker.config.(json|js|cjs|mjs)`
 
-## Options
+`smoker` will look for the closest of these files from the current working directory.
 
-_Most_ options have equivalent [command-line flags](/reference/cli). Generally, if the JSON type of an option value is an _object_ (i.e. more complex than `string[]`), the option will _not_ be available on the CLI, because this is cumbersome and awful and I hate it.
+## About Configuration Options
 
-:::note[About Config File Option Names]
+This section explains some arguably-important things about the configuration options and how they relate to the [`smoker` CLI](/reference/cli).
 
-Option names may be specified in `camelCase` or `kebab-case`. For example, `includeRoot` and `include-root` are equivalent.
+### CLI Equivalence
 
-For the purposes of this documentation:
+_Most_ config options have equivalent [command-line options](/reference/cli).
 
-- `kebab-case` will be used as the canonical name
-- JSON examples will use `kebab-case`
+Generally, _if_ the type of a configuration option _is_ more complex than an array of strings (which can be expressed by repeating the option on the CLI), the option _will not_ be available on the CLI. This is because there's _no good way to express it_. Fight me.
+
+### Precedence
+
+If an option is provided on the command-line, it will _override_ the equivalent configuration option. Which is probably what you expect to happen.
+
+### Option Names
+
+In a config file, option names may be specified in `camelCase` or `kebab-case`. For example, `includeRoot` and `include-root` are equivalent. _This is not true for command-line options._
+
+### Command-Specific Options
+
+Some config file options are only used when run with certain CLI commands. This is denoted in the documentation below with the **Command** label.
+
+### Boolean Options
+
+Any boolean option can be negated by prefixing its _the kebab-case name_ it with `no-`. For example:
+
+- ✅ `no-lint: true` is equivalent to `lint: false`.
+- ❌ `no-includeRoot: true` is invalid
+- ✅ `no-include-root: true` is equivalent to `include-root: false`.
+
+This is usually more helpful on the command-line. Maybe you should just not worry about it.
+
+## Conventions
+
+For the purposes of this documentation, we'll use the following conventions:
+
+- `kebab-case` will be used as the "canonical" name.
+- JSON examples will use `kebab-case`.
 - JavaScript examples will use `camelCase`.
 
-:::
+## Configuration Options
 
 ### `add`
 
 - **Summary:** An array of packages to be installed alongside your package(s) prior to running custom smoke tests.
 - **Type:** `string | string[]`
 - **Default:** `[]`
+- **Command**: `run-script` / `run`
+
+:::caution[Here Be Dragons]
+
+Read the [scary stuff about `--add`](/reference/cli#--add) before using this option.
+
+:::
 
 #### `add` Examples
 
 <Tabs>
   <TabItem label="JSON">
 
-```json
+```json title="smoker.config.json"
 {
   "add": ["mocha", "chai"]
 }
@@ -52,7 +87,7 @@ For the purposes of this documentation:
   </TabItem>
   <TabItem label="CJS">
 
-```js
+```js title="smoker.config.cjs"
 module.exports = {
   add: ['mocha', 'chai'],
 };
@@ -61,7 +96,7 @@ module.exports = {
   </TabItem>
   <TabItem label="ESM">
 
-```js
+```js title="smoker.config.mjs"
 export default {
   add: ['mocha', 'chai'],
 };
@@ -85,7 +120,7 @@ The workspace root is excluded by default. To include it, see [`include-root`](#
 <Tabs>
   <TabItem label="JSON">
 
-```json
+```json title="smoker.config.json"
 {
   "all": true
 }
@@ -94,7 +129,7 @@ The workspace root is excluded by default. To include it, see [`include-root`](#
   </TabItem>
   <TabItem label="CJS">
 
-```js
+```js title="smoker.config.cjs"
 module.exports = {
   all: true,
 };
@@ -103,7 +138,7 @@ module.exports = {
   </TabItem>
   <TabItem label="ESM">
 
-```js
+```js title="smoker.config.mjs"
 export default {
   all: true,
 };
@@ -120,13 +155,14 @@ export default {
 - **Type:** `boolean`
 - **Default:** `false`
 - **Alias:** `fail-fast`
+- **Command**: `run-script` / `run`
 
 #### `bail` Examples
 
 <Tabs>
   <TabItem label="JSON">
 
-```json
+```json title="smoker.config.json"
 {
   "bail": true
 }
@@ -135,7 +171,7 @@ export default {
   </TabItem>
   <TabItem label="CJS">
 
-```js
+```js title="smoker.config.cjs"
 module.exports = {
   bail: true,
 };
@@ -144,7 +180,7 @@ module.exports = {
   </TabItem>
   <TabItem label="ESM">
 
-```js
+```js title="smoker.config.mjs"
 export default {
   bail: true,
 };
@@ -154,39 +190,40 @@ export default {
 
 </Tabs>
 
-### `checks`
+### `lint`
 
-**If `false`, do not run automated checks.**
+**If `false`, do not run the `lint` command.**
 
 - **Type:** `boolean`
 - **Default:** `true`
+- **Command**: `run-script` / `run`
 
-#### `checks` Examples
+#### `lint` Examples
 
 <Tabs>
   <TabItem label="JSON">
 
-```json
+```json title="smoker.config.json"
 {
-  "checks": false
+  "lint": false
 }
 ```
 
   </TabItem>
   <TabItem label="CJS">
 
-```js
+```js title="smoker.config.cjs"
 module.exports = {
-  checks: false,
+  lint: false,
 };
 ```
 
   </TabItem>
   <TabItem label="ESM">
 
-```js
+```js title="smoker.config.mjs"
 export default {
-  checks: false,
+  lint: false,
 };
 ```
 
@@ -208,7 +245,7 @@ Providing `include-root: true` without `all: true` is considered an error.
 <Tabs>
   <TabItem label="JSON">
 
-```json
+```json title="smoker.config.json"
 {
   "all": true,
   "include-root": true
@@ -218,7 +255,7 @@ Providing `include-root: true` without `all: true` is considered an error.
   </TabItem>
   <TabItem label="CJS">
 
-```js
+```js title="smoker.config.cjs"
 module.exports = {
   all: true,
   includeRoot: true,
@@ -228,7 +265,7 @@ module.exports = {
   </TabItem>
   <TabItem label="ESM">
 
-```js
+```js title="smoker.config.mjs"
 export default {
   all: true,
   includeRoot: true,
@@ -253,7 +290,7 @@ This is an alias for `--reporter=json`; see [`reporter`](#reporter).
 <Tabs>
   <TabItem label="JSON">
 
-```json
+```json title="smoker.config.json"
 {
   "json": true
 }
@@ -262,7 +299,7 @@ This is an alias for `--reporter=json`; see [`reporter`](#reporter).
   </TabItem>
   <TabItem label="CJS">
 
-```js
+```js title="smoker.config.cjs"
 module.exports = {
   json: true,
 };
@@ -271,7 +308,7 @@ module.exports = {
   </TabItem>
   <TabItem label="ESM">
 
-```js
+```js title="smoker.config.mjs"
 export default {
   json: true,
 };
@@ -301,7 +338,7 @@ This is handy if you're having a tough time debugging a failure.
 <Tabs>
   <TabItem label="JSON">
 
-```json
+```json title="smoker.config.json"
 {
   "linger": true
 }
@@ -310,7 +347,7 @@ This is handy if you're having a tough time debugging a failure.
   </TabItem>
   <TabItem label="CJS">
 
-```js
+```js title="smoker.config.cjs"
 module.exports = {
   linger: true,
 };
@@ -319,7 +356,7 @@ module.exports = {
   </TabItem>
   <TabItem label="ESM">
 
-```js
+```js title="smoker.config.mjs"
 export default {
   linger: true,
 };
@@ -336,13 +373,14 @@ export default {
 - **Type:** `boolean`
 - **Default:** `false`
 - **Alias:** `if-present`
+- **Command**: `run-script` / `run`
 
 #### `loose` Examples
 
 <Tabs>
   <TabItem label="JSON">
 
-```json
+```json title="smoker.config.json"
 {
   "loose": true
 }
@@ -351,7 +389,7 @@ export default {
   </TabItem>
   <TabItem label="CJS">
 
-```js
+```js title="smoker.config.cjs"
 module.exports = {
   loose: true,
 };
@@ -360,7 +398,7 @@ module.exports = {
   </TabItem>
   <TabItem label="ESM">
 
-```js
+```js title="smoker.config.mjs"
 export default {
   loose: true,
 };
@@ -382,7 +420,7 @@ export default {
 <Tabs>
   <TabItem label="JSON">
 
-```json
+```json title="smoker.config.json"
 {
   "plugin": ["@midnight-smoker/plugin-typescript"]
 }
@@ -391,7 +429,7 @@ export default {
   </TabItem>
   <TabItem label="CJS">
 
-```js
+```js title="smoker.config.cjs"
 module.exports = {
   plugin: ['@midnight-smoker/plugin-typescript'],
 };
@@ -400,7 +438,7 @@ module.exports = {
   </TabItem>
   <TabItem label="ESM">
 
-```js
+```js title="smoker.config.mjs"
 export default {
   plugin: ['@midnight-smoker/plugin-typescript'],
 };
@@ -422,7 +460,7 @@ export default {
 <Tabs>
   <TabItem label="JSON">
 
-```json
+```json title="smoker.config.json"
 {
   "reporter": ["json"]
 }
@@ -431,7 +469,7 @@ export default {
   </TabItem>
   <TabItem label="CJS">
 
-```js
+```js title="smoker.config.cjs"
 module.exports = {
   reporter: ['json'],
 };
@@ -440,7 +478,7 @@ module.exports = {
   </TabItem>
   <TabItem label="ESM">
 
-```js
+```js title="smoker.config.mjs"
 export default {
   reporter: ['json'],
 };
@@ -454,22 +492,31 @@ export default {
 
 **Rule-specific configuration.**
 
-- **Type:** _see [Rules Reference](/reference/rules)_
+- **Type:** `Record<RuleName, RuleSeverity | [RuleSeverity, RuleOptions] | RuleOptions`
+- **Default:** `Record<RuleName, RuleSpecificDefaults>`
 
-Each rule can have its severity set to one of `error`, `warn`, or `off`. Rules may also define their own options. See the [Rules Reference](/reference/rules) for more information on specific rule options.
+In the type above, `RuleOptions` refers to rule-specific options; refer to the [Built-in Rules Reference](/reference/rules) for more information.
 
-Each rule's configuration can be provided in three (3) different ways:
+`RuleSeverity` refers to a [rule severity](#rule-severity) of `error`, `warn`, or `off`.
 
-- A `string`, which will be interpreted as the rule's severity
-- A `[severity: string, options: object]` tuple, where the first element is the rule's severity, and the second element is an object of rule-specific options
-- An `object`, which corresponds to the rule-specific options (severity will be the default `error`)
+#### Rule Severity
+
+Each rule can have a user-configured _severity_. The severity of a rule can be one of:
+
+- `off`: The rule is disabled and _will not be run_
+- `warn`: The rule is enabled, but _will not_ cause `smoker` to exit with a non-zero status code
+- `error`: The rule is enabled, and _will_ cause `smoker` to exit with a non-zero status code
+
+The default severity level for each built-in rule is `error`.
+
+Rules _may_ override this behavior (i.e. a default severity of `warn` or `off`).
 
 #### `rules` Examples
 
 <Tabs>
   <TabItem label="JSON">
 
-```json
+```json title="smoker.config.json"
 {
   "rules": {
     "no-banned-files": [
@@ -484,20 +531,9 @@ Each rule's configuration can be provided in three (3) different ways:
       "warn",
       {
         "types": false,
-        "require": false,
-        "import": false,
-        "order": false,
-        "glob": false
+        "require": false
       }
-    ],
-    "no-missing-pkg-files": {
-      "bin": false,
-      "browser": false,
-      "types": false,
-      "unpkg": false,
-      "module": false,
-      "fields": ["some-future-entry-point", "path-to-thing"]
-    }
+    ]
   }
 }
 ```
@@ -505,7 +541,7 @@ Each rule's configuration can be provided in three (3) different ways:
   </TabItem>
   <TabItem label="CJS">
 
-```js
+```js title="smoker.config.cjs"
 module.exports = {
   rules: {
     'no-banned-files': [
@@ -521,19 +557,8 @@ module.exports = {
       {
         types: false,
         require: false,
-        import: false,
-        order: false,
-        glob: false,
       },
     ],
-    'no-missing-pkg-files': {
-      bin: false,
-      browser: false,
-      types: false,
-      unpkg: false,
-      module: false,
-      fields: ['some-future-entry-point', 'path-to-thing'],
-    },
   },
 };
 ```
@@ -541,7 +566,7 @@ module.exports = {
   </TabItem>
   <TabItem label="ESM">
 
-```js
+```js title="smoker.config.mjs"
 export default {
   rules: {
     'no-banned-files': [
@@ -557,19 +582,8 @@ export default {
       {
         types: false,
         require: false,
-        import: false,
-        order: false,
-        glob: false,
       },
     ],
-    'no-missing-pkg-files': {
-      bin: false,
-      browser: false,
-      types: false,
-      unpkg: false,
-      module: false,
-      fields: ['some-future-entry-point', 'path-to-thing'],
-    },
   },
 };
 ```

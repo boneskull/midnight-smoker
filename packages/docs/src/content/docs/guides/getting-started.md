@@ -33,7 +33,7 @@ If you're here, you probably don't need to know how to install it, but I feel li
 
 It's recommended to install `midnight-smoker` as a dev dependency:
 
-```shell
+```shell title="Installing midnight-smoker"
 npm install midnight-smoker --save-dev
 ```
 
@@ -41,13 +41,13 @@ npm install midnight-smoker --save-dev
 
 To run **midnight-smoker**'s builtin checks against your project, run the following command:
 
-```shell
+```shell title="Run midnight-smoker"
 npx midnight-smoker
 ```
 
 Assuming your package isn't all jacked up, you should see output akin to:
 
-```plain
+```text title="midnight-smoker happy path output"
 💨 midnight-smoker vX.Y.Z
 ✔ Packed 1 unique package using npm@latest…
 ✔ Installed 1 unique package from tarball
