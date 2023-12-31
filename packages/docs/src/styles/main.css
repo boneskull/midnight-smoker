@@ -103,3 +103,13 @@
     margin: 0;
   }
 }
+
+.sl-markdown-content table:not(:where(.not-content *)) {
+  display: block;
+  overflow: auto;
+  border-collapse: collapse;
+}
+
+.sl-markdown-content :is(th, td):not(:where(.not-content *)) > code {
+  overflow-wrap: normal;
+}
