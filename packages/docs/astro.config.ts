@@ -26,15 +26,22 @@ export default defineConfig({
       sidebar: [
         {
           label: 'Guides',
-          autogenerate: {
-            directory: 'guides',
-          },
+          items: [
+            {label: 'Getting Started', link: '/guides/getting-started'},
+            {label: 'General Usage', link: '/guides/usage'},
+            {label: 'Configuration', link: '/guides/config'},
+            {label: 'Using Custom Scripts', link: '/guides/custom-scripts'},
+            {label: 'Using Plugins', link: '/guides/plugins'},
+            {label: 'Writing Plugins', link: '/guides/writing-plugins'},
+          ],
         },
         {
           label: 'Reference',
-          autogenerate: {
-            directory: 'reference',
-          },
+          items: [
+            {label: 'CLI', link: '/reference/cli'},
+            {label: 'Configuration', link: '/reference/config'},
+            {label: 'Rules', link: '/reference/rules'},
+          ],
         },
       ],
       components: {

@@ -7,6 +7,16 @@ import {Tabs, TabItem} from '@astrojs/starlight/components';
 
 I know what you're thinking: _"I just don't have enough config files!"_ **midnight-smoker** solves this problem by providing you _the opportunity to add another one_.
 
+## Conventions
+
+For the purposes of this documentation, we'll use the following conventions:
+
+- `kebab-case` will be used as the "canonical" name.
+- JSON examples will use `kebab-case`.
+- JavaScript examples will use `camelCase`.
+
+Some config file options are only used when run with certain CLI commands. This is denoted in the documentation below with the **Command** label.
+
 ## Configuration Files
 
 Configuration may be specified in the `smoker` field of your `package.json`, or one of:
@@ -18,47 +28,29 @@ Configuration may be specified in the `smoker` field of your `package.json`, or 
 
 `smoker` will look for the closest of these files from the current working directory.
 
-## About Configuration Options
+## Compared to the CLI
 
-This section explains some arguably-important things about the configuration options and how they relate to the [`smoker` CLI](/reference/cli).
+This section explains some arguably-important things about how config options relate to CLI options.
 
-### CLI Equivalence
+### Equivalent Options
 
 _Most_ config options have equivalent [command-line options](/reference/cli).
 
-Generally, _if_ the type of a configuration option _is_ more complex than an array of strings (which can be expressed by repeating the option on the CLI), the option _will not_ be available on the CLI. This is because there's _no good way to express it_. Fight me.
+Generally, _if_ the type of a configuration option is more complex than an array of strings (which can be expressed by repeating the option on the CLI), the option _will not_ be available on the CLI. This is because there's _no good way to express it_. Fight me.
 
-### Precedence
+### CLI &gt; Config
 
-If an option is provided on the command-line, it will _override_ the equivalent configuration option. Which is probably what you expect to happen.
+The CLI takes precedence over any options set in a config file.
 
-### Option Names
-
-In a config file, option names may be specified in `camelCase` or `kebab-case`. For example, `includeRoot` and `include-root` are equivalent. _This is not true for command-line options._
-
-### Command-Specific Options
-
-Some config file options are only used when run with certain CLI commands. This is denoted in the documentation below with the **Command** label.
-
-### Boolean Options
-
-Any boolean option can be negated by prefixing its _the kebab-case name_ it with `no-`. For example:
-
-- ✅ `no-lint: true` is equivalent to `lint: false`.
-- ❌ `no-includeRoot: true` is invalid
-- ✅ `no-include-root: true` is equivalent to `include-root: false`.
-
-This is usually more helpful on the command-line. Maybe you should just not worry about it.
-
-## Conventions
-
-For the purposes of this documentation, we'll use the following conventions:
-
-- `kebab-case` will be used as the "canonical" name.
-- JSON examples will use `kebab-case`.
-- JavaScript examples will use `camelCase`.
+In other words, if an option is provided on the command-line, it will _override_ the equivalent configuration option. Which is probably what you expect to happen.
 
 ## Configuration Options
+
+:::note[Option Names]
+
+In a config file, option names may be specified in `camelCase` or `kebab-case`. For example, `includeRoot` and `include-root` are equivalent.
+
+:::
 
 ### `add`
 

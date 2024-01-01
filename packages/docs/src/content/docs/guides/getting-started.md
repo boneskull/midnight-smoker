@@ -55,5 +55,3 @@ Assuming your package isn't all jacked up, you should see output akin to:
 ✔ Successfully ran 1 script
 ✔ Lovey-dovey! 💖
 ```
-
-Next, read about the [command-line interface](/guides/cli).

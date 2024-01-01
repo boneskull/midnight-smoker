@@ -9,6 +9,32 @@ description: midnight-smoker CLI reference
 
 _Not_ `midnight-smoker`. That is too long.
 
+## Conventions
+
+### Array-Type Options
+
+Options which accept multiple values (e.g., [`--workspace`](-w---workspace)) may be provided multiple times. **They cannot be provided as comma-delimited values**.
+
+:::tip[Use Short Aliases for Multiple Values]
+
+It's convenient to use short options (`-w` instead of `--workspace`) when providing multiple values for options. Example:
+
+```shell
+smoker run -w=foo -w=bar -w=baz quux
+```
+
+:::
+
+### Object-Type Options
+
+Any option more complicated than an array of strings is **unsupported on the CLI** and must be provided via a [config file](/reference/config).
+
+### Exit Codes
+
+`smoker` will exit with code `0` if linting passes without an "error" severity issue and if all custom scripts exit with code `0`, and `1` otherwise.
+
+`smoker` will exit with code `1` if packing or installation of any package fails.
+
 ### Default Behavior
 
 When executed without a command, `smoker`'s default behavior is to [`lint`](#command-lint).
@@ -244,32 +270,6 @@ Best used when you only want to run custom scripts--especially against multiple 
 Do not fail if a workspace's`package.json` does not contain the script(s) provided.
 
 Only applicable when used with [`--all`](#--all) or [`--workspace`](#-w---workspace).
-
-## Conventions
-
-### Array-Type Options
-
-Options which accept multiple values (e.g., [`--workspace`](-w---workspace)) may be provided multiple times. **They cannot be provided as comma-delimited values**.
-
-:::tip[Use Short Aliases for Multiple Values]
-
-It's convenient to use short options (`-w` instead of `--workspace`) when providing multiple values for options. Example:
-
-```shell
-smoker run -w=foo -w=bar -w=baz quux
-```
-
-:::
-
-### Object-Type Options
-
-Any option more complicated than an array of strings is **unsupported on the CLI** and must be provided via a [config file](/reference/config).
-
-### Exit Codes
-
-`smoker` will exit with code `0` if linting passes without an "error" severity issue and if all custom scripts exit with code `0`, and `1` otherwise.
-
-`smoker` will exit with code `1` if packing or installation of any package fails.
 
 ## Further Reading
 
