@@ -10,6 +10,7 @@ export const INPUT_GROUP = 'Input:';
  */
 export const ARRAY_OPT_CFG = {
   requiresArg: true,
+  nargs: 1,
   array: true,
   string: true,
 } as const;
@@ -22,6 +23,8 @@ export const PLUGIN_OPT = {
   describe: 'Plugin(s) to use',
   ...ARRAY_OPT_CFG,
   global: true,
+  requiresArg: true,
+  nargs: 1,
 } as const;
 
 export const GlobalOptions = {plugin: PLUGIN_OPT} as const satisfies Record<
