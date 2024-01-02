@@ -37,16 +37,6 @@ describe('midnight-smoker', function () {
       });
 
       describe('normalizePlugin()', function () {
-        describe('when passed a PluginFactory', function () {
-          it('should wrap the factory in a PluginObject', function () {
-            const factory = () => {};
-            const rawPlugin = PluginRegistry.normalizePlugin(factory);
-            expect(rawPlugin, 'to satisfy', {
-              plugin: expect.it('to be', factory),
-            });
-          });
-        });
-
         describe('when passed a PluginObject', function () {
           it('should return a shallow clone of the PluginObject', function () {
             const rawPlugin = {plugin: () => {}};
@@ -247,9 +237,10 @@ describe('midnight-smoker', function () {
 
         it('should clear out internal maps', function () {
           // best we can do given visibility
-          expect(registry.plugins, 'to be empty');
-          expect(registry.getRules(), 'to be empty');
-          expect(registry.reporters, 'to be empty');
+          expect(registry, 'to satisfy', {
+            plugins: expect.it('to be empty'),
+            reporters: expect.it('to be empty'),
+          });
         });
       });
 
@@ -266,6 +257,7 @@ describe('midnight-smoker', function () {
                   id: '@midnight-smoker/plugin-default',
                   version: expect.it('to be a string'),
                   description: expect.it('to be a string'),
+                  entryPoint: expect.it('to be a string'),
                 },
               ],
               scriptRunners: ['default'],
