@@ -2,7 +2,7 @@ import {execSmoker, fixupOutput} from '@midnight-smoker/test-util';
 import path from 'node:path';
 import snapshot from 'snap-shot-it';
 import unexpected from 'unexpected';
-import {readPackageJson} from '../../src/util';
+import {readPackageJson} from '../../src/pkg-util';
 import assertions from '../assertions';
 
 const expect = unexpected.clone().use(assertions);

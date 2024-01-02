@@ -5,7 +5,8 @@ import snapshot from 'snap-shot-it';
 import unexpected from 'unexpected';
 import {DEFAULT_SPEC} from '../../src/component/package-manager/loader';
 import {ExecResult} from '../../src/component/schema/executor-schema';
-import {readPackageJson, resolveFrom} from '../../src/util';
+import {resolveFrom} from '../../src/loader-util';
+import {readPackageJson} from '../../src/pkg-util';
 import assertions from '../assertions';
 
 const expect = unexpected.clone().use(assertions);

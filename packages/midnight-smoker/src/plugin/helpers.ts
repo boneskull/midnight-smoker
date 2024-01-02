@@ -15,13 +15,13 @@ import {type RuleOk} from '../component/rule/rule-result';
 import {RuleSeverity} from '../component/rule/severity';
 import {type StaticRuleContext} from '../component/rule/static';
 import {DirCreationError} from '../error/util-error';
-import {readPackageJson, readPackageJsonSync} from '../util';
+import {readPackageJson, readPackageJsonSync} from '../pkg-util';
 
 export {
   ReadPackageJsonNormalizedResult,
   ReadPackageJsonOpts,
   ReadPackageJsonResult,
-} from '../util';
+} from '../pkg-util';
 export {readPackageJson, readPackageJsonSync};
 
 async function createStaticRuleContext(

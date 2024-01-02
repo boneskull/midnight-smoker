@@ -38,11 +38,11 @@ import {SmokerEvents, type SmokeResults} from './event/event-types';
 import {StrictEmitter, createStrictEmitter} from './event/strict-emitter';
 import {OptionParser} from './options';
 import {type RawSmokerOptions, type SmokerOptions} from './options/options';
+import {readSmokerPkgJson} from './pkg-util';
 import {BLESSED_PLUGINS, isBlessedPlugin} from './plugin/blessed';
 import {PluginRegistry} from './plugin/registry';
 import {StaticPluginMetadata} from './plugin/static-metadata';
 import {castArray} from './schema-util';
-import {readSmokerPkgJson} from './util';
 
 const debug = Debug('midnight-smoker:smoker');
 

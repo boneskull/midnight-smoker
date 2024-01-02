@@ -27,8 +27,9 @@ import {
   UnresolvablePluginError,
 } from '../error/internal-error';
 import * as Event from '../event';
+import {justImport, resolveFrom} from '../loader-util';
+import {readPackageJson} from '../pkg-util';
 import * as SchemaUtils from '../schema-util';
-import {justImport, readPackageJson, resolveFrom} from '../util';
 import {BlessedPlugin, isBlessedPlugin} from './blessed';
 import * as Helpers from './helpers';
 import {PluginMetadata, initBlessedMetadata} from './metadata';

@@ -25,8 +25,8 @@ import {type RuleRunner} from '../component/schema/rule-runner-schema';
 import type {ScriptRunner} from '../component/schema/script-runner-schema';
 import {InvalidArgError} from '../error/common-error';
 import {ComponentNameError} from '../error/component-error';
+import {readPackageJson} from '../pkg-util';
 import {zNonEmptyString, zPackageJson} from '../schema-util';
-import {readPackageJson} from '../util';
 import {BLESSED_PLUGINS, type BlessedPlugin} from './blessed';
 import {StaticPluginMetadata} from './static-metadata';
 

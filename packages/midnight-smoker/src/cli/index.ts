@@ -4,7 +4,7 @@ import type {ArgumentsCamelCase} from 'yargs';
 import {hideBin} from 'yargs/helpers';
 import yargs from 'yargs/yargs';
 import {readConfigFile} from '../config-file';
-import {readSmokerPkgJson} from '../util';
+import {readSmokerPkgJson} from '../pkg-util';
 import {GlobalOptions} from './cli-options';
 import {handleRejection, mergeOptions} from './cli-util';
 import {
