@@ -2,13 +2,14 @@
   "name": "plugin-rule-fail",
   "version": "1.0.0",
   "description": "should fail the rule in the plugin-rule example",
+  "private": true,
   "main": "index.js",
   "scripts": {
     "start": "smoker"
   },
   "smoker": {
     "plugin": [
-      "../../index.js"
+      "../../esm"
     ]
   }
 }

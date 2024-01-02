@@ -1,15 +1,27 @@
-import type {PluginFactory} from 'midnight-smoker/plugin';
 import fs from 'node:fs/promises';
+import path from 'node:path';
 
-// plugin name
+/**
+ * This overrides the plugin name, which would otherwise be inferred from the
+ * closest ancestor `package.json`
+ */
 export const name = 'example';
 
+/**
+ * This overrides the plugin description, which would otherwise be inferred from
+ * the closest ancestor `package.json`
+ */
 export const description = 'Provides a rule which validates licenses';
 
-export const plugin: PluginFactory = (api) => {
+/**
+ * Example plugin which defines the `no-unlicensed` rule.
+ *
+ * @type {import('midnight-smoker/plugin').PluginFactory}
+ */
+export const plugin = (api) => {
   api.defineRule({
     /**
-     * The name of the rule. This will be unique to the plugin.
+     * The name of the rule; required.
      *
      * In a user's config file, it is scoped to the plugin name, so will be
      * referenced as `example/no-unlicensed`.
@@ -17,23 +29,16 @@ export const plugin: PluginFactory = (api) => {
     name: 'no-unlicensed',
 
     /**
-     * Rule description.
-     *
-     * This is required.
+     * Rule description; required.
      */
     description: 'Checks that a package has a license',
 
     /**
-     * This function performs the actual check. The `context` object provides
-     * some extra information about the package being checked, the rule's
-     * current severity, and the `addIssue` method.
-     *
-     * The `opts` object is the user's configuration for this rule, with your
-     * defaults applied; it will be the same output type as the `schema`
-     * property below.
-     *
-     * `addIssue()` does not exit; a rule can raise multiple issues.
-     *
+     * URL to more information about rule usage. This is optional.
+     */
+    url: 'https://example.com/docs/rules/no-unlicensed',
+
+    /**
      * This rule will raise an issue if:
      *
      * - The `license` field in `package.json` is not a string
@@ -41,17 +46,21 @@ export const plugin: PluginFactory = (api) => {
      * - The `licenses` field in `package.json` is not an array
      * - The `licenses` field in `package.json` is empty
      * - No known non-empty license file exists
+     *
+     * Enhancement suggestion: check valid SPDX license identifiers
      */
-    async check({addIssue, pkgJson}, opts) {
+    async check({addIssue, pkgJson, installPath}, opts) {
+      let validFieldFound = false;
       if ('license' in pkgJson) {
         if (typeof pkgJson.license !== 'string') {
           addIssue('Invalid `license` field in package.json');
         } else if (!pkgJson.license) {
           addIssue('Empty `license` field in package.json');
         } else {
-          // you could validate against SPDX licenses here
+          validFieldFound = true;
         }
       }
+
       // TIL this was a thing, and it's an array of `{type, url}` objects
       if ('licenses' in pkgJson) {
         if (!Array.isArray(pkgJson.licenses)) {
@@ -59,15 +68,21 @@ export const plugin: PluginFactory = (api) => {
         } else if (!pkgJson.licenses.length) {
           addIssue('Empty `licenses` field in package.json');
         } else {
-          // you could validate against SPDX licenses here
+          validFieldFound = true;
         }
+      }
+
+      if (!validFieldFound) {
+        addIssue('No `license` or `licenses` field in package.json');
       }
 
       // stat all of the files, looking for a non-empty one
       const nonEmptyLicenseFiles = await Promise.all(
         opts.files.map(async (file) => {
+          // any file referenced in package.json is relative to installPath
+          const filepath = path.resolve(installPath, file);
           try {
-            const stats = await fs.stat(file);
+            const stats = await fs.stat(filepath);
             return stats.size > 0;
           } catch {
             return false;
@@ -84,13 +99,11 @@ export const plugin: PluginFactory = (api) => {
     },
 
     /**
-     * `midnight-smoker` uses Zod to define option schemas.
+     * `midnight-smoker` uses {@link https://zod.dev Zod} to define option
+     * schemas; optional.
      *
-     * Zod can be accessed via the `z` or `zod` property of the `PluginAPI`
-     * object.
-     *
-     * Your rule may not need any options; in that case, you can omit this
-     * property.
+     * THis provides type info to the end-user; misconfiguration will throw an
+     * exception.
      */
     schema: api.z.object({
       files: api.z

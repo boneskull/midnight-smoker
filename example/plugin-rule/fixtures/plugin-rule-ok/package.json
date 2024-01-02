@@ -2,6 +2,7 @@
   "name": "plugin-rule-ok",
   "version": "1.0.0",
   "description": "should pass the rule in the plugin-rule example",
+  "license": "Apache-2.0",
   "private": true,
   "main": "index.js",
   "scripts": {
@@ -9,7 +10,7 @@
   },
   "smoker": {
     "plugin": [
-      "../../index.js"
+      "../../esm"
     ]
   }
 }
