@@ -26,7 +26,7 @@ import type {ScriptRunner} from '../component/schema/script-runner-schema';
 import {InvalidArgError} from '../error/common-error';
 import {ComponentNameError} from '../error/component-error';
 import {zNonEmptyString, zPackageJson} from '../schema-util';
-import {readSmokerPkgJson} from '../util';
+import {readPackageJson} from '../util';
 import {BLESSED_PLUGINS, type BlessedPlugin} from './blessed';
 import {StaticPluginMetadata} from './static-metadata';
 
@@ -490,11 +490,13 @@ export {LiteralUnion};
  *   should only run once"--it should run once per `PluginRegistry` instance.
  */
 export async function initBlessedMetadata() {
-  const pkgJson = await readSmokerPkgJson();
-
-  return Object.freeze(
-    Object.fromEntries(
-      BLESSED_PLUGINS.map((id) => [
+  const entries = await Promise.all(
+    BLESSED_PLUGINS.map(async (id) => {
+      const {packageJson: pkgJson} = await readPackageJson({
+        cwd: require.resolve(id),
+        strict: true,
+      });
+      return [
         id,
         PluginMetadata.create({
           id,
@@ -502,7 +504,11 @@ export async function initBlessedMetadata() {
           entryPoint: require.resolve(id),
           pkgJson,
         }),
-      ]),
-    ),
-  ) as Readonly<Record<BlessedPlugin, PluginMetadata>>;
+      ];
+    }),
+  );
+
+  return Object.freeze(Object.fromEntries(entries)) as Readonly<
+    Record<BlessedPlugin, PluginMetadata>
+  >;
 }
