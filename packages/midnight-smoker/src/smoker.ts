@@ -5,6 +5,7 @@ import {Console} from 'node:console';
 import fs from 'node:fs/promises';
 import {
   Component,
+  ReporterDef,
   RuleSeverities,
   RunRulesManifest,
   SomeRule,
@@ -39,6 +40,7 @@ import {OptionParser} from './options';
 import {type RawSmokerOptions, type SmokerOptions} from './options/options';
 import {BLESSED_PLUGINS, isBlessedPlugin} from './plugin/blessed';
 import {PluginRegistry} from './plugin/registry';
+import {StaticPluginMetadata} from './plugin/static-metadata';
 import {castArray} from './schema-util';
 import {readSmokerPkgJson} from './util';
 
@@ -198,9 +200,20 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
    * @param opts - Raw Smoker options (including `plugin`)
    * @returns List of reporters
    */
-  public static async getReporters(this: void, opts?: RawSmokerOptions) {
+  public static async getReporters(
+    this: void,
+    opts?: RawSmokerOptions,
+  ): Promise<Component<ReporterDef>[]> {
     const smoker = await Smoker.create(opts);
     return smoker.getReporters();
+  }
+
+  public static async getPlugins(
+    this: void,
+    opts?: RawSmokerOptions,
+  ): Promise<StaticPluginMetadata[]> {
+    const smoker = await Smoker.create(opts);
+    return smoker.pluginRegistry.plugins;
   }
 
   /**
