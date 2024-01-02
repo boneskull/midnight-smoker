@@ -1,18 +1,15 @@
 /**
  * Subset of metadata exposed to other plugins.
- *
- * Returned by {@link PluginMetadata.toJSON}
  */
 
 export interface StaticPluginMetadata {
   /**
-   * The full identifier of the plugin. Usually the package name.
+   * The full identifier of the plugin. Either custom name or package name.
    */
   id: string;
 
   /**
-   * The version of the plugin, if available in
-   * {@link PluginMetadataOpts.pkgJson}
+   * The version of the plugin, if available
    */
   version?: string;
 
@@ -20,4 +17,9 @@ export interface StaticPluginMetadata {
    * The description of the plugin, if available
    */
   description?: string;
+
+  /**
+   * Entry point of plugin.
+   */
+  entryPoint: string;
 }

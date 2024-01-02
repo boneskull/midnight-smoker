@@ -352,6 +352,7 @@ export class PluginMetadata implements StaticPluginMetadata {
       id: this.id,
       version: this.version,
       description: this.description,
+      entryPoint: this.entryPoint,
     };
   }
 
