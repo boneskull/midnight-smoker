@@ -20,7 +20,7 @@ export interface RegisterPluginOptsWithFactory extends BaseRegisterPluginOpts {
 
 export interface RegisterPluginOptsWithPluginObject
   extends BaseRegisterPluginOpts {
-  plugin: Plugin.PluginObject;
+  plugin: Plugin.Plugin;
 }
 
 /**

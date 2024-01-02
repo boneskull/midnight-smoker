@@ -41,7 +41,7 @@ export async function registerComponent<T extends ComponentType>(
     api: apiOverrides,
   }: RegisterComponentOpts = {},
 ): Promise<PluginRegistry> {
-  const plugin: Plugin.PluginObject = {
+  const plugin: Plugin.Plugin = {
     plugin: (api) => {
       api = {...api, ...apiOverrides};
       switch (type) {

@@ -50,7 +50,7 @@ describe('midnight-smoker', function () {
 
         describe('when passed a Babelized PluginObject', function () {
           it('should return a shallow clone of the PluginObject', function () {
-            const rawPlugin = {default: {plugin: () => {}}};
+            const rawPlugin = {__esModule: true, default: {plugin: () => {}}};
             expect(
               PluginRegistry.normalizePlugin(rawPlugin),
               'to equal',

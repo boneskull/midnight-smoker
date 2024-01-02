@@ -28,11 +28,11 @@ import {
 } from '../error/internal-error';
 import * as Event from '../event';
 import * as SchemaUtils from '../schema-util';
-import {readPackageJson, resolveFrom} from '../util';
+import {justImport, readPackageJson, resolveFrom} from '../util';
 import {BlessedPlugin, isBlessedPlugin} from './blessed';
 import * as Helpers from './helpers';
 import {PluginMetadata, initBlessedMetadata} from './metadata';
-import {PluginObject, zPlugin} from './plugin';
+import {Plugin, zPlugin} from './plugin';
 import * as API from './plugin-api';
 import {StaticPluginMetadata} from './static-metadata';
 
@@ -294,13 +294,13 @@ export class PluginRegistry {
    *
    * At time of {@link resolvePlugin resolution}, the metadata's `id` is derived
    * from the `name` field of its ancestor `package.json`, and the `description`
-   * is derived from that as well. However, a {@link PluginObject} can provide a
-   * `name` and `description` field, which should override the metadata's `id`
-   * and `description` fields. {@link PluginMetadata} objects are readonly, so we
+   * is derived from that as well. However, a {@link Plugin} can provide a `name`
+   * and `description` field, which should override the metadata's `id` and
+   * `description` fields. {@link PluginMetadata} objects are readonly, so we
    * have to create a new one. This is allowed, because the metadata is not yet
    * stored in {@link PluginRegistry.pluginMap}.
    *
-   * Note that {@link PluginObject.name} maps to {@link PluginMetadata.id}.
+   * Note that {@link Plugin.name} maps to {@link PluginMetadata.id}.
    *
    * @param metadata - Plugin metadata
    * @param plugin - A plugin object
@@ -309,7 +309,7 @@ export class PluginRegistry {
    */
   private maybeUpdatePluginMetadata(
     metadata: Readonly<PluginMetadata>,
-    plugin?: PluginObject,
+    plugin?: Plugin,
   ): Readonly<PluginMetadata> {
     if (plugin?.name || plugin?.description) {
       return PluginMetadata.create(metadata, {
@@ -372,7 +372,7 @@ export class PluginRegistry {
    */
   public async registerPlugin(
     metadata: PluginMetadata,
-    plugin?: PluginObject,
+    plugin?: Plugin,
   ): Promise<PluginMetadata>;
 
   /**
@@ -384,18 +384,18 @@ export class PluginRegistry {
    */
   public async registerPlugin(
     name: string,
-    plugin: PluginObject,
+    plugin: Plugin,
   ): Promise<PluginMetadata>;
 
   public async registerPlugin(
     metadataOrName: PluginMetadata | string,
-    nameOrPlugin?: string | PluginObject,
+    nameOrPlugin?: string | Plugin,
   ): Promise<PluginMetadata> {
     if (this.isClosed) {
       throw new DisallowedPluginError();
     }
 
-    let plugin: PluginObject | undefined;
+    let plugin: Plugin | undefined;
     let metadata: PluginMetadata;
 
     if (isString(metadataOrName)) {
@@ -426,7 +426,7 @@ export class PluginRegistry {
     if (plugin === undefined) {
       let rawPlugin: unknown;
       try {
-        rawPlugin = await import(metadata.entryPoint);
+        rawPlugin = await justImport(metadata.entryPoint, metadata.pkgJson);
       } catch (err) {
         throw new PluginImportError(err as Error, metadata);
       }
@@ -552,9 +552,9 @@ export class PluginRegistry {
 
   /**
    * Given the export(s) of a plugin's entry point, validate it and return a
-   * {@link PluginObject}.
+   * {@link Plugin}.
    */
-  public static normalizePlugin(rawPlugin: unknown): PluginObject {
+  public static normalizePlugin(rawPlugin: unknown): Plugin {
     return zPlugin.parse(rawPlugin);
   }
 

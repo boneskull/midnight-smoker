@@ -10,7 +10,7 @@
 
 import {cyanBright, italic} from 'chalk';
 import {PluginMetadata} from '../plugin/metadata';
-import {PluginObject} from '../plugin/plugin';
+import {Plugin} from '../plugin/plugin';
 import {BaseSmokerError} from './base-error';
 
 /**
@@ -73,13 +73,13 @@ export class DisallowedPluginError extends BaseSmokerError<{
 export class PluginInitializationError extends BaseSmokerError<
   {
     metadata: PluginMetadata;
-    plugin: PluginObject;
+    plugin: Plugin;
   },
   Error
 > {
   public readonly id = 'PluginInitializationError';
 
-  constructor(error: Error, metadata: PluginMetadata, plugin: PluginObject) {
+  constructor(error: Error, metadata: PluginMetadata, plugin: Plugin) {
     super(
       `Plugin ${metadata} failed to initialize`,
       {

@@ -22,6 +22,55 @@ describe('midnight-smoker [E2E]', function () {
         });
       });
     });
+
+    describe('when a plugin is a phony ES module (CJS)', function () {
+      const pluginCwd = path.join(FIXTURE_DIR, 'ersatz-esm');
+
+      describe('the plugin should be loaded properly', function () {
+        it('should load the plugin', async function () {
+          await expect(
+            execSmoker(['--plugin', pluginCwd, 'list-plugins']),
+            'to be fulfilled with value satisfying',
+            {
+              stdout: /mcmonkey-mcbean.+ersatz-esm/,
+            },
+          );
+        });
+      });
+    });
+
+    describe('when a plugin is an ES module', function () {
+      const pluginCwd = path.join(FIXTURE_DIR, 'esm');
+
+      describe('the plugin should be loaded properly', function () {
+        it('should load the plugin', async function () {
+          await expect(
+            execSmoker(['--plugin', pluginCwd, 'list-plugins']),
+            'to be fulfilled with value satisfying',
+            {
+              stdout: /esm-plugin/,
+            },
+          );
+        });
+      });
+    });
+
+    describe('when a plugin is an ES module by way of .mjs and has a default export', function () {
+      const pluginCwd = path.join(FIXTURE_DIR, 'mjs');
+
+      describe('the plugin should be loaded properly', function () {
+        it('should load the plugin', async function () {
+          await expect(
+            execSmoker(['--plugin', pluginCwd, 'list-plugins']),
+            'to be fulfilled with value satisfying',
+            {
+              stdout: /mjs-plugin/,
+            },
+          );
+        });
+      });
+    });
+
     describe('when a plugin provides a rule', function () {
       const pluginCwd = path.join(FIXTURE_DIR, 'plugin-rule');
 

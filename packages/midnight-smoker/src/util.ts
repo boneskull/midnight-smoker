@@ -324,3 +324,57 @@ export function serialize<T>(value: T) {
   }
   return value;
 }
+
+/**
+ * Type guard for a CJS module with an `__esModule` property
+ *
+ * @param value - Any value
+ * @returns `true` if the value is an object with an `__esModule` property
+ */
+export function isErsatzESModule(value: unknown): value is {__esModule: true} {
+  return isObject(value) && '__esModule' in value;
+}
+
+/**
+ * Attempts to gracefully load an unknown module.
+ *
+ * `await import()` on a CJS module will always return an object with a
+ * `default` export. Modules which have been, say, compiled with TS into CJS and
+ * _also_ have a default export will be wrapped in _another_ `default` property.
+ * That sucks, but it can be avoided by just `require`-ing the CJS module
+ * instead. We will still need to unwrap the `default` property if it exists.
+ *
+ * The `pkgJson` parameter is used to help us guess at the type of module we're
+ * importing.
+ *
+ * @param moduleId - Resolved module identifier
+ * @param pkgJson - `package.json` associated with the module, if any
+ * @returns Hopefully, whatever is exported
+ */
+export async function justImport(moduleId: string, pkgJson?: PackageJson) {
+  // no zalgo here
+  await Promise.resolve();
+  if (!path.isAbsolute(moduleId)) {
+    // TODO throw SmokeError
+    throw new TypeError('moduleId must be resolved');
+  }
+  const maybeIsScript =
+    pkgJson?.type !== 'module' || path.extname(moduleId) === '.cjs';
+
+  let raw: unknown;
+  if (maybeIsScript) {
+    try {
+      raw = require(moduleId);
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== 'ERR_REQUIRE_ESM') {
+        throw err;
+      }
+    }
+  }
+  raw ??= await import(moduleId);
+  // this catches the case where we `await import()`ed a CJS module despite our best efforts
+  if (isErsatzESModule(raw) && 'default' in raw) {
+    ({default: raw} = raw);
+  }
+  return raw;
+}
