@@ -66,7 +66,7 @@ export async function runRuleRunner(
       : () => true;
   return ruleRunner(
     notifiers,
-    registry.getAllRules(filter),
+    registry.getRules(filter),
     opts.config ?? registry.mergeRuleDefaults(),
     manifest,
   );

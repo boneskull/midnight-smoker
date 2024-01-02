@@ -127,7 +127,7 @@ export class PluginRegistry {
     this.#isClosed = false;
   }
 
-  public getAllRules(filter?: RuleFilter) {
+  public getRules(filter?: RuleFilter) {
     const rules = [...this.ruleMap.values()].flat();
     return filter ? rules.filter(filter) : rules;
   }

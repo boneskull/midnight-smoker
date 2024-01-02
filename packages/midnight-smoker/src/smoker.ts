@@ -4,8 +4,10 @@ import {isFunction} from 'lodash';
 import {Console} from 'node:console';
 import fs from 'node:fs/promises';
 import {
+  Component,
   RuleSeverities,
   RunRulesManifest,
+  SomeRule,
   type RunRulesResult,
 } from './component';
 import {
@@ -207,7 +209,10 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
    * @param opts - Raw Smoker options (including `plugin`)
    * @returns List of rules
    */
-  public static async getRules(this: void, opts?: RawSmokerOptions) {
+  public static async getRules(
+    this: void,
+    opts?: RawSmokerOptions,
+  ): Promise<Component<SomeRule>[]> {
     const smoker = await Smoker.create(opts);
     return smoker.getRules();
   }
@@ -309,7 +314,7 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
   }
 
   public getRules() {
-    return this.pluginRegistry.getAllRules();
+    return this.pluginRegistry.getRules();
   }
 
   /**
@@ -418,7 +423,7 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
   public async runChecks(
     installResults: InstallResult[],
   ): Promise<RunRulesResult> {
-    const rules = this.pluginRegistry.getAllRules(
+    const rules = this.pluginRegistry.getRules(
       (rule) => this.opts.rules[rule.id].severity !== RuleSeverities.Off,
     );
 

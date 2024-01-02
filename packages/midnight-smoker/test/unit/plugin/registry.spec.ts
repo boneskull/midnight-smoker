@@ -27,6 +27,7 @@ describe('midnight-smoker', function () {
         require('../../../src/plugin/registry'),
       ));
     });
+
     describe('static method', function () {
       describe('create()', function () {
         it('should return an instance of PluginRegistry', function () {
@@ -247,7 +248,7 @@ describe('midnight-smoker', function () {
         it('should clear out internal maps', function () {
           // best we can do given visibility
           expect(registry.plugins, 'to be empty');
-          expect(registry.getAllRules(), 'to be empty');
+          expect(registry.getRules(), 'to be empty');
           expect(registry.reporters, 'to be empty');
         });
       });
