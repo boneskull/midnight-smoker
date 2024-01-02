@@ -181,10 +181,10 @@ export class ExportsInspector<Schema extends Rule.RuleOptionSchema> {
   }
 
   /**
-   * {@inheritdoc CheckContext.pkgPath}
+   * {@inheritdoc CheckContext.installPath}
    */
-  protected get pkgPath() {
-    return this.ctx.pkgPath;
+  protected get installPath() {
+    return this.ctx.installPath;
   }
 
   protected get shouldAllowGlobs() {
@@ -278,7 +278,7 @@ export class ExportsInspector<Schema extends Rule.RuleOptionSchema> {
       return;
     }
 
-    const absPath = path.resolve(this.pkgPath, relPath);
+    const absPath = path.resolve(this.installPath, relPath);
 
     debug('Checking export %s', relPath);
 
@@ -344,7 +344,7 @@ export class ExportsInspector<Schema extends Rule.RuleOptionSchema> {
 
   protected async globPatternMatchesNothing(pattern: string) {
     const matchingFiles = await glob(pattern, {
-      cwd: this.pkgPath,
+      cwd: this.installPath,
     });
 
     // it's _possible_, but unlikely that we'd have an unreadable file,

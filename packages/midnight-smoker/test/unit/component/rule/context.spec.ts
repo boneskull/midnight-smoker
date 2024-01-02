@@ -23,7 +23,7 @@ describe('midnight-smoker', function () {
             // include other necessary package.json properties here
           },
           pkgJsonPath: '/path/to/example-package/package.json',
-          pkgPath: '/path/to/example-package',
+          installPath: '/path/to/example-package',
           severity: 'error',
         };
 
@@ -173,7 +173,7 @@ describe('midnight-smoker', function () {
 
           describe('pkgPath', function () {
             it('should return the pkgPath from the static context', function () {
-              expect(context.pkgPath, 'to equal', staticCtx.pkgPath);
+              expect(context.installPath, 'to equal', staticCtx.installPath);
             });
           });
 

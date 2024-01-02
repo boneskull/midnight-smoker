@@ -25,18 +25,18 @@ export {
 export {readPackageJson, readPackageJsonSync};
 
 async function createStaticRuleContext(
-  pkgPath: string,
+  installPath: string,
   severity: RuleSeverity,
 ): Promise<StaticRuleContext> {
   const {packageJson: pkgJson, path: pkgJsonPath} = await readPackageJson({
-    cwd: pkgPath,
+    cwd: installPath,
     strict: true,
   });
 
   return {
     pkgJson,
     pkgJsonPath,
-    pkgPath,
+    installPath,
     severity,
   };
 }
@@ -49,7 +49,7 @@ async function createStaticRuleContext(
  * package and `Rule` they execute.
  *
  * @param rule - Rule for context
- * @param pkgPath - Path to package which will be provided to Rule
+ * @param installPath - Path to package which will be provided to Rule
  * @param ruleConfig - Specific rule configuration (`severity`, `opts`)
  * @returns A new {@link RuleContext}
  */
@@ -57,11 +57,11 @@ export async function createRuleContext<
   Cfg extends BaseNormalizedRuleOptions = BaseNormalizedRuleOptions,
 >(
   rule: Component<SomeRule>,
-  pkgPath: string,
+  installPath: string,
   ruleConfig: Cfg,
 ): Promise<Readonly<RuleContext>> {
   const {severity} = ruleConfig;
-  const staticCtx = await createStaticRuleContext(pkgPath, severity);
+  const staticCtx = await createStaticRuleContext(installPath, severity);
   return RuleContext.create(rule, staticCtx);
 }
 

@@ -31,7 +31,7 @@ describe('midnight-smoker', function () {
             version: '1.0.0',
           },
           pkgJsonPath: '/path/to/example-package/package.json',
-          pkgPath: '/path/to/example-package',
+          installPath: '/path/to/example-package',
           severity: 'error',
         };
         let issue: RuleIssue;

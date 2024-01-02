@@ -20,7 +20,7 @@ const DEFAULT_ENTRY_POINTS = ['index.js', 'index.json', 'index.node'] as const;
 
 export default function noMissingEntryPoint({defineRule}: PluginAPI) {
   defineRule({
-    async check({pkgJson, pkgPath, addIssue}) {
+    async check({pkgJson, installPath, addIssue}) {
       // skip if the package has an "exports" field or it's an ESM package
       if (
         'exports' in pkgJson ||
@@ -35,7 +35,7 @@ export default function noMissingEntryPoint({defineRule}: PluginAPI) {
       if (pkgJson[field]) {
         // the field exists, so check the file exists
         const relativePath = pkgJson[field];
-        const filepath = path.resolve(pkgPath, relativePath);
+        const filepath = path.resolve(installPath, relativePath);
         try {
           await fs.stat(filepath);
         } catch {
@@ -49,7 +49,7 @@ export default function noMissingEntryPoint({defineRule}: PluginAPI) {
         const queue = [...DEFAULT_ENTRY_POINTS];
         while (queue.length && !found) {
           const relativePath = queue.shift()!; // in order!!!
-          const filepath = path.resolve(pkgPath, relativePath);
+          const filepath = path.resolve(installPath, relativePath);
           debug('Checking default entry point %s', filepath);
           try {
             await fs.stat(filepath);

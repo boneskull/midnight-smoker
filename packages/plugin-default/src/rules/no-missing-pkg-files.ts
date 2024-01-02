@@ -24,7 +24,7 @@ export default function noMissingPkgFiles({
 }: PluginAPI) {
   const {zDefaultTrue, zNonEmptyStringOrArrayThereof} = schemaUtils;
   defineRule({
-    async check({pkgJson, pkgPath, addIssue}, opts) {
+    async check({pkgJson, installPath, addIssue}, opts) {
       let {fields} = opts;
 
       // add any explicit fields to the list of fields to check.
@@ -50,7 +50,7 @@ export default function noMissingPkgFiles({
         field: string,
         name?: string,
       ): Promise<void> => {
-        const filepath = path.resolve(pkgPath, relativePath);
+        const filepath = path.resolve(installPath, relativePath);
         debug('Checking for %s from field %s', filepath, field);
         try {
           await fs.stat(filepath);

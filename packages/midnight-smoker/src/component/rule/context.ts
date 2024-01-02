@@ -74,8 +74,8 @@ export class RuleContext implements StaticRuleContext {
    *
    * This is the same as `path.dirname(pkgJsonPath)`
    */
-  public get pkgPath() {
-    return this.staticCtx.pkgPath;
+  public get installPath() {
+    return this.staticCtx.installPath;
   }
 
   /**

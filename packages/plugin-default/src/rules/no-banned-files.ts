@@ -83,8 +83,8 @@ export default function noBannedFiles({
   z,
 }: PluginAPI) {
   defineRule({
-    async check({pkgPath, addIssue}, opts) {
-      const queue: string[] = [pkgPath];
+    async check({installPath, addIssue}, opts) {
+      const queue: string[] = [installPath];
       const allow = new Set(opts.allow);
       const deny = new Set(opts.deny);
 
@@ -103,7 +103,10 @@ export default function noBannedFiles({
               continue;
             }
 
-            const relName = path.join(path.relative(pkgPath, dir), dirent.name);
+            const relName = path.join(
+              path.relative(installPath, dir),
+              dirent.name,
+            );
 
             if (deny.has(dirent.name)) {
               addIssue(`Banned file found: ${relName} (per custom deny list)`);

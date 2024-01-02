@@ -6,7 +6,7 @@ export const zStaticRuleContext = z
   .object({
     pkgJson: zPackageJson,
     pkgJsonPath: zNonEmptyString,
-    pkgPath: zNonEmptyString,
+    installPath: zNonEmptyString,
     severity: zRuleSeverity,
   })
   .describe(
