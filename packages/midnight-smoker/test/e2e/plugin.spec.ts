@@ -8,6 +8,20 @@ const FIXTURE_DIR = path.join(__dirname, 'fixture', 'plugin');
 
 describe('midnight-smoker [E2E]', function () {
   describe('plugin support', function () {
+    describe('when a plugin provides a custom name', function () {
+      const pluginCwd = path.join(FIXTURE_DIR, 'custom-name');
+      describe('the custom name should be used', function () {
+        it('should use the custom name for the ID', async function () {
+          await expect(
+            execSmoker(['--plugin', pluginCwd, 'list-plugins']),
+            'to be fulfilled with value satisfying',
+            {
+              stdout: /mcmonkey-mcbean.+custom-name/,
+            },
+          );
+        });
+      });
+    });
     describe('when a plugin provides a rule', function () {
       const pluginCwd = path.join(FIXTURE_DIR, 'plugin-rule');
 

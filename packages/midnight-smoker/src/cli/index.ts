@@ -9,6 +9,7 @@ import {GlobalOptions} from './cli-options';
 import {handleRejection, mergeOptions} from './cli-util';
 import {
   LintCommand,
+  ListPluginsCommand,
   ListReportersCommand,
   ListRulesCommand,
   RunScriptCommand,
@@ -52,6 +53,7 @@ async function main(args: string[]): Promise<void> {
     .scriptName('smoker')
     .options(GlobalOptions)
     .command(new LintCommand())
+    .command(new ListPluginsCommand())
     .command(new ListReportersCommand())
     .command(new ListRulesCommand())
     .command(new RunScriptCommand())
