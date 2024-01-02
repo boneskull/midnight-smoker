@@ -1,9 +1,71 @@
-import {blue, bold, cyan, dim, green, italic, red, white, yellow} from 'chalk';
+import {
+  blueBright,
+  bold,
+  dim,
+  green,
+  greenBright,
+  italic,
+  red,
+  white,
+  yellow,
+} from 'chalk';
 import {error, info, warning} from 'log-symbols';
 import {Blessed, Event, Reporter, Rule} from 'midnight-smoker/plugin';
 import ora from 'ora';
 import pluralize from 'pluralize';
 import stringify from 'stringify-object';
+
+/**
+ * Mapping of single-digit integers to English words
+ */
+const NUM_WORDS = new Map([
+  [0, 'zero'],
+  [1, 'one'],
+  [2, 'two'],
+  [3, 'three'],
+  [4, 'four'],
+  [5, 'five'],
+  [6, 'six'],
+  [7, 'seven'],
+  [8, 'eight'],
+  [9, 'nine'],
+]);
+
+/**
+ * Converts a number to an English word, or returns the number as a string if it
+ * doesn't exist in {@link NUM_WORDS}
+ *
+ * @param num - Number to convert
+ * @returns English word for `num`, or `num` as a string
+ */
+function numberToString(num: number) {
+  return NUM_WORDS.get(num) ?? String(num);
+}
+
+/**
+ * Wrap {@link pluralize} with {@link numberToString} and the integer in parens
+ *
+ * @param str - String to pluralize
+ * @param count - Count
+ * @param withNumber - Whether to show the number
+ * @returns A nice string
+ */
+function plural(str: string, count: number, withNumber = false) {
+  return withNumber
+    ? `${numberToString(count)} (${count}) ${pluralize(str, count)}`
+    : pluralize(str, count);
+}
+
+/**
+ * Given the name of a thing and optionally a version, return a fancy string
+ *
+ * @param name Name
+ * @param version Version
+ * @returns `name@version` with some colors
+ */
+function nameAndVersion(name: string, version?: string) {
+  return version ? `${name}${dim('@')}${white(version)}` : name;
+}
 
 export const ConsoleReporter: Reporter.ReporterDef = {
   name: 'console',
@@ -11,13 +73,16 @@ export const ConsoleReporter: Reporter.ReporterDef = {
   reporter: ({emitter, opts, pkgJson, console, stderr}) => {
     const spinner = ora({stream: stderr});
     const scriptFailedEvts: Event.RunScriptFailedEventData[] = [];
-    const checkFailedEvts: Event.RunRuleFailedEventData[] = [];
+    const ruleFailedEvts: Event.RunRuleFailedEventData[] = [];
     const {SmokerEvent} = Event;
 
     emitter
       .once(SmokerEvent.SmokeBegin, ({plugins}) => {
         console.error(
-          `💨 ${blue('midnight-smoker')} ${white(`v${pkgJson.version}`)}`,
+          `💨 ${nameAndVersion(
+            blueBright.bold('midnight-smoker'),
+            pkgJson.version,
+          )}\n`,
         );
         const extPlugins = plugins.filter(
           ({id}) => !Blessed.isBlessedPlugin(id),
@@ -25,11 +90,9 @@ export const ConsoleReporter: Reporter.ReporterDef = {
         if (extPlugins.length) {
           console.error(
             '🔌 Loaded %s: %s',
-            pluralize('plugin', extPlugins.length, true),
+            plural('external plugin', extPlugins.length, true),
             extPlugins
-              .map(({id, version}) =>
-                version ? `${green(id)}${dim('@')}${white(version)}` : id,
-              )
+              .map(({id, version}) => nameAndVersion(greenBright(id), version))
               .join(', '),
           );
         }
@@ -37,7 +100,7 @@ export const ConsoleReporter: Reporter.ReporterDef = {
       .once(SmokerEvent.PackBegin, () => {
         let what: string;
         if (opts.workspace.length) {
-          what = pluralize('workspace', opts.workspace.length, true);
+          what = plural('workspace', opts.workspace.length, true);
         } else if (opts.all) {
           what = 'all workspaces';
           if (opts.includeRoot) {
@@ -48,20 +111,13 @@ export const ConsoleReporter: Reporter.ReporterDef = {
         }
         spinner.start(`Packing ${what}…`);
       })
-      .once(SmokerEvent.PackOk, ({uniquePkgs, packageManagers}) => {
-        let msg = `Packed ${pluralize(
-          'unique package',
-          uniquePkgs.length,
-          true,
-        )} using `;
-        if (packageManagers.length > 1) {
-          msg += `${pluralize(
-            'package manager',
-            packageManagers.length,
-            true,
-          )}`;
+      .once(SmokerEvent.PackOk, ({uniquePkgs, pkgManagers}) => {
+        let msg = `Packed ${plural('package', uniquePkgs.length, true)} using `;
+        if (pkgManagers.length > 1) {
+          msg += `${plural('package manager', pkgManagers.length, true)}`;
         } else {
-          msg += `${packageManagers[0]}`;
+          const pkgManager = pkgManagers[0];
+          msg += `${nameAndVersion(green(pkgManager[0]), pkgManager[1])}`;
         }
         msg += '…';
         spinner.succeed(msg);
@@ -71,27 +127,31 @@ export const ConsoleReporter: Reporter.ReporterDef = {
       })
       .once(
         SmokerEvent.InstallBegin,
-        ({uniquePkgs, packageManagers, additionalDeps}) => {
-          let msg = `Installing ${pluralize(
-            'unique package',
+        ({uniquePkgs, pkgManagers, additionalDeps}) => {
+          let msg = `Installing ${plural(
+            'package',
             uniquePkgs.length,
             true,
           )} from tarball`;
           if (additionalDeps.length) {
-            msg += ` with ${pluralize(
+            msg += ` with ${plural(
               'additional dependency',
               additionalDeps.length,
               true,
             )}`;
           }
-          if (packageManagers.length > 1) {
-            msg += ` using ${pluralize(
+          if (pkgManagers.length > 1) {
+            msg += ` using ${plural(
               'package manager',
-              packageManagers.length,
+              pkgManagers.length,
               true,
             )}`;
           } else {
-            msg += ` using ${packageManagers[0]}`;
+            const pkgManager = pkgManagers[0];
+            msg += ` using ${nameAndVersion(
+              green(pkgManager[0]),
+              pkgManager[1],
+            )}`;
           }
           msg += '…';
           spinner.start(msg);
@@ -100,45 +160,57 @@ export const ConsoleReporter: Reporter.ReporterDef = {
       .once(SmokerEvent.InstallFailed, (err) => {
         spinner.fail(err.format(opts.verbose));
       })
-      .once(SmokerEvent.InstallOk, ({uniquePkgs}) => {
-        spinner.succeed(
-          `Installed ${pluralize(
-            'unique package',
-            uniquePkgs.length,
+      .once(SmokerEvent.InstallOk, ({uniquePkgs, pkgManagers}) => {
+        let msg = `Installed ${plural(
+          'package',
+          uniquePkgs.length,
+          true,
+        )} from tarball`;
+        if (pkgManagers.length > 1) {
+          msg += ` using ${plural(
+            'package manager',
+            pkgManagers.length,
             true,
-          )} from tarball`,
-        );
+          )}`;
+        } else {
+          const pkgManager = pkgManagers[0];
+          msg += ` using ${nameAndVersion(
+            green(pkgManager[0]),
+            pkgManager[1],
+          )}`;
+        }
+        spinner.succeed(msg);
       })
       .once(SmokerEvent.RunRulesBegin, ({total}) => {
-        spinner.start(`Running 0/${total} checks…`);
+        spinner.start(`Running 0/${total} rules…`);
       })
       .on(SmokerEvent.RunRuleBegin, ({current, total}) => {
-        spinner.text = `Running check ${current}/${total}…`;
+        spinner.text = `Running rule ${current}/${total}…`;
       })
       .on(SmokerEvent.RunRuleFailed, (evt) => {
-        checkFailedEvts.push(evt);
+        ruleFailedEvts.push(evt);
       })
       .once(SmokerEvent.RunRulesOk, ({total}) => {
-        spinner.succeed(`Successfully ran ${pluralize('check', total, true)}`);
+        spinner.succeed(`Successfully executed ${plural('rule', total, true)}`);
       })
       .once(SmokerEvent.RunRulesFailed, ({total, failed}) => {
         spinner.fail(
-          `${pluralize('check', failed.length, true)} of ${total} failed`,
+          `${pluralize('rule', failed.length, true)} of ${total} failed`,
         );
 
         // TODO: move this into a format() function for these error kinds
-        const failedByPackage = checkFailedEvts
+        const failedByPackage = ruleFailedEvts
           .map((evt) => evt.failed)
           .flat()
           .reduce<Record<string, Rule.StaticRuleIssue[]>>((acc, failed) => {
             const pkgName =
-              failed.context.pkgJson.name ?? failed.context.pkgPath;
+              failed.context.pkgJson.name ?? failed.context.installPath;
             acc[pkgName] = [...(acc[pkgName] ?? []), failed];
             return acc;
           }, {});
 
         for (const [pkgName, failed] of Object.entries(failedByPackage)) {
-          const lines = [`Issues found in package ${cyan(pkgName)}:`];
+          const lines = [`Issues found in package ${green(pkgName)}:`];
           const isError = failed.some(
             ({severity}) => severity === Rule.RuleSeverities.Error,
           );
@@ -177,18 +249,18 @@ export const ConsoleReporter: Reporter.ReporterDef = {
         scriptFailedEvts.push(evt);
       })
       .once(SmokerEvent.RunScriptsOk, ({total}) => {
-        spinner.succeed(`Successfully ran ${pluralize('script', total, true)}`);
+        spinner.succeed(`Successfully ran ${plural('script', total, true)}`);
       })
       .once(SmokerEvent.RunScriptsFailed, ({total, failed: failures}) => {
         spinner.fail(
-          `${failures} of ${total} ${pluralize('script', total)} failed`,
+          `${failures} of ${total} ${plural('script', total)} failed`,
         );
         for (const evt of scriptFailedEvts) {
           // TODO: this is not verbose enough
           const details = evt.error.format(opts.verbose);
           spinner.warn(
             `Script execution failure details for package ${bold(
-              cyan(evt.pkgName),
+              greenBright(evt.pkgName),
             )}:\n- ${details}\n`,
           );
         }
@@ -201,7 +273,7 @@ export const ConsoleReporter: Reporter.ReporterDef = {
       })
       .once(SmokerEvent.Lingered, (dirs) => {
         console.error(
-          `${info} Lingering ${pluralize('temp directory', dirs.length)}:\n`,
+          `${info} Lingering ${plural('temp directory', dirs.length)}:\n`,
         );
         for (const dir of dirs) {
           console.error(yellow(dir));

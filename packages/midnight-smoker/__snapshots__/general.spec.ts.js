@@ -1,12 +1,14 @@
 exports['midnight-smoker [E2E] general behavior when packing fails should provide a reason [snapshot] 1'] = `
-💨 midnight-smoker v<version>
+💨 midnight-smoker@<version>
+
 - Packing current project…
 ✖ Package manager npm@<version> failed to pack: Invalid package, must have name and version (ESMOKER_PACK)
 ✖ 🤮 Maurice!
 `
 
 exports['midnight-smoker [E2E] general behavior when packing fails when in verbose mode should provide more detail [snapshot] 1'] = `
-💨 midnight-smoker v<version>
+💨 midnight-smoker@<version>
+
 - Packing current project…
 ✖ Package manager npm@<version> failed to pack: Invalid package, must have name and version (ESMOKER_PACK)
 
@@ -36,19 +38,21 @@ PackError: Package manager npm@<version> failed to pack: Invalid package, must h
 `
 
 exports['midnight-smoker [E2E] general behavior installation when installation fails should provide a reason [snapshot] 1'] = `
-💨 midnight-smoker v<version>
+💨 midnight-smoker@<version>
+
 - Packing current project…
-✔ Packed 1 unique package using npm@<version>…
-- Installing 1 unique package from tarball using npm@<version>…
+✔ Packed one (1) package using npm@<version>…
+- Installing one (1) package from tarball using npm@<version>…
 ✖ Package manager npm@<version> failed to install /<path/to/some>.tgz in dir <cwd>: Not Found - GET https://registry.npmjs.org/4923867iajhiknfdeskjusyghikuwyhwaqheakkcjzhxfksdjfhd - Not found (ESMOKER_INSTALL)
 ✖ 🤮 Maurice!
 `
 
 exports['midnight-smoker [E2E] general behavior installation when installation fails when in verbose mode should provide more detail [snapshot] 1'] = `
-💨 midnight-smoker v<version>
+💨 midnight-smoker@<version>
+
 - Packing current project…
-✔ Packed 1 unique package using npm@<version>…
-- Installing 1 unique package from tarball using npm@<version>…
+✔ Packed one (1) package using npm@<version>…
+- Installing one (1) package from tarball using npm@<version>…
 ✖ Package manager npm@<version> failed to install /<path/to/some>.tgz in dir <cwd>: Not Found - GET https://registry.npmjs.org/4923867iajhiknfdeskjusyghikuwyhwaqheakkcjzhxfksdjfhd - Not found (ESMOKER_INSTALL)
 
 Script Context:

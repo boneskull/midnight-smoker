@@ -1,36 +1,39 @@
 exports['midnight-smoker [E2E] built-in checks when a check fails when the rule severity is "error" should produce expected output [snapshot] 1'] = `
-💨 midnight-smoker v<version>
+💨 midnight-smoker@<version>
+
 - Packing current project…
-✔ Packed 1 unique package using npm@<version>…
-- Installing 1 unique package from tarball using npm@<version>…
-✔ Installed 1 unique package from tarball
-- Running 0/4 checks…
-✖ 1 check of 4 failed
+✔ Packed one (1) package using npm@<version>…
+- Installing one (1) package from tarball using npm@<version>…
+✔ Installed one (1) package from tarball using npm@<version>
+- Running 0/4 rules…
+✖ 1 rule of 4 failed
 ✖ Issues found in package check-error:
 │ ✖ Banned file found: id_rsa (Private SSH key) [no-banned-files]
 ✖ 🤮 Maurice!
 `
 
 exports['midnight-smoker [E2E] built-in checks when a check fails when the rule severity is "warn" should produce expected output [snapshot] 1'] = `
-💨 midnight-smoker v<version>
+💨 midnight-smoker@<version>
+
 - Packing current project…
-✔ Packed 1 unique package using npm@<version>…
-- Installing 1 unique package from tarball using npm@<version>…
-✔ Installed 1 unique package from tarball
-- Running 0/4 checks…
-✖ 1 check of 4 failed
+✔ Packed one (1) package using npm@<version>…
+- Installing one (1) package from tarball using npm@<version>…
+✔ Installed one (1) package from tarball using npm@<version>
+- Running 0/4 rules…
+✖ 1 rule of 4 failed
 ⚠ Issues found in package check-warn:
 │ ⚠ Banned file found: id_rsa (Private SSH key) [no-banned-files]
 ✔ Lovey-dovey! 💖
 `
 
 exports['midnight-smoker [E2E] built-in checks when a check fails when the rule severity is "off" should produce expected output [snapshot] 1'] = `
-💨 midnight-smoker v<version>
+💨 midnight-smoker@<version>
+
 - Packing current project…
-✔ Packed 1 unique package using npm@<version>…
-- Installing 1 unique package from tarball using npm@<version>…
-✔ Installed 1 unique package from tarball
-- Running 0/3 checks…
-✔ Successfully ran 3 checks
+✔ Packed one (1) package using npm@<version>…
+- Installing one (1) package from tarball using npm@<version>…
+✔ Installed one (1) package from tarball using npm@<version>
+- Running 0/3 rules…
+✔ Successfully executed three (3) rules
 ✔ Lovey-dovey! 💖
 `

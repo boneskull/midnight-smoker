@@ -34,10 +34,13 @@ export const JSONReporter: Reporter.ReporterDef = {
     let output: SmokerJsonOutput;
 
     emitter
-      .once(SmokerEvent.InstallBegin, ({uniquePkgs, packageManagers}) => {
-        stats.totalPackages = uniquePkgs.length;
-        stats.totalPackageManagers = packageManagers.length;
-      })
+      .once(
+        SmokerEvent.InstallBegin,
+        ({uniquePkgs, pkgManagerSpecs: packageManagers}) => {
+          stats.totalPackages = uniquePkgs.length;
+          stats.totalPackageManagers = packageManagers.length;
+        },
+      )
       .once(SmokerEvent.RunScriptsBegin, ({total}) => {
         stats.totalScripts = total;
       })

@@ -44,7 +44,12 @@ export interface InstallEventData {
    * List of unique package manager specifiers, each of which corresponding to a
    * package manager which will (or did) execute the current operation.
    */
-  packageManagers: string[];
+  pkgManagerSpecs: string[];
+
+  /**
+   * List of unique package managers, corresponding to specifiers
+   */
+  pkgManagers: [name: string, version: string][];
 
   /**
    * A list of objects describing what packages to install where, and what

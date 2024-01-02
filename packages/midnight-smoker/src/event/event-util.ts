@@ -112,11 +112,15 @@ export function buildInstallEventData(
     ),
   ];
 
-  const packageManagers = pkgManagers.map(({spec}) => spec);
+  const pkgManagerSpecs = pkgManagers.map(({spec}) => spec);
+  const pkgManagerSpecPairs = pkgManagerSpecs.map((spec) =>
+    spec.split('@'),
+  ) as [name: string, version: string][];
 
   return {
     uniquePkgs,
-    packageManagers,
+    pkgManagerSpecs,
+    pkgManagers: pkgManagerSpecPairs,
     additionalDeps,
     manifests: installManifests,
     total: pkgManagers.length * installManifests.length,
