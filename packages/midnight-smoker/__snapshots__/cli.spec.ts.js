@@ -36,9 +36,9 @@ exports['midnight-smoker [E2E] command-line interface command list-reporters sho
 ┌─────────┬───────────────────────────────────────┬───────────┐
 │ Name    │ Description                           │ Plugin    │
 ├─────────┼───────────────────────────────────────┼───────────┤
-│ console │ Default console reporter (for humans) │ (builtin) │
+│ console │ Default console reporter (for humans) │ (built-in) │
 ├─────────┼───────────────────────────────────────┼───────────┤
-│ json    │ JSON reporter (for machines)          │ (builtin) │
+│ json    │ JSON reporter (for machines)          │ (built-in) │
 └─────────┴───────────────────────────────────────┴───────────┘
 `
 
@@ -46,12 +46,12 @@ exports['midnight-smoker [E2E] command-line interface command list-rules should 
 ┌────────────────────────┬──────────────────────────────────────────────────────────────────────────────────────────────────────────┬───────────┬──────────────────────────────────────────────────────────────────────────┐
 │ Name                   │ Description                                                                                              │ Plugin    │ URL                                                                      │
 ├────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────┼───────────┼──────────────────────────────────────────────────────────────────────────┤
-│ no-banned-files        │ Ensures banned files won't be published to the registry                                                  │ (builtin) │ https://boneskull.github.io/midnight-smoker/rules/no-banned-files        │
+│ no-banned-files        │ Ensures banned files won't be published to the registry                                                  │ (built-in) │ https://boneskull.github.io/midnight-smoker/rules/no-banned-files        │
 ├────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────┼───────────┼──────────────────────────────────────────────────────────────────────────┤
-│ no-missing-entry-point │ Checks that the package contains an entry point; only applies to CJS packages without an "exports" field │ (builtin) │ https://boneskull.github.io/midnight-smoker/rules/no-missing-entry-point │
+│ no-missing-entry-point │ Checks that the package contains an entry point; only applies to CJS packages without an "exports" field │ (built-in) │ https://boneskull.github.io/midnight-smoker/rules/no-missing-entry-point │
 ├────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────┼───────────┼──────────────────────────────────────────────────────────────────────────┤
-│ no-missing-exports     │ Checks that all files in the "exports" field (if present) exist                                          │ (builtin) │ https://boneskull.github.io/midnight-smoker/rules/no-missing-exports     │
+│ no-missing-exports     │ Checks that all files in the "exports" field (if present) exist                                          │ (built-in) │ https://boneskull.github.io/midnight-smoker/rules/no-missing-exports     │
 ├────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────┼───────────┼──────────────────────────────────────────────────────────────────────────┤
-│ no-missing-pkg-files   │ Checks that files referenced in package.json exist in the tarball                                        │ (builtin) │ https://boneskull.github.io/midnight-smoker/rules/no-missing-pkg-files   │
+│ no-missing-pkg-files   │ Checks that files referenced in package.json exist in the tarball                                        │ (built-in) │ https://boneskull.github.io/midnight-smoker/rules/no-missing-pkg-files   │
 └────────────────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────────────┴───────────┴──────────────────────────────────────────────────────────────────────────┘
 `

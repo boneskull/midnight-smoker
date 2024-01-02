@@ -23,7 +23,7 @@ export class ListReportersCommand extends BaseCommand {
         reporter.name,
         reporter.description,
         isBlessedPlugin(reporter[kComponentId].pluginName)
-          ? '(builtin)'
+          ? '(built-in)'
           : reporter[kComponentId].pluginName,
       ]),
       ['Name', 'Description', 'Plugin'],

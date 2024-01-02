@@ -653,7 +653,7 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
    *
    * Several things have to happen, in order, before we can start smoking:
    *
-   * 1. Builtin plugins must {@link PluginRegistry.loadPlugins be loaded}
+   * 1. Built-in plugins must {@link PluginRegistry.loadPlugins be loaded}
    * 2. External plugins then must be loaded.
    * 3. The registry should refuse further registrations.
    * 4. {@link OptionParser.parse Parse} the options.

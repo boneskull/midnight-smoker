@@ -1,4 +1,3 @@
-import {bold} from 'chalk';
 import Debug from 'debug';
 import {orderBy} from 'lodash';
 import path from 'node:path';
@@ -30,11 +29,9 @@ export class ListPluginsCommand extends BaseCommand {
 
     const table = createTable(
       sortedPlugins.map((plugin) => [
-        plugin.id,
-        plugin.version ?? '(n/a)',
-        isBlessedPlugin(plugin.id)
-          ? `${plugin.description ?? '(n/a)'} ${bold('(built-in)')}`
-          : plugin.description ?? '(n/a)',
+        isBlessedPlugin(plugin.id) ? '(built-in)' : plugin.id,
+        plugin.version || '(n/a)',
+        plugin.description || '(n/a)',
         path.relative(process.cwd(), plugin.entryPoint),
       ]),
       ['Name', 'Version', 'Description', 'Resolved'],

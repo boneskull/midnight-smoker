@@ -34,7 +34,7 @@ export class ListRulesCommand extends BaseCommand {
         ruleName,
         rule.description,
         isBlessedPlugin(rule[kComponentId].pluginName)
-          ? '(builtin)'
+          ? '(built-in)'
           : rule[kComponentId].pluginName,
       ];
       if (!terminalLink.isSupported) {

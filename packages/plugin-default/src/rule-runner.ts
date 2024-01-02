@@ -5,7 +5,7 @@
  * refactored it, and b) if it wasn't a class, it'd just be a pile of loose
  * functions.
  *
- * The wrapper is a little different than the other builtin components because
+ * The wrapper is a little different than the other built-in components because
  * it wants the `PluginAPI` object from the plugin entry point to access some
  * helpers functions.
  *
