@@ -15,7 +15,7 @@ import z from 'zod';
 import type {PkgManagerController} from '../../src/component/package-manager/controller';
 import type {
   InstallResult,
-  PackageManager,
+  PkgManager,
   PkgManagerInstallManifest,
 } from '../../src/component/schema/pkg-manager-schema';
 import {
@@ -65,7 +65,7 @@ describe('midnight-smoker', function () {
 
   let nullPm: NullPm;
 
-  let pkgManagerMap: Map<string, PackageManager>;
+  let pkgManagerMap: Map<string, PkgManager>;
 
   let pmController: sinon.SinonStubbedInstance<PkgManagerController>;
 

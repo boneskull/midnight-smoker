@@ -1,14 +1,14 @@
 /**
- * Types for a {@link PackageManager} component as defined within a plugin.
+ * Types for a {@link PkgManager} component as defined within a plugin.
  *
  * @packageDocumentation
  */
 
-import type {SemVer} from 'semver';
+import type {Range, SemVer} from 'semver';
 import type * as Helpers from '../../plugin/helpers';
 import type {Executor} from '../executor';
-import type {PackageManager} from '../schema/pkg-manager-schema';
-export {ExecutorOpts as ExecOpts, ExecResult} from '../executor';
+import type {PkgManager} from '../schema/pkg-manager-schema';
+export type {ExecutorOpts as ExecOpts, ExecResult} from '../executor';
 export type {
   InstallManifest,
   PackOptions,
@@ -16,12 +16,12 @@ export type {
   RunScriptManifest,
   RunScriptResult,
 } from '../schema/pkg-manager-schema';
-export {Executor};
+export type {Executor};
 
 /**
- * Options for {@link PackageManagerFactory}
+ * Options for {@link PkgManagerFactory}
  */
-export interface PackageManagerOpts {
+export interface PkgManagerOpts {
   /**
    * If `true`, show STDERR/STDOUT from the package manager
    */
@@ -34,36 +34,42 @@ export interface PackageManagerOpts {
 }
 
 /**
- * A function which returns an object implementing {@linkcode PackageManager}.
+ * A function which returns an object implementing {@linkcode PkgManager}.
  */
-export type PackageManagerFactory = (
+export type PkgManagerFactory = (
   id: string,
   executor: Executor,
   helpers: typeof Helpers,
-  opts?: PackageManagerOpts,
-) => Promise<PackageManager>;
+  opts?: PkgManagerOpts,
+) => Promise<PkgManager>;
 
 /**
- * Represents a module which exports a {@link PackageManager} component.
+ * Returns `true` if this `PackageManager` can handle the given version.
+ *
+ * @param semver The version to check.
+ * @returns `true` if the package manager can handle the version, `false`
+ *   otherwise.
  */
-export interface PackageManagerModule {
+export type PkgManagerAcceptsFn = (semver: SemVer) => boolean;
+
+export type PkgManagerAcceptsRange = string | Range;
+
+export interface PkgManagerDef {
   /**
    * The name of the package manager's executable.
    */
   bin: string;
-  /**
-   * Returns `true` if this `PackageManager` can handle the given version.
-   *
-   * @param semver The version to check.
-   * @returns `true` if the package manager can handle the version, `false`
-   *   otherwise.
-   */
-  accepts(semver: SemVer): boolean;
 
   /**
-   * Creates a {@link PackageManager} object.
+   * Either a SemVer range or a function which returns `true` if its parameter
+   * is within the allowed range.
    */
-  create: PackageManagerFactory;
+  accepts: PkgManagerAcceptsFn | PkgManagerAcceptsRange;
+
+  /**
+   * Creates a {@link PkgManager} object.
+   */
+  create: PkgManagerFactory;
 }
 
-export {PackageManager};
+export type {PkgManager};

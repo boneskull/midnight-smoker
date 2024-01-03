@@ -9,7 +9,7 @@ const packageManagers = {
   Npm9,
   YarnClassic,
   YarnBerry,
-} as const satisfies Record<string, PkgManager.PackageManagerModule>;
+} as const satisfies Record<string, PkgManager.PkgManagerDef>;
 
 export function loadPkgManagers(api: PluginAPI) {
   for (const [name, pkgManager] of Object.entries(packageManagers)) {

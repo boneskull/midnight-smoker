@@ -26,7 +26,7 @@ export type DefineRuleFn = <
  * Defines a new {@link PackageManager} component
  */
 export type DefinePackageManagerFn = (
-  packageManager: PkgManager.PackageManagerModule,
+  packageManager: PkgManager.PkgManagerDef,
   name?: string,
 ) => PluginAPI;
 
@@ -121,7 +121,7 @@ export interface PluginAPI {
   defineExecutor: DefineExecutorFn;
 
   /**
-   * Defines a {@link PkgManager.PackageManager} component
+   * Defines a {@link PkgManager.PkgManager} component
    */
   definePackageManager: DefinePackageManagerFn;
 

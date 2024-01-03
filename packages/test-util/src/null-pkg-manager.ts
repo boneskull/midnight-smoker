@@ -5,7 +5,7 @@ import {MOCK_TMPDIR} from './constants';
 import {nullExecutor} from './null-executor';
 export const NULL_SPEC = 'nullpm@1.0.0';
 
-export const nullPmModule: PkgManager.PackageManagerModule = {
+export const nullPmModule: PkgManager.PkgManagerDef = {
   bin: 'nullpm',
   async create(id, executor, helpers, opts) {
     return new NullPm(id, executor, opts);
@@ -15,11 +15,11 @@ export const nullPmModule: PkgManager.PackageManagerModule = {
   },
 };
 
-export class NullPm implements PkgManager.PackageManager {
+export class NullPm implements PkgManager.PkgManager {
   constructor(
     public readonly spec: string,
     public executor: PkgManager.Executor = nullExecutor,
-    public opts: PkgManager.PackageManagerOpts = {},
+    public opts: PkgManager.PkgManagerOpts = {},
   ) {}
 
   async install(

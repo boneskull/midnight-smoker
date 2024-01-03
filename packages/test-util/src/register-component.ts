@@ -25,7 +25,7 @@ type ComponentTypes = {
   RuleRunner: RuleRunner.RuleRunner;
   ScriptRunner: ScriptRunner.ScriptRunner;
   Executor: Executor.Executor;
-  PackageManager: PkgManager.PackageManagerModule;
+  PackageManager: PkgManager.PkgManagerDef;
 };
 
 type ComponentType = keyof ComponentTypes;
@@ -54,10 +54,7 @@ export async function registerComponent<T extends ComponentType>(
           api.defineExecutor(component as Executor.Executor, name);
           break;
         case 'PackageManager':
-          api.definePackageManager(
-            component as PkgManager.PackageManagerModule,
-            name,
-          );
+          api.definePackageManager(component as PkgManager.PkgManagerDef, name);
           break;
         default:
           throw new Error(`Unknown component type: ${type}`);
@@ -90,7 +87,7 @@ export async function registerExecutor(
 }
 
 export async function registerPackageManager(
-  component: PkgManager.PackageManagerModule,
+  component: PkgManager.PkgManagerDef,
   options: RegisterComponentOpts = {},
 ): Promise<PluginRegistry> {
   return registerComponent('PackageManager', component, options);

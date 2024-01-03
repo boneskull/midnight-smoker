@@ -5,7 +5,7 @@ export const ComponentKinds = {
   Rule: 'Rule',
   RuleRunner: 'RuleRunner',
   ScriptRunner: 'ScriptRunner',
-  PkgManagerModule: 'PkgManagerModule',
+  PkgManagerDef: 'PkgManagerDef',
   Executor: 'Executor',
   Reporter: 'Reporter',
 } as const;

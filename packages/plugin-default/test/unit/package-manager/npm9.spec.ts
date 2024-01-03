@@ -2,7 +2,7 @@ import type {nullExecutor} from '@midnight-smoker/test-util';
 import type {PkgManager} from 'midnight-smoker/plugin';
 import {Helpers} from 'midnight-smoker/plugin';
 import rewiremock from 'rewiremock/node';
-import {SemVer} from 'semver';
+import {Range} from 'semver';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
@@ -57,13 +57,19 @@ describe('@midnight-smoker/plugin-default', function () {
     describe('Npm9', function () {
       const id = 'npm@9.8.1';
       describe('static method', function () {
-        describe('accepts()', function () {
+        describe('accepts', function () {
+          let range: Range;
+
+          beforeEach(function () {
+            range = new Range(Npm9.accepts);
+          });
+
           it('should return false for versions < 9.0.0', function () {
-            expect(Npm9.accepts(new SemVer('8.0.0')), 'to be false');
+            expect(range.test('8.0.0'), 'to be false');
           });
 
           it('should return true for versions >= 9.0.0', function () {
-            expect(Npm9.accepts(new SemVer('9.0.0')), 'to be true');
+            expect(range.test('9.0.0'), 'to be true');
           });
         });
       });

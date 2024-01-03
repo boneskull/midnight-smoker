@@ -263,7 +263,7 @@ describe('midnight-smoker', function () {
               scriptRunners: ['default'],
               ruleRunners: ['default'],
               executors: ['default'],
-              pkgManagerModules: ['Npm7', 'Npm9', 'YarnClassic', 'YarnBerry'],
+              pkgManagerDefs: ['Npm7', 'Npm9', 'YarnClassic', 'YarnBerry'],
             });
           });
         });

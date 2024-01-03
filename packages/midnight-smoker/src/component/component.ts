@@ -29,9 +29,9 @@ import {has, isFunction, isObject} from 'lodash';
 import {InvalidArgError} from '../error/common-error';
 import {zNonEmptyString} from '../schema-util';
 import {ComponentId} from './component-id';
-import {ComponentKind, ComponentKinds} from './component-kind';
+import {ComponentKinds, type ComponentKind} from './component-kind';
 
-export {ComponentId, ComponentKind, ComponentKinds};
+export {ComponentId, ComponentKinds, type ComponentKind};
 export const kComponentId: unique symbol = Symbol('component-id');
 
 /**

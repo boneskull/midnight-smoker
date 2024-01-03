@@ -12,7 +12,7 @@
  */
 
 import {Smoker} from './smoker';
-export {PkgManagerInstallManifest} from './component/schema/pkg-manager-schema';
+export type {PkgManagerInstallManifest} from './component/schema/pkg-manager-schema';
 export type {SmokeResults} from './event/event-types';
 export type * from './options';
 export {Smoker};

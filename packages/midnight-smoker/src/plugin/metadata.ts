@@ -151,10 +151,7 @@ export class PluginMetadata implements StaticPluginMetadata {
    *
    * @group Component Map
    */
-  public readonly pkgManagerModuleMap: Map<
-    string,
-    Component<PackageManagerModule>
-  >;
+  public readonly pkgManagerDefMap: Map<string, Component<PkgManagerDef>>;
 
   /**
    * A map of script runner names to {@link ScriptRunner} objects contained in
@@ -225,7 +222,7 @@ export class PluginMetadata implements StaticPluginMetadata {
 
       // component maps
       this.ruleMap = new Map();
-      this.pkgManagerModuleMap = new Map();
+      this.pkgManagerDefMap = new Map();
       this.scriptRunnerMap = new Map();
       this.ruleRunnerMap = new Map();
       this.executorMap = new Map();
@@ -370,24 +367,21 @@ export class PluginMetadata implements StaticPluginMetadata {
    *
    * @internal
    */
-  public addPackageManagerModule(
-    name: string,
-    value: PackageManagerModule,
-  ): void {
-    if (this.pkgManagerModuleMap.has(name)) {
+  public addPkgManagerDef(name: string, value: PkgManagerDef): void {
+    if (this.pkgManagerDefMap.has(name)) {
       throw new ComponentNameError(
         `Package manager with name "${name}" already exists in plugin ${this}`,
         this.id,
         name,
       );
     }
-    this.pkgManagerModuleMap.set(
+    this.pkgManagerDefMap.set(
       name,
       component({
         name,
         value,
         owner: this,
-        kind: ComponentKinds.PkgManagerModule,
+        kind: ComponentKinds.PkgManagerDef,
       }),
     );
   }

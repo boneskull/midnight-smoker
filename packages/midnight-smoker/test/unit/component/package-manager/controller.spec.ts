@@ -12,7 +12,7 @@ import unexpectedEE from 'unexpected-eventemitter';
 import unexpectedSinon from 'unexpected-sinon';
 import type {
   InstallResult,
-  PackageManager,
+  PkgManager,
   PkgManagerRunScriptManifest,
   RunScriptResult,
   ScriptRunner,
@@ -69,7 +69,7 @@ describe('midnight-smoker', function () {
 
         describe('method', function () {
           let controller: Controller.PkgManagerController;
-          let pkgManagerMap: Map<string, PackageManager>;
+          let pkgManagerMap: Map<string, PkgManager>;
 
           beforeEach(function () {
             pkgManagerMap = new Map([

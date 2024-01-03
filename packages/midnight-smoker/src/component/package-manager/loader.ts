@@ -6,25 +6,23 @@
  */
 
 import Debug from 'debug';
-import type {SemVer} from 'semver';
+import {curry, isFunction, isString} from 'lodash';
+import {Range, type SemVer} from 'semver';
 import {UnsupportedPackageManagerError} from '../../error/pkg-manager-error';
 import * as Helpers from '../../plugin/helpers';
 import type {Executor} from '../executor';
-import type {PackageManager} from '../schema/pkg-manager-schema';
-import type {
-  PackageManagerModule,
-  PackageManagerOpts,
-} from './pkg-manager-types';
+import type {PkgManager} from '../schema/pkg-manager-schema';
+import type {PkgManagerDef, PkgManagerOpts} from './pkg-manager-types';
 import {normalizeVersion} from './version';
 
 const debug = Debug('midnight-smoker:pm:loader');
 
-export interface LoadPackageManagersOpts extends PackageManagerOpts {
+export interface LoadPackageManagersOpts extends PkgManagerOpts {
   /**
    * This can be specified to avoid matching the package manager specs to the
    * package manager modules a second time.
    */
-  pmModuleMap?: Map<string, PackageManagerModule>;
+  pmModuleMap?: Map<string, PkgManagerDef>;
 
   cwd?: string;
 }
@@ -38,23 +36,23 @@ export interface LoadPackageManagersOpts extends PackageManagerOpts {
 export const DEFAULT_SPEC = 'npm@9.x';
 
 /**
- * Makes {@link PackageManager PackageManagers} out of
- * {@link PackageManagerModule PackageManagerModules}.
+ * Makes {@link PkgManager PackageManagers} out of
+ * {@link PkgManagerDef PkgManagerDefs}.
  *
  * If a `package.json` contains a `packageManager` field, and no package manager
  * was spec was provided to this function, then value of the `packageManager`
  * field will be used.
  *
- * @param pkgManagerModules - An array of PackageManagerModule objects.
- * @param executor - The {@link Executor} provided to each {@link PackageManager}
+ * @param pkgManagerDefs - An array of `PkgManagerDef` objects.
+ * @param executor - The {@link Executor} provided to each {@link PkgManager}
  * @param specs - An optional array of package manager specifications of the
  *   format `<name>[@version]`. Defaults to an array containing only `'npm'`.
  * @param opts - Optional package manager options.
  * @returns A Promise that resolves to a Map of specs to package manager
  *   instances.
  * @internal
- * @todo Note that `PackageManagerModule` is actually
- *   `Component<PackageManagerModule>`...except in the tests.
+ * @todo Note that `PkgManagerDef` is actually
+ *   `Component<PkgManagerDef>`...except in the tests.
  *
  * @todo We should probably check _all_ requested package managers and collect
  *   the ones that we can't handle--instead of just throwing on the first one
@@ -64,11 +62,11 @@ export const DEFAULT_SPEC = 'npm@9.x';
  *   how involved that will be.
  */
 export async function loadPackageManagers(
-  pkgManagerModules: PackageManagerModule[],
+  pkgManagerDefs: PkgManagerDef[],
   executor: Executor,
   specs: readonly string[] = [],
   opts: LoadPackageManagersOpts = {},
-): Promise<Map<string, PackageManager>> {
+): Promise<Map<string, PkgManager>> {
   const {pmModuleMap, cwd = process.cwd(), ...pmOpts} = opts;
 
   if (!specs.length) {
@@ -78,10 +76,10 @@ export async function loadPackageManagers(
       : [DEFAULT_SPEC];
   }
 
-  const map = pmModuleMap ?? findPackageManagers(pkgManagerModules, specs);
+  const map = pmModuleMap ?? findPackageManagers(pkgManagerDefs, specs);
   return new Map(
     await Promise.all(
-      [...map].map<Promise<[string, PackageManager]>>(async ([spec, pmm]) => [
+      [...map].map<Promise<[string, PkgManager]>>(async ([spec, pmm]) => [
         spec,
         await pmm.create(spec, executor, Helpers, pmOpts),
       ]),
@@ -89,11 +87,26 @@ export async function loadPackageManagers(
   );
 }
 
+const matchPkgManager = curry(
+  (name: string, version: SemVer, pkgManagerDef: PkgManagerDef): boolean => {
+    if (pkgManagerDef.bin !== name) {
+      return false;
+    }
+    if (isString(pkgManagerDef.accepts)) {
+      return new Range(pkgManagerDef.accepts).test(version);
+    }
+    if (isFunction(pkgManagerDef.accepts)) {
+      return pkgManagerDef.accepts(version);
+    }
+    return false;
+  },
+);
+
 /**
  * Finds package managers based on the provided package manager modules and
  * specifications.
  *
- * @param pkgManagerModules - An array of package manager modules.
+ * @param pkgManagerDefs - An array of package manager modules.
  * @param pkgManagerSpecs - An array of package manager specifications.
  * @returns A map of package manager specs to their corresponding package
  *   manager modules.
@@ -106,9 +119,9 @@ export async function loadPackageManagers(
  *   {@link normalizeVersion} has access to
  */
 export function findPackageManagers(
-  pkgManagerModules: PackageManagerModule[],
+  pkgManagerDefs: PkgManagerDef[],
   pkgManagerSpecs: readonly string[],
-): Map<string, PackageManagerModule> {
+): Map<string, PkgManagerDef> {
   const nameVersionPairs = pkgManagerSpecs.map<[string, SemVer]>((pm) => {
     const [name, version] = pm.split('@');
     return [name, normalizeVersion(name as 'npm' | 'yarn', version)];
@@ -119,11 +132,11 @@ export function findPackageManagers(
     nameVersionPairs.flatMap(([name, version]) => `${name}@${version}`),
   );
 
-  return nameVersionPairs.reduce<Map<string, PackageManagerModule>>(
+  return nameVersionPairs.reduce<Map<string, PkgManagerDef>>(
     (acc, [name, version]) => {
-      const pmm = pkgManagerModules.find(
-        (pmm) => pmm.bin === name && pmm.accepts(version),
-      );
+      const accepts = matchPkgManager(name, version);
+      const pmm = pkgManagerDefs.find(accepts);
+
       if (!pmm) {
         throw new UnsupportedPackageManagerError(
           `No package manager found that can handle ${name}@${version}`,

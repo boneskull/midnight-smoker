@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import type {
   InstallResult,
-  PackageManager,
+  PkgManager,
   PkgManagerInstallManifest,
   RunScriptResult,
 } from '../../../src/component';
@@ -9,7 +9,7 @@ import type {RunScriptsOpts} from '../../../src/component/package-manager/contro
 import {PkgManagerController} from '../../../src/component/package-manager/controller';
 
 export class NullPkgManagerController extends PkgManagerController {
-  async getPkgManagers(): Promise<readonly PackageManager[]> {
+  async getPkgManagers(): Promise<readonly PkgManager[]> {
     return [];
   }
 

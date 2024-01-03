@@ -53,7 +53,7 @@ export interface StaticPluginRegistry {
   scriptRunners: string[];
   ruleRunners: string[];
   executors: string[];
-  pkgManagerModules: string[];
+  pkgManagerDefs: string[];
 }
 
 export class PluginRegistry {
@@ -72,9 +72,9 @@ export class PluginRegistry {
 
   private reporterMap: Map<string, Component<Reporter.ReporterDef>>;
 
-  private pkgManagerModuleMap: Map<
+  private pkgManagerDefMap: Map<
     string,
-    Component<PackageManager.PackageManagerModule>
+    Component<PackageManager.PkgManagerDef>
   >;
 
   private blessedMetadata?: Readonly<Record<BlessedPlugin, PluginMetadata>>;
@@ -88,7 +88,7 @@ export class PluginRegistry {
     this.scriptRunnerMap = new Map();
     this.ruleRunnerMap = new Map();
     this.executorMap = new Map();
-    this.pkgManagerModuleMap = new Map();
+    this.pkgManagerDefMap = new Map();
     this.reporterMap = new Map();
     this.seenRawPlugins = new Map();
   }
@@ -123,7 +123,7 @@ export class PluginRegistry {
     this.ruleRunnerMap.clear();
     this.scriptRunnerMap.clear();
     this.executorMap.clear();
-    this.pkgManagerModuleMap.clear();
+    this.pkgManagerDefMap.clear();
     this.pluginMap.clear();
     this.reporterMap.clear();
     this.seenRawPlugins.clear();
@@ -175,16 +175,20 @@ export class PluginRegistry {
   public async loadPackageManagers(
     executorId: string,
     specs?: readonly string[],
-    opts: PackageManager.PackageManagerOpts = {},
-  ): Promise<Map<string, PackageManager.PackageManager>> {
+    opts: PackageManager.PkgManagerOpts = {},
+  ): Promise<Map<string, PackageManager.PkgManager>> {
     const executor = this.getExecutor(executorId);
 
     return await loadPackageManagers(
-      [...this.pkgManagerModuleMap.values()],
+      [...this.pkgManagerDefMap.values()],
       executor,
       specs,
       opts,
     );
+  }
+
+  public get pkgManagerDefs() {
+    return [...this.pkgManagerDefMap.values()];
   }
 
   public get reporters() {
@@ -473,8 +477,8 @@ export class PluginRegistry {
         this.executorMap.set(`${component.id}`, component);
       }
 
-      for (const component of metadata.pkgManagerModuleMap.values()) {
-        this.pkgManagerModuleMap.set(`${component.id}`, component);
+      for (const component of metadata.pkgManagerDefMap.values()) {
+        this.pkgManagerDefMap.set(`${component.id}`, component);
       }
 
       for (const component of metadata.reporterMap.values()) {
@@ -572,7 +576,7 @@ export class PluginRegistry {
       scriptRunners: [...this.scriptRunnerMap.keys()],
       ruleRunners: [...this.ruleRunnerMap.keys()],
       executors: [...this.executorMap.keys()],
-      pkgManagerModules: [...this.pkgManagerModuleMap.keys()],
+      pkgManagerDefs: [...this.pkgManagerDefMap.keys()],
     };
   }
 
@@ -603,12 +607,11 @@ export class PluginRegistry {
       return pluginApi;
     };
 
-    // TODO: validate ruleDef
     const definePackageManager: API.DefinePackageManagerFn = (
-      pkgManagerModule,
+      pkgManagerDef,
       name = DEFAULT_COMPONENT_ID,
     ) => {
-      metadata.addPackageManagerModule(name, pkgManagerModule);
+      metadata.addPkgManagerDef(name, pkgManagerDef);
       return pluginApi;
     };
 

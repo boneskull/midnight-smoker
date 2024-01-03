@@ -6,7 +6,6 @@ import {
   type PkgManager,
 } from 'midnight-smoker/plugin';
 import path from 'node:path';
-import type {SemVer} from 'semver';
 import {GenericNpmPackageManager} from './npm';
 
 /**
@@ -41,7 +40,7 @@ export interface NpmPackItem {
 
 export class Npm7
   extends GenericNpmPackageManager
-  implements PkgManager.PackageManager
+  implements PkgManager.PkgManager
 {
   protected debug: Debug.Debugger;
 
@@ -52,22 +51,20 @@ export class Npm7
     id: string,
     executor: Executor.Executor,
     tmpdir: string,
-    opts: PkgManager.PackageManagerOpts = {},
+    opts: PkgManager.PkgManagerOpts = {},
   ) {
     super(id, executor, tmpdir, opts);
     this.debug = Debug(`midnight-smoker:pm:npm7`);
   }
 
-  public static accepts(semver: SemVer) {
-    return Boolean(~semver.compare('7.0.0') & semver.compare('9.0.0'));
-  }
+  public static accepts = '^7.0.0 || ^8.0.0';
 
   public static async create(
     this: void,
     id: string,
     executor: Executor.Executor,
     helpers: typeof Helpers,
-    opts?: PkgManager.PackageManagerOpts,
+    opts?: PkgManager.PkgManagerOpts,
   ) {
     const tempdir = await helpers.createTempDir();
     return new Npm7(id, executor, tempdir, opts);
@@ -243,4 +240,4 @@ export class Npm7
   }
 }
 
-export default Npm7 satisfies PkgManager.PackageManagerModule;
+export default Npm7 satisfies PkgManager.PkgManagerDef;

@@ -19,13 +19,13 @@ export interface NpmJsonOutput {
  * Intended to provide whatever we can that's common to all versions of `npm`.
  */
 export abstract class GenericNpmPackageManager
-  implements PkgManager.PackageManager
+  implements PkgManager.PkgManager
 {
   protected abstract debug: Debug.Debugger;
 
   public readonly name = 'npm';
 
-  protected readonly opts: PkgManager.PackageManagerOpts;
+  protected readonly opts: PkgManager.PkgManagerOpts;
   public readonly spec: string;
   protected readonly executor: Executor.Executor;
   public readonly tmpdir: string;
@@ -40,7 +40,7 @@ export abstract class GenericNpmPackageManager
     spec: string,
     executor: Executor.Executor,
     tmpdir: string,
-    opts: PkgManager.PackageManagerOpts = {},
+    opts: PkgManager.PkgManagerOpts = {},
   ) {
     this.spec = spec;
     this.executor = executor;

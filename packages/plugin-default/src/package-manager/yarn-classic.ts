@@ -7,7 +7,6 @@ import type {
 } from 'midnight-smoker/plugin';
 import {Errors} from 'midnight-smoker/plugin';
 import path from 'node:path';
-import type {SemVer} from 'semver';
 
 interface WorkspaceInfo {
   location: string;
@@ -15,7 +14,7 @@ interface WorkspaceInfo {
   [key: string]: any;
 }
 
-export class YarnClassic implements PkgManager.PackageManager {
+export class YarnClassic implements PkgManager.PkgManager {
   protected readonly debug: Debug.Debugger;
 
   public static readonly bin = 'yarn';
@@ -27,21 +26,19 @@ export class YarnClassic implements PkgManager.PackageManager {
     protected readonly executor: Executor.Executor,
     public readonly tmpdir: string,
     protected readonly helpers: typeof Helpers,
-    protected readonly opts: PkgManager.PackageManagerOpts = {},
+    protected readonly opts: PkgManager.PkgManagerOpts = {},
   ) {
     this.debug = Debug(`midnight-smoker:pm:yarn1`);
   }
 
-  public static accepts(semver: SemVer) {
-    return Boolean(semver.compare('1.0.0') - semver.compare('2.0.0'));
-  }
+  public static accepts = '^1.0.0';
 
   public static async create(
     this: void,
     id: string,
     executor: Executor.Executor,
     helpers: typeof Helpers,
-    opts?: PkgManager.PackageManagerOpts,
+    opts?: PkgManager.PkgManagerOpts,
   ) {
     const tmpdir = await helpers.createTempDir();
     return new YarnClassic(id, executor, tmpdir, helpers, opts);
@@ -326,4 +323,4 @@ export class YarnClassic implements PkgManager.PackageManager {
   }
 }
 
-export default YarnClassic satisfies PkgManager.PackageManagerModule;
+export default YarnClassic satisfies PkgManager.PkgManagerDef;

@@ -5,6 +5,7 @@ import {Console} from 'node:console';
 import fs from 'node:fs/promises';
 import type {
   Component,
+  PkgManagerDef,
   ReporterDef,
   RunRulesManifest,
   RunRulesResult,
@@ -240,6 +241,18 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
   ): Promise<SmokeResults | undefined> {
     const smoker = await Smoker.create(opts);
     return smoker.smoke();
+  }
+
+  public getPkgManagerDefs() {
+    return this.pluginRegistry.pkgManagerDefs;
+  }
+
+  public static async getPkgManagerDefs(
+    this: void,
+    opts: RawSmokerOptions = {},
+  ): Promise<Component<PkgManagerDef>[]> {
+    const smoker = await Smoker.create(opts);
+    return smoker.getPkgManagerDefs();
   }
 
   /**
