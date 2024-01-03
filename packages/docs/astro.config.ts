@@ -32,15 +32,24 @@ export default defineConfig({
             {label: 'Configuration', link: '/guides/config'},
             {label: 'Using Custom Scripts', link: '/guides/custom-scripts'},
             {label: 'Using Plugins', link: '/guides/plugins'},
-            {label: 'Writing Plugins', link: '/guides/writing-plugins'},
           ],
         },
         {
           label: 'Reference',
           items: [
+            {label: 'Overview', link: '/reference'},
             {label: 'CLI', link: '/reference/cli'},
             {label: 'Configuration', link: '/reference/config'},
             {label: 'Rules', link: '/reference/rules'},
+          ],
+        },
+        {
+          label: 'Development',
+          items: [
+            {label: 'Overview', link: '/developer'},
+            {label: 'Developing Plugins', link: '/developer/plugin-overview'},
+            {label: 'Creating Rules', link: '/developer/plugin-rule'},
+            {label: 'Creating Reporters', link: '/developer/plugin-reporter'},
           ],
         },
       ],
@@ -51,7 +60,6 @@ export default defineConfig({
   ],
   markdown: {
     remarkPlugins: [[remarkCodeImport as RemarkPlugin, {rootDir: exampleDir}]],
-
     rehypePlugins: [...rehypeAutolink()],
   },
 });
