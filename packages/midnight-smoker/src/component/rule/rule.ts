@@ -6,16 +6,17 @@ import {
   instanceofSchema,
   zEmptyObject,
 } from '../../schema-util';
-import {Component, Owner, component} from '../component';
+import type {Component, Owner} from '../component';
+import {component} from '../component';
 import {ComponentKinds} from '../component-kind';
-import {RuleContext} from './context';
+import type {RuleContext} from './context';
 import {
   DEFAULT_RULE_SEVERITY,
   RuleSeverities,
   zRuleSeverity,
   type RuleSeverity,
 } from './severity';
-import {StaticRule} from './static';
+import type {StaticRule} from './static';
 
 const debug = Debug('midnight-smoker:rule');
 

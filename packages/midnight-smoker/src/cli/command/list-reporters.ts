@@ -1,9 +1,9 @@
 import Debug from 'debug';
-import {ArgumentsCamelCase} from 'yargs';
+import type {ArgumentsCamelCase} from 'yargs';
 import {kComponentId} from '../../component/component';
 import {isBlessedPlugin} from '../../plugin/blessed';
 import {Smoker} from '../../smoker';
-import {GlobalOptionTypes} from '../cli-options';
+import type {GlobalOptionTypes} from '../cli-options';
 import {createTable} from '../cli-util';
 import {BaseCommand} from './base';
 

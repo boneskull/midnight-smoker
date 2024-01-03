@@ -1,10 +1,10 @@
 import Debug from 'debug';
 import {orderBy} from 'lodash';
 import path from 'node:path';
-import {ArgumentsCamelCase} from 'yargs';
+import type {ArgumentsCamelCase} from 'yargs';
 import {isBlessedPlugin} from '../../plugin/blessed';
 import {Smoker} from '../../smoker';
-import {GlobalOptionTypes} from '../cli-options';
+import type {GlobalOptionTypes} from '../cli-options';
 import {createTable} from '../cli-util';
 import {BaseCommand} from './base';
 

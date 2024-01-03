@@ -2,9 +2,11 @@ import {italic, white, whiteBright, yellow} from 'chalk';
 import {isObject} from 'lodash';
 import {format, formatWithOptions} from 'node:util';
 import stringify from 'stringify-object';
-import {ZodError, fromZodError} from 'zod-validation-error';
+import type {ZodError} from 'zod-validation-error';
+import {fromZodError} from 'zod-validation-error';
 import {castArray} from '../schema-util';
-import {ErrorCodes, SmokerErrorCode, SmokerErrorId} from './codes';
+import type {SmokerErrorCode, SmokerErrorId} from './codes';
+import {ErrorCodes} from './codes';
 
 /**
  * Lookup an error code for a given `SmokerError` subclass instance.

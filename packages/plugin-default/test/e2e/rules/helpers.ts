@@ -1,4 +1,5 @@
-import {Component, Helpers, Rule} from 'midnight-smoker/plugin';
+import type {Component, Rule} from 'midnight-smoker/plugin';
+import {Helpers} from 'midnight-smoker/plugin';
 import {SmokerRuleRunner} from '../../../src/rule-runner';
 
 /**

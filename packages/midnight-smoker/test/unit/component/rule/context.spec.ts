@@ -1,7 +1,7 @@
 import unexpected from 'unexpected';
-import {Component, SomeRule} from '../../../../src/component';
+import type {Component, SomeRule} from '../../../../src/component';
 import {RuleContext} from '../../../../src/component/rule/context';
-import {StaticRuleContext} from '../../../../src/component/rule/static';
+import type {StaticRuleContext} from '../../../../src/component/rule/static';
 
 const expect = unexpected.clone();
 

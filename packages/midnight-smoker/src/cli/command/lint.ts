@@ -1,11 +1,8 @@
 import Debug from 'debug';
-import {ArgumentsCamelCase, Argv} from 'yargs';
+import type {ArgumentsCamelCase, Argv} from 'yargs';
 import {Smoker} from '../../smoker';
-import {
-  CommonOptionTypes,
-  CommonOptions,
-  GlobalOptionTypes,
-} from '../cli-options';
+import type {CommonOptionTypes, GlobalOptionTypes} from '../cli-options';
+import {CommonOptions} from '../cli-options';
 import {BaseCommand} from './base';
 
 const debug = Debug('midnight-smoker:cli:lint');

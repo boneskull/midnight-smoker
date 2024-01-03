@@ -1,12 +1,14 @@
-import {nullExecutor} from '@midnight-smoker/test-util';
-import {Helpers, PkgManager} from 'midnight-smoker/plugin';
+import type {nullExecutor} from '@midnight-smoker/test-util';
+import type {PkgManager} from 'midnight-smoker/plugin';
+import {Helpers} from 'midnight-smoker/plugin';
 import rewiremock from 'rewiremock/node';
 import {SemVer} from 'semver';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
 import type * as NPM9 from '../../../src/package-manager/npm9';
-import {ConsoleMock, DebugMock, mockConsole, mockDebug} from '../../mocks';
+import type {ConsoleMock, DebugMock} from '../../mocks';
+import {mockConsole, mockDebug} from '../../mocks';
 
 const expect = unexpected.clone().use(unexpectedSinon);
 

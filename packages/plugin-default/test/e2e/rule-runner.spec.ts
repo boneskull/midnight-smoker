@@ -1,5 +1,6 @@
 import {registerPlugin, runRuleRunner} from '@midnight-smoker/test-util';
-import {PluginRegistry, Rule, RuleRunner} from 'midnight-smoker/plugin';
+import type {PluginRegistry, RuleRunner} from 'midnight-smoker/plugin';
+import {Rule} from 'midnight-smoker/plugin';
 import path from 'node:path';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';

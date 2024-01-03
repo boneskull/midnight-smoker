@@ -59,9 +59,6 @@ export const zBaseSmokerOptions = z
       scriptRunner: zNonEmptyString
         .describe('Component ID of ScriptRunner implementation')
         .default(DEFAULT_COMPONENT_ID),
-      scripts: zNonEmptyStringOrArrayThereof.describe(
-        'Script(s) to run. Alias of `script`',
-      ),
       verbose: zDefaultFalse.describe('Verbose logging'),
       workspace: zNonEmptyStringOrArrayThereof.describe(
         'One or more workspaces to run scripts in',

@@ -1,4 +1,4 @@
-import {ComponentKind} from '../component/component-kind';
+import type {ComponentKind} from '../component/component-kind';
 import {BaseSmokerError} from './base-error';
 
 export class InvalidComponentError extends BaseSmokerError<{

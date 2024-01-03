@@ -1,5 +1,5 @@
 import {maxSatisfying, parse, valid, validRange, type SemVer} from 'semver';
-import {StringKeyOf} from 'type-fest';
+import type {StringKeyOf} from 'type-fest';
 import npmDistTags from '../../../data/npm-dist-tags.json';
 import npmVersions from '../../../data/npm-versions.json';
 import yarnDistTags from '../../../data/yarn-dist-tags.json';

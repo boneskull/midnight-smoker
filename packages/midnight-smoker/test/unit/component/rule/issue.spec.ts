@@ -1,12 +1,14 @@
 import unexpected from 'unexpected';
-import {
-  RuleIssue,
+import type {
   RuleIssueParams,
   StaticRuleIssue,
+} from '../../../../src/component/rule/issue';
+import {
+  RuleIssue,
   zStaticRuleIssue,
 } from '../../../../src/component/rule/issue';
 import {RuleSeverities} from '../../../../src/component/rule/severity';
-import {
+import type {
   StaticRule,
   StaticRuleContext,
 } from '../../../../src/component/rule/static';

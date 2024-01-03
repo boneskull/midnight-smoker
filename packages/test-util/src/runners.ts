@@ -1,13 +1,11 @@
 import {EventEmitter} from 'events';
-import {
+import type {
   Event,
   PluginRegistry,
   Rule,
   RuleFilter,
-  RuleRunner,
-  SchemaUtils,
-  ScriptRunner,
 } from 'midnight-smoker/plugin';
+import {RuleRunner, SchemaUtils, ScriptRunner} from 'midnight-smoker/plugin';
 
 /**
  * Options for running a rule runner.

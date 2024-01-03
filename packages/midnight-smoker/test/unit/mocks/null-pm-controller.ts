@@ -1,14 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import {
+import type {
   InstallResult,
   PackageManager,
   PkgManagerInstallManifest,
   RunScriptResult,
 } from '../../../src/component';
-import {
-  PkgManagerController,
-  RunScriptsOpts,
-} from '../../../src/component/package-manager/controller';
+import type {RunScriptsOpts} from '../../../src/component/package-manager/controller';
+import {PkgManagerController} from '../../../src/component/package-manager/controller';
 
 export class NullPkgManagerController extends PkgManagerController {
   async getPkgManagers(): Promise<readonly PackageManager[]> {

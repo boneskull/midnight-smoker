@@ -9,8 +9,8 @@
  */
 
 import {cyanBright, italic} from 'chalk';
-import {PluginMetadata} from '../plugin/metadata';
-import {Plugin} from '../plugin/plugin';
+import type {PluginMetadata} from '../plugin/metadata';
+import type {Plugin} from '../plugin/plugin';
 import {BaseSmokerError} from './base-error';
 
 /**

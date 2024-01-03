@@ -1,4 +1,4 @@
-import {Plugin, PluginAPI} from 'midnight-smoker/plugin';
+import type {Plugin, PluginAPI} from 'midnight-smoker/plugin';
 import noBannedFiles from './no-banned-files';
 import noMissingEntryPoint from './no-missing-entry-point';
 import noMissingExports from './no-missing-exports';

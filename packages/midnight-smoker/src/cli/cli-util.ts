@@ -1,12 +1,9 @@
 import {bold, cyan, yellow} from 'chalk';
 import Table from 'cli-table3';
-import deepmerge from 'deepmerge';
-import {isError, merge, pick} from 'lodash';
+import {isError, mergeWith} from 'lodash';
 import stringWidth from 'string-width';
-import {MergeDeep, Primitive} from 'type-fest';
-import {ArgumentsCamelCase} from 'yargs';
+import type {MergeDeep, Primitive} from 'type-fest';
 import {BaseSmokerError} from '../error/base-error';
-import {RawSmokerOptions} from '../options/options';
 
 /**
  * Creates a table (for display in the console) with the given items and
@@ -74,34 +71,16 @@ export function createTable(
  * @param argv - Command-line args, parsed by `yargs`
  * @param config - Configuration file contents, as loaded by `lilconfig`
  * @returns The mutated object
- * @todo Evaluate how correct this is in terms of both types and merging
- *   (especially arrays)
  */
 export function mergeOptions<T extends object, U extends object>(
   argv: T,
   config: U,
-): MergeDeep<T, U> {
-  return Object.assign(argv, deepmerge(config, argv) as MergeDeep<T, U>);
-}
-
-export function createConfigMerge<
-  Opts extends RawSmokerOptions,
-  Props extends keyof Opts,
->(config: Opts, props?: Props[]) {
-  const picked: Pick<Opts, Props> = props?.length
-    ? pick(config, props)
-    : config;
-
-  /**
-   * Merges parsed `argv` with the loaded `config` object--with `argv` taking
-   * precedence--and assigns the result to `argv`.
-   *
-   * @template T - Type of the parsed `argv` object
-   * @param argv - Parsed options from `yargs`
-   */
-  return async (argv: ArgumentsCamelCase<Opts>) => {
-    merge(argv, picked);
-  };
+): MergeDeep<T, U, {recurseIntoArrays: true}> {
+  return mergeWith(argv, config, (objValue, srcValue) => {
+    if (Array.isArray(objValue) && Array.isArray(srcValue)) {
+      return [...(objValue as unknown[]), ...(srcValue as unknown[])];
+    }
+  }) as MergeDeep<T, U, {recurseIntoArrays: true}>;
 }
 
 /**

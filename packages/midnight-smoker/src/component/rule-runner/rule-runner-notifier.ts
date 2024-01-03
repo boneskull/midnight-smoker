@@ -2,8 +2,8 @@ import {SmokerEvent} from '../../event/event-constants';
 import type {RuleEvents} from '../../event/rule-events';
 import type {StrictEmitter} from '../../event/strict-emitter';
 import {RuleIssue} from '../rule/issue';
+import type {RuleRunnerNotifiers} from '../schema/rule-runner-schema';
 import {
-  RuleRunnerNotifiers,
   zRuleBeginNotifier,
   zRuleErrorNotifier,
   zRuleFailedNotifier,

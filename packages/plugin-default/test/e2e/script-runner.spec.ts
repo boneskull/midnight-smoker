@@ -3,7 +3,8 @@ import {
   registerPlugin,
   runScriptRunner,
 } from '@midnight-smoker/test-util';
-import {Errors, PluginRegistry, ScriptRunner} from 'midnight-smoker/plugin';
+import type {PluginRegistry, ScriptRunner} from 'midnight-smoker/plugin';
+import {Errors} from 'midnight-smoker/plugin';
 import {EventEmitter} from 'node:events';
 import path from 'node:path';
 import {createSandbox} from 'sinon';

@@ -5,7 +5,7 @@ import util from 'node:util';
 import z from 'zod';
 import {fromZodError} from 'zod-validation-error';
 import {zRuleRunner, zScriptRunner} from '../component';
-import {Component} from '../component/component';
+import type {Component} from '../component/component';
 import {ComponentKinds} from '../component/component-kind';
 import * as Executor from '../component/executor';
 import * as PackageManager from '../component/package-manager';
@@ -30,12 +30,14 @@ import * as Event from '../event';
 import {justImport, resolveFrom} from '../loader-util';
 import {readPackageJson} from '../pkg-util';
 import * as SchemaUtils from '../schema-util';
-import {BlessedPlugin, isBlessedPlugin} from './blessed';
+import type {BlessedPlugin} from './blessed';
+import {isBlessedPlugin} from './blessed';
 import * as Helpers from './helpers';
 import {PluginMetadata, initBlessedMetadata} from './metadata';
-import {Plugin, zPlugin} from './plugin';
-import * as API from './plugin-api';
-import {StaticPluginMetadata} from './static-metadata';
+import type {Plugin} from './plugin';
+import {zPlugin} from './plugin';
+import type * as API from './plugin-api';
+import type {StaticPluginMetadata} from './static-metadata';
 
 const debug = Debug('midnight-smoker:plugin-registry');
 

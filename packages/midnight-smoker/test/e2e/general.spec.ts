@@ -4,7 +4,7 @@ import path from 'node:path';
 import snapshot from 'snap-shot-it';
 import unexpected from 'unexpected';
 import {DEFAULT_SPEC} from '../../src/component/package-manager/loader';
-import {ExecResult} from '../../src/component/schema/executor-schema';
+import type {ExecResult} from '../../src/component/schema/executor-schema';
 import {resolveFrom} from '../../src/loader-util';
 import {readPackageJson} from '../../src/pkg-util';
 import assertions from '../assertions';

@@ -1,7 +1,7 @@
 import {isFunction, isObject} from 'lodash';
 import {z} from 'zod';
 import {zNonEmptyString} from '../schema-util';
-import {PluginAPI} from './plugin-api';
+import type {PluginAPI} from './plugin-api';
 
 /**
  * A function which receives a {@link PluginAPI} and uses it to define the

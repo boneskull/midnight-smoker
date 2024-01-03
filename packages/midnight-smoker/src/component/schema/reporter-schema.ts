@@ -13,7 +13,7 @@ import {
   zNonEmptyString,
   zPackageJson,
 } from '../../schema-util';
-import {
+import type {
   ReporterDef,
   ReporterFn,
   ReporterParams,

@@ -12,7 +12,7 @@ import type {
 } from '../component/schema/pkg-manager-schema';
 import type {InstallEventData} from './install-events';
 import type {PackBeginEventData} from './pack-events';
-import {
+import type {
   RunScriptsEndEventData,
   RunScriptsEventData,
 } from './script-runner-events';

@@ -4,7 +4,8 @@
  * @packageDocumentation
  */
 
-import {Event, Reporter, Rule} from 'midnight-smoker/plugin';
+import type {Reporter} from 'midnight-smoker/plugin';
+import {Event, Rule} from 'midnight-smoker/plugin';
 import {PassThrough} from 'stream';
 
 const nullStream = new PassThrough();

@@ -1,9 +1,5 @@
-import {
-  Plugin,
-  PluginAPI,
-  PluginMetadata,
-  PluginRegistry,
-} from 'midnight-smoker/plugin';
+import type {Plugin, PluginAPI} from 'midnight-smoker/plugin';
+import {PluginMetadata, PluginRegistry} from 'midnight-smoker/plugin';
 
 export interface BaseRegisterPluginOpts {
   pluginName?: string;

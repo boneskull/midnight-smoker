@@ -1,5 +1,5 @@
 import {registerRule, safePath} from '@midnight-smoker/test-util';
-import {Component, Rule} from 'midnight-smoker/plugin';
+import type {Component, Rule} from 'midnight-smoker/plugin';
 import unexpected from 'unexpected';
 import noMissingExportsDef from '../../../src/rules/no-missing-exports';
 import {applyRule} from './helpers';

@@ -1,4 +1,4 @@
-import {ReporterDef} from '../component/reporter/reporter-types';
+import type {ReporterDef} from '../component/reporter/reporter-types';
 import {BaseSmokerError} from './base-error';
 
 /**

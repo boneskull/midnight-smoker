@@ -8,9 +8,9 @@
  * @todo Creating a custom `Executor` is not yet supported by the public plugin
  *   API.
  */
-import execa from 'execa';
-import {SpawnOptions} from 'node:child_process';
-import {SimpleMerge} from 'type-fest/source/merge';
+import type execa from 'execa';
+import type {SpawnOptions} from 'node:child_process';
+import type {SimpleMerge} from 'type-fest/source/merge';
 import {z} from 'zod';
 import {
   customSchema,

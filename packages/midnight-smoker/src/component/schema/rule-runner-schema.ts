@@ -8,7 +8,7 @@ import {
   zRunRulesFailedEventData,
   zRunRulesOkEventData,
 } from '../../event/rule-events';
-import {Component} from '../component';
+import type {Component} from '../component';
 import {zBaseNormalizedRuleOptionsRecord, zRuleIssue, zSomeRule} from '../rule';
 import {zRuleOk} from '../rule/rule-result';
 

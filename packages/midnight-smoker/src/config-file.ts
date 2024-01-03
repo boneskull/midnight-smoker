@@ -1,7 +1,8 @@
 import Debug from 'debug';
-import {Loader, lilconfig, type Options as LilconfigOpts} from 'lilconfig';
+import type {Loader, type Options as LilconfigOpts} from 'lilconfig';
+import {lilconfig} from 'lilconfig';
 import {justImport, importTs as loadTs} from './loader-util';
-import {RawSmokerOptions} from './options/options';
+import type {RawSmokerOptions} from './options/options';
 import {toDualCasedObject} from './schema-util';
 
 const debug = Debug('midnight-smoker:config-file');

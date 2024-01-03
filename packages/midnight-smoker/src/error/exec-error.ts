@@ -1,4 +1,4 @@
-import {ExecaError} from 'execa';
+import type {ExecaError} from 'execa';
 import {BaseSmokerError} from './base-error';
 
 /**

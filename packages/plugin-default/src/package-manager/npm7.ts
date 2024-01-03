@@ -6,7 +6,7 @@ import {
   type PkgManager,
 } from 'midnight-smoker/plugin';
 import path from 'node:path';
-import {SemVer} from 'semver';
+import type {SemVer} from 'semver';
 import {GenericNpmPackageManager} from './npm';
 
 /**

@@ -1,6 +1,6 @@
 import {memoize} from 'lodash';
 import readPkgUp from 'read-pkg-up';
-import {PackageJson} from 'type-fest';
+import type {PackageJson} from 'type-fest';
 import {
   MissingPackageJsonError,
   UnreadablePackageJsonError,

@@ -5,7 +5,7 @@
  */
 
 import type {SemVer} from 'semver';
-import * as Helpers from '../../plugin/helpers';
+import type * as Helpers from '../../plugin/helpers';
 import type {Executor} from '../executor';
 import type {PackageManager} from '../schema/pkg-manager-schema';
 export {ExecutorOpts as ExecOpts, ExecResult} from '../executor';

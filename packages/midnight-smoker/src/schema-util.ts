@@ -1,5 +1,13 @@
-import {camelCase, isFunction, isObject, kebabCase} from 'lodash';
-import {EventEmitter} from 'node:events';
+import type {Many} from 'lodash';
+import {
+  castArray as _castArray,
+  camelCase,
+  compact,
+  isFunction,
+  isObject,
+  kebabCase,
+} from 'lodash';
+import type {EventEmitter} from 'node:events';
 import type {
   CamelCase,
   Class,
@@ -23,10 +31,8 @@ function isSerializable<T>(value: T): value is T & {toJSON: () => unknown} {
  * @param value Any value
  * @returns An array, for sure!
  */
-export function castArray<T>(value: T | T[]): NonNullable<T>[] {
-  return (value ? (Array.isArray(value) ? value : [value]) : []).filter(
-    Boolean,
-  ) as NonNullable<T>[];
+export function castArray<T>(value?: Many<T>): T[] {
+  return compact(_castArray(value));
 }
 
 /**

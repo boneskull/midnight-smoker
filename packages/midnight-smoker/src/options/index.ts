@@ -6,8 +6,9 @@
 import Debug from 'debug';
 import z, {type ZodError} from 'zod';
 import {fromZodError} from 'zod-validation-error';
-import {PluginRegistry} from '../plugin/registry';
-import {RawSmokerOptions, SmokerOptions, zBaseSmokerOptions} from './options';
+import type {PluginRegistry} from '../plugin/registry';
+import type {RawSmokerOptions, SmokerOptions} from './options';
+import {zBaseSmokerOptions} from './options';
 
 const debug = Debug('midnight-smoker:options');
 
@@ -69,18 +70,12 @@ export class OptionParser {
           return z.NEVER;
         }
 
-        // stuff `scripts` into into `script`
-        const script = [...new Set([...cfg.script, ...cfg.scripts])];
-
         // special case for --json flag
         if (cfg.json) {
           cfg.reporter = ['json'];
         }
 
-        return {
-          ...cfg,
-          script,
-        };
+        return cfg;
       });
   }
 

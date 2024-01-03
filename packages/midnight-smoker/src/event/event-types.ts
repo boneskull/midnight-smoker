@@ -1,12 +1,12 @@
-import {RunScriptResult} from '../component/schema/pkg-manager-schema';
-import {RunRulesResult} from '../component/schema/rule-runner-schema';
-import {SmokeFailedError} from '../error/smoker-error';
-import {SmokerOptions} from '../options/options';
-import {StaticPluginMetadata} from '../plugin/static-metadata';
-import {InstallEvents} from './install-events';
-import {PackEvents} from './pack-events';
-import {RuleEvents} from './rule-events';
-import {ScriptRunnerEvents} from './script-runner-events';
+import type {RunScriptResult} from '../component/schema/pkg-manager-schema';
+import type {RunRulesResult} from '../component/schema/rule-runner-schema';
+import type {SmokeFailedError} from '../error/smoker-error';
+import type {SmokerOptions} from '../options/options';
+import type {StaticPluginMetadata} from '../plugin/static-metadata';
+import type {InstallEvents} from './install-events';
+import type {PackEvents} from './pack-events';
+import type {RuleEvents} from './rule-events';
+import type {ScriptRunnerEvents} from './script-runner-events';
 
 /**
  * Describes the data emitted by each event.

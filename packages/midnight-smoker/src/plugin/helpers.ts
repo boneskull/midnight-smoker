@@ -3,7 +3,7 @@ import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {type Component} from '../component/component';
 import {RuleContext} from '../component/rule/context';
-import {
+import type {
   RuleConfig,
   type BaseNormalizedRuleOptions,
   type BaseNormalizedRuleOptionsRecord,
@@ -12,7 +12,7 @@ import {
   type SomeRule,
 } from '../component/rule/rule';
 import {type RuleOk} from '../component/rule/rule-result';
-import {RuleSeverity} from '../component/rule/severity';
+import type {RuleSeverity} from '../component/rule/severity';
 import {type StaticRuleContext} from '../component/rule/static';
 import {DirCreationError} from '../error/util-error';
 import {readPackageJson, readPackageJsonSync} from '../pkg-util';

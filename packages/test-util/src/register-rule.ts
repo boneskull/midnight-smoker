@@ -1,7 +1,6 @@
+import type {Component, Plugin} from 'midnight-smoker/plugin';
 import {
   Blessed,
-  Component,
-  Plugin,
   PluginMetadata,
   PluginRegistry,
   Rule,

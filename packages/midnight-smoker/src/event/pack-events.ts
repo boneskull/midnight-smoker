@@ -1,5 +1,5 @@
-import {PackError} from '../error/pack-error';
-import {InstallEventData} from './install-events';
+import type {PackError} from '../error/pack-error';
+import type {InstallEventData} from './install-events';
 
 export interface PackEvents {
   /**

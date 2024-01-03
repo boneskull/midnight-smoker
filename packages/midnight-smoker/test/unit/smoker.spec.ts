@@ -1,5 +1,5 @@
+import type {ExecaMock} from '@midnight-smoker/test-util';
 import {
-  ExecaMock,
   NullPm,
   createExecaMock,
   registerRule,
@@ -12,8 +12,8 @@ import unexpected from 'unexpected';
 import unexpectedEventEmitter from 'unexpected-eventemitter';
 import unexpectedSinon from 'unexpected-sinon';
 import z from 'zod';
-import {PkgManagerController} from '../../src/component/package-manager/controller';
-import {
+import type {PkgManagerController} from '../../src/component/package-manager/controller';
+import type {
   InstallResult,
   PackageManager,
   PkgManagerInstallManifest,

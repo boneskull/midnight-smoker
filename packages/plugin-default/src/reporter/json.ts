@@ -5,7 +5,8 @@
  */
 
 import jsonStringify from 'json-stable-stringify';
-import {Errors, Event, Reporter} from 'midnight-smoker/plugin';
+import type {Reporter} from 'midnight-smoker/plugin';
+import {Errors, Event} from 'midnight-smoker/plugin';
 
 export const JSONReporter: Reporter.ReporterDef = {
   name: 'json',

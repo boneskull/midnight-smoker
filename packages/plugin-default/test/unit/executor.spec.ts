@@ -1,4 +1,5 @@
-import {ExecaMock, createExecaMock} from '@midnight-smoker/test-util';
+import type {ExecaMock} from '@midnight-smoker/test-util';
+import {createExecaMock} from '@midnight-smoker/test-util';
 import type {Executor} from 'midnight-smoker/plugin';
 import {Readable} from 'node:stream';
 import rewiremock from 'rewiremock/node';

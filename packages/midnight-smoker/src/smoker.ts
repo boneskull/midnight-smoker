@@ -3,30 +3,28 @@ import Debug from 'debug';
 import {isFunction} from 'lodash';
 import {Console} from 'node:console';
 import fs from 'node:fs/promises';
-import {
+import type {
   Component,
   ReporterDef,
-  RuleSeverities,
   RunRulesManifest,
   SomeRule,
   type RunRulesResult,
 } from './component';
-import {
-  PkgManagerController,
-  SmokerPkgManagerController,
-} from './component/package-manager/controller';
+import {RuleSeverities} from './component';
+import type {PkgManagerController} from './component/package-manager/controller';
+import {SmokerPkgManagerController} from './component/package-manager/controller';
 import {createRuleRunnerNotifiers} from './component/rule-runner/rule-runner-notifier';
 import type {
+  InstallResult,
   PkgManagerInstallManifest,
   RunScriptResult,
 } from './component/schema/pkg-manager-schema';
-import {InstallResult} from './component/schema/pkg-manager-schema';
 import {InvalidArgError} from './error/common-error';
-import {InstallError} from './error/install-error';
-import {PackError} from './error/pack-error';
+import type {InstallError} from './error/install-error';
+import type {PackError} from './error/pack-error';
 import {ReporterError} from './error/reporter-error';
-import {RuleError} from './error/rule-error';
-import {ScriptError} from './error/script-error';
+import type {RuleError} from './error/rule-error';
+import type {ScriptError} from './error/script-error';
 import {CleanupError, SmokeFailedError} from './error/smoker-error';
 import {
   InstallEvent,
@@ -34,14 +32,15 @@ import {
   RunScriptEvent,
   SmokerEvent,
 } from './event/event-constants';
-import {SmokerEvents, type SmokeResults} from './event/event-types';
-import {StrictEmitter, createStrictEmitter} from './event/strict-emitter';
+import type {SmokerEvents, type SmokeResults} from './event/event-types';
+import type {StrictEmitter} from './event/strict-emitter';
+import {createStrictEmitter} from './event/strict-emitter';
 import {OptionParser} from './options';
 import {type RawSmokerOptions, type SmokerOptions} from './options/options';
 import {readSmokerPkgJson} from './pkg-util';
 import {BLESSED_PLUGINS, isBlessedPlugin} from './plugin/blessed';
 import {PluginRegistry} from './plugin/registry';
-import {StaticPluginMetadata} from './plugin/static-metadata';
+import type {StaticPluginMetadata} from './plugin/static-metadata';
 import {castArray} from './schema-util';
 
 const debug = Debug('midnight-smoker:smoker');

@@ -1,9 +1,10 @@
 import {z} from 'zod';
 import {zScriptError} from '../../error/error-schema';
-import {ExecError} from '../../error/exec-error';
-import {ScriptError} from '../../error/script-error';
+import type {ExecError} from '../../error/exec-error';
+import type {ScriptError} from '../../error/script-error';
 import {customSchema, zAbortSignal, zNonEmptyString} from '../../schema-util';
-import {ExecResult, zExecError, zExecResult} from './executor-schema';
+import type {ExecResult} from './executor-schema';
+import {zExecError, zExecResult} from './executor-schema';
 
 export const zBaseRunScriptManifest = z.object({
   cwd: zNonEmptyString,

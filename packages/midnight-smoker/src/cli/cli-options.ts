@@ -1,5 +1,5 @@
 import Debug from 'debug';
-import {InferredOptionTypes, Options} from 'yargs';
+import type {InferredOptionTypes, Options} from 'yargs';
 import {DEFAULT_PACKAGE_MANAGER_SPEC} from '../constants';
 
 export const BEHAVIOR_GROUP = 'Script Behavior:';

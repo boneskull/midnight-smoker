@@ -1,7 +1,7 @@
-import {PackageJson} from 'type-fest';
-import {SmokerEvents} from '../../event/event-types';
-import {StrictEmitter} from '../../event/strict-emitter';
-import {SmokerOptions} from '../../options/options';
+import type {PackageJson} from 'type-fest';
+import type {SmokerEvents} from '../../event/event-types';
+import type {StrictEmitter} from '../../event/strict-emitter';
+import type {SmokerOptions} from '../../options/options';
 
 export type ReporterDef = {
   when?: ReporterWhenFn;

@@ -1,4 +1,4 @@
-import {PluginAPI} from 'midnight-smoker/plugin';
+import type {PluginAPI} from 'midnight-smoker/plugin';
 import {ConsoleReporter} from './console';
 import {ExitListener} from './exit';
 import {JSONReporter} from './json';

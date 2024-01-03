@@ -1,5 +1,5 @@
 import Debug from 'debug';
-import {PluginAPI} from 'midnight-smoker/plugin';
+import type {PluginAPI} from 'midnight-smoker/plugin';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 

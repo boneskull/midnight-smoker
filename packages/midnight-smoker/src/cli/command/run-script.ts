@@ -1,13 +1,14 @@
 import Debug from 'debug';
-import {ArgumentsCamelCase, Argv, InferredOptionTypes, Options} from 'yargs';
+import type {
+  ArgumentsCamelCase,
+  Argv,
+  InferredOptionTypes,
+  Options,
+} from 'yargs';
+import {castArray} from '../../schema-util';
 import {Smoker} from '../../smoker';
-import {
-  ARRAY_OPT_CFG,
-  BEHAVIOR_GROUP,
-  CommonOptionTypes,
-  CommonOptions,
-  GlobalOptionTypes,
-} from '../cli-options';
+import type {CommonOptionTypes, GlobalOptionTypes} from '../cli-options';
+import {ARRAY_OPT_CFG, BEHAVIOR_GROUP, CommonOptions} from '../cli-options';
 import {handleRejection} from '../cli-util';
 import {BaseCommand} from './base';
 
@@ -67,8 +68,10 @@ export class RunScriptCommand extends BaseCommand<RunScriptOptionTypes> {
       .positional('script', {
         describe: 'Custom script(s) to run (from package.json)',
         string: true,
+        coerce: castArray<string>,
         array: true,
       })
+      .demandOption('script')
       .options(RunScriptOptions);
   }
 }

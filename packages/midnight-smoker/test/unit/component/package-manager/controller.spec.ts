@@ -10,7 +10,7 @@ import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedEE from 'unexpected-eventemitter';
 import unexpectedSinon from 'unexpected-sinon';
-import {
+import type {
   InstallResult,
   PackageManager,
   PkgManagerRunScriptManifest,
@@ -18,8 +18,8 @@ import {
   ScriptRunner,
   ScriptRunnerNotifiers,
   ScriptRunnerOpts,
-  component,
 } from '../../../../src/component';
+import {component} from '../../../../src/component';
 import type * as Controller from '../../../../src/component/package-manager/controller';
 import {
   PackError,
@@ -28,7 +28,7 @@ import {
   ScriptFailedError,
 } from '../../../../src/error';
 import {SmokerEvent} from '../../../../src/event/event-constants';
-import {RunScriptFailedEventData} from '../../../../src/event/script-runner-events';
+import type {RunScriptFailedEventData} from '../../../../src/event/script-runner-events';
 import {PluginRegistry} from '../../../../src/plugin';
 
 const expect = unexpected.clone().use(unexpectedEE).use(unexpectedSinon);

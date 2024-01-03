@@ -1,7 +1,7 @@
 import {bold, cyan, italic, magenta, yellow} from 'chalk';
 import {format} from 'node:util';
 import {BaseSmokerError} from './base-error';
-import {ExecError} from './exec-error';
+import type {ExecError} from './exec-error';
 
 /**
  * @group Errors

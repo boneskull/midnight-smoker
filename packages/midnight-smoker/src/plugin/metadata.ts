@@ -7,7 +7,7 @@
 import Debug from 'debug';
 import {isString} from 'lodash';
 import path from 'node:path';
-import {PackageJson, type LiteralUnion} from 'type-fest';
+import type {PackageJson, type LiteralUnion} from 'type-fest';
 import {z} from 'zod';
 import {fromZodError} from 'zod-validation-error';
 import {component, type Component} from '../component/component';
@@ -28,7 +28,7 @@ import {ComponentNameError} from '../error/component-error';
 import {readPackageJson} from '../pkg-util';
 import {zNonEmptyString, zPackageJson} from '../schema-util';
 import {BLESSED_PLUGINS, type BlessedPlugin} from './blessed';
-import {StaticPluginMetadata} from './static-metadata';
+import type {StaticPluginMetadata} from './static-metadata';
 
 const debug = Debug('midnight-smoker:plugin:metadata');
 

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import {PkgManager} from 'midnight-smoker/plugin';
+import type {PkgManager} from 'midnight-smoker/plugin';
 import type {SemVer} from 'semver';
 import {MOCK_TMPDIR} from './constants';
 import {nullExecutor} from './null-executor';

@@ -1,4 +1,4 @@
 module.exports = {
-  script: 'smoke-again',
+  script: ['smoke-again'],
   json: true,
 };

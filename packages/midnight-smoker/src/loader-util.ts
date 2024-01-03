@@ -1,10 +1,11 @@
 import {isObject} from 'lodash';
-import {Module} from 'module';
 import fs from 'node:fs/promises';
+import {Module} from 'node:module';
 import path from 'node:path';
 import type {PackageJson} from 'type-fest';
 import type {TranspileOptions} from 'typescript';
 
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 let ts: typeof import('typescript');
 
 function resolveTsConfig(directory: string): TranspileOptions | undefined {

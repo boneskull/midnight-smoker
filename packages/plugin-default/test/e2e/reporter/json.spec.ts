@@ -1,5 +1,5 @@
 import {execSmoker, fixupOutput} from '@midnight-smoker/test-util';
-import {Executor} from 'midnight-smoker/plugin';
+import type {Executor} from 'midnight-smoker/plugin';
 import path from 'node:path';
 import snapshot from 'snap-shot-it';
 import unexpected from 'unexpected';

@@ -4,16 +4,15 @@
  * @packageDocumentation
  */
 
-import {
-  DEFAULT_COMPONENT_ID,
+import type {
   Executor,
   PkgManager,
   Plugin,
   PluginAPI,
-  PluginRegistry,
   RuleRunner,
   ScriptRunner,
 } from 'midnight-smoker/plugin';
+import {DEFAULT_COMPONENT_ID, PluginRegistry} from 'midnight-smoker/plugin';
 
 export interface RegisterComponentOpts {
   registry?: PluginRegistry;

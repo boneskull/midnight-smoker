@@ -1,5 +1,5 @@
 import Debug from 'debug';
-import {
+import type {
   Errors,
   type Executor,
   type Helpers,

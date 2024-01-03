@@ -13,7 +13,7 @@
  */
 
 import Debug from 'debug';
-import {
+import type {
   Component,
   type PluginAPI,
   type Rule,

@@ -5,16 +5,12 @@
  */
 
 import {z} from 'zod';
-import {RuleError} from '../../error/rule-error';
+import type {RuleError} from '../../error/rule-error';
 import {instanceofSchema, zNonEmptyString} from '../../schema-util';
 import {uniqueIdFactoryFactory} from '../../util';
 import {RuleSeverities, zRuleSeverity} from './severity';
-import {
-  StaticRule,
-  StaticRuleContext,
-  zStaticRule,
-  zStaticRuleContext,
-} from './static';
+import type {StaticRule, StaticRuleContext} from './static';
+import {zStaticRule, zStaticRuleContext} from './static';
 
 /**
  * Properties for a {@link RuleIssue}.

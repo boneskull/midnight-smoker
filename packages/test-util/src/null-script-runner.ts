@@ -1,4 +1,5 @@
-import {Errors, ScriptRunner} from 'midnight-smoker/plugin';
+import type {ScriptRunner} from 'midnight-smoker/plugin';
+import {Errors} from 'midnight-smoker/plugin';
 export const nullScriptRunner: ScriptRunner.ScriptRunner = async (
   notifiers: ScriptRunner.ScriptRunnerNotifiers,
   pkgManagerRunManifest: ScriptRunner.PkgManagerRunScriptManifest,

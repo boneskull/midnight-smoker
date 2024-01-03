@@ -4,8 +4,10 @@
  * @packageDocumentation
  */
 
-import {ExecaError, node as execa} from 'execa';
-import {Errors, Executor} from 'midnight-smoker/plugin';
+import type {ExecaError} from 'execa';
+import {node as execa} from 'execa';
+import type {Executor} from 'midnight-smoker/plugin';
+import {Errors} from 'midnight-smoker/plugin';
 import path from 'node:path';
 
 /**

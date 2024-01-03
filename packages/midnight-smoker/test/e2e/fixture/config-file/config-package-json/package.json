@@ -7,6 +7,6 @@
   "smoker": {
     "pkgManager": ["npm@latest", "yarn@1"],
     "json": true,
-    "checks": false
+    "lint": false
   }
 }

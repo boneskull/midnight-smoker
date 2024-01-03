@@ -1,6 +1,6 @@
 import {red} from 'chalk';
 import {BaseSmokerError} from './base-error';
-import {ExecError} from './exec-error';
+import type {ExecError} from './exec-error';
 
 /**
  * @group Errors

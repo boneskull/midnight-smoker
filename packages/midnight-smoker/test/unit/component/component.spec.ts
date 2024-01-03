@@ -1,9 +1,9 @@
 import unexpected from 'unexpected';
+import type {Owner} from '../../../src/component/component';
 import {
   component,
   ComponentId,
   kComponentId,
-  Owner,
 } from '../../../src/component/component';
 
 const expect = unexpected.clone();

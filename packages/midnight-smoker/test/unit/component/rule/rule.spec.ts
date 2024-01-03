@@ -1,6 +1,6 @@
 import {registerRule} from '@midnight-smoker/test-util';
 import unexpected from 'unexpected';
-import {SomeRule} from '../../../../src/component';
+import type {SomeRule} from '../../../../src/component';
 import {BLESSED_PLUGINS} from '../../../../src/plugin/blessed';
 import {PluginRegistry} from '../../../../src/plugin/registry';
 
