@@ -1,0 +1,16 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": [
+    "../../midnight-smoker",
+    "../../plugin-default",
+    "../../test-util"
+  ],
+  "out": "../src/content/docs/api",
+  "entryPointStrategy": "packages",
+  "plugin": [
+    "typedoc-plugin-zod",
+    "typedoc-plugin-mdn-links",
+    "typedoc-plugin-markdown"
+  ],
+  "logLevel": "Info"
+}

@@ -66,9 +66,9 @@ types
 dist
 *.tsbuildinfo
 
-docs/README.md
-docs/api
+packages/docs/src/content/docs/api
 .astro/
 
 # sometimes vscode mocha runner creates this
 /__snapshots__
+

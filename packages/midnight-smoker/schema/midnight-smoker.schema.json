@@ -38,9 +38,6 @@
       "default": false,
       "description": "Operate on the root workspace. Only has an effect if `all` is `true`"
     },
-    "include-root": {
-      "$ref": "#/properties/includeRoot"
-    },
     "json": {
       "$ref": "#/$defs/defaultFalse",
       "default": false,
@@ -60,9 +57,6 @@
       "$ref": "#/$defs/arrayOfNonEmptyStrings",
       "default": "npm@latest",
       "description": "Package manager(s) to use"
-    },
-    "pkg-manager": {
-      "$ref": "#/properties/pkgManager"
     },
     "plugin": {
       "allOf": [
@@ -92,9 +86,6 @@
       "minLength": 1,
       "description": "Component ID of RuleRunner implementation",
       "default": "default"
-    },
-    "rule-runner": {
-      "$ref": "#/properties/ruleRunner"
     },
     "rules": {
       "type": "object",
@@ -476,27 +467,13 @@
           "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/1"
         }
       ],
-      "description": "Script(s) to run. Alias of `scripts`"
+      "description": "Script(s) to run."
     },
     "scriptRunner": {
       "type": "string",
       "minLength": 1,
       "description": "Component ID of ScriptRunner implementation",
       "default": "default"
-    },
-    "script-runner": {
-      "$ref": "#/properties/scriptRunner"
-    },
-    "scripts": {
-      "allOf": [
-        {
-          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0"
-        },
-        {
-          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/1"
-        }
-      ],
-      "description": "Script(s) to run. Alias of `script`"
     },
     "verbose": {
       "$ref": "#/$defs/defaultFalse",
@@ -513,6 +490,18 @@
         }
       ],
       "description": "One or more workspaces to run scripts in"
+    },
+    "include-root": {
+      "$ref": "#/properties/includeRoot"
+    },
+    "script-runner": {
+      "$ref": "#/properties/scriptRunner"
+    },
+    "rule-runner": {
+      "$ref": "#/properties/ruleRunner"
+    },
+    "pkg-manager": {
+      "$ref": "#/properties/pkgManager"
     }
   },
   "additionalProperties": false,

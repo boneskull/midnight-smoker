@@ -4,6 +4,7 @@ import {defineConfig} from 'astro/config';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import remarkCodeImport from 'remark-code-import';
+import starlightTypeDocPlugin, {typeDocSidebarGroup} from 'starlight-typedoc';
 import {rehypeAutolink} from './plugin/rehype-autolink';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -52,10 +53,31 @@ export default defineConfig({
             {label: 'Creating Reporters', link: '/developer/plugin-reporter'},
           ],
         },
+        typeDocSidebarGroup,
       ],
       components: {
         Footer: './src/components/Footer.astro',
       },
+      plugins: [
+        starlightTypeDocPlugin({
+          entryPoints: [
+            '../midnight-smoker',
+            '../plugin-default',
+            '../test-util',
+          ],
+          typeDoc: {
+            entryPointStrategy: 'packages',
+            plugin: ['typedoc-plugin-zod', 'typedoc-plugin-mdn-links'],
+            hideGenerator: true,
+            // broken in v4.0.0-next.38
+            // useCodeBlocks: true,
+          },
+          tsconfig: '../../tsconfig.json',
+          sidebar: {
+            collapsed: true,
+          },
+        }),
+      ],
     }),
   ],
   markdown: {
