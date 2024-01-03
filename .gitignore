@@ -69,3 +69,6 @@ dist
 docs/README.md
 docs/api
 .astro/
+
+# sometimes vscode mocha runner creates this
+/__snapshots__
