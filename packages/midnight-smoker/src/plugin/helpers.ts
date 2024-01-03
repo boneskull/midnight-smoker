@@ -24,6 +24,8 @@ export {
 } from '../pkg-util';
 export {readPackageJson, readPackageJsonSync};
 
+// TODO move most of this stuff into other places
+
 async function createStaticRuleContext(
   installPath: string,
   severity: RuleSeverity,

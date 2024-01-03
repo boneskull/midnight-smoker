@@ -71,22 +71,27 @@ export interface PluginAPI {
    * Types related to `Executor`s.
    */
   Executor: typeof Executor;
+
   /**
    * Collection of helpers for various components
    */
   Helpers: typeof Helpers;
+
   /**
-   * Types related to `PackageManager`s.
+   * Namespace related to `PackageManager`s.
    */
   PkgManager: typeof PkgManager;
+
   /**
-   * Types & classes related to `Rule`s.
+   * Namespace related to `Rule`s.
    */
   Rule: typeof Rule;
+
   /**
-   * Types related to `RuleRunner`s.
+   * Namespace related to `RuleRunner`s.
    */
   RuleRunner: typeof RuleRunner;
+
   /**
    * Some useful pre-rolled {@link z zod} schemas; mainly useful for {@link Rule}
    * schemas.
@@ -94,17 +99,21 @@ export interface PluginAPI {
   SchemaUtils: typeof SchemaUtils;
 
   /**
-   * Types related to `ScriptRunner`s.
+   * Namespace related to `ScriptRunner`s
    */
   ScriptRunner: typeof ScriptRunner;
 
+  /**
+   * Namespace related to events
+   */
   Event: typeof Event;
+
   /**
    * Basic information about other plugins.
    *
    * Re-computed at time of access.
    */
-  activePlugins: readonly StaticPluginMetadata[];
+  plugins: readonly StaticPluginMetadata[];
 
   /**
    * Defines an {@link Executor.Executor} component

@@ -128,6 +128,7 @@ export class PluginRegistry {
     this.#isClosed = false;
   }
 
+  // TODO: get rid of this filter
   public getRules(filter?: RuleFilter) {
     const rules = [...this.ruleMap.values()].flat();
     return filter ? rules.filter(filter) : rules;
@@ -638,7 +639,7 @@ export class PluginRegistry {
       return pluginApi;
     };
 
-    const plugins = () => {
+    const getPlugins = () => {
       return this.plugins;
     };
 
@@ -657,8 +658,8 @@ export class PluginRegistry {
 
       metadata,
 
-      get activePlugins() {
-        return plugins();
+      get plugins() {
+        return getPlugins();
       },
 
       defineRule,
