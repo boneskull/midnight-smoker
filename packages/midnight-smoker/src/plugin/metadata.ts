@@ -7,13 +7,13 @@
 import Debug from 'debug';
 import {isString} from 'lodash';
 import path from 'node:path';
-import type {PackageJson, type LiteralUnion} from 'type-fest';
+import type {LiteralUnion, PackageJson} from 'type-fest';
 import {z} from 'zod';
 import {fromZodError} from 'zod-validation-error';
 import {component, type Component} from '../component/component';
 import {ComponentKinds} from '../component/component-kind';
-import {type Executor} from '../component/executor';
-import {type PackageManagerModule} from '../component/package-manager/pkg-manager-types';
+import type {Executor} from '../component/executor';
+import type {PkgManagerDef} from '../component/package-manager/pkg-manager-types';
 import type {ReporterDef} from '../component/reporter/reporter-types';
 import {
   Rule,
@@ -21,7 +21,7 @@ import {
   type RuleOptionSchema,
   type SomeRule,
 } from '../component/rule/rule';
-import {type RuleRunner} from '../component/schema/rule-runner-schema';
+import type {RuleRunner} from '../component/schema/rule-runner-schema';
 import type {ScriptRunner} from '../component/schema/script-runner-schema';
 import {InvalidArgError} from '../error/common-error';
 import {ComponentNameError} from '../error/component-error';
@@ -472,7 +472,7 @@ export class PluginMetadata implements StaticPluginMetadata {
   }
 }
 
-export {LiteralUnion};
+export type {LiteralUnion};
 
 /**
  * Pre-builds the plugin metadata for "blessed" plugins so that they cannot be

@@ -1,9 +1,5 @@
 import Debug from 'debug';
-import type {
-  ScriptRunner,
-  type Executor,
-  type PkgManager,
-} from 'midnight-smoker/plugin';
+import type {Executor, PkgManager, ScriptRunner} from 'midnight-smoker/plugin';
 import {Errors, Helpers} from 'midnight-smoker/plugin';
 import path from 'node:path';
 import type {SemVer} from 'semver';

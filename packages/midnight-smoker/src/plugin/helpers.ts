@@ -1,23 +1,23 @@
 import fs from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
-import {type Component} from '../component/component';
+import type {Component} from '../component/component';
 import {RuleContext} from '../component/rule/context';
 import type {
+  BaseNormalizedRuleOptions,
+  BaseNormalizedRuleOptionsRecord,
+  Rule,
   RuleConfig,
-  type BaseNormalizedRuleOptions,
-  type BaseNormalizedRuleOptionsRecord,
-  type Rule,
-  type RuleOptionSchema,
-  type SomeRule,
+  RuleOptionSchema,
+  SomeRule,
 } from '../component/rule/rule';
-import {type RuleOk} from '../component/rule/rule-result';
+import type {RuleOk} from '../component/rule/rule-result';
 import type {RuleSeverity} from '../component/rule/severity';
-import {type StaticRuleContext} from '../component/rule/static';
+import type {StaticRuleContext} from '../component/rule/static';
 import {DirCreationError} from '../error/util-error';
 import {readPackageJson, readPackageJsonSync} from '../pkg-util';
 
-export {
+export type {
   ReadPackageJsonNormalizedResult,
   ReadPackageJsonOpts,
   ReadPackageJsonResult,

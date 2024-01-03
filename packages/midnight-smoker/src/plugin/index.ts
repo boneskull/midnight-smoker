@@ -3,7 +3,7 @@
  *
  * @packageDocumentation
  */
-export {Component, ComponentApi, ComponentId} from '../component/component';
+export {type Component, type ComponentApi, ComponentId} from '../component/component';
 export * as Executor from '../component/executor';
 export * as PkgManager from '../component/package-manager';
 export * as Reporter from '../component/reporter';

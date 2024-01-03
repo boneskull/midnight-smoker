@@ -1,9 +1,9 @@
 import Debug from 'debug';
 import type {
   Errors,
-  type Executor,
-  type Helpers,
-  type PkgManager,
+  Executor,
+  Helpers,
+  PkgManager,
 } from 'midnight-smoker/plugin';
 import type {SemVer} from 'semver';
 import {Npm7} from './npm7';

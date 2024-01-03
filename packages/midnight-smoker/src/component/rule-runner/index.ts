@@ -1,5 +1,5 @@
 export {RuleError} from '../../error/rule-error';
-export {
+export type {
   RuleRunner,
   RuleRunnerNotifiers,
   RunRulesManifest,

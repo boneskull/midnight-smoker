@@ -20,7 +20,7 @@ import {
 } from '../schema-util';
 import {zExecResult, type ExecResult} from './schema/executor-schema';
 export {ExecError} from '../error/exec-error';
-export {ExecResult};
+export type {ExecResult};
 
 /**
  * Options for {@linkcode Executor.exec}

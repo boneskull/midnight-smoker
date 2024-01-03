@@ -1,9 +1,9 @@
 import Debug from 'debug';
 import type {
+  Executor,
+  Helpers,
+  PkgManager,
   ScriptRunner,
-  type Executor,
-  type Helpers,
-  type PkgManager,
 } from 'midnight-smoker/plugin';
 import {Errors} from 'midnight-smoker/plugin';
 import path from 'node:path';

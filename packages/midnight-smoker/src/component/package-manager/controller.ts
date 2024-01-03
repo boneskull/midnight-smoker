@@ -1,6 +1,6 @@
 /**
  * Provides {@link SmokerPkgManagerController}, which is sort of a controller for
- * {@link PackageManager}s.
+ * {@link PkgManager}s.
  *
  * @internal
  * @packageDocumentation
@@ -28,13 +28,13 @@ import type {
   InstallManifest,
   InstallResult,
   PackOptions,
-  PackageManager,
+  PkgManager,
   PkgManagerInstallManifest,
   PkgManagerRunScriptManifest,
   RunScriptResult,
 } from '../schema';
 import {createScriptRunnerNotifiers} from '../script-runner/script-runner-notifier';
-import type {PackageManagerOpts} from './pkg-manager-types';
+import type {PkgManagerOpts} from './pkg-manager-types';
 
 const debug = Debug('midnight-smoker:pkg-manager:controller');
 
@@ -46,7 +46,7 @@ export type PkgManagerEvents = InstallEvents & ScriptRunnerEvents & PackEvents;
 /**
  * Options for the {@link SmokerPkgManagerController} class.
  */
-export interface PkgManagerControllerOpts extends PackageManagerOpts {
+export interface PkgManagerControllerOpts extends PkgManagerOpts {
   executorId?: string;
 }
 
@@ -66,7 +66,7 @@ export abstract class PkgManagerController extends createStrictEmitter<PkgManage
     this.executorId = opts.executorId ?? DEFAULT_COMPONENT_ID;
   }
 
-  public abstract getPkgManagers(): Promise<readonly PackageManager[]>;
+  public abstract getPkgManagers(): Promise<readonly PkgManager[]>;
 
   public abstract install(
     installManifests: PkgManagerInstallManifest[],
@@ -95,7 +95,7 @@ export abstract class PkgManagerController extends createStrictEmitter<PkgManage
  * @internal
  */
 export class SmokerPkgManagerController extends PkgManagerController {
-  private pkgManagers?: readonly PackageManager[];
+  private pkgManagers?: readonly PkgManager[];
 
   /**
    * Retrieves the package managers. If the package managers have already been
@@ -104,7 +104,7 @@ export class SmokerPkgManagerController extends PkgManagerController {
    *
    * @returns An array of package managers.
    */
-  public async getPkgManagers(): Promise<readonly PackageManager[]> {
+  public async getPkgManagers(): Promise<readonly PkgManager[]> {
     if (this.pkgManagers) {
       return this.pkgManagers;
     }
@@ -169,7 +169,7 @@ export class SmokerPkgManagerController extends PkgManagerController {
 
     // TODO: this suggests to me that `InstallResult` is not the most efficient data structure for our purposes.
     const manifestsByPkgManager = installManifests.reduce<
-      Map<PackageManager, PkgManagerInstallManifest[]>
+      Map<PkgManager, PkgManagerInstallManifest[]>
     >((acc, installManifest) => {
       const {pkgManager} = installManifest;
       const manifests = acc.get(pkgManager) ?? [];
@@ -218,7 +218,7 @@ export class SmokerPkgManagerController extends PkgManagerController {
     this.emit(SmokerEvent.PackBegin, buildPackBeginEventData(pkgManagers));
 
     /**
-     * A {@link PackageManager} returns simplified information about a `pack()`
+     * A {@link PkgManager} returns simplified information about a `pack()`
      * operation, but we must associate each {@link InstallManifest} with a
      * `PackageManager` instance, so we can ensure the same instance which
      * packed the tarball then {@link install installs} it.
@@ -231,7 +231,7 @@ export class SmokerPkgManagerController extends PkgManagerController {
      * @returns A {@link PkgManagerInstallManifest}
      */
     const toControllerInstallManifest = (
-      pkgManager: PackageManager,
+      pkgManager: PkgManager,
       manifest: InstallManifest,
     ): PkgManagerInstallManifest => ({
       ...manifest,

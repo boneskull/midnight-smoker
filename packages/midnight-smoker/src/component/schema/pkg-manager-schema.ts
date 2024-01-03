@@ -143,7 +143,7 @@ export const zInternalPackageManager = z
     'Provides functionality to pack, install, and run custom scripts in packages; has an Executor',
   );
 
-export const zPackageManager = customSchema<PackageManager>(
+export const zPackageManager = customSchema<PkgManager>(
   zInternalPackageManager,
 );
 
@@ -161,7 +161,7 @@ export type PkgManagerRunScriptMethod = (
   opts: PkgManagerRunScriptOpts,
 ) => Promise<RunScriptResult>;
 
-export interface PackageManager {
+export interface PkgManager {
   install: PkgManagerInstallMethod;
   pack: PkgManagerPackMethod;
   runScript: PkgManagerRunScriptMethod;
@@ -193,7 +193,7 @@ export const zControllerRunScriptManifest =
 
 export interface PkgManagerInstallManifest extends InstallManifest {
   isAdditional?: boolean;
-  pkgManager: PackageManager;
+  pkgManager: PkgManager;
 }
 
 export const zPkgManagerInstallManifests = z.array(zPkgManagerInstallManifest);

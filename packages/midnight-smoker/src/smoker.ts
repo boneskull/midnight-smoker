@@ -7,8 +7,8 @@ import type {
   Component,
   ReporterDef,
   RunRulesManifest,
+  RunRulesResult,
   SomeRule,
-  type RunRulesResult,
 } from './component';
 import {RuleSeverities} from './component';
 import type {PkgManagerController} from './component/package-manager/controller';
@@ -32,11 +32,11 @@ import {
   RunScriptEvent,
   SmokerEvent,
 } from './event/event-constants';
-import type {SmokerEvents, type SmokeResults} from './event/event-types';
+import type {SmokeResults, SmokerEvents} from './event/event-types';
 import type {StrictEmitter} from './event/strict-emitter';
 import {createStrictEmitter} from './event/strict-emitter';
 import {OptionParser} from './options';
-import {type RawSmokerOptions, type SmokerOptions} from './options/options';
+import type {RawSmokerOptions, SmokerOptions} from './options/options';
 import {readSmokerPkgJson} from './pkg-util';
 import {BLESSED_PLUGINS, isBlessedPlugin} from './plugin/blessed';
 import {PluginRegistry} from './plugin/registry';

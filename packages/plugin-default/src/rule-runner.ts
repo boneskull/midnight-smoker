@@ -15,9 +15,9 @@
 import Debug from 'debug';
 import type {
   Component,
-  type PluginAPI,
-  type Rule,
-  type RuleRunner,
+  PluginAPI,
+  Rule,
+  RuleRunner,
 } from 'midnight-smoker/plugin';
 
 const debug = Debug('midnight-smoker:plugin-default:rule-runner');

@@ -5,7 +5,7 @@
  */
 
 import type {
-  PackageManager,
+  PkgManager,
   PkgManagerInstallManifest,
   PkgManagerRunScriptManifest,
   RunScriptResult,
@@ -25,7 +25,7 @@ import type {
  * @internal
  */
 export function buildPackBeginEventData(
-  pkgManagers: readonly PackageManager[],
+  pkgManagers: readonly PkgManager[],
 ): PackBeginEventData {
   return {
     packageManagers: pkgManagers.map((pkgManager) => pkgManager.spec),
@@ -93,7 +93,7 @@ export function buildRunScriptsBeginEventData(
  */
 export function buildInstallEventData(
   installManifests: PkgManagerInstallManifest[],
-  pkgManagers: readonly PackageManager[],
+  pkgManagers: readonly PkgManager[],
 ): InstallEventData {
   // could use _.partition here!
   const uniquePkgs = [
