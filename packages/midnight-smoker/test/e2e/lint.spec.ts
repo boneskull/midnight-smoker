@@ -8,10 +8,10 @@ import assertions from '../assertions';
 const expect = unexpected.clone().use(assertions);
 
 describe('midnight-smoker [E2E]', function () {
-  describe('built-in checks', function () {
-    describe('when a check fails', function () {
+  describe('linting', function () {
+    describe('when a rule fails', function () {
       describe('when the rule severity is "error"', function () {
-        const cwd = path.join(__dirname, 'fixture', 'check', 'check-error');
+        const cwd = path.join(__dirname, 'fixture', 'lint', 'lint-error');
         let result: ExecResult;
 
         before(async function () {
@@ -34,7 +34,7 @@ describe('midnight-smoker [E2E]', function () {
       });
 
       describe('when the rule severity is "warn"', function () {
-        const cwd = path.join(__dirname, 'fixture', 'check', 'check-warn');
+        const cwd = path.join(__dirname, 'fixture', 'lint', 'lint-warn');
         let result: ExecResult;
 
         before(async function () {
@@ -53,7 +53,7 @@ describe('midnight-smoker [E2E]', function () {
       });
 
       describe('when the rule severity is "off"', function () {
-        const cwd = path.join(__dirname, 'fixture', 'check', 'check-off');
+        const cwd = path.join(__dirname, 'fixture', 'lint', 'lint-off');
         let result: ExecResult;
 
         before(async function () {

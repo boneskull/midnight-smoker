@@ -1,4 +1,4 @@
-exports['midnight-smoker [E2E] built-in checks when a check fails when the rule severity is "error" should produce expected output [snapshot] 1'] = `
+exports['midnight-smoker [E2E] linting when a rule fails when the rule severity is "error" should produce expected output [snapshot] 1'] = `
 💨 midnight-smoker@<version>
 
 - Packing current project…
@@ -12,7 +12,7 @@ exports['midnight-smoker [E2E] built-in checks when a check fails when the rule 
 ✖ 🤮 Maurice!
 `
 
-exports['midnight-smoker [E2E] built-in checks when a check fails when the rule severity is "warn" should produce expected output [snapshot] 1'] = `
+exports['midnight-smoker [E2E] linting when a rule fails when the rule severity is "warn" should produce expected output [snapshot] 1'] = `
 💨 midnight-smoker@<version>
 
 - Packing current project…
@@ -26,7 +26,7 @@ exports['midnight-smoker [E2E] built-in checks when a check fails when the rule 
 ✔ Lovey-dovey! 💖
 `
 
-exports['midnight-smoker [E2E] built-in checks when a check fails when the rule severity is "off" should produce expected output [snapshot] 1'] = `
+exports['midnight-smoker [E2E] linting when a rule fails when the rule severity is "off" should produce expected output [snapshot] 1'] = `
 💨 midnight-smoker@<version>
 
 - Packing current project…

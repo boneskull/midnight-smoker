@@ -2,9 +2,9 @@ import Debug from 'debug';
 import type {InferredOptionTypes, Options} from 'yargs';
 import {DEFAULT_PACKAGE_MANAGER_SPEC} from '../constants';
 
-export const BEHAVIOR_GROUP = 'Script Behavior:';
 export const OUTPUT_GROUP = 'Output:';
 export const INPUT_GROUP = 'Input:';
+
 /**
  * Reusable config for array-type options
  */

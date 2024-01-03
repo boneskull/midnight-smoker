@@ -1,3 +1,9 @@
+/**
+ * Defines the `run-script` command using {@link RunScriptCommand}
+ *
+ * @packageDocumentation
+ */
+
 import Debug from 'debug';
 import type {
   ArgumentsCamelCase,
@@ -8,11 +14,13 @@ import type {
 import {castArray} from '../../schema-util';
 import {Smoker} from '../../smoker';
 import type {CommonOptionTypes, GlobalOptionTypes} from '../cli-options';
-import {ARRAY_OPT_CFG, BEHAVIOR_GROUP, CommonOptions} from '../cli-options';
+import {ARRAY_OPT_CFG, CommonOptions} from '../cli-options';
 import {handleRejection} from '../cli-util';
 import {BaseCommand} from './base';
 
 const debug = Debug('midnight-smoker:cli:lint');
+
+const BEHAVIOR_GROUP = 'Script Behavior:';
 
 const RunScriptOptions = {
   ...CommonOptions,
@@ -35,10 +43,9 @@ const RunScriptOptions = {
   },
   loose: {
     alias: 'if-present',
-    describe: 'Ignore missing scripts (used with --all)',
+    describe: 'Ignore missing scripts (use with workspaces)',
     boolean: true,
     group: BEHAVIOR_GROUP,
-    implies: 'all',
   },
 } as const satisfies Record<string, Options>;
 
