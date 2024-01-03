@@ -91,9 +91,14 @@ module.exports = {
           'error',
           {
             disallowTypeAnnotations: true,
-            fixStyle: 'separate-type-imports',
+            fixStyle: 'inline-type-imports',
             prefer: 'type-imports',
           },
+        ],
+
+        '@typescript-eslint/consistent-type-exports': [
+          'error',
+          {fixMixedExportsWithInlineTypeSpecifier: true},
         ],
 
         'n/no-unsupported-features/es-syntax': 'off',
