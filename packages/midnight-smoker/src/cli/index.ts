@@ -7,13 +7,7 @@ import {readConfigFile} from '../config-file';
 import {readSmokerPkgJson} from '../pkg-util';
 import {GlobalOptions} from './cli-options';
 import {handleRejection, mergeOptions} from './cli-util';
-import {
-  LintCommand,
-  ListPluginsCommand,
-  ListReportersCommand,
-  ListRulesCommand,
-  RunScriptCommand,
-} from './command';
+import {LintCommand, ListCommand, RunScriptCommand} from './command';
 
 const debug = Debug('midnight-smoker:cli');
 
@@ -53,9 +47,7 @@ async function main(args: string[]): Promise<void> {
     .scriptName('smoker')
     .options(GlobalOptions)
     .command(new LintCommand())
-    .command(new ListPluginsCommand())
-    .command(new ListReportersCommand())
-    .command(new ListRulesCommand())
+    .command(new ListCommand())
     .command(new RunScriptCommand())
     .middleware(mergeOpts)
     .epilog(epilog)
