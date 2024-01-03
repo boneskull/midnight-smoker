@@ -101,7 +101,7 @@ export const plugin: PluginFactory = (api) => {
      * `midnight-smoker` uses {@link https://zod.dev Zod} to define option
      * schemas; optional.
      *
-     * THis provides type info to the end-user; misconfiguration will throw an
+     * This provides type info to the end-user; misconfiguration will throw an
      * exception.
      */
     schema: api.z.object({
