@@ -87,6 +87,15 @@ module.exports = {
           },
         ],
 
+        '@typescript-eslint/consistent-type-imports': [
+          'error',
+          {
+            disallowTypeAnnotations: true,
+            fixStyle: 'separate-type-imports',
+            prefer: 'type-imports',
+          },
+        ],
+
         'n/no-unsupported-features/es-syntax': 'off',
       },
 
