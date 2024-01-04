@@ -82,9 +82,9 @@ export function buildRunScriptsBeginEventData(
  * It's a fair amount of work to mash the data into a format more suitable for
  * display.
  *
- * This is used by the events {@linkcode SmokerEvent.InstallBegin InstallBegin},
- * {@linkcode SmokerEvent.InstallOk InstallOk}, and
- * {@linkcode SmokerEvent.PackOk PackOk}.
+ * This is used by the events {@link SmokerEvent.InstallBegin InstallBegin},
+ * {@link SmokerEvent.InstallOk InstallOk}, and
+ * {@link SmokerEvent.PackOk PackOk}.
  *
  * @param installManifests What to install and with what package manager. Will
  *   include additional depsz

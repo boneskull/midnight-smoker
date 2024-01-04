@@ -1,5 +1,5 @@
 /**
- * Implementation of the {@linkcode Executor} interface for `corepack`.
+ * Implementation of the {@link Executor} interface for `corepack`.
  *
  * @packageDocumentation
  */

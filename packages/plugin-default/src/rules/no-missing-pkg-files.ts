@@ -82,10 +82,10 @@ export default function noMissingPkgFiles({
       /**
        * Assuming a relative filepath is the value of a field in `package.json`
        * _or_ the value is a `Record<string, string>` (e.g., `bin`), return an
-       * array of {@linkcode PkgFilepathInfo} objects to check for existence.
+       * array of {@link PkgFilepathInfo} objects to check for existence.
        *
-       * @param currentInfo - List of {@linkcode PkgFilepathInfo} objects to
-       *   append to
+       * @param currentInfo - List of {@link PkgFilepathInfo} objects to append
+       *   to
        * @param field - Fieldname
        * @returns New array with any new objects appended
        */
@@ -122,7 +122,7 @@ export default function noMissingPkgFiles({
       };
 
       /**
-       * Array of {@linkcode CheckFailure} or `undefined` (if the file exists)
+       * Array of {@link CheckFailure} or `undefined` (if the file exists)
        */
       await Promise.all(
         fields

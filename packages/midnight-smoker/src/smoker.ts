@@ -270,9 +270,9 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
   /**
    * Cleans up temp directories associated with package managers.
    *
-   * If the {@linkcode SmokerOptions.linger} option is set to `true`, this method
+   * If the {@link SmokerOptions.linger} option is set to `true`, this method
    * will _not_ clean up the directories, but will instead emit a
-   * {@linkcode SmokerEvent.Lingered Lingered} event.
+   * {@link SmokerEvent.Lingered Lingered} event.
    *
    * @todo The specific cleanup mechanism should be moved to the package manager
    *   implementation.

@@ -7,16 +7,15 @@ import {RuleIssue} from './issue';
 import type {StaticRule, StaticRuleContext} from './static';
 
 /**
- * The `addIssue` function that a {@linkcode RuleCheckFn} uses to create a
- * {@linkcode RuleIssue}. The {@linkcode RuleCheckFn} then returns an array of
- * these.
+ * The `addIssue` function that a {@link RuleCheckFn} uses to create a
+ * {@link RuleIssue}. The {@link RuleCheckFn} then returns an array of these.
  *
- * Member of a {@linkcode RuleContext}.
+ * Member of a {@link RuleContext}.
  */
 export type AddIssueFn = (message: string, data?: unknown) => void;
 
 /**
- * A context object which is provided to a {@linkcode RuleCheckFn}, containing
+ * A context object which is provided to a {@link RuleCheckFn}, containing
  * information about the current package to be checked and how to report a
  * failure.
  *
@@ -168,7 +167,7 @@ export class RuleContext implements StaticRuleContext {
   }
 
   /**
-   * Omits the {@linkcode RuleContext.pkgJson} property (too big).
+   * Omits the {@link RuleContext.pkgJson} property (too big).
    *
    * @returns A JSON-serializable representation of this object
    */

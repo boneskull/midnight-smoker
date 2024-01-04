@@ -14,14 +14,14 @@ export const zStaticRuleContext = z
   );
 
 /**
- * The bits of a {@linkcode RuleContext} suitable for serialization.
+ * The bits of a {@link RuleContext} suitable for serialization.
  *
  * @public
  */
 export type StaticRuleContext = z.infer<typeof zStaticRuleContext>;
 
 /**
- * The bits of a {@linkcode RuleDef} suitable for passing the API edge
+ * The bits of a {@link RuleDef} suitable for passing the API edge
  */
 export const zStaticRule = z
   .object({

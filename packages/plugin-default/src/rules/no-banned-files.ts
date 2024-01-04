@@ -3,7 +3,7 @@
  *
  * Portions of this adapted from
  * [ban-sensitive-files](https://github.com/bahmutov/ban-sensitive-files),
- * including `git-deny-patterns.json` and {@linkcode reToRegExp}.
+ * including `git-deny-patterns.json` and {@link reToRegExp}.
  *
  * @packageDocumentation
  */
@@ -52,8 +52,7 @@ function getRegExp(pattern: string) {
 }
 
 /**
- * Uses a list of {@linkcode DenyPattern} objects to check if a filename is
- * banned
+ * Uses a list of {@link DenyPattern} objects to check if a filename is banned
  *
  * @param filename Filename to check
  * @returns If the file is banned, a string with a description; otherwise,

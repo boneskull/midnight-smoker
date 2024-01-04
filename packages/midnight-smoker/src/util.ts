@@ -11,7 +11,7 @@ import {readPackageJson} from './pkg-util';
 /**
  * Regex string to match a package name.
  *
- * Used by {@linkcode PKG_NAME_REGEX} and {@linkcode PKG_NAME_WITH_SPEC_REGEX}.
+ * Used by {@link PKG_NAME_REGEX} and {@link PKG_NAME_WITH_SPEC_REGEX}.
  */
 const PKG_NAME_REGEX_STR =
   '^(@[a-z0-9-~][a-z0-9-._~]*/)?[a-z0-9-~][a-z0-9-._~]*';

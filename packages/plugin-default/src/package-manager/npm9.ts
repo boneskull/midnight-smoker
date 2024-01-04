@@ -8,7 +8,7 @@ import type {
 import {Npm7} from './npm7';
 
 /**
- * Type of item in the {@linkcode NpmPackItem.files} array.
+ * Type of item in the {@link NpmPackItem.files} array.
  *
  * @internal
  */

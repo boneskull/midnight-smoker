@@ -44,7 +44,7 @@ export type RuleOptionSchema<
 > = z.ZodObject<Omit<Record<string, z.ZodTypeAny>, 'opts'>, UnknownKeys>;
 
 /**
- * Options for a specific {@linkcode Rule}.
+ * Options for a specific {@link Rule}.
  *
  * @public
  */
@@ -54,9 +54,9 @@ export type RuleOptions<Schema extends RuleOptionSchema | void> =
     : z.infer<typeof zEmptyObject>;
 
 /**
- * The function which actually performs the check within a {@linkcode Rule}.
+ * The function which actually performs the check within a {@link Rule}.
  *
- * This is defined in a {@link RuleDef} as the {@linkcode Rule.check} prop.
+ * This is defined in a {@link RuleDef} as the {@link Rule.check} prop.
  *
  * @public
  */
@@ -66,7 +66,7 @@ export type RuleCheckFn<Schema extends RuleOptionSchema | void = void> = (
 ) => void | Promise<void>;
 
 /**
- * The raw definition of a {@linkcode Rule}, as defined by a implementor.
+ * The raw definition of a {@link Rule}, as defined by a implementor.
  *
  * @public
  */

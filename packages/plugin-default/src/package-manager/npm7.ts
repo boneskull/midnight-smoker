@@ -9,7 +9,7 @@ import path from 'node:path';
 import {GenericNpmPackageManager} from './npm';
 
 /**
- * Type of item in the {@linkcode NpmPackItem.files} array.
+ * Type of item in the {@link NpmPackItem.files} array.
  *
  * @internal
  */

@@ -34,7 +34,7 @@ export interface PkgManagerOpts {
 }
 
 /**
- * A function which returns an object implementing {@linkcode PkgManager}.
+ * A function which returns an object implementing {@link PkgManager}.
  */
 export type PkgManagerFactory = (
   id: string,

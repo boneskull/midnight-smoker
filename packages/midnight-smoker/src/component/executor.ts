@@ -23,7 +23,7 @@ export {ExecError} from '../error/exec-error';
 export type {ExecResult};
 
 /**
- * Options for {@linkcode Executor.exec}
+ * Options for {@link Executor.exec}
  */
 export interface ExecutorOpts {
   /**
@@ -39,7 +39,7 @@ export interface ExecutorOpts {
   /**
    * The working directory for the command.
    *
-   * Overrides {@linkcode SpawnOptions.cwd}
+   * Overrides {@link SpawnOptions.cwd}
    */
   cwd?: string;
 }

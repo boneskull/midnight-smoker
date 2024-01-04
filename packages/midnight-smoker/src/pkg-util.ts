@@ -7,7 +7,7 @@ import {
 } from './error/util-error';
 
 /**
- * Options for {@linkcode readPackageJson}
+ * Options for {@link readPackageJson}
  */
 
 export interface ReadPackageJsonOpts {
@@ -109,7 +109,7 @@ const _readPkgJsonSync = memoize(
  * Reads closest `package.json` from some dir (synchronously)
  *
  * @remarks
- * Use {@linkcode readPackageJson} instead if possible
+ * Use {@link readPackageJson} instead if possible
  * @param cwd Dir to read from
  * @param Options
  * @returns Object with `packageJson` and `path` properties or `undefined` if
