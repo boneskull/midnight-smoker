@@ -6,15 +6,10 @@ import {
   isFunction,
   isObject,
   kebabCase,
+  mapKeys,
 } from 'lodash';
 import type {EventEmitter} from 'node:events';
-import type {
-  CamelCase,
-  Class,
-  Entries,
-  KebabCase,
-  PackageJson,
-} from 'type-fest';
+import type {CamelCase, Class, KebabCase, PackageJson} from 'type-fest';
 import z from 'zod';
 
 function isSerializable<T>(value: T): value is T & {toJSON: () => unknown} {
@@ -176,9 +171,15 @@ export const zEventEmitter = customSchema<EventEmitter>(
  * @template T - The original object type.
  */
 
-export type DualCasedObject<T> = {
-  [K in keyof T as K | CamelCase<K> | KebabCase<K>]: T[K];
+export type CamelCasedObject<T> = {
+  [K in keyof T as K | CamelCase<K>]: T[K];
 };
+
+export type KebabCasedObject<T> = {
+  [K in keyof T as K | KebabCase<K>]: T[K];
+};
+
+export type DualCasedObject<T> = CamelCasedObject<T> & KebabCasedObject<T>;
 
 /**
  * Creates a new object with the same keys as `obj`, but with each key
@@ -188,19 +189,13 @@ export type DualCasedObject<T> = {
  * @returns New object with probably more keys
  */
 
-export function toDualCasedObject<T extends object>(obj: T) {
-  return (Object.entries(obj) as Entries<T>).reduce(
-    (acc, [key, value]) => {
-      return {
-        ...acc,
-        [key]: value,
-        [camelCase(key) as CamelCase<typeof key>]: value,
-        [kebabCase(key) as KebabCase<typeof key>]: value,
-      };
-    },
-    // eslint-disable-next-line @typescript-eslint/prefer-reduce-type-parameter
-    {} as DualCasedObject<T>,
-  );
+export function toDualCasedObject<T extends object>(
+  obj: T,
+): DualCasedObject<T> {
+  return {
+    ...(mapKeys(obj, (_, key) => camelCase(key)) as CamelCasedObject<T>),
+    ...(mapKeys(obj, (_, key) => kebabCase(key)) as KebabCasedObject<T>),
+  };
 }
 
 export function dualCasedObjectSchema<T extends z.AnyZodObject>(schema: T) {

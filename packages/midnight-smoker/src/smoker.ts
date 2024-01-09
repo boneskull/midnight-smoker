@@ -1,3 +1,11 @@
+/**
+ * Provides {@link Smoker}, which is the main class of `midnight-smoker`.
+ *
+ * Typically the user-facing point of entry when used programmatically.
+ *
+ * @packageDocumentation
+ */
+
 /* eslint-disable no-labels */
 import Debug from 'debug';
 import {isFunction} from 'lodash';
@@ -61,6 +69,9 @@ type SetupResult =
       installResults: InstallResult[];
     };
 
+/**
+ * The main class.
+ */
 export class Smoker extends createStrictEmitter<SmokerEvents>() {
   /**
    * List of extra dependencies to install
@@ -188,8 +199,9 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
   public static async createWithCapabilities(
     this: void,
     opts?: RawSmokerOptions,
-    {registry, pmController}: SmokerCapabilities = {},
+    caps: SmokerCapabilities = {},
   ) {
+    const {registry, pmController} = caps;
     const {pluginRegistry, options} = await Smoker.bootstrap(opts, registry);
     return new Smoker(options, pluginRegistry, pmController);
   }

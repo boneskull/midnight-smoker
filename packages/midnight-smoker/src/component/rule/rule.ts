@@ -363,7 +363,7 @@ export const zBaseRuleOptionsRecord = z
 
 export const zBaseNormalizedRuleOptions = z.strictObject({
   severity: zRuleSeverity,
-  opts: z.any(),
+  opts: z.object({}).passthrough(),
 });
 
 export const zBaseNormalizedRuleOptionsRecord = z

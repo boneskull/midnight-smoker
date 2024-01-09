@@ -59,14 +59,42 @@ export const zBaseInstallManifest = z
 export const zInstallManifest =
   customSchema<InstallManifest>(zBaseInstallManifest);
 
+/**
+ * Describes which packages to install and where to install them.
+ *
+ * This is returned by {@link PkgManager.pack} and passed to
+ * {@link PkgManager.install}.
+ */
 export interface InstallManifest {
+  /**
+   * The directory in which to install the package.
+   *
+   * This is the temp directory unique to the {@link PkgManager} and package.
+   */
   cwd: string;
+
+  /**
+   * The directory in which the package should be installed.
+   *
+   * {@link PkgManager.pack} leaves this empty and {@link PkgManager.install}
+   * fills it in.
+   */
   installPath?: string;
+
+  /**
+   * The name of the package to install.
+   */
   pkgName: string;
+
+  /**
+   * Could be a tarball path or any other package spec understood by the package
+   * manager.
+   */
   spec: string;
 }
 
 export const zInstallManifests = z.array(zInstallManifest);
+
 export const zPackOptions = customSchema<PackOptions>(
   z
     .object({

@@ -10,6 +10,9 @@ import type {PluginRegistry} from '../plugin/registry';
 import type {RawSmokerOptions, SmokerOptions} from './options';
 import {zBaseSmokerOptions} from './options';
 
+export {zBaseSmokerOptions};
+export type {RawSmokerOptions, SmokerOptions};
+
 const debug = Debug('midnight-smoker:options');
 
 /**

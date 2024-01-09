@@ -8,12 +8,20 @@
  * - Sundry types to support it all.
  *
  * @module midnight-smoker
- * @packageDocumentation
+ * @example
+ *
+ * ```ts
+ * import {smoke} from 'midnight-smoker';
+ * ```
  */
 
 import {Smoker} from './smoker';
 export type {PkgManagerInstallManifest} from './component/schema/pkg-manager-schema';
 export type {SmokeResults} from './event/event-types';
-export type * from './options';
+export {
+  zBaseSmokerOptions,
+  type RawSmokerOptions,
+  type SmokerOptions,
+} from './options';
 export {Smoker};
 export const {smoke} = Smoker;

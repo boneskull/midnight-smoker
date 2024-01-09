@@ -1,6 +1,8 @@
 /**
  * The `EventEmitter` which {@link midnight-smoker!Smoker Smoker} extends to emit
  * well-typed {@link SmokerEvents events}.
+ *
+ * @packageDocumentation
  */
 
 import {EventEmitter} from 'node:events';
