@@ -38,8 +38,11 @@ const DEFAULT_OPTS: Readonly<LilconfigOpts> = Object.freeze({
   ],
 });
 
-export async function readConfigFile(): Promise<RawSmokerOptions> {
-  const result = await lilconfig('smoker', DEFAULT_OPTS).search();
+export async function readConfigFile(
+  configFile?: string,
+): Promise<RawSmokerOptions> {
+  const lc = lilconfig('smoker', DEFAULT_OPTS);
+  const result = await (configFile ? lc.load(configFile) : lc.search());
 
   let opts: RawSmokerOptions = {};
   if (result?.config && !result.isEmpty) {

@@ -1,37 +1,23 @@
+/**
+ * Options for the `lint` and `run-script` commands
+ */
+
 import Debug from 'debug';
-import type {InferredOptionTypes, Options} from 'yargs';
-import {DEFAULT_PACKAGE_MANAGER_SPEC} from '../constants';
+import {type Writable} from 'type-fest';
+import type {ArgumentsCamelCase, InferredOptionTypes} from 'yargs';
+import {DEFAULT_PACKAGE_MANAGER_SPEC} from '../../constants';
+import {
+  ARRAY_OPT_CFG,
+  type GlobalOptions,
+  type SmokerYargsOptions,
+} from '../cli-util';
 
-export const OUTPUT_GROUP = 'Output:';
-export const INPUT_GROUP = 'Input:';
-
-/**
- * Reusable config for array-type options
- */
-export const ARRAY_OPT_CFG = {
-  requiresArg: true,
-  nargs: 1,
-  array: true,
-  string: true,
-} as const;
+const OUTPUT_GROUP = 'Output:';
+const INPUT_GROUP = 'Input:';
 
 /**
- * The `plugin` option is needed by all commands
+ * These options are needed by both `lint` and `run-script`
  */
-export const PLUGIN_OPT = {
-  alias: ['P', 'plugins'],
-  describe: 'Plugin(s) to use',
-  ...ARRAY_OPT_CFG,
-  global: true,
-  requiresArg: true,
-  nargs: 1,
-} as const;
-
-export const GlobalOptions = {plugin: PLUGIN_OPT} as const satisfies Record<
-  string,
-  Options
->;
-
 export const CommonOptions = {
   all: {
     describe: 'Run in all workspaces',
@@ -78,12 +64,31 @@ export const CommonOptions = {
   verbose: {
     describe: 'Enable verbose output',
     boolean: true,
-    default: Debug.enabled('midnight-smoker'),
     group: OUTPUT_GROUP,
   },
-} as const satisfies Record<string, Options>;
+} as const satisfies SmokerYargsOptions;
 
-export type GlobalOptionTypes = InferredOptionTypes<typeof GlobalOptions>;
+/**
+ * These are the types of the global options after Yargs has parsed them
+ */
+export type GlobalOptionTypes = InferredOptionTypes<
+  Writable<typeof GlobalOptions>
+>;
 
+/**
+ * These are the types of the common options after Yargs has parsed them
+ */
 export type CommonOptionTypes = GlobalOptionTypes &
-  InferredOptionTypes<typeof CommonOptions>;
+  InferredOptionTypes<Writable<typeof CommonOptions>>;
+
+/**
+ * Middleware to set the `verbose` option to `true` if unset _and_ the
+ * `DEBUG=midnight-smoker` present in env.
+ *
+ * @param argv Parsed args
+ */
+export function enableVerboseMiddleware(
+  argv: ArgumentsCamelCase<CommonOptionTypes>,
+): void {
+  argv.verbose ??= Debug.enabled('midnight-smoker');
+}

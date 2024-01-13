@@ -1,9 +1,9 @@
 import Debug from 'debug';
 import type {ArgumentsCamelCase, Argv} from 'yargs';
 import {Smoker} from '../../smoker';
-import type {CommonOptionTypes, GlobalOptionTypes} from '../cli-options';
-import {CommonOptions} from '../cli-options';
 import {BaseCommand} from './base';
+import type {CommonOptionTypes, GlobalOptionTypes} from './common';
+import {CommonOptions, enableVerboseMiddleware} from './common';
 
 const debug = Debug('midnight-smoker:cli:lint');
 
@@ -21,6 +21,6 @@ export class LintCommand extends BaseCommand<CommonOptionTypes> {
   }
 
   override builder(argv: Argv<GlobalOptionTypes>): Argv<CommonOptionTypes> {
-    return argv.options(CommonOptions);
+    return argv.options(CommonOptions).middleware(enableVerboseMiddleware);
   }
 }

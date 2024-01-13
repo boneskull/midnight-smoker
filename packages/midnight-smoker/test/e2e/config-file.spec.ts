@@ -7,10 +7,39 @@ const expect = unexpected.clone().use(assertions);
 
 describe('midnight-smoker [E2E]', function () {
   describe('config file support', function () {
+    describe('when user provides explicit path to config file', function () {
+      const cwd = path.join(
+        __dirname,
+        'fixture',
+        'config-file',
+        'config-json-custom',
+      );
+
+      it('should load the specific config file', async function () {
+        const {stdout} = await execSmoker(
+          ['run', 'smoke', '--no-lint', '--config', './my-smoker-config.json'],
+          {
+            cwd,
+          },
+        );
+        const result = JSON.parse(stdout);
+        expect(result, 'to satisfy', {
+          results: {
+            scripts: expect
+              .it('to have length', 2)
+              .and('to satisfy', [
+                {rawResult: {command: /npm/}},
+                {rawResult: {command: /yarn/}},
+              ]),
+          },
+        });
+      });
+    });
+
     describe('when config file is ESM', function () {
       const cwd = path.join(__dirname, 'fixture', 'config-file', 'config-esm');
 
-      it('should respect the config file', async function () {
+      it('should load the config file', async function () {
         const {stdout} = await execSmoker(['run', 'smoke', '--no-lint'], {
           cwd,
         });
@@ -31,7 +60,7 @@ describe('midnight-smoker [E2E]', function () {
     describe('when config file is TS', function () {
       const cwd = path.join(__dirname, 'fixture', 'config-file', 'config-ts');
 
-      it('should respect the config file', async function () {
+      it('should load the config file', async function () {
         const {stdout} = await execSmoker(['run', 'smoke', '--no-lint'], {
           cwd,
         });
@@ -52,7 +81,7 @@ describe('midnight-smoker [E2E]', function () {
     describe('when config file is CJS', function () {
       const cwd = path.join(__dirname, 'fixture', 'config-file', 'config-cjs');
 
-      it('should respect the config file', async function () {
+      it('should load the config file', async function () {
         const {stdout} = await execSmoker(['run', 'smoke', '--no-lint'], {
           cwd,
         });
@@ -73,7 +102,7 @@ describe('midnight-smoker [E2E]', function () {
     describe('when config file is JSON', function () {
       const cwd = path.join(__dirname, 'fixture', 'config-file', 'config-json');
 
-      it('should respect the config file', async function () {
+      it('should load the config file', async function () {
         const {stdout} = await execSmoker(['run', 'smoke', '--no-lint'], {
           cwd,
         });
@@ -99,7 +128,7 @@ describe('midnight-smoker [E2E]', function () {
         'config-package-json',
       );
 
-      it('should respect the config file', async function () {
+      it('should load the config file', async function () {
         const {stdout} = await execSmoker(['run', 'smoke'], {
           cwd,
         });

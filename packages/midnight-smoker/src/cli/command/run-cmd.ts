@@ -5,23 +5,25 @@
  */
 
 import Debug from 'debug';
-import type {
-  ArgumentsCamelCase,
-  Argv,
-  InferredOptionTypes,
-  Options,
-} from 'yargs';
+import type {ArgumentsCamelCase, Argv, InferredOptionTypes} from 'yargs';
 import {castArray} from '../../schema-util';
 import {Smoker} from '../../smoker';
-import type {CommonOptionTypes, GlobalOptionTypes} from '../cli-options';
-import {ARRAY_OPT_CFG, CommonOptions} from '../cli-options';
-import {handleRejection} from '../cli-util';
+import {
+  ARRAY_OPT_CFG,
+  handleRejection,
+  type SmokerYargsOptions,
+} from '../cli-util';
 import {BaseCommand} from './base';
+import type {CommonOptionTypes, GlobalOptionTypes} from './common';
+import {CommonOptions, enableVerboseMiddleware} from './common';
 
 const debug = Debug('midnight-smoker:cli:run-script');
 
 const BEHAVIOR_GROUP = 'Script Behavior:';
 
+/**
+ * Options for the `run-script` command
+ */
 const RunScriptOptions = {
   ...CommonOptions,
   add: {
@@ -47,7 +49,7 @@ const RunScriptOptions = {
     boolean: true,
     group: BEHAVIOR_GROUP,
   },
-} as const satisfies Record<string, Options>;
+} as const satisfies SmokerYargsOptions;
 
 type RunScriptOptionTypes = GlobalOptionTypes &
   InferredOptionTypes<typeof RunScriptOptions>;
@@ -80,6 +82,7 @@ export class RunScriptCommand extends BaseCommand<RunScriptOptionTypes> {
         array: true,
       })
       .demandOption('script')
-      .options(RunScriptOptions);
+      .options(RunScriptOptions)
+      .middleware(enableVerboseMiddleware);
   }
 }

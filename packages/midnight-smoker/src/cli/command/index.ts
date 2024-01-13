@@ -1,3 +1,3 @@
-export {LintCommand} from './lint';
-export {ListCommand} from './list';
-export {RunScriptCommand} from './run-script';
+export {LintCommand} from './lint-cmd';
+export {ListCommand} from './list-cmd';
+export {RunScriptCommand} from './run-cmd';

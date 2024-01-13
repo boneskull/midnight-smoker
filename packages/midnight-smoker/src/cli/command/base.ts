@@ -1,5 +1,5 @@
 import type {ArgumentsCamelCase, Argv, CommandModule} from 'yargs';
-import type {GlobalOptionTypes} from '../cli-options';
+import type {GlobalOptionTypes} from './common';
 
 export abstract class BaseCommand<
   T extends GlobalOptionTypes = GlobalOptionTypes,

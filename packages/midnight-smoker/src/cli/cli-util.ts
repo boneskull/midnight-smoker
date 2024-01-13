@@ -3,6 +3,7 @@ import Table from 'cli-table3';
 import {isError, isFunction, isObject, mergeWith} from 'lodash';
 import stringWidth from 'string-width';
 import type {MergeDeep, Primitive} from 'type-fest';
+import {type Options} from 'yargs';
 import {BaseSmokerError} from '../error/base-error';
 import {isSerializable} from '../util';
 
@@ -135,3 +136,44 @@ export function handleRejection(
   }
   console.error(output ?? err);
 }
+
+/**
+ * Defensive type to avoid setting {@link Options.default} on any given option,
+ * which will cause default values set this way to override config file values.
+ *
+ * Generally this should be used in a `satisfies` clause if the options are
+ * defined in object literals (which must be `as const`).
+ */
+export type SmokerYargsOptions = Record<string, Omit<Options, 'default'>>;
+
+/**
+ * Reusable config for array-type options
+ */
+export const ARRAY_OPT_CFG = {
+  requiresArg: true,
+  nargs: 1,
+  array: true,
+  string: true,
+} as const;
+
+/**
+ * These options are needed by all commands.
+ */
+export const GlobalOptions = {
+  plugin: {
+    alias: ['P', 'plugins'],
+    describe: 'Plugin(s) to use',
+    ...ARRAY_OPT_CFG,
+    global: true,
+    requiresArg: true,
+    nargs: 1,
+  },
+  config: {
+    alias: ['c'],
+    describe: 'Path to config file',
+    global: true,
+    requiresArg: true,
+    string: true,
+    nargs: 1,
+  },
+} as const satisfies SmokerYargsOptions & Record<string, {global: true}>;

@@ -6,10 +6,10 @@ import type {ArgumentsCamelCase, Argv} from 'yargs';
 import {kComponentId} from '../../component/component';
 import {isBlessedPlugin} from '../../plugin/blessed';
 import {Smoker} from '../../smoker';
-import type {CommonOptionTypes, GlobalOptionTypes} from '../cli-options';
-import {CommonOptions} from '../cli-options';
 import {createTable} from '../cli-util';
 import {BaseCommand} from './base';
+import type {CommonOptionTypes, GlobalOptionTypes} from './common';
+import {CommonOptions} from './common';
 
 const debug = Debug('midnight-smoker:cli:list');
 

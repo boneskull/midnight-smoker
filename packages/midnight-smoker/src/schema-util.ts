@@ -31,6 +31,9 @@ function isSerializable<T>(value: T): value is T & {toJSON: () => unknown} {
  * returns the compacted array. Otherwise, returns an array with `value` as the
  * only element.
  *
+ * This differs from {@link _castArray _.castArray} in that it refuses to put
+ * `undefined` values within the array.
+ *
  * @param value Any value
  * @returns An array, for sure!
  */
@@ -97,6 +100,9 @@ export const zPackageJson = z
  */
 export const zEmptyObject = z.object({}).describe('Empty object');
 
+/**
+ * Schema representing a non-negative integer
+ */
 export const zNonNegativeInteger = z
   .number()
   .int()
@@ -173,20 +179,26 @@ export const zEventEmitter = customSchema<EventEmitter>(
 );
 
 /**
- * Represents an object with keys transformed to dual casing (camel case and
- * kebab case).
- *
- * @template T - The original object type.
+ * An object with keys transformed to camelCase.
  */
-
 export type CamelCasedObject<T> = {
   [K in keyof T as K | CamelCase<K>]: T[K];
 };
 
+/**
+ * An object with keys transformed to kebab-case.
+ *
+ * @template T - The original object type.
+ */
 export type KebabCasedObject<T> = {
   [K in keyof T as K | KebabCase<K>]: T[K];
 };
 
+/**
+ * An object with keys transformed to dual casing (camel case and kebab case).
+ *
+ * @template T - The original object type.
+ */
 export type DualCasedObject<T> = CamelCasedObject<T> & KebabCasedObject<T>;
 
 /**
@@ -196,7 +208,6 @@ export type DualCasedObject<T> = CamelCasedObject<T> & KebabCasedObject<T>;
  * @param obj - Any object
  * @returns New object with probably more keys
  */
-
 export function toDualCasedObject<T extends object>(
   obj: T,
 ): DualCasedObject<T> {
@@ -206,6 +217,13 @@ export function toDualCasedObject<T extends object>(
   };
 }
 
+/**
+ * Creates a new schema based on `schema` which aliases the object keys to both
+ * camelCase and kebab-case.
+ *
+ * @param schema Probably a rule schema
+ * @returns New schema
+ */
 export function dualCasedObjectSchema<T extends z.AnyZodObject>(schema: T) {
   return schema.extend(toDualCasedObject(schema.shape));
 }

@@ -2,6 +2,7 @@ import {execSmoker, fixupOutput} from '@midnight-smoker/test-util';
 import path from 'node:path';
 import snapshot from 'snap-shot-it';
 import unexpected from 'unexpected';
+import {type ExecError} from '../../src/component';
 import {readPackageJson} from '../../src/pkg-util';
 import assertions from '../assertions';
 
@@ -19,6 +20,41 @@ describe('midnight-smoker [E2E]', function () {
       });
       version = packageJson.version!;
       cwd = path.dirname(packageJsonPath);
+    });
+
+    describe('invalid usage', function () {
+      describe('when invalid option is provided', function () {
+        it('should show help', async function () {
+          try {
+            await execSmoker(['--hlep']);
+            expect.fail();
+          } catch (err) {
+            snapshot(fixupOutput((err as ExecError).stderr));
+          }
+        });
+      });
+
+      describe('when invalid command is provided', function () {
+        it('should show help', async function () {
+          try {
+            await execSmoker(['butts']);
+            expect.fail();
+          } catch (err) {
+            snapshot(fixupOutput((err as ExecError).stderr));
+          }
+        });
+      });
+
+      describe('when positional is missing', function () {
+        it('should show help', async function () {
+          try {
+            await execSmoker(['run-script']);
+            expect.fail();
+          } catch (err) {
+            snapshot(fixupOutput((err as ExecError).stderr));
+          }
+        });
+      });
     });
 
     describe('command', function () {
