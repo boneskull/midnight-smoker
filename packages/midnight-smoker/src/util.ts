@@ -9,6 +9,7 @@ import {isError, isFunction, isObject} from 'lodash';
 import type {Opaque} from 'type-fest';
 import z from 'zod';
 import {readPackageJson} from './pkg-util';
+import {instanceofSchema} from './schema-util';
 
 /**
  * Regex string to match a package name.
@@ -171,16 +172,16 @@ export function isErrnoException(
   return isError(value) && 'code' in value;
 }
 
-const zExecaError = z
-  .object({
+const zExecaError = instanceofSchema(Error).pipe(
+  z.object({
     command: z.string(),
     exitCode: z.number(),
     all: z.string().optional(),
     stderr: z.string(),
     stdout: z.string(),
     failed: z.boolean(),
-  })
-  .refine(isError);
+  }),
+);
 
 /**
  * Type guard for an {@link ExecaError}.

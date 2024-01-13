@@ -71,7 +71,7 @@ describe('@midnight-smoker/plugin-default', function () {
             context: {
               pkgJson: expect.it('to be an object'),
               pkgJsonPath: expect.it('to be a string'),
-              pkgPath: expect.it('to be a string'),
+              installPath: expect.it('to be a string'),
               severity: expect.it('to be one of', ['error', 'warn', 'off']),
             },
           }),

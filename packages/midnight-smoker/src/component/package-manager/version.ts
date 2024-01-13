@@ -9,6 +9,7 @@ import {
   UnknownDistTagError,
   UnknownVersionError,
   UnknownVersionRangeError,
+  UnsupportedPackageManagerError,
 } from '../../error/pkg-manager-error';
 
 /**
@@ -44,6 +45,10 @@ export function isKnownDistTag<P extends StringKeyOf<typeof DistTags>>(
   return tag in DistTags[name];
 }
 
+export function isKnownPkgManager(name: string): name is keyof typeof Versions {
+  return name in Versions;
+}
+
 /**
  * Given a package manager and optionally a version (or dist tag), validate it
  * and return the semver version.
@@ -56,11 +61,16 @@ export function isKnownDistTag<P extends StringKeyOf<typeof DistTags>>(
  * @param version Version or dist tag
  * @returns SemVer version string
  */
-export function normalizeVersion(
-  name: keyof typeof Versions,
-  version?: string,
-): SemVer {
+export function normalizeVersion(name: string, version?: string): SemVer {
   version = version?.length ? version : 'latest';
+
+  if (!isKnownPkgManager(name)) {
+    throw new UnsupportedPackageManagerError(
+      `${name} is currently unsupported`,
+      name,
+      version,
+    );
+  }
 
   const versions = Versions[name];
 

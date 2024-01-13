@@ -5,9 +5,7 @@ Lint package artifacts
 
 Commands:
   smoker lint                   Lint package artifacts                 [default]
-  smoker list-plugins           Show plugin information
-  smoker list-reporters         List available reporters
-  smoker list-rules             List available rules
+  smoker list <component>       Show available components          [aliases: ls]
   smoker run-script <script..>  Run custom script(s) against package artifacts
                                                                   [aliases: run]
 
@@ -33,7 +31,7 @@ Options:
 Maybe you should read the docs at: https://boneskull.github.io/midnight-smoker
 `
 
-exports['midnight-smoker [E2E] command-line interface command list-reporters should list reporters [snapshot] 1'] = `
+exports['midnight-smoker [E2E] command-line interface command list reporters should list reporters [snapshot] 1'] = `
 ┌─────────┬───────────────────────────────────────┬────────────┐
 │ Name    │ Description                           │ Plugin     │
 ├─────────┼───────────────────────────────────────┼────────────┤
@@ -43,7 +41,7 @@ exports['midnight-smoker [E2E] command-line interface command list-reporters sho
 └─────────┴───────────────────────────────────────┴────────────┘
 `
 
-exports['midnight-smoker [E2E] command-line interface command list-rules should list rules [snapshot] 1'] = `
+exports['midnight-smoker [E2E] command-line interface command list rules should list rules [snapshot] 1'] = `
 ┌────────────────────────┬──────────────────────────────────────────────────────────────────────────────────────────────────────────┬────────────┬──────────────────────────────────────────────────────────────────────────┐
 │ Name                   │ Description                                                                                              │ Plugin     │ URL                                                                      │
 ├────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────┼────────────┼──────────────────────────────────────────────────────────────────────────┤
@@ -55,4 +53,26 @@ exports['midnight-smoker [E2E] command-line interface command list-rules should 
 ├────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────┼────────────┼──────────────────────────────────────────────────────────────────────────┤
 │ no-missing-pkg-files   │ Checks that files referenced in package.json exist in the tarball                                        │ (built-in) │ https://boneskull.github.io/midnight-smoker/rules/no-missing-pkg-files   │
 └────────────────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────────────┴────────────┴──────────────────────────────────────────────────────────────────────────┘
+`
+
+exports['midnight-smoker [E2E] command-line interface command list pkg-managers should list package managers [snapshot] 1'] = `
+┌─────────────┬────────────┬──────────────────┐
+│ Name        │ Executable │ Accepts          │
+├─────────────┼────────────┼──────────────────┤
+│ Npm7        │ npm        │ ^7.0.0 || ^8.0.0 │
+├─────────────┼────────────┼──────────────────┤
+│ Npm9        │ npm        │ >=9.0.0          │
+├─────────────┼────────────┼──────────────────┤
+│ YarnClassic │ yarn       │ ^1.0.0           │
+├─────────────┼────────────┼──────────────────┤
+│ YarnBerry   │ yarn       │ >=2.0.0          │
+└─────────────┴────────────┴──────────────────┘
+`
+
+exports['midnight-smoker [E2E] command-line interface command list plugins should list plugins [snapshot] 1'] = `
+┌────────────┬─────────┬──────────────────────────────────────┬─────────────────────────────────┐
+│ Name       │ Version │ Description                          │ Resolved                        │
+├────────────┼─────────┼──────────────────────────────────────┼─────────────────────────────────┤
+│ (built-in) │ 0.0.0   │ Default behavior for midnight-smoker │ ../plugin-default/dist/index.js │
+└────────────┴─────────┴──────────────────────────────────────┴─────────────────────────────────┘
 `

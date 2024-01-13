@@ -26,13 +26,14 @@ describe('@midnight-smoker/plugin-default', function () {
 
         describe('when the requested package manager differs', function () {
           it('should run the requested package manager', async function () {
-            const {stdout} = await execSmoker(
-              ['run', '--pm=npm@latest', '--json', '--no-lint'],
+            const result = await execSmoker(
+              ['run', 'smoke', '--pm=npm@latest', '--json', '--no-lint'],
               {
                 cwd,
               },
             );
-            const {results} = JSON.parse(fixupOutput(stdout, false));
+
+            const {results} = JSON.parse(fixupOutput(result.stdout, false));
             expect(results, 'to satisfy', {
               scripts: expect
                 .it('to have length', 1)

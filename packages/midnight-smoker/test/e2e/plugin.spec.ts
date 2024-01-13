@@ -13,7 +13,7 @@ describe('midnight-smoker [E2E]', function () {
       describe('the custom name should be used', function () {
         it('should use the custom name for the ID', async function () {
           await expect(
-            execSmoker(['--plugin', pluginCwd, 'list-plugins']),
+            execSmoker(['--plugin', pluginCwd, 'list', 'plugins']),
             'to be fulfilled with value satisfying',
             {
               stdout: /mcmonkey-mcbean.+custom-name/,
@@ -29,7 +29,7 @@ describe('midnight-smoker [E2E]', function () {
       describe('the plugin should be loaded properly', function () {
         it('should load the plugin', async function () {
           await expect(
-            execSmoker(['--plugin', pluginCwd, 'list-plugins']),
+            execSmoker(['--plugin', pluginCwd, 'list', 'plugins']),
             'to be fulfilled with value satisfying',
             {
               stdout: /mcmonkey-mcbean.+ersatz-esm/,
@@ -45,7 +45,7 @@ describe('midnight-smoker [E2E]', function () {
       describe('the plugin should be loaded properly', function () {
         it('should load the plugin', async function () {
           await expect(
-            execSmoker(['--plugin', pluginCwd, 'list-plugins']),
+            execSmoker(['--plugin', pluginCwd, 'list', 'plugins']),
             'to be fulfilled with value satisfying',
             {
               stdout: /esm-plugin/,
@@ -61,7 +61,7 @@ describe('midnight-smoker [E2E]', function () {
       describe('the plugin should be loaded properly', function () {
         it('should load the plugin', async function () {
           await expect(
-            execSmoker(['--plugin', pluginCwd, 'list-plugins']),
+            execSmoker(['--plugin', pluginCwd, 'list', 'plugins']),
             'to be fulfilled with value satisfying',
             {
               stdout: /mjs-plugin/,

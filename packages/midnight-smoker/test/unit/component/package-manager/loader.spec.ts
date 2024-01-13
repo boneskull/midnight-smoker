@@ -23,9 +23,7 @@ describe('midnight-smoker', function () {
         beforeEach(function () {
           sandbox = createSandbox();
           versionStub = {
-            normalizeVersion: sandbox
-              .stub<['npm' | 'yarn', string?]>()
-              .returnsArg(1),
+            normalizeVersion: sandbox.stub<[string, string?]>().returnsArg(1),
           };
 
           ({loadPackageManagers} = rewiremock.proxy(

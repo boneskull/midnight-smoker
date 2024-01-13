@@ -11,7 +11,7 @@ import {CommonOptions} from '../cli-options';
 import {createTable} from '../cli-util';
 import {BaseCommand} from './base';
 
-const debug = Debug('midnight-smoker:cli:list-rules');
+const debug = Debug('midnight-smoker:cli:list');
 
 export class ListCommand extends BaseCommand {
   override aliases = ['ls'];

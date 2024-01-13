@@ -71,6 +71,10 @@ describe('@midnight-smoker/plugin-default', function () {
           it('should return true for versions >= 9.0.0', function () {
             expect(range.test('9.0.0'), 'to be true');
           });
+
+          it('should return true for versions >= 10.0.0', function () {
+            expect(range.test('10.0.0'), 'to be true');
+          });
         });
       });
       describe('instance method', function () {

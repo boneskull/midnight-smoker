@@ -14,7 +14,6 @@ import type {Reporter} from 'midnight-smoker/plugin';
 import {Blessed, Event, Rule} from 'midnight-smoker/plugin';
 import ora from 'ora';
 import pluralize from 'pluralize';
-import stringify from 'stringify-object';
 
 /**
  * Mapping of single-digit integers to English words
@@ -285,11 +284,11 @@ export const ConsoleReporter: Reporter.ReporterDef = {
           `${error} midnight-smoker encountered an unexpected fatal error:`,
         );
         if (opts.verbose) {
-          console.error(stringify(err));
+          console.error(err);
         } else {
-          console.error(`- ${red(err.message)}`);
+          console.error(`${red(err.message)}\n`);
           console.error(
-            `- ${dim(italic('(try using --verbose for more details)'))}`,
+            `${dim(italic('(try using --verbose for more details)'))}`,
           );
         }
       });

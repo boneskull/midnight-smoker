@@ -10,11 +10,12 @@ describe('@midnight-smoker/plugin-default', function () {
       it('should fail (for now)', async function () {
         const cwd = path.join(__dirname, 'fixture', 'single-script');
         await expect(
-          execSmoker(['run', `--pm=pnpm`, '--json', '--no-lint'], {
+          execSmoker(['run', 'smoke', '--pm', 'pnpm', '--no-lint'], {
             cwd,
+            json: true,
           }),
-          'to be rejected with error satisfying',
-          /pnpm is currently unsupported/,
+          'to be fulfilled with value satisfying',
+          {error: {code: 'ESMOKER_UNSUPPORTEDPACKAGEMANAGER'}},
         );
       });
     });

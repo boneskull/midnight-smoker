@@ -79,7 +79,7 @@ export async function execSmoker(args: string[], opts: ExecSmokerOpts = {}) {
       return JSON.parse(result.stdout) as unknown;
     }
   } catch (err) {
-    if (Helpers.isExecaError(err)) {
+    if (Helpers.isExecaError(err) && json) {
       return JSON.parse(err.stdout) as unknown;
     }
     throw err;

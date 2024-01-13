@@ -93,7 +93,9 @@ const matchPkgManager = curry(
       return false;
     }
     if (isString(pkgManagerDef.accepts)) {
-      return new Range(pkgManagerDef.accepts).test(version);
+      return new Range(pkgManagerDef.accepts, {includePrerelease: true}).test(
+        version,
+      );
     }
     if (isFunction(pkgManagerDef.accepts)) {
       return pkgManagerDef.accepts(version);
@@ -124,7 +126,7 @@ export function findPackageManagers(
 ): Map<string, PkgManagerDef> {
   const nameVersionPairs = pkgManagerSpecs.map<[string, SemVer]>((pm) => {
     const [name, version] = pm.split('@');
-    return [name, normalizeVersion(name as 'npm' | 'yarn', version)];
+    return [name, normalizeVersion(name, version)];
   });
 
   debug(

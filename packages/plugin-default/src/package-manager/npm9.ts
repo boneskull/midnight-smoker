@@ -10,7 +10,7 @@ import {Npm7} from './npm7';
 export class Npm9 extends Npm7 implements PkgManager.PkgManager {
   public static readonly bin = 'npm';
 
-  public static override accepts = '^9.0.0';
+  public static override accepts = '>=9.0.0';
 
   constructor(
     spec: string,

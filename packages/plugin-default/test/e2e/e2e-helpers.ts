@@ -8,12 +8,22 @@ export function createCommandTest(cwd: string, extraArgs: string[] = []) {
   return (requested: string, actual?: RegExp) => {
     describe(`requested: ${requested}`, function () {
       it('should use a matching package manager', async function () {
-        const {stdout} = await execSmoker(
-          ['run', `--pm=${requested}`, '--no-lint', '--json', ...extraArgs],
+        const result = await execSmoker(
+          [
+            'run',
+            'smoke',
+            '--pm',
+            requested,
+            '--no-lint',
+            '--json',
+            ...extraArgs,
+          ],
+          // do not use json: true here since we want to fixup output ourselves
           {
             cwd,
           },
         );
+        const {stdout} = result;
         const {results} = JSON.parse(fixupOutput(stdout, false));
         expect(results.scripts, 'to have an item satisfying', {
           rawResult: {
@@ -31,7 +41,7 @@ export function createBehaviorTest(cwd: string, extraArgs: string[] = []) {
     describe(`requested: ${spec}`, function () {
       it('should exhibit the expected behavior', async function () {
         const {stdout} = await execSmoker(
-          ['run', `--pm=${spec}`, '--no-lint', '--json', ...extraArgs],
+          ['run', 'smoke', '--pm', spec, '--no-lint', '--json', ...extraArgs],
           {
             cwd,
           },

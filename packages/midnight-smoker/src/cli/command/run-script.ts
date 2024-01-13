@@ -18,7 +18,7 @@ import {ARRAY_OPT_CFG, CommonOptions} from '../cli-options';
 import {handleRejection} from '../cli-util';
 import {BaseCommand} from './base';
 
-const debug = Debug('midnight-smoker:cli:lint');
+const debug = Debug('midnight-smoker:cli:run-script');
 
 const BEHAVIOR_GROUP = 'Script Behavior:';
 
@@ -65,6 +65,7 @@ export class RunScriptCommand extends BaseCommand<RunScriptOptionTypes> {
       debug('Final options: %O', smoker.opts);
       await smoker.smoke();
     } catch (err) {
+      // TODO: generally the exit reporter should handle this, but what if it doesn't exist yet?
       process.exitCode = 1;
       handleRejection(err, opts.verbose, opts.json);
     }

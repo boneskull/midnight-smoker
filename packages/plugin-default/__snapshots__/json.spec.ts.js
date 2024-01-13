@@ -62,7 +62,6 @@ exports['@midnight-smoker/plugin-default reporter json when the script succeeds 
       ],
       "script-runner": "default",
       "scriptRunner": "default",
-      "scripts": [],
       "verbose": false,
       "workspace": []
     },
@@ -164,7 +163,6 @@ exports['@midnight-smoker/plugin-default reporter json when the script fails sho
           ],
           "script-runner": "default",
           "scriptRunner": "default",
-          "scripts": [],
           "verbose": false,
           "workspace": []
         },

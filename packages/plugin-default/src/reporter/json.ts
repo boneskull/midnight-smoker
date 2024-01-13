@@ -81,12 +81,19 @@ export const JSONReporter: Reporter.ReporterDef = {
           stats,
         };
       })
+      .once(SmokerEvent.UnknownError, (error) => {
+        output = {
+          error,
+          lingering,
+          stats,
+        };
+      })
       .once(SmokerEvent.End, () => {
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (!output) {
           process.exitCode = 1;
           throw new Errors.SmokerReferenceError(
-            'No output generated in JSON listener. Why?',
+            'JSON listener has nothing to output! This is a bug.',
           );
         }
         console.log(jsonStringify(output, {space: 2}));

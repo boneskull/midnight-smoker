@@ -22,21 +22,40 @@ describe('midnight-smoker [E2E]', function () {
     });
 
     describe('command', function () {
-      describe('list-reporters', function () {
-        it('should list reporters [snapshot]', async function () {
-          const {stdout} = await execSmoker(['list-reporters'], {
-            cwd,
+      describe('list', function () {
+        describe('reporters', function () {
+          it('should list reporters [snapshot]', async function () {
+            const {stdout} = await execSmoker(['list', 'reporters'], {
+              cwd,
+            });
+            snapshot(fixupOutput(stdout));
           });
-          snapshot(fixupOutput(stdout));
         });
-      });
-
-      describe('list-rules', function () {
-        it('should list rules [snapshot]', async function () {
-          const {stdout} = await execSmoker(['list-rules'], {
-            cwd,
+        describe('rules', function () {
+          it('should list rules [snapshot]', async function () {
+            const {stdout} = await execSmoker(['list', 'rules'], {
+              cwd,
+            });
+            snapshot(fixupOutput(stdout));
           });
-          snapshot(fixupOutput(stdout));
+        });
+
+        describe('pkg-managers', function () {
+          it('should list package managers [snapshot]', async function () {
+            const {stdout} = await execSmoker(['list', 'pkg-managers'], {
+              cwd,
+            });
+            snapshot(fixupOutput(stdout));
+          });
+        });
+
+        describe('plugins', function () {
+          it('should list plugins [snapshot]', async function () {
+            const {stdout} = await execSmoker(['list', 'plugins'], {
+              cwd,
+            });
+            snapshot(fixupOutput(stdout));
+          });
         });
       });
     });

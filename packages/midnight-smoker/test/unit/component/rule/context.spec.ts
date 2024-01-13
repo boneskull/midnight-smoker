@@ -171,8 +171,8 @@ describe('midnight-smoker', function () {
             });
           });
 
-          describe('pkgPath', function () {
-            it('should return the pkgPath from the static context', function () {
+          describe('installPath', function () {
+            it('should return the installPath from the static context', function () {
               expect(context.installPath, 'to equal', staticCtx.installPath);
             });
           });
