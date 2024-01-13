@@ -2,7 +2,7 @@ import Debug from 'debug';
 import {isError, isString} from 'lodash';
 import {dirname} from 'node:path';
 import util from 'node:util';
-import z from 'zod';
+import {z} from 'zod';
 import {fromZodError} from 'zod-validation-error';
 import {zRuleRunner, zScriptRunner} from '../component';
 import type {Component} from '../component/component';

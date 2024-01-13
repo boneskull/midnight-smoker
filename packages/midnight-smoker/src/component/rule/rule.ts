@@ -1,6 +1,6 @@
 import Debug from 'debug';
 import {isEmpty, memoize} from 'lodash';
-import z from 'zod';
+import {z} from 'zod';
 import {
   dualCasedObjectSchema,
   instanceofSchema,

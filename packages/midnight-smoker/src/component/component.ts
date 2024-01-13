@@ -23,7 +23,7 @@
  * @todo Assert that we're probably enforcing uniqueness.
  */
 
-import z from 'zod';
+import {z} from 'zod';
 
 import {has, isFunction, isObject} from 'lodash';
 import {InvalidArgError} from '../error/common-error';

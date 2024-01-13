@@ -1,4 +1,4 @@
-import z from 'zod';
+import {z} from 'zod';
 import {zStaticRule, zStaticRuleContext} from './static';
 
 export const zRuleOk = z.object({

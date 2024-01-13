@@ -11,7 +11,7 @@ import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedEventEmitter from 'unexpected-eventemitter';
 import unexpectedSinon from 'unexpected-sinon';
-import z from 'zod';
+import {z} from 'zod';
 import type {PkgManagerController} from '../../src/component/package-manager/controller';
 import type {
   InstallResult,

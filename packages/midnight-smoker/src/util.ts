@@ -7,7 +7,7 @@
 import {type ExecaError} from 'execa';
 import {isError, isFunction, isObject} from 'lodash';
 import type {Opaque} from 'type-fest';
-import z from 'zod';
+import {z} from 'zod';
 import {readPackageJson} from './pkg-util';
 import {instanceofSchema} from './schema-util';
 

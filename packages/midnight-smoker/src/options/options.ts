@@ -1,4 +1,4 @@
-import z from 'zod';
+import {z} from 'zod';
 import {zBaseRuleOptionsRecord} from '../component/rule/rule';
 import {DEFAULT_COMPONENT_ID, DEFAULT_PACKAGE_MANAGER_SPEC} from '../constants';
 import {

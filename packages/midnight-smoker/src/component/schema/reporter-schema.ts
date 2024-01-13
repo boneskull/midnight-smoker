@@ -4,7 +4,7 @@
  * @packageDocumentation
  */
 
-import z from 'zod';
+import {z} from 'zod';
 import {zBaseSmokerOptions} from '../../options/options';
 import {
   customSchema,
