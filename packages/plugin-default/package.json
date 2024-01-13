@@ -61,6 +61,7 @@
     "execa": "5.1.1",
     "is-file-esm": "1.0.0",
     "json-stable-stringify": "1.0.2",
+    "lodash": "4.17.21",
     "log-symbols": "4.1.0",
     "ora": "5.4.1",
     "pluralize": "8.0.0",

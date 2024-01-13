@@ -28,9 +28,10 @@ import type {
   PkgManagerInstallManifest,
   RunScriptResult,
 } from './component/schema/pkg-manager-schema';
+import {fromUnknownError} from './error/base-error';
 import {InvalidArgError} from './error/common-error';
-import type {InstallError} from './error/install-error';
-import type {PackError} from './error/pack-error';
+import {InstallError} from './error/install-error';
+import {PackError} from './error/pack-error';
 import {ReporterError} from './error/reporter-error';
 import type {RuleError} from './error/rule-error';
 import type {ScriptError} from './error/script-error';
@@ -51,6 +52,7 @@ import {BLESSED_PLUGINS, isBlessedPlugin} from './plugin/blessed';
 import {PluginRegistry} from './plugin/registry';
 import type {StaticPluginMetadata} from './plugin/static-metadata';
 import {castArray} from './schema-util';
+import {isErrnoException} from './util';
 
 const debug = Debug('midnight-smoker:smoker');
 
@@ -285,14 +287,17 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
           const {tmpdir} = pm;
           try {
             await fs.rm(tmpdir, {recursive: true, force: true});
-          } catch (e) {
-            const err = e as NodeJS.ErrnoException;
-            if (err.code !== 'ENOENT') {
-              throw new CleanupError(
-                `Failed to clean temp directory ${tmpdir}`,
-                tmpdir,
-                err,
-              );
+          } catch (err) {
+            if (isErrnoException(err)) {
+              if (err.code !== 'ENOENT') {
+                throw new CleanupError(
+                  `Failed to clean temp directory ${tmpdir}`,
+                  tmpdir,
+                  err,
+                );
+              }
+            } else {
+              throw err;
             }
           }
         }),
@@ -422,7 +427,7 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
             stderr,
           });
         } catch (err) {
-          throw new ReporterError(err as Error, def);
+          throw new ReporterError(fromUnknownError(err), def);
         }
       }),
     ]);
@@ -530,8 +535,6 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
       opts: this.opts,
     });
 
-    let packError: PackError | undefined;
-    let installError: InstallError | undefined;
     let pkgManagerInstallManifests: PkgManagerInstallManifest[] | undefined;
     let installResults: InstallResult[];
 
@@ -539,16 +542,20 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
     try {
       pkgManagerInstallManifests = await this.pack();
     } catch (err) {
-      packError = err as PackError;
-      return {error: packError};
+      if (!(err instanceof PackError)) {
+        throw err;
+      }
+      return {error: err};
     }
 
     // INSTALL
     try {
       installResults = await this.install(pkgManagerInstallManifests);
     } catch (err) {
-      installError = err as InstallError;
-      return {error: installError};
+      if (!(err instanceof InstallError)) {
+        throw err;
+      }
+      return {error: err};
     }
     return {installResults};
   }
@@ -566,9 +573,8 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
       }
 
       return await this.postRun(setupResult, ruleResults, runScriptResults);
-    } catch (e) {
-      const err = e as Error;
-      this.emit(SmokerEvent.UnknownError, err);
+    } catch (err) {
+      this.emit(SmokerEvent.UnknownError, fromUnknownError(err));
     } finally {
       this.emit(SmokerEvent.End);
       this.unloadListeners();
@@ -659,9 +665,8 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
       }
 
       return await this.postRun(setupResult, ruleResults, runScriptResults);
-    } catch (e) {
-      const err = e as Error;
-      this.emit(SmokerEvent.UnknownError, err);
+    } catch (err) {
+      this.emit(SmokerEvent.UnknownError, fromUnknownError(err));
     } finally {
       this.emit(SmokerEvent.End);
       this.unloadListeners();

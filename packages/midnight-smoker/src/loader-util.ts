@@ -1,9 +1,10 @@
-import {isObject} from 'lodash';
+import {isError, isObject} from 'lodash';
 import fs from 'node:fs/promises';
 import {Module} from 'node:module';
 import path from 'node:path';
 import type {PackageJson} from 'type-fest';
 import type {TranspileOptions} from 'typescript';
+import {isErrnoException} from './util';
 
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 let ts: typeof import('typescript');
@@ -50,9 +51,10 @@ export const importTs = async (
       };
       transpiledContent = ts.transpileModule(source, config).outputText;
       await fs.writeFile(compiledFilepath, transpiledContent);
-    } catch (e) {
-      const err = e as Error;
-      err.message = `TypeScript Error in ${filepath}:\n${err.message}`;
+    } catch (err) {
+      if (isError(err)) {
+        err.message = `TypeScript Error in ${filepath}:\n${err.message}`;
+      }
       throw err;
     }
     return await justImport(compiledFilepath);
@@ -97,7 +99,11 @@ export async function justImport(moduleId: string, pkgJson?: PackageJson) {
     try {
       raw = require(moduleId);
     } catch (err) {
-      if ((err as NodeJS.ErrnoException).code !== 'ERR_REQUIRE_ESM') {
+      if (isErrnoException(err)) {
+        if (err.code !== 'ERR_REQUIRE_ESM') {
+          throw err;
+        }
+      } else {
         throw err;
       }
     }

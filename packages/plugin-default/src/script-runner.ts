@@ -5,6 +5,7 @@
  */
 
 import Debug from 'debug';
+import {isError} from 'lodash';
 import type {PluginAPI, ScriptRunner} from 'midnight-smoker/plugin';
 
 const debug = Debug('midnight-smoker:plugin-default:script-runner');
@@ -51,13 +52,14 @@ export function loadScriptRunner(api: PluginAPI) {
       if (err instanceof api.Errors.RunScriptBailed) {
         throw err;
       }
-      throw new api.Errors.PackageManagerError(
-        `Package manager "${
-          pkgManager.spec
-        }" failed to run script "${script}": ${(err as Error).message}`,
-        pkgManager.spec,
-        err as Error,
-      );
+      if (isError(err)) {
+        throw new api.Errors.PackageManagerError(
+          `Package manager "${pkgManager.spec}" failed to run script "${script}": ${err.message}`,
+          pkgManager.spec,
+          err,
+        );
+      }
+      throw err;
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition

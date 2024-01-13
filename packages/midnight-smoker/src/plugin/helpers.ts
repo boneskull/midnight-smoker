@@ -16,12 +16,14 @@ import type {RuleSeverity} from '../component/rule/severity';
 import type {StaticRuleContext} from '../component/rule/static';
 import {DirCreationError} from '../error/util-error';
 import {readPackageJson, readPackageJsonSync} from '../pkg-util';
+import {isErrnoException} from '../util';
 
 export type {
   ReadPackageJsonNormalizedResult,
   ReadPackageJsonOpts,
   ReadPackageJsonResult,
 } from '../pkg-util';
+export {isExecaError} from '../util';
 export {readPackageJson, readPackageJsonSync};
 
 // TODO move most of this stuff into other places
@@ -96,11 +98,14 @@ export async function createTempDir(prefix = TMP_DIR_PREFIX): Promise<string> {
   try {
     return await fs.mkdtemp(fullPrefix);
   } catch (err) {
-    throw new DirCreationError(
-      `Failed to create temp directory with prefix ${fullPrefix}`,
-      fullPrefix,
-      err as NodeJS.ErrnoException,
-    );
+    if (isErrnoException(err)) {
+      throw new DirCreationError(
+        `Failed to create temp directory with prefix ${fullPrefix}`,
+        fullPrefix,
+        err,
+      );
+    }
+    throw err;
   }
 }
 export const TMP_DIR_PREFIX = 'midnight-smoker-';

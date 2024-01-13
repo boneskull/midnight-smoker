@@ -138,7 +138,8 @@ describe('midnight-smoker', function () {
           describe('when it fails to prune the temp directory', function () {
             describe('when the failure is not due to the non-existence of the temp directory', function () {
               beforeEach(function () {
-                mocks['node:fs/promises'].rm.rejects();
+                const err = Object.assign(new Error('foo'), {code: 'DERP'});
+                mocks['node:fs/promises'].rm.rejects(err);
               });
 
               it('should reject', async function () {

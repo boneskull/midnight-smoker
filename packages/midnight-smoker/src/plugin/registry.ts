@@ -1,5 +1,5 @@
 import Debug from 'debug';
-import {isString} from 'lodash';
+import {isError, isString} from 'lodash';
 import {dirname} from 'node:path';
 import util from 'node:util';
 import z from 'zod';
@@ -30,6 +30,7 @@ import * as Event from '../event';
 import {justImport, resolveFrom} from '../loader-util';
 import {readPackageJson} from '../pkg-util';
 import * as SchemaUtils from '../schema-util';
+import {isErrnoException} from '../util';
 import type {BlessedPlugin} from './blessed';
 import {isBlessedPlugin} from './blessed';
 import * as Helpers from './helpers';
@@ -436,7 +437,7 @@ export class PluginRegistry {
       try {
         rawPlugin = await justImport(metadata.entryPoint, metadata.pkgJson);
       } catch (err) {
-        throw new PluginImportError(err as Error, metadata);
+        throw isError(err) ? new PluginImportError(err, metadata) : err;
       }
       if (!this.isPluginRegistered(rawPlugin)) {
         throw new DuplicatePluginError(
@@ -488,7 +489,9 @@ export class PluginRegistry {
       debug('Loaded plugin %s successfully', metadata);
       return metadata;
     } catch (err) {
-      throw new PluginInitializationError(err as Error, metadata, plugin);
+      throw isError(err)
+        ? new PluginInitializationError(err, metadata, plugin)
+        : err;
     }
   }
 
@@ -512,10 +515,13 @@ export class PluginRegistry {
     const tryResolve = (from: string) => {
       try {
         return resolveFrom(pluginSpecifier, cwd);
-      } catch (e) {
-        const err = e as NodeJS.ErrnoException;
-        if (err.code !== 'MODULE_NOT_FOUND') {
-          throw new PluginResolutionError(err, pluginSpecifier, from);
+      } catch (err) {
+        if (isErrnoException(err)) {
+          if (err.code !== 'MODULE_NOT_FOUND') {
+            throw new PluginResolutionError(err, pluginSpecifier, from);
+          }
+        } else {
+          throw err;
         }
       }
     };

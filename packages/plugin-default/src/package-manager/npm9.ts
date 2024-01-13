@@ -1,58 +1,26 @@
 import Debug from 'debug';
-import type {
-  Errors,
+import {
   Executor,
-  Helpers,
-  PkgManager,
+  type Errors,
+  type Helpers,
+  type PkgManager,
 } from 'midnight-smoker/plugin';
 import {Npm7} from './npm7';
-
-/**
- * Type of item in the {@link NpmPackItem.files} array.
- *
- * @internal
- */
-export interface NpmPackItemFileEntry {
-  mode: number;
-  path: string;
-  size: number;
-}
-
-/**
- * JSON output of `npm pack`
- *
- * @internal
- */
-export interface NpmPackItem {
-  bundled: any[];
-  entryCount: number;
-  filename: string;
-  files: NpmPackItemFileEntry[];
-  id: string;
-  integrity: string;
-  name: string;
-  shasum: string;
-  size: number;
-  unpackedSize: number;
-  version: string;
-}
 
 export class Npm9 extends Npm7 implements PkgManager.PkgManager {
   public static readonly bin = 'npm';
 
-  public readonly name = 'npm';
+  public static override accepts = '^9.0.0';
 
   constructor(
-    id: string,
+    spec: string,
     executor: Executor.Executor,
     tempdir: string,
     opts: PkgManager.PkgManagerOpts = {},
   ) {
-    super(id, executor, tempdir, opts);
+    super(spec, executor, tempdir, opts);
     this.debug = Debug(`midnight-smoker:pm:npm9`);
   }
-
-  public static accepts = '^9.0.0';
 
   public static async create(
     this: void,
@@ -94,7 +62,11 @@ export class Npm9 extends Npm7 implements PkgManager.PkgManager {
       );
       err = this.handleInstallError(installResult, installSpecs);
     } catch (e) {
-      err = this.handleInstallError(e as Executor.ExecError, installSpecs);
+      if (e instanceof Executor.ExecError) {
+        err = this.handleInstallError(e, installSpecs);
+      } else {
+        throw e;
+      }
     }
     if (err) {
       throw err;

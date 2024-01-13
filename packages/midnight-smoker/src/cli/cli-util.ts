@@ -1,9 +1,10 @@
 import {bold, cyan, yellow} from 'chalk';
 import Table from 'cli-table3';
-import {isError, mergeWith} from 'lodash';
+import {isError, isFunction, isObject, mergeWith} from 'lodash';
 import stringWidth from 'string-width';
 import type {MergeDeep, Primitive} from 'type-fest';
 import {BaseSmokerError} from '../error/base-error';
+import {isSerializable} from '../util';
 
 /**
  * Creates a table (for display in the console) with the given items and
@@ -84,6 +85,24 @@ export function mergeOptions<T extends object, U extends object>(
 }
 
 /**
+ * Used by {@link handleRejection} if we are outputting JSON.
+ *
+ * @param err - Error thrown somewhere in the command handlers
+ */
+function handleJsonRejection(err: unknown): void {
+  const output: {error: unknown} = isSerializable(err)
+    ? {error: err.toJSON()}
+    : {error: BaseSmokerError.prototype.toJSON.call(err)};
+
+  // if we cannot serialize the error, just throw it, and give us an "A" for effort
+  try {
+    console.log(JSON.stringify(output));
+  } catch {
+    throw err;
+  }
+}
+
+/**
  * Error reporter of last resort.
  *
  * Does not set `process.exitCode`.
@@ -93,33 +112,26 @@ export function mergeOptions<T extends object, U extends object>(
  * @param json - If `true`, _only_ output JSON and output to STDOUT instead of
  *   STDERR
  */
-export function handleRejection(err: unknown, verbose = false, json = false) {
+export function handleRejection(
+  err: unknown,
+  verbose = false,
+  json = false,
+): void {
   if (json) {
-    let output: {error: any};
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-      output = {error: (err as any).toJSON()};
-    } catch {
-      output = {error: BaseSmokerError.prototype.toJSON.call(err)};
-    }
-    // if we cannot serialize the error, just throw it, and give us an "A" for effort
-    try {
-      console.log(JSON.stringify(output));
-    } catch {
-      throw err;
-    }
-  } else {
-    let output: any;
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-      output = (err as any).format(verbose);
-    } catch {
-      if (isError(err)) {
-        try {
-          output = BaseSmokerError.prototype.format.call(err, verbose);
-        } catch {}
-      }
-    }
-    console.error(output ?? err);
+    handleJsonRejection(err);
+    return;
   }
+
+  let output: string | undefined;
+  // TODO add a Formattable type like Serializable + type guard
+  if (isObject(err) && 'format' in err && isFunction(err.format)) {
+    output = `${err.format(verbose)}`;
+  } else {
+    if (isError(err)) {
+      try {
+        output = BaseSmokerError.prototype.format.call(err, verbose);
+      } catch {}
+    }
+  }
+  console.error(output ?? err);
 }

@@ -5,7 +5,7 @@
  */
 import Debug from 'debug';
 import {node as execa, type NodeOptions} from 'execa';
-import type {Executor} from 'midnight-smoker/plugin';
+import {Helpers, type Executor} from 'midnight-smoker/plugin';
 import stripAnsi from 'strip-ansi';
 import type {Merge} from 'type-fest';
 
@@ -51,6 +51,7 @@ export async function execSmoker(
   args: string[],
   opts: ExecSmokerOptsWithJson,
 ): Promise<unknown>;
+
 /**
  * Runs the `smoker` executable with the given `args` and `opts` using
  * {@link execa.node}.
@@ -77,9 +78,8 @@ export async function execSmoker(args: string[], opts: ExecSmokerOpts = {}) {
     if (json) {
       return JSON.parse(result.stdout) as unknown;
     }
-  } catch (e) {
-    const err = e as Executor.ExecError;
-    if (json) {
+  } catch (err) {
+    if (Helpers.isExecaError(err)) {
       return JSON.parse(err.stdout) as unknown;
     }
     throw err;

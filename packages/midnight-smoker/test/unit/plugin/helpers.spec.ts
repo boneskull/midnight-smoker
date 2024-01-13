@@ -44,7 +44,7 @@ describe('midnight-smoker', function () {
 
       describe('when mkdtemp() fails', function () {
         beforeEach(function () {
-          mkdtempStub.rejects();
+          mkdtempStub.rejects(Object.assign(new Error('foo'), {code: 'DERP'}));
         });
 
         it('should reject', async function () {

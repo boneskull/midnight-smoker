@@ -23,6 +23,7 @@ import {
 } from '../component/rule/rule';
 import type {RuleRunner} from '../component/schema/rule-runner-schema';
 import type {ScriptRunner} from '../component/schema/script-runner-schema';
+import {isZodError} from '../error/base-error';
 import {InvalidArgError} from '../error/common-error';
 import {ComponentNameError} from '../error/component-error';
 import {readPackageJson} from '../pkg-util';
@@ -229,7 +230,7 @@ export class PluginMetadata implements StaticPluginMetadata {
       this.reporterMap = new Map();
     } catch (err) {
       // TODO: throw SmokerError
-      throw fromZodError(err as z.ZodError);
+      throw isZodError(err) ? fromZodError(err) : err;
     }
   }
 

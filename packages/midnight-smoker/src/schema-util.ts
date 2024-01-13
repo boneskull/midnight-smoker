@@ -10,8 +10,16 @@ import {
 } from 'lodash';
 import type {EventEmitter} from 'node:events';
 import type {CamelCase, Class, KebabCase, PackageJson} from 'type-fest';
-import z from 'zod';
+import {z} from 'zod';
 
+/**
+ * Type guard for an object with a `toJSON` method.
+ *
+ * **This function is duplicated in `util.ts` on purpose.**
+ *
+ * @param value Any value
+ * @returns - `true` if `value` is an object with a `toJSON` method
+ */
 function isSerializable<T>(value: T): value is T & {toJSON: () => unknown} {
   return isObject(value) && 'toJSON' in value && isFunction(value.toJSON);
 }

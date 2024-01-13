@@ -1,6 +1,11 @@
 import Debug from 'debug';
-import type {Executor, PkgManager, ScriptRunner} from 'midnight-smoker/plugin';
-import {Errors, Helpers} from 'midnight-smoker/plugin';
+import {
+  Errors,
+  Executor,
+  Helpers,
+  type PkgManager,
+  type ScriptRunner,
+} from 'midnight-smoker/plugin';
 import path from 'node:path';
 import {YarnClassic} from './yarn-classic';
 
@@ -118,19 +123,21 @@ export class YarnBerry extends YarnClassic implements PkgManager.PkgManager {
           cwd: this.tmpdir,
         },
       );
-    } catch (e) {
-      const err = e as Executor.ExecError;
-      throw new Errors.InstallError(
-        err.message,
-        this.spec,
-        installSpecs,
-        this.tmpdir,
-        {
-          error: err,
-          exitCode: err.exitCode,
-          output: err.all || err.stderr || err.stdout,
-        },
-      );
+    } catch (err) {
+      if (err instanceof Executor.ExecError) {
+        throw new Errors.InstallError(
+          err.message,
+          this.spec,
+          installSpecs,
+          this.tmpdir,
+          {
+            error: err,
+            exitCode: err.exitCode,
+            output: err.all || err.stderr || err.stdout,
+          },
+        );
+      }
+      throw err;
     }
 
     this.debug('(install) Installed %d packages', installManifests.length);
@@ -209,18 +216,20 @@ export class YarnBerry extends YarnClassic implements PkgManager.PkgManager {
           },
           {},
         );
-      } catch (e) {
-        const err = e as Executor.ExecError;
-        throw new Errors.PackError(
-          'Unable to read workspace information',
-          this.spec,
-          this.tmpdir,
-          {
-            error: err,
-            exitCode: err.exitCode,
-            output: err.all || err.stderr || err.stdout,
-          },
-        );
+      } catch (err) {
+        if (err instanceof Executor.ExecError) {
+          throw new Errors.PackError(
+            'Unable to read workspace information',
+            this.spec,
+            this.tmpdir,
+            {
+              error: err,
+              exitCode: err.exitCode,
+              output: err.all || err.stderr || err.stdout,
+            },
+          );
+        }
+        throw err;
       }
 
       if (opts.workspaces?.length) {
@@ -277,13 +286,15 @@ export class YarnBerry extends YarnClassic implements PkgManager.PkgManager {
     for await (const {command, cwd, tarball, pkgName} of commands) {
       try {
         await this.executor(this.spec, command, {}, {cwd});
-      } catch (e) {
-        const err = e as Executor.ExecError;
-        throw new Errors.PackError(err.message, this.spec, this.tmpdir, {
-          error: err,
-          exitCode: err.exitCode,
-          output: err.all || err.stderr || err.stdout,
-        });
+      } catch (err) {
+        if (err instanceof Executor.ExecError) {
+          throw new Errors.PackError(err.message, this.spec, this.tmpdir, {
+            error: err,
+            exitCode: err.exitCode,
+            output: err.all || err.stderr || err.stdout,
+          });
+        }
+        throw err;
       }
 
       installManifests.push({
@@ -317,25 +328,28 @@ export class YarnBerry extends YarnClassic implements PkgManager.PkgManager {
       );
       result = {pkgName, script, rawResult, cwd};
     } catch (err) {
-      const error = err as Errors.ExecError;
-      result = {
-        pkgName,
-        script,
-        rawResult: error,
-        cwd,
-      };
-      if (
-        this.opts.loose &&
-        /Couldn't find a script named/i.test(error.stdout)
-      ) {
-        result.skipped = true;
-      } else {
-        result.error = new Errors.RunScriptError(
-          error,
-          script,
+      if (err instanceof Executor.ExecError) {
+        result = {
           pkgName,
-          this.spec,
-        );
+          script,
+          rawResult: err,
+          cwd,
+        };
+        if (
+          this.opts.loose &&
+          /Couldn't find a script named/i.test(err.stdout)
+        ) {
+          result.skipped = true;
+        } else {
+          result.error = new Errors.RunScriptError(
+            err,
+            script,
+            pkgName,
+            this.spec,
+          );
+        }
+      } else {
+        throw err;
       }
     }
 

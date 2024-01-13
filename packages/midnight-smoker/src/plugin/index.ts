@@ -1,9 +1,14 @@
 /**
  * Public API for plugin implementors
  *
- * @packageDocumentation
+ * @module midnight-smoker/plugin
  */
-export {type Component, type ComponentApi, ComponentId} from '../component/component';
+
+export {
+  ComponentId,
+  type Component,
+  type ComponentApi,
+} from '../component/component';
 export * as Executor from '../component/executor';
 export * as PkgManager from '../component/package-manager';
 export * as Reporter from '../component/reporter';

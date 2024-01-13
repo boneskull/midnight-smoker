@@ -1,6 +1,7 @@
 import {memoize} from 'lodash';
 import readPkgUp from 'read-pkg-up';
 import type {PackageJson} from 'type-fest';
+import {fromUnknownError} from './error/base-error';
 import {
   MissingPackageJsonError,
   UnreadablePackageJsonError,
@@ -42,7 +43,7 @@ const _readPkgJson = memoize(
       throw new UnreadablePackageJsonError(
         `Could not read package.json from ${cwd}`,
         cwd,
-        err as Error,
+        fromUnknownError(err),
       );
     }
     if (!result && strict) {
@@ -58,8 +59,7 @@ const _readPkgJson = memoize(
 /**
  * Reads closest `package.json` from some dir
  *
- * @param cwd Dir to read from
- * @param Options
+ * @param opts Options
  * @returns Object with `packageJson` and `path` properties or `undefined` if
  *   not in `strict` mode
  */
@@ -92,7 +92,7 @@ const _readPkgJsonSync = memoize(
       throw new UnreadablePackageJsonError(
         `Could not read package.json from ${cwd}`,
         cwd,
-        err as Error,
+        fromUnknownError(err),
       );
     }
     if (!result && strict) {
@@ -110,8 +110,7 @@ const _readPkgJsonSync = memoize(
  *
  * @remarks
  * Use {@link readPackageJson} instead if possible
- * @param cwd Dir to read from
- * @param Options
+ * @param options Options
  * @returns Object with `packageJson` and `path` properties or `undefined` if
  *   not in `strict` mode
  */

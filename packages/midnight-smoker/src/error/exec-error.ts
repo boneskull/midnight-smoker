@@ -3,6 +3,8 @@ import {BaseSmokerError} from './base-error';
 
 /**
  * This mainly just wraps an {@link ExecaError}.
+ *
+ * @group Errors
  */
 export class ExecError extends BaseSmokerError<{command: string}, ExecaError> {
   public readonly id = 'ExecError';

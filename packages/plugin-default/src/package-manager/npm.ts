@@ -1,6 +1,10 @@
 import type Debug from 'debug';
-import type {Executor, PkgManager, ScriptRunner} from 'midnight-smoker/plugin';
-import {Errors} from 'midnight-smoker/plugin';
+import {
+  Errors,
+  type Executor,
+  type PkgManager,
+  type ScriptRunner,
+} from 'midnight-smoker/plugin';
 
 /**
  * When `npm` fails when run with `--json`, the error output is also in JSON.
@@ -16,15 +20,49 @@ export interface NpmJsonOutput {
 }
 
 /**
+ * Type of item in the {@link NpmPackItem.files} array.
+ *
+ * Actual object contains more fields.
+ *
+ * @internal
+ */
+
+export interface NpmPackItemFileEntry {
+  /**
+   * Path of file
+   */
+  path: string;
+}
+
+/**
+ * JSON output of `npm pack`
+ *
+ * Actual object contains more fields.
+ *
+ * @internal
+ */
+export interface NpmPackItem {
+  /**
+   * Filename of tarball
+   */
+  filename: string;
+  /**
+   * Files in the tarball
+   */
+  files: NpmPackItemFileEntry[];
+  /**
+   * Package name
+   */
+  name: string;
+}
+
+/**
  * Intended to provide whatever we can that's common to all versions of `npm`.
  */
 export abstract class GenericNpmPackageManager
   implements PkgManager.PkgManager
 {
   protected abstract debug: Debug.Debugger;
-
-  public readonly name = 'npm';
-
   protected readonly opts: PkgManager.PkgManagerOpts;
   public readonly spec: string;
   protected readonly executor: Executor.Executor;
@@ -79,24 +117,26 @@ export abstract class GenericNpmPackageManager
         {cwd},
       );
       result = {pkgName, script, rawResult, cwd};
-    } catch (e) {
-      const err = e as Executor.ExecError;
-      // const parsedError = this.parseNpmError(err.stdout);
-      result = {
-        pkgName,
-        script,
-        rawResult: err,
-        cwd,
-      };
-      if (this.opts.loose && /missing script:/i.test(err.stderr)) {
-        result.skipped = true;
-      } else {
-        result.error = new Errors.RunScriptError(
-          err,
-          script,
+    } catch (err) {
+      if (err instanceof Errors.ExecError) {
+        result = {
           pkgName,
-          this.spec,
-        );
+          script,
+          rawResult: err,
+          cwd,
+        };
+        if (this.opts.loose && /missing script:/i.test(err.stderr)) {
+          result.skipped = true;
+        } else {
+          result.error = new Errors.RunScriptError(
+            err,
+            script,
+            pkgName,
+            this.spec,
+          );
+        }
+      } else {
+        throw err;
       }
     }
 

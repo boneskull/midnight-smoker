@@ -1,5 +1,5 @@
 import {italic, white, whiteBright, yellow} from 'chalk';
-import {isObject} from 'lodash';
+import {isError} from 'lodash';
 import {format, formatWithOptions} from 'node:util';
 import stringify from 'stringify-object';
 import type {ZodError} from 'zod-validation-error';
@@ -176,20 +176,21 @@ export interface SmokerError<
 }
 
 /**
- * Checks if `midnight-smoker` owns the error.
- */
-export function isSmokerError(err: unknown): err is SmokerError {
-  return err instanceof BaseSmokerError || err instanceof AggregateSmokerError;
-}
-
-/**
  * Checks if the provided error is an instance of `ZodError`.
  *
  * @param value - The value to check.
  * @returns `true` if the error is a `ZodError`, `false` otherwise.
  */
 export function isZodError(value: unknown): value is ZodError {
-  return Boolean(
-    isObject(value) && 'name' in value && value.name === 'ZodError',
-  );
+  return isError(value) && value.name === 'ZodError';
+}
+
+/**
+ * Converts something that was thrown to an `Error` instance, if not already.
+ *
+ * @param err - A thrown thing
+ * @returns The original thing (if an `Error`) otherwise a new `Error`
+ */
+export function fromUnknownError(err: unknown): Error {
+  return isError(err) ? err : new Error(`Unknown error: ${err}`);
 }

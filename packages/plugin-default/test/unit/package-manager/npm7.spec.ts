@@ -1,11 +1,13 @@
 import type {nullExecutor} from '@midnight-smoker/test-util';
+import {type ExecaError} from 'execa';
 import type {PkgManager} from 'midnight-smoker/plugin';
-import {Helpers} from 'midnight-smoker/plugin';
+import {Executor, Helpers} from 'midnight-smoker/plugin';
 import rewiremock from 'rewiremock/node';
 import {Range} from 'semver';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
+import {type NpmPackItem} from '../../../src/package-manager/npm';
 import type * as NPM7 from '../../../src/package-manager/npm7';
 import type {ConsoleMock, DebugMock} from '../../mocks';
 import {mockConsole, mockDebug} from '../../mocks';
@@ -107,19 +109,11 @@ describe('@midnight-smoker/plugin-default', function () {
         });
 
         describe('pack()', function () {
-          const npmPackItems: NPM7.NpmPackItem[] = [
+          const npmPackItems: NpmPackItem[] = [
             {
-              id: '1',
               name: 'tubby',
-              version: '3.2.1',
-              size: 444,
-              unpackedSize: 555,
-              shasum: '',
-              integrity: '',
               filename: 'tubby-3.2.1.tgz',
               files: [],
-              entryCount: 0,
-              bundled: [],
             },
           ];
 
@@ -200,7 +194,7 @@ describe('@midnight-smoker/plugin-default', function () {
 
           describe('when npm failed to spawn', function () {
             beforeEach(function () {
-              executor.rejects(new Error('no such npm'));
+              executor.rejects(new Executor.ExecError({} as ExecaError));
             });
 
             it('should reject', async function () {
@@ -260,7 +254,7 @@ describe('@midnight-smoker/plugin-default', function () {
           });
 
           describe('when npm fails', function () {
-            const err = new Error('no such npm');
+            const err = new Executor.ExecError({} as ExecaError);
             beforeEach(function () {
               executor.rejects(err);
             });
@@ -322,7 +316,7 @@ describe('@midnight-smoker/plugin-default', function () {
 
           describe('when npm fails', function () {
             beforeEach(function () {
-              executor.rejects(new Error('no such npm'));
+              executor.rejects(new Executor.ExecError({} as ExecaError));
             });
 
             it('should resolve with a result containing an error', async function () {

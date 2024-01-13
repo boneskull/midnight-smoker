@@ -4,8 +4,9 @@
  * @packageDocumentation
  */
 import Debug from 'debug';
-import z, {type ZodError} from 'zod';
+import z from 'zod';
 import {fromZodError} from 'zod-validation-error';
+import {isZodError} from '../error/base-error';
 import type {PluginRegistry} from '../plugin/registry';
 import type {RawSmokerOptions, SmokerOptions} from './options';
 import {zBaseSmokerOptions} from './options';
@@ -43,7 +44,7 @@ export class OptionParser {
     try {
       result = zSmokerOpts.parse(opts ?? {});
     } catch (err) {
-      throw fromZodError(err as ZodError);
+      throw isZodError(err) ? fromZodError(err) : err;
     }
 
     this.parseResultCache.add(result);
