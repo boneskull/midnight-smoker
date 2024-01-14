@@ -3,6 +3,8 @@ export * from './e2e';
 export * from './execa';
 export * from './null-executor';
 export * from './null-pkg-manager';
+export * from './null-pm-controller';
+export * from './null-rule-runner';
 export * from './null-script-runner';
 export * from './register-component';
 export * from './register-plugin';

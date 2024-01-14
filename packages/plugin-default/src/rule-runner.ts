@@ -69,14 +69,17 @@ export class SmokerRuleRunner<T extends Rule.BaseNormalizedRuleOptionsRecord> {
           this.rulesConfig,
         );
 
-        this.notifiers.ruleBegin({
-          rule: rule.id,
-          config,
-          current,
-          total,
-        });
+        // XXX: this needs to be in the loop, but the installPath has to be in the object
 
-        for (const installPath of runRulesManifest) {
+        for (const {installPath, pkgName} of runRulesManifest) {
+          this.notifiers.ruleBegin({
+            rule: rule.id,
+            config,
+            current,
+            total,
+            installPath,
+            pkgName,
+          });
           // TODO: create a `withContext()` helper that performs the next 3 operations
           const context = await this.api.Helpers.createRuleContext(
             rule,
@@ -103,6 +106,8 @@ export class SmokerRuleRunner<T extends Rule.BaseNormalizedRuleOptionsRecord> {
               current,
               total,
               failed: issues.map((issue) => issue.toJSON()),
+              installPath,
+              pkgName,
             });
             allIssues.push(...issues);
           } else {
@@ -111,6 +116,8 @@ export class SmokerRuleRunner<T extends Rule.BaseNormalizedRuleOptionsRecord> {
               config,
               current,
               total,
+              installPath,
+              pkgName,
             });
             allOk.push(this.api.Helpers.createRuleOkResult(rule, context));
           }

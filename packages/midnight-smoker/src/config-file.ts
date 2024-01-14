@@ -24,7 +24,7 @@ const BASE_CFG_FILENAMES = [
   '.config/smoker.config',
 ] as const;
 
-const DEFAULT_OPTS: Readonly<LilconfigOpts> = Object.freeze({
+const DEFAULT_OPTS = Object.freeze<LilconfigOpts>({
   loaders: {'.mjs': loadEsm, '.js': loadEsm, '.ts': loadTs},
   searchPlaces: [
     'package.json',
@@ -50,6 +50,7 @@ export async function readConfigFile(
     opts = result.config as RawSmokerOptions;
 
     // I love ESM, really I do
+    // TODO: this may not be possible any longer b/c of `justImport`
     if ('default' in opts) {
       opts = opts.default as RawSmokerOptions;
     }

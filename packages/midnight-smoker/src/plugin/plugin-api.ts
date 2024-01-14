@@ -1,5 +1,5 @@
 import type {z} from 'zod';
-import type * as Executor from '../component/executor';
+import type * as Executor from '../component/executor/executor';
 import type * as PkgManager from '../component/package-manager';
 import type * as Reporter from '../component/reporter';
 import type * as Rule from '../component/rule';

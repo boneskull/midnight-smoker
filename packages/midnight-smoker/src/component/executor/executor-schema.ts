@@ -1,3 +1,9 @@
+/**
+ * Various schemas relating to `Executor`s.
+ *
+ * @packageDocumentation
+ */
+
 import {z} from 'zod';
 
 /**

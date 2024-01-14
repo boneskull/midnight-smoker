@@ -5,12 +5,10 @@ import npmVersions from '../../../data/npm-versions.json';
 import yarnDistTags from '../../../data/yarn-dist-tags.json';
 import yarnTags from '../../../data/yarn-tags.json';
 import yarnVersions from '../../../data/yarn-versions.json';
-import {
-  UnknownDistTagError,
-  UnknownVersionError,
-  UnknownVersionRangeError,
-  UnsupportedPackageManagerError,
-} from '../../error/pkg-manager-error';
+import {UnknownDistTagError} from './errors/unknown-dist-tag-error';
+import {UnknownVersionError} from './errors/unknown-version-error';
+import {UnknownVersionRangeError} from './errors/unknown-version-range-error';
+import {UnsupportedPackageManagerError} from './errors/unsupported-pkg-manager-error';
 
 /**
  * Known versions of supported package managers

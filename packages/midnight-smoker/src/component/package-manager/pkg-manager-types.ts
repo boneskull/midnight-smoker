@@ -6,17 +6,8 @@
 
 import type {Range, SemVer} from 'semver';
 import type * as Helpers from '../../plugin/helpers';
-import type {Executor} from '../executor';
-import type {PkgManager} from '../schema/pkg-manager-schema';
-export type {ExecutorOpts as ExecOpts, ExecResult} from '../executor';
-export type {
-  InstallManifest,
-  PackOptions,
-  PkgManagerRunScriptOpts,
-  RunScriptManifest,
-  RunScriptResult,
-} from '../schema/pkg-manager-schema';
-export type {Executor};
+import type {Executor} from '../executor/executor';
+import type {PkgManager} from './pkg-manager-schema';
 
 /**
  * Options for {@link PkgManagerFactory}

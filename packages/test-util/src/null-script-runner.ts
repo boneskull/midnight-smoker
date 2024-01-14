@@ -1,5 +1,4 @@
-import type {ScriptRunner} from 'midnight-smoker/plugin';
-import {Errors} from 'midnight-smoker/plugin';
+import {ScriptRunner} from 'midnight-smoker/plugin';
 export const nullScriptRunner: ScriptRunner.ScriptRunner = async (
   notifiers: ScriptRunner.ScriptRunnerNotifiers,
   pkgManagerRunManifest: ScriptRunner.PkgManagerRunScriptManifest,
@@ -7,7 +6,7 @@ export const nullScriptRunner: ScriptRunner.ScriptRunner = async (
 ): Promise<ScriptRunner.RunScriptResult> => {
   await Promise.resolve();
   if (opts.signal.aborted) {
-    throw new Errors.RunScriptBailed();
+    throw new ScriptRunner.RunScriptBailed();
   }
   const {script, pkgName} = pkgManagerRunManifest;
   notifiers.scriptBegin({
@@ -18,7 +17,7 @@ export const nullScriptRunner: ScriptRunner.ScriptRunner = async (
   await Promise.resolve();
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   if (opts.signal.aborted) {
-    throw new Errors.RunScriptBailed();
+    throw new ScriptRunner.RunScriptBailed();
   }
   const result: ScriptRunner.RunScriptResult = {
     pkgName,

@@ -1,6 +1,7 @@
 import {EventEmitter} from 'events';
 import type {
   Event,
+  PkgManager,
   PluginRegistry,
   Rule,
   RuleFilter,
@@ -74,7 +75,7 @@ export async function runRuleRunner(
  * Options for running a {@link ScriptRunner}.
  */
 export interface RunScriptRunnerOpts
-  extends Partial<ScriptRunner.ScriptRunnerOpts> {
+  extends Partial<PkgManager.ScriptRunnerOpts> {
   /**
    * The event emitter to use for emitting events (via the notifier functions).
    * If not provided, a new `EventEmitter` will be created.

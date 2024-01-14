@@ -1,12 +1,12 @@
 import {SmokerEvent} from '../../event/event-constants';
-import type {ScriptRunnerEvents} from '../../event/script-runner-events';
 import type {StrictEmitter} from '../../event/strict-emitter';
+import type {ScriptRunnerEvents} from './script-runner-events';
 import {
   zScriptBeginNotifier,
   zScriptFailedNotifier,
   zScriptOkNotifier,
   type ScriptRunnerNotifiers,
-} from '../schema/script-runner-schema';
+} from './script-runner-schema';
 
 export type ScriptRunnerEmitter = StrictEmitter<ScriptRunnerEvents>;
 

@@ -8,10 +8,10 @@
 import Debug from 'debug';
 import {curry, isFunction, isString} from 'lodash';
 import {Range, type SemVer} from 'semver';
-import {UnsupportedPackageManagerError} from '../../error/pkg-manager-error';
 import * as Helpers from '../../plugin/helpers';
-import type {Executor} from '../executor';
-import type {PkgManager} from '../schema/pkg-manager-schema';
+import type {Executor} from '../executor/executor';
+import {UnsupportedPackageManagerError} from './errors/unsupported-pkg-manager-error';
+import type {PkgManager} from './pkg-manager-schema';
 import type {PkgManagerDef, PkgManagerOpts} from './pkg-manager-types';
 import {normalizeVersion} from './version';
 

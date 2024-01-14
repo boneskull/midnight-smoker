@@ -1,11 +1,12 @@
 import {z} from 'zod';
 import {zScriptError} from '../../error/error-schema';
-import {customSchema, zAbortSignal, zNonEmptyString} from '../../schema-util';
+import {zNonEmptyString} from '../../schema-util';
 import {
   zControllerRunScriptManifest,
   zRunScriptManifest,
   zRunScriptResult,
-} from './pkg-manager-schema';
+  zScriptRunnerOpts,
+} from '../package-manager/pkg-manager-schema';
 
 export const zRunScriptBeginNotifierParams = z.object({
   script: zNonEmptyString.describe('Name of the script to run'),
@@ -65,22 +66,6 @@ export interface ScriptRunnerNotifiers {
 
 export const zScriptRunnerNotifiers = z.custom<ScriptRunnerNotifiers>();
 
-export const zScriptRunnerOpts = customSchema<ScriptRunnerOpts>(
-  z
-    .object({
-      bail: z
-        .boolean()
-        .optional()
-        .describe('If true, abort on the first script failure'),
-      signal: zAbortSignal,
-    })
-    .describe('Options for a ScriptRunner component'),
-);
-
-export interface ScriptRunnerOpts {
-  bail?: boolean;
-  signal: AbortSignal;
-}
 export const zRunScriptsEventData = z.object({
   manifest: z
     .record(z.array(zRunScriptManifest))

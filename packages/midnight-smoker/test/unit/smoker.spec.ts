@@ -1,9 +1,13 @@
-import type {ExecaMock} from '@midnight-smoker/test-util';
 import {
+  NullPkgManagerController,
   NullPm,
   createExecaMock,
+  nullRuleRunner,
+  registerComponent,
   registerRule,
+  type ExecaMock,
 } from '@midnight-smoker/test-util';
+import {omit} from 'lodash';
 import type {mkdir, mkdtemp, rm, stat} from 'node:fs/promises';
 import path from 'node:path';
 import rewiremock from 'rewiremock/node';
@@ -12,12 +16,13 @@ import unexpected from 'unexpected';
 import unexpectedEventEmitter from 'unexpected-eventemitter';
 import unexpectedSinon from 'unexpected-sinon';
 import {z} from 'zod';
-import type {PkgManagerController} from '../../src/component/package-manager/controller';
+import {ComponentKinds} from '../../src/component';
 import type {
   InstallResult,
   PkgManager,
   PkgManagerInstallManifest,
-} from '../../src/component/schema/pkg-manager-schema';
+} from '../../src/component/package-manager/pkg-manager-schema';
+import type {PkgManagerController} from '../../src/controller';
 import {
   InstallEvent,
   PackEvent,
@@ -26,7 +31,6 @@ import {
 import {PluginRegistry} from '../../src/plugin/registry';
 import type * as MS from '../../src/smoker';
 import * as Mocks from './mocks';
-import {NullPkgManagerController} from './mocks/null-pm-controller';
 
 const expect = unexpected
   .clone()
@@ -114,7 +118,6 @@ describe('midnight-smoker', function () {
       beforeEach(async function () {
         registry = PluginRegistry.create();
         pmController = sandbox.createStubInstance(NullPkgManagerController);
-        // sandbox.stub(registry, 'loadPackageManagers').resolves(pkgManagerMap);
 
         smoker = await Smoker.createWithCapabilities(
           {script: 'foo'},
@@ -368,6 +371,115 @@ describe('midnight-smoker', function () {
         describe('when checks enabled', function () {
           it('it should run checks', function () {
             expect(smoker.runChecks, 'was called once');
+          });
+        });
+      });
+
+      describe('runChecks()', function () {
+        let smoker: MS.Smoker;
+        let registry: PluginRegistry;
+        let installResults: InstallResult[];
+
+        beforeEach(async function () {
+          registry = PluginRegistry.create();
+
+          await registerComponent(ComponentKinds.RuleRunner, nullRuleRunner, {
+            registry,
+            pluginName: 'run-checks',
+          });
+
+          smoker = await Smoker.createWithCapabilities(
+            {ruleRunner: 'run-checks/default'},
+            {
+              registry,
+              pmController: sandbox.createStubInstance(
+                NullPkgManagerController,
+              ),
+            },
+          );
+
+          installResults = [
+            {
+              rawResult: {} as any,
+              installManifests: [
+                {
+                  pkgManager: nullPm,
+                  isAdditional: false,
+                  spec: 'foo@1.0.0',
+                  pkgName: 'foo',
+                  cwd: MOCK_TMPDIR,
+                  installPath: path.join(MOCK_TMPDIR, 'node_modules', 'foo'),
+                },
+                {
+                  pkgManager: nullPm,
+                  isAdditional: false,
+                  spec: 'bar@1.0.0',
+                  pkgName: 'bar',
+                  cwd: MOCK_TMPDIR,
+                  installPath: path.join(MOCK_TMPDIR, 'node_modules', 'bar'),
+                },
+              ],
+            },
+          ];
+        });
+
+        it('should run enabled rules', async function () {
+          const runRulesResult = await smoker.runChecks(installResults);
+          const rules = registry.getRules();
+          expect(runRulesResult, 'to satisfy', {
+            issues: expect.it('to be empty'),
+            passed: expect.it(
+              'to have length',
+              rules.length * installResults[0].installManifests.length,
+            ),
+          });
+        });
+
+        it('should throw an error if installPath is not provided for a package', async function () {
+          installResults = installResults.map((result) => ({
+            ...result,
+            installManifests: result.installManifests.map((installManifest) =>
+              omit(installManifest, 'installPath'),
+            ),
+          }));
+
+          await expect(
+            smoker.runChecks(installResults),
+            'to be rejected with error satisfying',
+            /Expected an installPath for/,
+          );
+        });
+
+        it('should ignore additional dependencies', async function () {
+          installResults = [
+            {
+              rawResult: {} as any,
+              installManifests: [
+                {
+                  pkgManager: nullPm,
+                  isAdditional: false,
+                  spec: 'foo@1.0.0',
+                  pkgName: 'foo',
+                  cwd: MOCK_TMPDIR,
+                  installPath: path.join(MOCK_TMPDIR, 'node_modules', 'foo'),
+                },
+                {
+                  pkgManager: nullPm,
+                  isAdditional: true,
+                  spec: 'bar@1.0.0',
+                  pkgName: 'bar',
+                  cwd: MOCK_TMPDIR,
+                  installPath: path.join(MOCK_TMPDIR, 'node_modules', 'bar'),
+                },
+              ],
+            },
+          ];
+
+          const runRulesResult = await smoker.runChecks(installResults);
+          const rules = registry.getRules();
+          expect(runRulesResult, 'to satisfy', {
+            issues: expect.it('to be empty'),
+            passed: expect.it('to have length', rules.length),
           });
         });
       });

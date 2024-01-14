@@ -8,7 +8,8 @@ import {
   zRunRulesFailedEventData,
   zRunRulesOkEventData,
 } from '../../event/rule-events';
-import type {Component} from '../component';
+import {zNonEmptyString} from '../../schema-util';
+import type {Component} from '../component/component';
 import {zBaseNormalizedRuleOptionsRecord, zRuleIssue, zSomeRule} from '../rule';
 import {zRuleOk} from '../rule/rule-result';
 
@@ -80,7 +81,14 @@ export const zRuleErrorNotifier = z
   );
 
 export const zRunRulesManifest = z
-  .array(z.string())
+  .array(
+    z.object({
+      pkgName: zNonEmptyString.describe('Name of package being checked'),
+      installPath: zNonEmptyString.describe(
+        'Install path of package being checked',
+      ),
+    }),
+  )
   .describe('Installation paths to check');
 
 export type RunRulesManifest = z.infer<typeof zRunRulesManifest>;

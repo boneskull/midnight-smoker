@@ -1,10 +1,5 @@
 import Debug from 'debug';
-import {
-  Executor,
-  type Errors,
-  type Helpers,
-  type PkgManager,
-} from 'midnight-smoker/plugin';
+import {Executor, type Helpers, type PkgManager} from 'midnight-smoker/plugin';
 import {Npm7} from './npm7';
 
 export class Npm9 extends Npm7 implements PkgManager.PkgManager {
@@ -42,7 +37,7 @@ export class Npm9 extends Npm7 implements PkgManager.PkgManager {
 
     // otherwise we get a deprecation warning
     const installSpecs = installManifests.map(({spec}) => spec);
-    let err: Errors.InstallError | undefined;
+    let err: PkgManager.Errors.InstallError | undefined;
     const installArgs = [
       'install',
       '--no-audit',

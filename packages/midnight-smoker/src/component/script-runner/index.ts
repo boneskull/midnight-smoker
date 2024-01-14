@@ -1,9 +1,9 @@
+export * from '../package-manager/errors/for-script-runner';
 export type {
   PkgManagerRunScriptManifest,
-  RunScriptManifest,
   RunScriptResult,
-  ScriptRunner,
-  ScriptRunnerNotifiers,
   ScriptRunnerOpts,
-} from '../schema';
+} from '../package-manager/pkg-manager-schema';
+export * from './script-runner-events';
 export * from './script-runner-notifier';
+export * from './script-runner-schema';

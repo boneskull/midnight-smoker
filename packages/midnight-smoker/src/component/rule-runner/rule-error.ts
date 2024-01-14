@@ -1,5 +1,5 @@
-import type {StaticRuleContext} from '../component/rule/static';
-import {BaseSmokerError} from './base-error';
+import {BaseSmokerError} from '../../error/base-error';
+import type {StaticRuleContext} from '../rule/static';
 
 /**
  * @group Errors

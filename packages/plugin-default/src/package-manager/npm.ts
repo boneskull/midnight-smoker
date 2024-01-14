@@ -1,10 +1,5 @@
 import type Debug from 'debug';
-import {
-  Errors,
-  type Executor,
-  type PkgManager,
-  type ScriptRunner,
-} from 'midnight-smoker/plugin';
+import {Errors, Executor, PkgManager} from 'midnight-smoker/plugin';
 
 /**
  * When `npm` fails when run with `--json`, the error output is also in JSON.
@@ -95,9 +90,9 @@ export abstract class GenericNpmPackageManager
   ): Promise<PkgManager.InstallManifest[]>;
 
   public async runScript(
-    manifest: ScriptRunner.RunScriptManifest,
-    opts: ScriptRunner.ScriptRunnerOpts,
-  ): Promise<ScriptRunner.RunScriptResult> {
+    manifest: PkgManager.RunScriptManifest,
+    opts: PkgManager.ScriptRunnerOpts,
+  ): Promise<PkgManager.RunScriptResult> {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!manifest) {
       throw new Errors.InvalidArgError(
@@ -108,7 +103,7 @@ export abstract class GenericNpmPackageManager
     const {script, pkgName, cwd} = manifest;
     const {signal} = opts;
 
-    let result: ScriptRunner.RunScriptResult;
+    let result: PkgManager.RunScriptResult;
     try {
       const rawResult = await this.executor(
         this.spec,
@@ -118,7 +113,7 @@ export abstract class GenericNpmPackageManager
       );
       result = {pkgName, script, rawResult, cwd};
     } catch (err) {
-      if (err instanceof Errors.ExecError) {
+      if (err instanceof Executor.ExecError) {
         result = {
           pkgName,
           script,
@@ -128,7 +123,7 @@ export abstract class GenericNpmPackageManager
         if (this.opts.loose && /missing script:/i.test(err.stderr)) {
           result.skipped = true;
         } else {
-          result.error = new Errors.RunScriptError(
+          result.error = new PkgManager.Errors.RunScriptError(
             err,
             script,
             pkgName,
@@ -146,7 +141,7 @@ export abstract class GenericNpmPackageManager
         /missing script:/i.test(result.rawResult.stderr)
       ) {
         if (!this.opts.loose) {
-          result.error = new Errors.UnknownScriptError(
+          result.error = new PkgManager.Errors.UnknownScriptError(
             `Script "${script}" in package "${pkgName}" not found`,
             script,
             pkgName,
@@ -162,7 +157,7 @@ export abstract class GenericNpmPackageManager
         } else {
           message = `Script "${script}" in package "${pkgName}" failed`;
         }
-        result.error = new Errors.ScriptFailedError(message, {
+        result.error = new PkgManager.Errors.ScriptFailedError(message, {
           script,
           pkgName,
           pkgManager: this.spec,

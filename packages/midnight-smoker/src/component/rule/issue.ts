@@ -5,9 +5,9 @@
  */
 
 import {z} from 'zod';
-import type {RuleError} from '../../error/rule-error';
 import {instanceofSchema, zNonEmptyString} from '../../schema-util';
 import {uniqueIdFactoryFactory} from '../../util';
+import type {RuleError} from '../rule-runner/rule-error';
 import {RuleSeverities, zRuleSeverity} from './severity';
 import type {StaticRule, StaticRuleContext} from './static';
 import {zStaticRule, zStaticRuleContext} from './static';

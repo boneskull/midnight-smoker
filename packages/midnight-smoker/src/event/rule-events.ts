@@ -1,11 +1,11 @@
 import {z} from 'zod';
+import {RuleError} from '../component/rule-runner/rule-error';
 import {zStaticRuleIssue} from '../component/rule/issue';
 import {
   zBaseNormalizedRuleOptions,
   zBaseNormalizedRuleOptionsRecord,
 } from '../component/rule/rule';
 import {zRuleOk} from '../component/rule/rule-result';
-import {RuleError} from '../error/rule-error';
 import {
   instanceofSchema,
   serializeObject,
@@ -98,8 +98,13 @@ export const zRunRuleEventData = z
     config: zBaseNormalizedRuleOptions.describe('Specific rule configuration'),
     current: zNonNegativeInteger.describe('Current rule position in the total'),
     total: zNonNegativeInteger.describe('Total count of unique rules'),
+    installPath: zNonEmptyString.describe(
+      'Install path of package being checked',
+    ),
+    pkgName: zNonEmptyString.describe('Name of package being checked'),
   })
   .describe('Base object for RunRule* events');
+
 export const zRunRuleBeginEventData = zRunRuleEventData;
 
 export const zRunRuleOkEventData = zRunRuleEventData;

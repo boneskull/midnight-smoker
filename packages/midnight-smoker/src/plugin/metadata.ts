@@ -10,22 +10,25 @@ import path from 'node:path';
 import type {LiteralUnion, PackageJson} from 'type-fest';
 import {z} from 'zod';
 import {fromZodError} from 'zod-validation-error';
-import {component, type Component} from '../component/component';
-import {ComponentKinds} from '../component/component-kind';
-import type {Executor} from '../component/executor';
+import {
+  ComponentKinds,
+  ComponentNameError,
+  component,
+  type Component,
+} from '../component/component';
+import type {Executor} from '../component/executor/executor';
 import type {PkgManagerDef} from '../component/package-manager/pkg-manager-types';
 import type {ReporterDef} from '../component/reporter/reporter-types';
+import type {RuleRunner} from '../component/rule-runner/rule-runner-schema';
 import {
   Rule,
   type RuleDef,
   type RuleOptionSchema,
   type SomeRule,
 } from '../component/rule/rule';
-import type {RuleRunner} from '../component/schema/rule-runner-schema';
-import type {ScriptRunner} from '../component/schema/script-runner-schema';
+import type {ScriptRunner} from '../component/script-runner/script-runner-schema';
 import {isZodError} from '../error/base-error';
 import {InvalidArgError} from '../error/common-error';
-import {ComponentNameError} from '../error/component-error';
 import {readPackageJson} from '../pkg-util';
 import {zNonEmptyString, zPackageJson} from '../schema-util';
 import {BLESSED_PLUGINS, type BlessedPlugin} from './blessed';

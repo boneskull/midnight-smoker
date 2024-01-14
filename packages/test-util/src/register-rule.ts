@@ -5,6 +5,7 @@ import {
   PluginRegistry,
   Rule,
 } from 'midnight-smoker/plugin';
+import {DEFAULT_TEST_PLUGIN_NAME} from './constants';
 
 /**
  * Registers a rule in the plugin registry.
@@ -19,7 +20,7 @@ import {
 export async function registerRule(
   factoryOrRuleDef: Plugin.PluginFactory | Partial<Rule.SomeRuleDef>,
   registry = PluginRegistry.create(),
-  pluginName = 'test-plugin',
+  pluginName = DEFAULT_TEST_PLUGIN_NAME,
 ): Promise<Component<Rule.SomeRule>> {
   const blessedMetadata = await registry.getBlessedMetadata();
 

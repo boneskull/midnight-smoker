@@ -5,8 +5,7 @@
  */
 
 import {node as execa} from 'execa';
-import type {Executor} from 'midnight-smoker/plugin';
-import {Errors, Helpers} from 'midnight-smoker/plugin';
+import {Executor, Helpers} from 'midnight-smoker/plugin';
 import path from 'node:path';
 
 /**
@@ -57,7 +56,7 @@ async function exec(
   try {
     return await proc;
   } catch (err) {
-    throw Helpers.isExecaError(err) ? new Errors.ExecError(err) : err;
+    throw Helpers.isExecaError(err) ? new Executor.ExecError(err) : err;
   }
 }
 

@@ -1,5 +1,5 @@
 import {red} from 'chalk';
-import {BaseSmokerError} from './base-error';
+import {BaseSmokerError} from '../../../error/base-error';
 
 /**
  * @group Errors

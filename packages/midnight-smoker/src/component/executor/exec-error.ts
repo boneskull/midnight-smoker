@@ -1,5 +1,5 @@
 import type {ExecaError} from 'execa';
-import {BaseSmokerError} from './base-error';
+import {BaseSmokerError} from '../../error/base-error';
 
 /**
  * This mainly just wraps an {@link ExecaError}.

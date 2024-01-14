@@ -3,8 +3,11 @@ import {
   registerPlugin,
   runScriptRunner,
 } from '@midnight-smoker/test-util';
-import type {PluginRegistry, ScriptRunner} from 'midnight-smoker/plugin';
-import {Errors} from 'midnight-smoker/plugin';
+import {
+  Executor,
+  ScriptRunner,
+  type PluginRegistry,
+} from 'midnight-smoker/plugin';
 import {EventEmitter} from 'node:events';
 import path from 'node:path';
 import {createSandbox} from 'sinon';
@@ -109,17 +112,17 @@ describe('@midnight-smoker/plugin-default', function () {
     });
 
     describe('when a script fails', function () {
-      let error: Errors.ScriptError;
-      let innerError: Errors.ExecError;
+      let error: ScriptRunner.ScriptError;
+      let innerError: Executor.ExecError;
       beforeEach(function () {
-        innerError = new Errors.ExecError({
+        innerError = new Executor.ExecError({
           exitCode: 1,
           command: 'some command',
           stderr: 'some stderr',
           stdout: 'some stdout',
         } as any);
 
-        error = new Errors.RunScriptError(
+        error = new ScriptRunner.RunScriptError(
           innerError,
           'some-script',
           'bar',
@@ -154,7 +157,7 @@ describe('@midnight-smoker/plugin-default', function () {
           'RunScriptFailed',
           {
             pkgName: 'bar',
-            error: expect.it('to be a', Errors.RunScriptError),
+            error: expect.it('to be a', ScriptRunner.RunScriptError),
             script: 'foo',
             current: 0,
             total: 1,

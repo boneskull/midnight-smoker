@@ -9,13 +9,13 @@ import type {
   PkgManagerInstallManifest,
   PkgManagerRunScriptManifest,
   RunScriptResult,
-} from '../component/schema/pkg-manager-schema';
-import type {InstallEventData} from './install-events';
-import type {PackBeginEventData} from './pack-events';
+} from '../component/package-manager/pkg-manager-schema';
 import type {
   RunScriptsEndEventData,
   RunScriptsEventData,
-} from './script-runner-events';
+} from '../component/script-runner/script-runner-events';
+import type {InstallEventData} from './install-events';
+import type {PackBeginEventData} from './pack-events';
 
 /**
  * Builds the event data for the `PackBegin` event.

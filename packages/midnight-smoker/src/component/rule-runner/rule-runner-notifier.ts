@@ -2,7 +2,7 @@ import {SmokerEvent} from '../../event/event-constants';
 import type {RuleEvents} from '../../event/rule-events';
 import type {StrictEmitter} from '../../event/strict-emitter';
 import {RuleIssue} from '../rule/issue';
-import type {RuleRunnerNotifiers} from '../schema/rule-runner-schema';
+import type {RuleRunnerNotifiers} from './rule-runner-schema';
 import {
   zRuleBeginNotifier,
   zRuleErrorNotifier,
@@ -11,7 +11,7 @@ import {
   zRunRulesBeginNotifier,
   zRunRulesFailedNotifier,
   zRunRulesOkNotifier,
-} from '../schema/rule-runner-schema';
+} from './rule-runner-schema';
 
 export function createRuleRunnerNotifiers(
   smoker: StrictEmitter<RuleEvents>,

@@ -13,6 +13,7 @@ import type {
   ScriptRunner,
 } from 'midnight-smoker/plugin';
 import {DEFAULT_COMPONENT_ID, PluginRegistry} from 'midnight-smoker/plugin';
+import {DEFAULT_TEST_PLUGIN_NAME} from './constants';
 
 export interface RegisterComponentOpts {
   registry?: PluginRegistry;
@@ -36,7 +37,7 @@ export async function registerComponent<T extends ComponentType>(
   {
     registry = PluginRegistry.create(),
     name = DEFAULT_COMPONENT_ID,
-    pluginName = 'test-plugin',
+    pluginName = DEFAULT_TEST_PLUGIN_NAME,
     api: apiOverrides,
   }: RegisterComponentOpts = {},
 ): Promise<PluginRegistry> {

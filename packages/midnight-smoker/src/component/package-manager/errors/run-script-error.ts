@@ -1,21 +1,8 @@
 import {bold, cyan, italic, magenta, yellow} from 'chalk';
 import {format} from 'node:util';
-import {BaseSmokerError} from './base-error';
-import type {ExecError} from './exec-error';
+import {BaseSmokerError} from '../../../error/base-error';
+import type {ExecError} from '../../executor/exec-error';
 
-/**
- * @group Errors
- */
-
-export class UnknownScriptError extends BaseSmokerError<{
-  script: string;
-  pkgName: string;
-}> {
-  public readonly id = 'UnknownScriptError';
-  constructor(message: string, script: string, pkgName: string) {
-    super(message, {script, pkgName});
-  }
-}
 /**
  * @group Errors
  */
@@ -59,31 +46,3 @@ export class RunScriptError extends BaseSmokerError<
     );
   }
 }
-
-/**
- * @group Errors
- * @todo Add underlying error to `cause`
- */
-export class ScriptFailedError extends BaseSmokerError<{
-  script: string;
-  pkgName: string;
-  pkgManager: string;
-  command: string;
-  exitCode: number;
-  output: string;
-}> {
-  public readonly id = 'ScriptFailedError';
-}
-
-/**
- * @group Errors
- */
-export class RunScriptBailed extends Error {}
-/**
- * @group Errors
- */
-
-export type ScriptError =
-  | RunScriptError
-  | UnknownScriptError
-  | ScriptFailedError;

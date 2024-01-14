@@ -3,8 +3,8 @@ import {isError} from 'lodash';
 import {
   Errors,
   Executor,
+  PkgManager,
   type Helpers,
-  type PkgManager,
 } from 'midnight-smoker/plugin';
 import path from 'node:path';
 import {GenericNpmPackageManager, type NpmPackItem} from './npm';
@@ -51,7 +51,7 @@ export class Npm7
     }
 
     const installSpecs = installManifests.map(({spec}) => spec);
-    let err: Errors.InstallError | undefined;
+    let err: PkgManager.Errors.InstallError | undefined;
     const installArgs = [
       'install',
       '--no-audit',
@@ -116,7 +116,7 @@ export class Npm7
         const parsedError = this.parseNpmError(err.stdout);
 
         if (parsedError) {
-          throw new Errors.PackError(
+          throw new PkgManager.Errors.PackError(
             parsedError.summary,
             this.spec,
             this.tmpdir,
@@ -124,7 +124,7 @@ export class Npm7
           );
         }
 
-        throw new Errors.PackError(
+        throw new PkgManager.Errors.PackError(
           `Use --verbose for more information`,
           this.spec,
           this.tmpdir,
@@ -150,7 +150,7 @@ export class Npm7
     } catch (err) {
       this.debug('(pack) Failed to parse JSON: %s', packOutput);
       throw isError(err)
-        ? new Errors.PackParseError(
+        ? new PkgManager.Errors.PackParseError(
             `Failed to parse JSON result of "npm pack"`,
             this.spec,
             err,
@@ -180,7 +180,7 @@ export class Npm7
   ) {
     const parsedError = this.parseNpmError(errOrResult.stdout);
     if (parsedError) {
-      return new Errors.InstallError(
+      return new PkgManager.Errors.InstallError(
         parsedError.summary,
         this.spec,
         installSpecs,
@@ -192,7 +192,7 @@ export class Npm7
         },
       );
     } else if (errOrResult.exitCode > 0) {
-      return new Errors.InstallError(
+      return new PkgManager.Errors.InstallError(
         `Use --verbose for more information`,
         this.spec,
         installSpecs,
@@ -203,7 +203,7 @@ export class Npm7
         },
       );
     } else if (errOrResult instanceof Error) {
-      return new Errors.InstallError(
+      return new PkgManager.Errors.InstallError(
         'Use --verbose for more information',
         this.spec,
         installSpecs,

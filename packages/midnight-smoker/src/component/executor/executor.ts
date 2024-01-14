@@ -17,10 +17,8 @@ import {
   zAbortSignal,
   zNonEmptyString,
   zNonEmptyStringArray,
-} from '../schema-util';
-import {zExecResult, type ExecResult} from './schema/executor-schema';
-export {ExecError} from '../error/exec-error';
-export type {ExecResult};
+} from '../../schema-util';
+import {zExecResult, type ExecResult} from './executor-schema';
 
 /**
  * Options for {@link Executor.exec}

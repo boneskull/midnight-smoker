@@ -20,21 +20,21 @@ import type {
   SomeRule,
 } from './component';
 import {RuleSeverities} from './component';
-import type {PkgManagerController} from './component/package-manager/controller';
-import {SmokerPkgManagerController} from './component/package-manager/controller';
-import {createRuleRunnerNotifiers} from './component/rule-runner/rule-runner-notifier';
+import {InstallError} from './component/package-manager/errors/install-error';
+import {PackError} from './component/package-manager/errors/pack-error';
+import type {ScriptError} from './component/package-manager/errors/script-error';
 import type {
   InstallResult,
   PkgManagerInstallManifest,
   RunScriptResult,
-} from './component/schema/pkg-manager-schema';
+} from './component/package-manager/pkg-manager-schema';
+import type {RuleError} from './component/rule-runner/rule-error';
+import {createRuleRunnerNotifiers} from './component/rule-runner/rule-runner-notifier';
+import type {PkgManagerController} from './controller/controller';
+import {SmokerPkgManagerController} from './controller/smoker-controller';
 import {fromUnknownError} from './error/base-error';
 import {InvalidArgError} from './error/common-error';
-import {InstallError} from './error/install-error';
-import {PackError} from './error/pack-error';
 import {ReporterError} from './error/reporter-error';
-import type {RuleError} from './error/rule-error';
-import type {ScriptError} from './error/script-error';
 import {CleanupError, SmokeFailedError} from './error/smoker-error';
 import {
   InstallEvent,
@@ -126,6 +126,10 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
    */
   public readonly scripts: string[];
 
+  private readonly ruleRunnerId: string;
+
+  private readonly scriptRunnerId: string;
+
   private constructor(
     opts: SmokerOptions,
     pluginRegistry = PluginRegistry.create(),
@@ -140,11 +144,14 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
       bail,
       all,
       workspace,
+      ruleRunner,
+      scriptRunner,
       lint: checks,
       reporter: reporters,
     } = opts;
     this.opts = Object.freeze(opts);
-
+    this.ruleRunnerId = ruleRunner;
+    this.scriptRunnerId = scriptRunner;
     this.scripts = script;
     this.linger = linger;
     this.includeWorkspaceRoot = includeRoot;
@@ -476,26 +483,28 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
         // we don't need to inspect the same package twice, so we pick the first
         // installPath for each pkgName encountered. we also want to ignore
         // "additional dependencies".
-        const uniquePkgNameMap = installManifests.reduce<Map<string, string>>(
-          (acc, {isAdditional, spec, installPath, pkgName}) => {
-            if (!isAdditional && !acc.has(pkgName)) {
-              /* istanbul ignore next */
-              if (!installPath) {
-                throw new TypeError(
-                  `Expected an installPath for ${pkgName} (${spec})`,
-                );
-              }
-              acc.set(pkgName, installPath);
+
+        // TODO: this can be simplified
+        const uniquePkgNameMap = installManifests.reduce<
+          Map<string, {pkgName: string; installPath: string}>
+        >((acc, {isAdditional, spec, installPath, pkgName}) => {
+          if (!isAdditional && !acc.has(pkgName)) {
+            /* c8 ignore next */
+            if (!installPath) {
+              throw new TypeError(
+                `Expected an installPath for ${pkgName} (${spec})`,
+              );
             }
-            return acc;
-          },
-          new Map(),
-        );
+            acc.set(pkgName, {pkgName, installPath});
+          }
+          return acc;
+        }, new Map());
         return [...uniquePkgNameMap.values()];
       },
     );
 
-    const ruleRunner = this.pluginRegistry.getRuleRunner();
+    const ruleRunner = this.pluginRegistry.getRuleRunner(this.ruleRunnerId);
+
     return ruleRunner(
       createRuleRunnerNotifiers(this),
       rules,
@@ -519,6 +528,7 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
     try {
       return await this.pmController.runScripts(this.scripts, installResults, {
         bail: this.bail,
+        scriptRunnerId: this.scriptRunnerId,
       });
     } finally {
       for (const evt of Object.values(RunScriptEvent)) {

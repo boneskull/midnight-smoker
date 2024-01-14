@@ -10,23 +10,17 @@ import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedEE from 'unexpected-eventemitter';
 import unexpectedSinon from 'unexpected-sinon';
-import type {
-  InstallResult,
-  PkgManager,
-  PkgManagerRunScriptManifest,
-  RunScriptResult,
-  ScriptRunner,
-  ScriptRunnerNotifiers,
-  ScriptRunnerOpts,
-} from '../../../../src/component';
-import {component} from '../../../../src/component';
-import type * as Controller from '../../../../src/component/package-manager/controller';
 import {
-  PackError,
-  PackageManagerError,
-  RunScriptBailed,
-  ScriptFailedError,
-} from '../../../../src/error';
+  component,
+  type InstallResult,
+  type PkgManagerRunScriptManifest,
+  type RunScriptResult,
+  type ScriptRunner,
+  type ScriptRunnerNotifiers,
+  type ScriptRunnerOpts,
+} from '../../../../src/component';
+import * as PkgManager from '../../../../src/component/package-manager';
+import type * as Controller from '../../../../src/controller';
 import {SmokerEvent} from '../../../../src/event/event-constants';
 import type {RunScriptFailedEventData} from '../../../../src/event/script-runner-events';
 import {PluginRegistry} from '../../../../src/plugin';
@@ -49,11 +43,7 @@ describe('midnight-smoker', function () {
           nullPm = new NullPm(NULL_SPEC);
           registry = sandbox.createStubInstance(PluginRegistry);
           ({SmokerPkgManagerController: PkgManagerController} =
-            rewiremock.proxy(
-              () =>
-                require('../../../../src/component/package-manager/controller'),
-              {},
-            ));
+            rewiremock.proxy(() => require('../../../../src/controller'), {}));
         });
 
         afterEach(function () {
@@ -69,7 +59,7 @@ describe('midnight-smoker', function () {
 
         describe('method', function () {
           let controller: Controller.PkgManagerController;
-          let pkgManagerMap: Map<string, PkgManager>;
+          let pkgManagerMap: Map<string, PkgManager.PkgManager>;
 
           beforeEach(function () {
             pkgManagerMap = new Map([
@@ -187,10 +177,14 @@ describe('midnight-smoker', function () {
             });
 
             describe('with a PackError', function () {
-              let err: PackError;
+              let err: PkgManager.Errors.PackError;
 
               beforeEach(function () {
-                err = new PackError('oh no', nullPm.spec, MOCK_TMPDIR);
+                err = new PkgManager.Errors.PackError(
+                  'oh no',
+                  nullPm.spec,
+                  MOCK_TMPDIR,
+                );
                 sandbox.stub(nullPm, 'pack').rejects(err);
               });
 
@@ -208,7 +202,7 @@ describe('midnight-smoker', function () {
 
           describe('runScripts()', function () {
             const scripts = ['script1', 'script2'];
-            const opts: Controller.RunScriptsOpts = {}; // replace with actual options
+            const opts: Controller.PkgManagerControllerRunScriptsOpts = {}; // replace with actual options
             let installResults: InstallResult[];
 
             beforeEach(function () {
@@ -299,7 +293,7 @@ describe('midnight-smoker', function () {
                     ) => {
                       await Promise.resolve();
                       if (opts.signal.aborted) {
-                        throw new RunScriptBailed();
+                        throw new PkgManager.Errors.RunScriptBailed();
                       }
                       controller.emit(
                         SmokerEvent.RunScriptFailed,
@@ -318,7 +312,7 @@ describe('midnight-smoker', function () {
                     exitCode: 1,
                     failed: true,
                   },
-                  error: new ScriptFailedError('oh no'),
+                  error: new PkgManager.Errors.ScriptFailedError('oh no'),
                   cwd: MOCK_TMPDIR,
                 };
 
@@ -412,11 +406,11 @@ describe('midnight-smoker', function () {
               });
 
               describe('when the script runner rejects', function () {
-                let err: PackageManagerError;
+                let err: PkgManager.Errors.PackageManagerError;
                 let brokenScriptRunner: ScriptRunner;
 
                 beforeEach(function () {
-                  err = new PackageManagerError(
+                  err = new PkgManager.Errors.PackageManagerError(
                     'egad',
                     NULL_SPEC,
                     new Error('execa error'),
@@ -479,9 +473,9 @@ describe('midnight-smoker', function () {
             });
 
             describe('when the script runner rejects', function () {
-              let err: PackageManagerError;
+              let err: PkgManager.Errors.PackageManagerError;
               beforeEach(function () {
-                err = new PackageManagerError(
+                err = new PkgManager.Errors.PackageManagerError(
                   'egad',
                   NULL_SPEC,
                   new Error('execa error'),

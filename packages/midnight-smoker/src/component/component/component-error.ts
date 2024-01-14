@@ -1,5 +1,5 @@
-import type {ComponentKind} from '../component/component-kind';
-import {BaseSmokerError} from './base-error';
+import {BaseSmokerError} from '../../error/base-error';
+import type {ComponentKind} from './component-kind';
 
 export class InvalidComponentError extends BaseSmokerError<{
   id: string;

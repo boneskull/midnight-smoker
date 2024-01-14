@@ -7,82 +7,33 @@
  */
 
 import Debug from 'debug';
-import {DEFAULT_COMPONENT_ID} from '../../constants';
-import {InstallError} from '../../error/install-error';
-import {PackError} from '../../error/pack-error';
-import {RunScriptBailed} from '../../error/script-error';
-import {SmokerEvent} from '../../event/event-constants';
+import {RunScriptBailed} from '../component/package-manager/errors/bailed-error';
+import {InstallError} from '../component/package-manager/errors/install-error';
+import {PackError} from '../component/package-manager/errors/pack-error';
+import {
+  type InstallManifest,
+  type InstallResult,
+  type PackOptions,
+  type PkgManager,
+  type PkgManagerInstallManifest,
+  type PkgManagerRunScriptManifest,
+  type RunScriptResult,
+} from '../component/schema';
+import {createScriptRunnerNotifiers} from '../component/script-runner/script-runner-notifier';
+import {SmokerEvent} from '../event/event-constants';
 import {
   buildInstallEventData,
   buildPackBeginEventData,
   buildPackOkEventData,
   buildRunScriptsBeginEventData,
   buildRunScriptsEndEventData,
-} from '../../event/event-util';
-import type {InstallEvents} from '../../event/install-events';
-import type {PackEvents} from '../../event/pack-events';
-import type {ScriptRunnerEvents} from '../../event/script-runner-events';
-import {createStrictEmitter} from '../../event/strict-emitter';
-import type {PluginRegistry} from '../../plugin/registry';
-import type {
-  InstallManifest,
-  InstallResult,
-  PackOptions,
-  PkgManager,
-  PkgManagerInstallManifest,
-  PkgManagerRunScriptManifest,
-  RunScriptResult,
-} from '../schema';
-import {createScriptRunnerNotifiers} from '../script-runner/script-runner-notifier';
-import type {PkgManagerOpts} from './pkg-manager-types';
+} from '../event/event-util';
+import {
+  PkgManagerController,
+  type PkgManagerControllerRunScriptsOpts,
+} from './controller';
 
 const debug = Debug('midnight-smoker:pkg-manager:controller');
-
-/**
- * All events emitted by the {@link SmokerPkgManagerController} class.
- */
-export type PkgManagerEvents = InstallEvents & ScriptRunnerEvents & PackEvents;
-
-/**
- * Options for the {@link SmokerPkgManagerController} class.
- */
-export interface PkgManagerControllerOpts extends PkgManagerOpts {
-  executorId?: string;
-}
-
-/**
- * @internal
- */
-export abstract class PkgManagerController extends createStrictEmitter<PkgManagerEvents>() {
-  protected readonly executorId: string;
-
-  public constructor(
-    protected readonly pluginRegistry: PluginRegistry,
-    protected readonly pkgManagerSpecs: readonly string[],
-    protected readonly opts: PkgManagerControllerOpts = {},
-  ) {
-    super();
-
-    this.executorId = opts.executorId ?? DEFAULT_COMPONENT_ID;
-  }
-
-  public abstract getPkgManagers(): Promise<readonly PkgManager[]>;
-
-  public abstract install(
-    installManifests: PkgManagerInstallManifest[],
-    additionalDeps?: string[],
-  ): Promise<InstallResult[]>;
-
-  public abstract pack(
-    opts?: PackOptions,
-  ): Promise<PkgManagerInstallManifest[]>;
-
-  public abstract runScripts(
-    scripts: string[],
-    installResults: InstallResult[],
-    opts: RunScriptsOpts,
-  ): Promise<RunScriptResult[]>;
-}
 
 /**
  * Provides an interface to components interacting with `PkgManager`s.
@@ -273,11 +224,12 @@ export class SmokerPkgManagerController extends PkgManagerController {
    * @param installResults - An array of install results.
    * @param opts - Options controlling run behavior.
    * @returns A promise that resolves to an array of run script results.
+   * @todo Support specific script runner
    */
   public async runScripts(
     scripts: string[],
     installResults: InstallResult[],
-    opts: RunScriptsOpts,
+    opts: PkgManagerControllerRunScriptsOpts,
   ): Promise<RunScriptResult[]> {
     const ac = new AbortController();
     const scriptRunner = this.pluginRegistry.getScriptRunner();
@@ -339,14 +291,4 @@ export class SmokerPkgManagerController extends PkgManagerController {
       this.off(SmokerEvent.RunScriptFailed, runScriptFailedListener);
     }
   }
-}
-
-/**
- * Options for {@link SmokerPkgManagerController.runScripts}
- */
-export interface RunScriptsOpts {
-  /**
-   * If `true`, halt execution of scripts on the first failure.
-   */
-  bail?: boolean;
 }

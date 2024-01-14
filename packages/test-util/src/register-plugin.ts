@@ -1,5 +1,6 @@
 import type {Plugin, PluginAPI} from 'midnight-smoker/plugin';
 import {PluginMetadata, PluginRegistry} from 'midnight-smoker/plugin';
+import {DEFAULT_TEST_PLUGIN_NAME} from './constants';
 
 export interface BaseRegisterPluginOpts {
   pluginName?: string;
@@ -39,7 +40,7 @@ export async function registerPlugin(
   opts: RegisterPluginOpts = {},
 ): Promise<PluginRegistry> {
   const {
-    pluginName: id = 'test-plugin',
+    pluginName: id = DEFAULT_TEST_PLUGIN_NAME,
     description = 'test description',
     version = '1.0.0',
     registry = PluginRegistry.create(),

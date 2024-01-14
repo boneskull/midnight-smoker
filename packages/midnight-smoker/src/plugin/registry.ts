@@ -4,18 +4,15 @@ import {dirname} from 'node:path';
 import util from 'node:util';
 import {z} from 'zod';
 import {fromZodError} from 'zod-validation-error';
-import {zRuleRunner, zScriptRunner} from '../component';
-import type {Component} from '../component/component';
-import {ComponentKinds} from '../component/component-kind';
+import {ComponentKinds, type Component} from '../component/component';
+import {InvalidComponentError} from '../component/component/component-error';
 import * as Executor from '../component/executor';
-import * as PackageManager from '../component/package-manager';
-import {loadPackageManagers} from '../component/package-manager/loader';
+import * as PkgManager from '../component/package-manager';
 import * as Reporter from '../component/reporter';
 import * as Rule from '../component/rule';
 import * as RuleRunner from '../component/rule-runner';
 import * as ScriptRunner from '../component/script-runner';
 import {DEFAULT_COMPONENT_ID} from '../constants';
-import {InvalidComponentError} from '../error/component-error';
 import * as Errors from '../error/errors';
 import {
   DisallowedPluginError,
@@ -31,14 +28,12 @@ import {justImport, resolveFrom} from '../loader-util';
 import {readPackageJson} from '../pkg-util';
 import * as SchemaUtils from '../schema-util';
 import {isErrnoException} from '../util';
-import type {BlessedPlugin} from './blessed';
-import {isBlessedPlugin} from './blessed';
+import {isBlessedPlugin, type BlessedPlugin} from './blessed';
 import * as Helpers from './helpers';
 import {PluginMetadata, initBlessedMetadata} from './metadata';
-import type {Plugin} from './plugin';
-import {zPlugin} from './plugin';
+import {zPlugin, type Plugin} from './plugin';
 import type * as API from './plugin-api';
-import type {StaticPluginMetadata} from './static-metadata';
+import {type StaticPluginMetadata} from './static-metadata';
 
 const debug = Debug('midnight-smoker:plugin-registry');
 
@@ -73,10 +68,7 @@ export class PluginRegistry {
 
   private reporterMap: Map<string, Component<Reporter.ReporterDef>>;
 
-  private pkgManagerDefMap: Map<
-    string,
-    Component<PackageManager.PkgManagerDef>
-  >;
+  private pkgManagerDefMap: Map<string, Component<PkgManager.PkgManagerDef>>;
 
   private blessedMetadata?: Readonly<Record<BlessedPlugin, PluginMetadata>>;
 
@@ -176,11 +168,11 @@ export class PluginRegistry {
   public async loadPackageManagers(
     executorId: string,
     specs?: readonly string[],
-    opts: PackageManager.PkgManagerOpts = {},
-  ): Promise<Map<string, PackageManager.PkgManager>> {
+    opts: PkgManager.PkgManagerOpts = {},
+  ): Promise<Map<string, PkgManager.PkgManager>> {
     const executor = this.getExecutor(executorId);
 
-    return await loadPackageManagers(
+    return await PkgManager.loadPackageManagers(
       [...this.pkgManagerDefMap.values()],
       executor,
       specs,
@@ -625,7 +617,10 @@ export class PluginRegistry {
       scriptRunner,
       name = DEFAULT_COMPONENT_ID,
     ) => {
-      metadata.addScriptRunner(name, zScriptRunner.parse(scriptRunner));
+      metadata.addScriptRunner(
+        name,
+        ScriptRunner.zScriptRunner.parse(scriptRunner),
+      );
       return pluginApi;
     };
 
@@ -633,7 +628,7 @@ export class PluginRegistry {
       ruleRunner,
       name = DEFAULT_COMPONENT_ID,
     ) => {
-      metadata.addRuleRunner(name, zRuleRunner.parse(ruleRunner));
+      metadata.addRuleRunner(name, RuleRunner.zRuleRunner.parse(ruleRunner));
       return pluginApi;
     };
 
@@ -658,7 +653,7 @@ export class PluginRegistry {
       SchemaUtils,
       Helpers,
       Rule,
-      PkgManager: PackageManager,
+      PkgManager,
       Errors,
       Executor,
       RuleRunner,

@@ -39,7 +39,9 @@ describe('@midnight-smoker/plugin-default', function () {
         },
       });
 
-      runRulesManifest = [path.join(__dirname, '..', '..')];
+      runRulesManifest = [
+        {pkgName: 'stumps', installPath: path.join(__dirname, '..', '..')},
+      ];
 
       smokerRuleRunner = registry.getRuleRunner('test-plugin/default');
     });

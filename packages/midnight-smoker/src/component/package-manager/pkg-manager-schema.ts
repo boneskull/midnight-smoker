@@ -1,10 +1,13 @@
 import {z} from 'zod';
 import {zScriptError} from '../../error/error-schema';
-import type {ExecError} from '../../error/exec-error';
-import type {ScriptError} from '../../error/script-error';
 import {customSchema, zAbortSignal, zNonEmptyString} from '../../schema-util';
-import type {ExecResult} from './executor-schema';
-import {zExecError, zExecResult} from './executor-schema';
+import type {ExecError} from '../executor/exec-error';
+import {
+  zExecError,
+  zExecResult,
+  type ExecResult,
+} from '../executor/executor-schema';
+import type {ScriptError} from './errors/script-error';
 
 export const zBaseRunScriptManifest = z.object({
   cwd: zNonEmptyString,
@@ -56,6 +59,7 @@ export const zBaseInstallManifest = z
     spec: zNonEmptyString.describe('The package spec to install'),
   })
   .describe('Installation manifest (what to install and where)');
+
 export const zInstallManifest =
   customSchema<InstallManifest>(zBaseInstallManifest);
 
@@ -234,4 +238,22 @@ export const zInstallResult = z.object({
 export interface PkgManagerRunScriptManifest extends PkgManagerInstallManifest {
   script: string;
 }
+
 export type InstallResult = z.infer<typeof zInstallResult>;
+
+export const zScriptRunnerOpts = customSchema<ScriptRunnerOpts>(
+  z
+    .object({
+      bail: z
+        .boolean()
+        .optional()
+        .describe('If true, abort on the first script failure'),
+      signal: zAbortSignal,
+    })
+    .describe('Options for a ScriptRunner component'),
+);
+
+export interface ScriptRunnerOpts {
+  bail?: boolean;
+  signal: AbortSignal;
+}

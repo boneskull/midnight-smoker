@@ -8,7 +8,7 @@ export {
   ComponentId,
   type Component,
   type ComponentApi,
-} from '../component/component';
+} from '../component/component/component';
 export * as Executor from '../component/executor';
 export * as PkgManager from '../component/package-manager';
 export * as Reporter from '../component/reporter';
@@ -16,6 +16,7 @@ export * as Rule from '../component/rule';
 export * as RuleRunner from '../component/rule-runner';
 export * as ScriptRunner from '../component/script-runner';
 export * from '../constants';
+export * as Controller from '../controller';
 export * as Errors from '../error/errors';
 export * as Event from '../event';
 export * as SchemaUtils from '../schema-util';

@@ -1,5 +1,5 @@
 import Debug from 'debug';
-import {isBlessedPlugin} from '../plugin/blessed';
+import {isBlessedPlugin} from '../../plugin/blessed';
 
 const debug = Debug('midnight-smoker:component:component-id');
 

@@ -31,7 +31,7 @@ export function loadScriptRunner(api: PluginAPI) {
     const {signal} = opts;
 
     if (signal.aborted) {
-      throw new api.Errors.RunScriptBailed();
+      throw new api.PkgManager.Errors.RunScriptBailed();
     }
 
     const {pkgManager, script, pkgName} = runManifest;
@@ -49,11 +49,11 @@ export function loadScriptRunner(api: PluginAPI) {
         signal,
       });
     } catch (err) {
-      if (err instanceof api.Errors.RunScriptBailed) {
+      if (err instanceof api.ScriptRunner.RunScriptBailed) {
         throw err;
       }
       if (isError(err)) {
-        throw new api.Errors.PackageManagerError(
+        throw new api.ScriptRunner.PackageManagerError(
           `Package manager "${pkgManager.spec}" failed to run script "${script}": ${err.message}`,
           pkgManager.spec,
           err,
@@ -64,7 +64,7 @@ export function loadScriptRunner(api: PluginAPI) {
 
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (signal.aborted) {
-      throw new api.Errors.RunScriptBailed();
+      throw new api.ScriptRunner.RunScriptBailed();
     }
 
     if (result.error) {

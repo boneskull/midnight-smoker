@@ -6,9 +6,12 @@ import {
   instanceofSchema,
   zEmptyObject,
 } from '../../schema-util';
-import type {Component, Owner} from '../component';
-import {component} from '../component';
-import {ComponentKinds} from '../component-kind';
+import {
+  ComponentKinds,
+  component,
+  type Component,
+  type Owner,
+} from '../component';
 import type {RuleContext} from './context';
 import {
   DEFAULT_RULE_SEVERITY,

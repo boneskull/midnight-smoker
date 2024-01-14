@@ -1,7 +1,7 @@
 import type {PackageJson} from 'type-fest';
-import {RuleError} from '../../error/rule-error';
 import {serialize} from '../../util';
 import type {Component} from '../component';
+import {RuleError} from '../rule-runner/rule-error';
 import {RuleIssue} from './issue';
 
 import type {StaticRule, StaticRuleContext} from './static';

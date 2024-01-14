@@ -1,4 +1,5 @@
 import unexpected from 'unexpected';
+import {RuleError} from '../../../../src/component/rule-runner/rule-error';
 import type {
   RuleIssueParams,
   StaticRuleIssue,
@@ -12,7 +13,6 @@ import type {
   StaticRule,
   StaticRuleContext,
 } from '../../../../src/component/rule/static';
-import {RuleError} from '../../../../src/error/rule-error';
 
 const expect = unexpected.clone();
 

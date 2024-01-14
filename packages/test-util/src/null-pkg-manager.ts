@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import type {PkgManager} from 'midnight-smoker/plugin';
+import type {Executor, PkgManager} from 'midnight-smoker/plugin';
 import type {SemVer} from 'semver';
 import {MOCK_TMPDIR} from './constants';
 import {nullExecutor} from './null-executor';
@@ -24,7 +24,7 @@ export class NullPm implements PkgManager.PkgManager {
 
   async install(
     installManifests: PkgManager.InstallManifest[],
-  ): Promise<PkgManager.ExecResult> {
+  ): Promise<Executor.ExecResult> {
     return {
       stdout: '',
       stderr: '',
