@@ -5,7 +5,7 @@ export const nullScriptRunner: ScriptRunner.ScriptRunner = async (
   opts: ScriptRunner.ScriptRunnerOpts,
 ): Promise<ScriptRunner.RunScriptResult> => {
   await Promise.resolve();
-  if (opts.signal.aborted) {
+  if (opts.signal?.aborted) {
     throw new ScriptRunner.RunScriptBailed();
   }
   const {script, pkgName} = pkgManagerRunManifest;
@@ -16,7 +16,7 @@ export const nullScriptRunner: ScriptRunner.ScriptRunner = async (
 
   await Promise.resolve();
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  if (opts.signal.aborted) {
+  if (opts.signal?.aborted) {
     throw new ScriptRunner.RunScriptBailed();
   }
   const result: ScriptRunner.RunScriptResult = {

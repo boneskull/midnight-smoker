@@ -5,8 +5,14 @@ import {hideBin} from 'yargs/helpers';
 import yargs from 'yargs/yargs';
 import {readConfigFile} from '../config-file';
 import {readSmokerPkgJson} from '../pkg-util';
-import {GlobalOptions, handleRejection, mergeOptions} from './cli-util';
-import {LintCommand, ListCommand, RunScriptCommand} from './command';
+import {handleRejection, mergeOptions} from './cli-util';
+import {
+  LintCommand,
+  ListCommand,
+  RunScriptCommand,
+  ViewCommand,
+} from './command';
+import {GlobalOptions} from './command/global-opts';
 
 const debug = Debug('midnight-smoker:cli');
 
@@ -28,6 +34,7 @@ async function main(args: string[]): Promise<void> {
     .command(new LintCommand())
     .command(new ListCommand())
     .command(new RunScriptCommand())
+    .command(new ViewCommand())
     .middleware(async (argv) => {
       const config = await readConfigFile(argv.config);
       // ensure "config" cannot be set using the config file.

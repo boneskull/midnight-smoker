@@ -15,8 +15,10 @@ export class YarnClassic implements PkgManager.PkgManager {
 
   public readonly name = 'yarn';
 
+  public static readonly lockfile = 'yarn.lock';
+
   constructor(
-    public readonly spec: string,
+    public readonly spec: PkgManager.PkgManagerSpec,
     protected readonly executor: Executor.Executor,
     public readonly tmpdir: string,
     protected readonly helpers: typeof Helpers,
@@ -29,13 +31,13 @@ export class YarnClassic implements PkgManager.PkgManager {
 
   public static async create(
     this: void,
-    id: string,
+    spec: PkgManager.PkgManagerSpec,
     executor: Executor.Executor,
     helpers: typeof Helpers,
     opts?: PkgManager.PkgManagerOpts,
   ) {
     const tmpdir = await helpers.createTempDir();
-    return new YarnClassic(id, executor, tmpdir, helpers, opts);
+    return new YarnClassic(spec, executor, tmpdir, helpers, opts);
   }
 
   public async install(
@@ -62,7 +64,7 @@ export class YarnClassic implements PkgManager.PkgManager {
       if (err instanceof Executor.ExecError) {
         throw new PkgManager.Errors.InstallError(
           err.message,
-          this.spec,
+          `${this.spec}`,
           installSpecs,
           this.tmpdir,
           {
@@ -150,7 +152,7 @@ export class YarnClassic implements PkgManager.PkgManager {
         if (err instanceof Executor.ExecError) {
           throw new PkgManager.Errors.PackError(
             'Unable to read workspace information',
-            this.spec,
+            `${this.spec}`,
             this.tmpdir,
             {
               error: err,
@@ -174,7 +176,7 @@ export class YarnClassic implements PkgManager.PkgManager {
               if (!info) {
                 throw new PkgManager.Errors.PackError(
                   `Unable to find workspace "${workspace}`,
-                  this.spec,
+                  `${this.spec}`,
                   this.tmpdir,
                 );
               }
@@ -220,7 +222,7 @@ export class YarnClassic implements PkgManager.PkgManager {
         if (err instanceof Executor.ExecError) {
           throw new PkgManager.Errors.PackError(
             err.message,
-            this.spec,
+            `${this.spec}`,
             this.tmpdir,
             {
               error: err,
@@ -275,7 +277,7 @@ export class YarnClassic implements PkgManager.PkgManager {
             err,
             script,
             pkgName,
-            this.spec,
+            `${this.spec}`,
           );
         }
       } else {

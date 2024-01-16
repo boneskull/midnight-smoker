@@ -8,7 +8,7 @@ export class Npm9 extends Npm7 implements PkgManager.PkgManager {
   public static override accepts = '>=9.0.0';
 
   constructor(
-    spec: string,
+    spec: PkgManager.PkgManagerSpec,
     executor: Executor.Executor,
     tempdir: string,
     opts: PkgManager.PkgManagerOpts = {},
@@ -19,13 +19,13 @@ export class Npm9 extends Npm7 implements PkgManager.PkgManager {
 
   public static async create(
     this: void,
-    id: string,
+    spec: PkgManager.PkgManagerSpec,
     executor: Executor.Executor,
     helpers: typeof Helpers,
     opts?: PkgManager.PkgManagerOpts,
   ) {
     const tempdir = await helpers.createTempDir();
-    return new Npm9(id, executor, tempdir, opts);
+    return new Npm9(spec, executor, tempdir, opts);
   }
 
   public override async install(

@@ -14,6 +14,7 @@ import type {
   RunScriptsEndEventData,
   RunScriptsEventData,
 } from '../component/script-runner/script-runner-events';
+
 import type {InstallEventData} from './install-events';
 import type {PackBeginEventData} from './pack-events';
 
@@ -28,7 +29,7 @@ export function buildPackBeginEventData(
   pkgManagers: readonly PkgManager[],
 ): PackBeginEventData {
   return {
-    packageManagers: pkgManagers.map((pkgManager) => pkgManager.spec),
+    packageManagers: pkgManagers.map((pkgManager) => `${pkgManager.spec}`),
   };
 }
 
@@ -65,10 +66,11 @@ export function buildRunScriptsBeginEventData(
   const pkgRunManifestForEmit: RunScriptsEventData['manifest'] =
     controllerRunManifests.reduce<RunScriptsEventData['manifest']>(
       (acc, manifest) => {
-        if (manifest.pkgManager.spec in acc) {
-          acc[manifest.pkgManager.spec].push(manifest);
+        const spec = `${manifest.pkgManager.spec}`;
+        if (spec in acc) {
+          acc[spec].push(manifest);
         } else {
-          acc[manifest.pkgManager.spec] = [manifest];
+          acc[spec] = [manifest];
         }
         return acc;
       },
@@ -113,13 +115,14 @@ export function buildInstallEventData(
   ];
 
   const pkgManagerSpecs = pkgManagers.map(({spec}) => spec);
-  const pkgManagerSpecPairs = pkgManagerSpecs.map((spec) =>
-    spec.split('@'),
-  ) as [name: string, version: string][];
+  const pkgManagerSpecPairs = pkgManagerSpecs.map(
+    (spec) =>
+      [spec.pkgManager, spec.version] as [name: string, version: string],
+  );
 
   return {
     uniquePkgs,
-    pkgManagerSpecs,
+    pkgManagerSpecs: pkgManagerSpecs.map((spec) => `${spec}`),
     pkgManagers: pkgManagerSpecPairs,
     additionalDeps,
     manifests: installManifests,

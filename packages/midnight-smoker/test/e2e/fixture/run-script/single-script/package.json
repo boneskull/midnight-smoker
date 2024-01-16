@@ -3,5 +3,6 @@
   "version": "1.0.0",
   "scripts": {
     "smoke": "exit 0"
-  }
+  },
+  "packageManager": "npm@10.2.3"
 }

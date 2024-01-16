@@ -51,9 +51,10 @@ Lint package artifacts
 
 Commands:
   smoker lint                   Lint package artifacts                 [default]
-  smoker list <component>       Show available components          [aliases: ls]
+  smoker list <component>       List available components          [aliases: ls]
   smoker run-script <script..>  Run custom script(s) against package artifacts
                                                                   [aliases: run]
+  smoker view <item>            View information about stuff     [aliases: show]
 
 Input:
       --all                Run in all workspaces                       [boolean]
@@ -62,7 +63,7 @@ Input:
   -w, --workspace          Run script in a specific workspace or workspaces
                                                                          [array]
   -p, --pkg-manager, --pm  Use a specific package manager
-                                                   [array] [default: npm@latest]
+                                                       [array] [default: (auto)]
 
 Output:
       --json      Output JSON only. Alias for "--reporter=json"        [boolean]
@@ -85,9 +86,10 @@ Lint package artifacts
 
 Commands:
   smoker lint                   Lint package artifacts                 [default]
-  smoker list <component>       Show available components          [aliases: ls]
+  smoker list <component>       List available components          [aliases: ls]
   smoker run-script <script..>  Run custom script(s) against package artifacts
                                                                   [aliases: run]
+  smoker view <item>            View information about stuff     [aliases: show]
 
 Input:
       --all                Run in all workspaces                       [boolean]
@@ -96,7 +98,7 @@ Input:
   -w, --workspace          Run script in a specific workspace or workspaces
                                                                          [array]
   -p, --pkg-manager, --pm  Use a specific package manager
-                                                   [array] [default: npm@latest]
+                                                       [array] [default: (auto)]
 
 Output:
       --json      Output JSON only. Alias for "--reporter=json"        [boolean]
@@ -121,9 +123,10 @@ Lint package artifacts
 
 Commands:
   smoker lint                   Lint package artifacts                 [default]
-  smoker list <component>       Show available components          [aliases: ls]
+  smoker list <component>       List available components          [aliases: ls]
   smoker run-script <script..>  Run custom script(s) against package artifacts
                                                                   [aliases: run]
+  smoker view <item>            View information about stuff     [aliases: show]
 
 Input:
       --all                Run in all workspaces                       [boolean]
@@ -132,7 +135,7 @@ Input:
   -w, --workspace          Run script in a specific workspace or workspaces
                                                                          [array]
   -p, --pkg-manager, --pm  Use a specific package manager
-                                                   [array] [default: npm@latest]
+                                                       [array] [default: (auto)]
 
 Output:
       --json      Output JSON only. Alias for "--reporter=json"        [boolean]
@@ -166,7 +169,7 @@ Input:
   -w, --workspace          Run script in a specific workspace or workspaces
                                                                          [array]
   -p, --pkg-manager, --pm  Use a specific package manager
-                                                   [array] [default: npm@latest]
+                                                       [array] [default: (auto)]
 
 Output:
       --json      Output JSON only. Alias for "--reporter=json"        [boolean]

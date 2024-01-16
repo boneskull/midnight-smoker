@@ -11,12 +11,8 @@ exports['@midnight-smoker/plugin-default reporter json when the script succeeds 
       "linger": false,
       "lint": false,
       "loose": false,
-      "pkg-manager": [
-        "npm@latest"
-      ],
-      "pkgManager": [
-        "npm@latest"
-      ],
+      "pkg-manager": [],
+      "pkgManager": [],
       "plugin": [],
       "reporter": [
         "json"
@@ -112,12 +108,8 @@ exports['@midnight-smoker/plugin-default reporter json when the script fails sho
           "linger": false,
           "lint": false,
           "loose": false,
-          "pkg-manager": [
-            "npm@latest"
-          ],
-          "pkgManager": [
-            "npm@latest"
-          ],
+          "pkg-manager": [],
+          "pkgManager": [],
           "plugin": [],
           "reporter": [
             "json"

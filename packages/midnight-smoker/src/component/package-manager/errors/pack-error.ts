@@ -1,5 +1,6 @@
 import {red} from 'chalk';
 import {BaseSmokerError} from '../../../error/base-error';
+import {type PkgManagerSpec} from '../pkg-manager-spec';
 
 /**
  * @group Errors
@@ -16,7 +17,7 @@ export class PackError extends BaseSmokerError<{
 
   constructor(
     message: string,
-    spec: string,
+    pkgManager: string | PkgManagerSpec,
     dest: string,
     {
       cwd,
@@ -25,9 +26,9 @@ export class PackError extends BaseSmokerError<{
       output,
     }: {cwd?: string; error?: object; exitCode?: number; output?: string} = {},
   ) {
-    super(`Package manager ${spec} failed to pack: ${red(message)}`, {
+    super(`Package manager ${pkgManager} failed to pack: ${red(message)}`, {
       error,
-      spec,
+      spec: `${pkgManager}`,
       cwd,
       dest,
       exitCode,
@@ -49,10 +50,10 @@ export class PackParseError extends BaseSmokerError<
 
   constructor(
     message: string,
-    pkgManager: string,
+    pkgManager: string | PkgManagerSpec,
     error: SyntaxError,
     output: string,
   ) {
-    super(message, {pkgManager, output}, error);
+    super(message, {pkgManager: `${pkgManager}`, output}, error);
   }
 }

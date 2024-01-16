@@ -62,7 +62,7 @@ Stack Trace:
 InstallError: Package manager npm@<version> failed to install /<path/to/some>.tgz in dir <cwd>: Not Found - GET https://registry.npmjs.org/4923867iajhiknfdeskjusyghikuwyhwaqheakkcjzhxfksdjfhd - Not found<loc>:<line>:<col><loc>:<line>:<col><loc>:<line>:<col><loc>:<line>:<col>
     at async Promise.all (index 0)<loc>:<line>:<col><loc>:<line>:<col><loc>:<line>:<col><loc>:<line>:<col> {
   context: {
-    pmSpec: 'npm@<version>',
+    pkgManager: 'npm@<version>',
     installSpecs: [
       '/<path/to/some>.tgz'
     ],

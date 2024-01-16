@@ -26,11 +26,9 @@ export function loadScriptRunner(api: PluginAPI) {
   const smokerScriptRunner: ScriptRunner.ScriptRunner = async (
     {scriptBegin, scriptOk, scriptFailed},
     runManifest,
-    opts,
+    {signal},
   ): Promise<ScriptRunner.RunScriptResult> => {
-    const {signal} = opts;
-
-    if (signal.aborted) {
+    if (signal?.aborted) {
       throw new api.PkgManager.Errors.RunScriptBailed();
     }
 
@@ -63,7 +61,7 @@ export function loadScriptRunner(api: PluginAPI) {
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (signal.aborted) {
+    if (signal?.aborted) {
       throw new api.ScriptRunner.RunScriptBailed();
     }
 

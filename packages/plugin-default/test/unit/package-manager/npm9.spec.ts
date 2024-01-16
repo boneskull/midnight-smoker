@@ -1,6 +1,5 @@
 import type {nullExecutor} from '@midnight-smoker/test-util';
-import type {PkgManager} from 'midnight-smoker/plugin';
-import {Helpers} from 'midnight-smoker/plugin';
+import {Helpers, PkgManager as PkgMgr} from 'midnight-smoker/plugin';
 import rewiremock from 'rewiremock/node';
 import {Range} from 'semver';
 import {createSandbox} from 'sinon';
@@ -55,7 +54,12 @@ describe('@midnight-smoker/plugin-default', function () {
 
   describe('package manager', function () {
     describe('Npm9', function () {
-      const id = 'npm@9.8.1';
+      let spec: Readonly<PkgMgr.PkgManagerSpec>;
+
+      before(async function () {
+        spec = await PkgMgr.PkgManagerSpec.from('npm@9.8.1');
+      });
+
       describe('static method', function () {
         describe('accepts', function () {
           let range: Range;
@@ -81,11 +85,11 @@ describe('@midnight-smoker/plugin-default', function () {
         let npm: NPM9.Npm9;
 
         beforeEach(async function () {
-          npm = await Npm9.create(id, executor, Helpers);
+          npm = await Npm9.create(spec, executor, Helpers);
         });
 
         describe('install()', function () {
-          const manifest: PkgManager.InstallManifest[] = [
+          const manifest: PkgMgr.InstallManifest[] = [
             {
               spec: `${MOCK_TMPDIR}/bar.tgz`,
               pkgName: 'bar',

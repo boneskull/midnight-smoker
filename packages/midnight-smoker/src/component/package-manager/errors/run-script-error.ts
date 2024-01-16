@@ -2,7 +2,7 @@ import {bold, cyan, italic, magenta, yellow} from 'chalk';
 import {format} from 'node:util';
 import {BaseSmokerError} from '../../../error/base-error';
 import type {ExecError} from '../../executor/exec-error';
-
+import type {PkgManagerSpec} from '../pkg-manager-spec';
 /**
  * @group Errors
  */
@@ -24,7 +24,7 @@ export class RunScriptError extends BaseSmokerError<
     error: ExecError,
     script: string,
     pkgName: string,
-    pkgManagerSpec: string,
+    pkgManager: string | PkgManagerSpec,
   ) {
     const message = format(
       'Script %s in package %s failed with exit code %s',
@@ -37,7 +37,7 @@ export class RunScriptError extends BaseSmokerError<
       {
         script,
         pkgName,
-        pkgManager: pkgManagerSpec,
+        pkgManager: `${pkgManager}`,
         command: error.command,
         exitCode: error.exitCode,
         output: error.all || error.stderr || error.stdout,

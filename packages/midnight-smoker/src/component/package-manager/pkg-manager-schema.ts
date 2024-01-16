@@ -8,6 +8,7 @@ import {
   type ExecResult,
 } from '../executor/executor-schema';
 import type {ScriptError} from './errors/script-error';
+import {zPkgManagerSpec} from './pkg-manager-spec';
 
 export const zBaseRunScriptManifest = z.object({
   cwd: zNonEmptyString,
@@ -99,30 +100,24 @@ export interface InstallManifest {
 
 export const zInstallManifests = z.array(zInstallManifest);
 
-export const zPackOptions = customSchema<PackOptions>(
-  z
-    .object({
-      allWorkspaces: z
-        .boolean()
-        .optional()
-        .describe('If true, pack all workspaces'),
-      includeWorkspaceRoot: z
-        .boolean()
-        .optional()
-        .describe('Include the workspace root when packing'),
-      workspaces: z
-        .array(zNonEmptyString)
-        .optional()
-        .describe('List of workspaces to pack'),
-    })
-    .describe('Options for a Packer component'),
-);
+export const zPackOptions = z
+  .object({
+    allWorkspaces: z
+      .boolean()
+      .optional()
+      .describe('If true, pack all workspaces'),
+    includeWorkspaceRoot: z
+      .boolean()
+      .optional()
+      .describe('Include the workspace root when packing'),
+    workspaces: z
+      .array(zNonEmptyString)
+      .optional()
+      .describe('List of workspaces to pack'),
+  })
+  .describe('Options for a Packer component');
 
-export interface PackOptions {
-  allWorkspaces?: boolean;
-  includeWorkspaceRoot?: boolean;
-  workspaces?: string[];
-}
+export type PackOptions = z.infer<typeof zPackOptions>;
 
 export const zPkgManagerInstallMethod = customSchema<PkgManagerInstallMethod>(
   z
@@ -144,9 +139,11 @@ export const zPkgManagerPackMethod = customSchema<PkgManagerPackMethod>(
     .describe('Packs one or more packages into tarballs'),
 );
 
-export const zPkgManagerRunScriptOpts = z.object({
-  signal: zAbortSignal,
-});
+export const zPkgManagerRunScriptOpts = z
+  .object({
+    signal: zAbortSignal.optional(),
+  })
+  .optional();
 
 export const zPkgManagerRunScriptMethod =
   customSchema<PkgManagerRunScriptMethod>(
@@ -163,21 +160,23 @@ export const zPkgManagerRunScriptMethod =
       ),
   );
 
-export const zInternalPackageManager = z
+export const zPackageManager = z
   .object({
     install: zPkgManagerInstallMethod,
     pack: zPkgManagerPackMethod,
     runScript: zPkgManagerRunScriptMethod,
-    spec: zNonEmptyString.readonly(),
+    spec: zPkgManagerSpec.readonly(),
     tmpdir: zNonEmptyString.readonly(),
   })
   .describe(
     'Provides functionality to pack, install, and run custom scripts in packages; has an Executor',
   );
 
-export const zPackageManager = customSchema<PkgManager>(
-  zInternalPackageManager,
-);
+export type PkgManager = z.infer<typeof zPackageManager>;
+
+// export const zPackageManager = customSchema<PkgManager>(
+//   zInternalPackageManager,
+// );
 
 export type PkgManagerInstallMethod = (
   installManifests: InstallManifest[],
@@ -190,16 +189,8 @@ export type PkgManagerRunScriptOpts = z.infer<typeof zPkgManagerRunScriptOpts>;
 
 export type PkgManagerRunScriptMethod = (
   runScriptManifest: RunScriptManifest,
-  opts: PkgManagerRunScriptOpts,
+  opts?: PkgManagerRunScriptOpts,
 ) => Promise<RunScriptResult>;
-
-export interface PkgManager {
-  install: PkgManagerInstallMethod;
-  pack: PkgManagerPackMethod;
-  runScript: PkgManagerRunScriptMethod;
-  spec: string;
-  tmpdir: string;
-}
 
 export const zBasePkgManagerInstallManifest = zBaseInstallManifest
   .extend({
@@ -241,19 +232,10 @@ export interface PkgManagerRunScriptManifest extends PkgManagerInstallManifest {
 
 export type InstallResult = z.infer<typeof zInstallResult>;
 
-export const zScriptRunnerOpts = customSchema<ScriptRunnerOpts>(
-  z
-    .object({
-      bail: z
-        .boolean()
-        .optional()
-        .describe('If true, abort on the first script failure'),
-      signal: zAbortSignal,
-    })
-    .describe('Options for a ScriptRunner component'),
-);
+export const zScriptRunnerOpts = z
+  .object({
+    signal: zAbortSignal.optional(),
+  })
+  .describe('Options for a ScriptRunner component');
 
-export interface ScriptRunnerOpts {
-  bail?: boolean;
-  signal: AbortSignal;
-}
+export type ScriptRunnerOpts = z.infer<typeof zScriptRunnerOpts>;

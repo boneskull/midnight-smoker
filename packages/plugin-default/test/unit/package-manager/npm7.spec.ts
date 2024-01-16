@@ -1,7 +1,6 @@
 import type {nullExecutor} from '@midnight-smoker/test-util';
 import {type ExecaError} from 'execa';
-import type {PkgManager} from 'midnight-smoker/plugin';
-import {Executor, Helpers} from 'midnight-smoker/plugin';
+import {Executor, Helpers, PkgManager as PkgMgr} from 'midnight-smoker/plugin';
 import rewiremock from 'rewiremock/node';
 import {Range} from 'semver';
 import {createSandbox} from 'sinon';
@@ -58,13 +57,16 @@ describe('@midnight-smoker/plugin-default', function () {
 
   describe('package manager', function () {
     describe('Npm7', function () {
-      const id = 'npm@7.0.0';
+      let spec: Readonly<PkgMgr.PkgManagerSpec>;
+      before(async function () {
+        spec = await PkgMgr.PkgManagerSpec.from('npm@7.0.0');
+      });
 
       describe('static method', function () {
         describe('create()', function () {
           it('should resolve w/ an Npm instance', async function () {
             await expect(
-              Npm7.create(id, executor, Helpers),
+              Npm7.create(spec, executor, Helpers),
               'to be fulfilled with value satisfying',
               expect.it('to be a', Npm7),
             );
@@ -105,7 +107,7 @@ describe('@midnight-smoker/plugin-default', function () {
         let npm: NPM7.Npm7;
 
         beforeEach(async function () {
-          npm = await Npm7.create(id, executor, Helpers);
+          npm = await Npm7.create(spec, executor, Helpers);
         });
 
         describe('pack()', function () {
@@ -128,7 +130,7 @@ describe('@midnight-smoker/plugin-default', function () {
               await npm.pack();
 
               expect(executor, 'to have a call satisfying', [
-                id,
+                spec,
                 [
                   'pack',
                   '--json',
@@ -143,7 +145,7 @@ describe('@midnight-smoker/plugin-default', function () {
             it('should call exec with --workspace args', async function () {
               await npm.pack({workspaces: ['bar', 'baz']});
               expect(executor, 'to have a call satisfying', [
-                id,
+                spec,
                 [
                   'pack',
                   '--json',
@@ -160,7 +162,7 @@ describe('@midnight-smoker/plugin-default', function () {
             it('should call exec with --workspaces flag', async function () {
               await npm.pack({allWorkspaces: true});
               expect(executor, 'to have a call satisfying', [
-                id,
+                spec,
                 [
                   'pack',
                   '--json',
@@ -178,7 +180,7 @@ describe('@midnight-smoker/plugin-default', function () {
                   includeWorkspaceRoot: true,
                 });
                 expect(executor, 'to have a call satisfying', [
-                  id,
+                  spec,
                   [
                     'pack',
                     '--json',
@@ -234,7 +236,7 @@ describe('@midnight-smoker/plugin-default', function () {
         });
 
         describe('install()', function () {
-          const manifest: PkgManager.InstallManifest[] = [
+          const manifest: PkgMgr.InstallManifest[] = [
             {
               spec: `${MOCK_TMPDIR}/bar.tgz`,
               pkgName: 'bar',
@@ -274,7 +276,7 @@ describe('@midnight-smoker/plugin-default', function () {
           it('should call npm with "--global-style"', async function () {
             await npm.install(manifest);
             expect(executor, 'to have a call satisfying', [
-              id,
+              spec,
               [
                 'install',
                 '--no-audit',

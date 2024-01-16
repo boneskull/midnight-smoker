@@ -19,7 +19,7 @@ import {
   type ScriptRunnerNotifiers,
   type ScriptRunnerOpts,
 } from '../../../../src/component';
-import * as PkgManager from '../../../../src/component/package-manager';
+import * as PkgMgr from '../../../../src/component/package-manager';
 import type * as Controller from '../../../../src/controller';
 import {SmokerEvent} from '../../../../src/event/event-constants';
 import type {RunScriptFailedEventData} from '../../../../src/event/script-runner-events';
@@ -31,7 +31,7 @@ describe('midnight-smoker', function () {
   describe('component', function () {
     describe('package manager', function () {
       describe('PkgManagerController', function () {
-        const specs = ['foo@1.0.0', 'bar@latest'];
+        const specs = ['nullpm@1.0.0', 'nullpm@2.0.0'];
 
         let sandbox: sinon.SinonSandbox;
         let registry: sinon.SinonStubbedInstance<PluginRegistry>;
@@ -59,12 +59,20 @@ describe('midnight-smoker', function () {
 
         describe('method', function () {
           let controller: Controller.PkgManagerController;
-          let pkgManagerMap: Map<string, PkgManager.PkgManager>;
+          let pkgManagerMap: Map<PkgMgr.PkgManagerSpec, PkgMgr.PkgManager>;
+          let nullPm1: NullPm;
+          let nullPm2: NullPm;
 
-          beforeEach(function () {
+          beforeEach(async function () {
+            const [spec1, spec2] = await Promise.all([
+              PkgMgr.PkgManagerSpec.from('nullpm@1.0.0'),
+              PkgMgr.PkgManagerSpec.from('nullpm@2.0.0'),
+            ]);
+            nullPm1 = new NullPm(spec1);
+            nullPm2 = new NullPm(spec2);
             pkgManagerMap = new Map([
-              ['foo', nullPm],
-              ['bar', nullPm],
+              [spec1, nullPm1],
+              [spec2, nullPm2],
             ]);
             registry.loadPackageManagers.resolves(pkgManagerMap);
 
@@ -77,7 +85,7 @@ describe('midnight-smoker', function () {
                 controller.getPkgManagers(),
                 'to be fulfilled with value satisfying',
                 expect
-                  .it('to equal', [nullPm, nullPm])
+                  .it('to equal', [nullPm1, nullPm2])
                   .and(
                     'when passed as parameter to',
                     Object.isFrozen,
@@ -105,14 +113,14 @@ describe('midnight-smoker', function () {
                   'to be fulfilled with value satisfying',
                   [
                     {
-                      pkgManager: nullPm,
+                      pkgManager: nullPm1,
                       isAdditional: false,
                       spec: expect.it('to be a string'),
                       pkgName: expect.it('to be a string'),
                       cwd: MOCK_TMPDIR,
                     },
                     {
-                      pkgManager: nullPm,
+                      pkgManager: nullPm2,
                       isAdditional: false,
                       spec: expect.it('to be a string'),
                       pkgName: expect.it('to be a string'),
@@ -155,7 +163,7 @@ describe('midnight-smoker', function () {
               let err: Error;
               beforeEach(function () {
                 err = new Error('stuff');
-                sandbox.stub(nullPm, 'pack').rejects(err);
+                sandbox.stub(nullPm1, 'pack').rejects(err);
               });
 
               it('should reject', async function () {
@@ -177,15 +185,15 @@ describe('midnight-smoker', function () {
             });
 
             describe('with a PackError', function () {
-              let err: PkgManager.Errors.PackError;
+              let err: PkgMgr.Errors.PackError;
 
               beforeEach(function () {
-                err = new PkgManager.Errors.PackError(
+                err = new PkgMgr.Errors.PackError(
                   'oh no',
-                  nullPm.spec,
+                  nullPm1.spec,
                   MOCK_TMPDIR,
                 );
-                sandbox.stub(nullPm, 'pack').rejects(err);
+                sandbox.stub(nullPm1, 'pack').rejects(err);
               });
 
               it('should emit PackFailed with the PackError', async function () {
@@ -219,7 +227,7 @@ describe('midnight-smoker', function () {
                   rawResult: {} as any,
                   installManifests: [
                     {
-                      pkgManager: nullPm,
+                      pkgManager: nullPm1,
                       isAdditional: false,
                       spec: 'foo@1.0.0',
                       pkgName: 'foo',
@@ -231,7 +239,7 @@ describe('midnight-smoker', function () {
                       ),
                     },
                     {
-                      pkgManager: nullPm,
+                      pkgManager: nullPm2,
                       isAdditional: false,
                       spec: 'bar@1.0.0',
                       pkgName: 'bar',
@@ -292,8 +300,8 @@ describe('midnight-smoker', function () {
                       opts: ScriptRunnerOpts,
                     ) => {
                       await Promise.resolve();
-                      if (opts.signal.aborted) {
-                        throw new PkgManager.Errors.RunScriptBailed();
+                      if (opts.signal?.aborted) {
+                        throw new PkgMgr.Errors.RunScriptBailed();
                       }
                       controller.emit(
                         SmokerEvent.RunScriptFailed,
@@ -312,7 +320,7 @@ describe('midnight-smoker', function () {
                     exitCode: 1,
                     failed: true,
                   },
-                  error: new PkgManager.Errors.ScriptFailedError('oh no'),
+                  error: new PkgMgr.Errors.ScriptFailedError('oh no'),
                   cwd: MOCK_TMPDIR,
                 };
 
@@ -406,13 +414,13 @@ describe('midnight-smoker', function () {
               });
 
               describe('when the script runner rejects', function () {
-                let err: PkgManager.Errors.PackageManagerError;
+                let err: PkgMgr.Errors.PackageManagerError;
                 let brokenScriptRunner: ScriptRunner;
 
                 beforeEach(function () {
-                  err = new PkgManager.Errors.PackageManagerError(
+                  err = new PkgMgr.Errors.PackageManagerError(
                     'egad',
-                    NULL_SPEC,
+                    nullPm1.spec,
                     new Error('execa error'),
                   );
                   brokenScriptRunner = sandbox.stub().rejects(err);
@@ -473,11 +481,11 @@ describe('midnight-smoker', function () {
             });
 
             describe('when the script runner rejects', function () {
-              let err: PkgManager.Errors.PackageManagerError;
+              let err: PkgMgr.Errors.PackageManagerError;
               beforeEach(function () {
-                err = new PkgManager.Errors.PackageManagerError(
+                err = new PkgMgr.Errors.PackageManagerError(
                   'egad',
-                  NULL_SPEC,
+                  nullPm1.spec,
                   new Error('execa error'),
                 );
                 const scriptRunner = component({

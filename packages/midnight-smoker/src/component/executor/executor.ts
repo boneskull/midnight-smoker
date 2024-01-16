@@ -15,9 +15,12 @@ import {z} from 'zod';
 import {
   customSchema,
   zAbortSignal,
-  zNonEmptyString,
   zNonEmptyStringArray,
 } from '../../schema-util';
+import {
+  zPkgManagerSpec,
+  type PkgManagerSpec,
+} from '../package-manager/pkg-manager-spec';
 import {zExecResult, type ExecResult} from './executor-schema';
 
 /**
@@ -75,7 +78,7 @@ export const zExecutorOpts = customSchema<ExecutorOpts>(
 );
 
 export type Executor = (
-  bin: string,
+  spec: PkgManagerSpec,
   args: string[],
   opts?: ExecutorOpts,
   spawnOpts?: SpawnOpts,
@@ -84,15 +87,15 @@ export type Executor = (
 export const zExecutor = customSchema<Executor>(
   z.union([
     z.function(
-      z.tuple([zNonEmptyString, zNonEmptyStringArray] as [
-        bin: typeof zNonEmptyString,
+      z.tuple([zPkgManagerSpec, zNonEmptyStringArray] as [
+        spec: typeof zPkgManagerSpec,
         args: typeof zNonEmptyStringArray,
       ]),
       z.promise(zExecResult),
     ),
     z.function(
-      z.tuple([zNonEmptyString, zNonEmptyStringArray, zExecutorOpts] as [
-        bin: typeof zNonEmptyString,
+      z.tuple([zPkgManagerSpec, zNonEmptyStringArray, zExecutorOpts] as [
+        spec: typeof zPkgManagerSpec,
         args: typeof zNonEmptyStringArray,
         opts: typeof zExecutorOpts,
       ]),
@@ -100,12 +103,12 @@ export const zExecutor = customSchema<Executor>(
     ),
     z.function(
       z.tuple([
-        zNonEmptyString,
+        zPkgManagerSpec,
         zNonEmptyStringArray,
         zExecutorOpts,
         zSpawnOpts,
       ] as [
-        bin: typeof zNonEmptyString,
+        spec: typeof zPkgManagerSpec,
         args: typeof zNonEmptyStringArray,
         opts: typeof zExecutorOpts,
         spawnOpts: typeof zSpawnOpts,

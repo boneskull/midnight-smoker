@@ -1,14 +1,15 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import type {Executor, PkgManager} from 'midnight-smoker/plugin';
+import type {Executor} from 'midnight-smoker/plugin';
+import {PkgManager} from 'midnight-smoker/plugin';
 import type {SemVer} from 'semver';
 import {MOCK_TMPDIR} from './constants';
 import {nullExecutor} from './null-executor';
-export const NULL_SPEC = 'nullpm@1.0.0';
+export const NULL_SPEC = PkgManager.PkgManagerSpec.create('nullpm@1.0.0');
 
 export const nullPmModule: PkgManager.PkgManagerDef = {
   bin: 'nullpm',
-  async create(id, executor, helpers, opts) {
-    return new NullPm(id, executor, opts);
+  async create(spec, executor, helpers, opts) {
+    return new NullPm(spec, executor, opts);
   },
   accepts(semver: SemVer): boolean {
     return true;
@@ -17,7 +18,7 @@ export const nullPmModule: PkgManager.PkgManagerDef = {
 
 export class NullPm implements PkgManager.PkgManager {
   constructor(
-    public readonly spec: string,
+    public readonly spec: PkgManager.PkgManagerSpec,
     public executor: PkgManager.Executor = nullExecutor,
     public opts: PkgManager.PkgManagerOpts = {},
   ) {}

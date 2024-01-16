@@ -1,4 +1,5 @@
 import {
+  NULL_SPEC,
   NullPm,
   registerPlugin,
   runScriptRunner,
@@ -21,7 +22,6 @@ const expect = unexpected
   .use(unexpectedEventEmitter)
   .use(unexpectedSinon);
 
-const MOCK_PM_ID = 'nullpm@1.0.0';
 const MOCK_TMPROOT = '/some/tmp';
 const MOCK_TMPDIR = path.join(MOCK_TMPROOT, 'midnight-smoker-');
 
@@ -37,7 +37,7 @@ describe('@midnight-smoker/plugin-default', function () {
     beforeEach(async function () {
       sandbox = createSandbox();
 
-      mockPm = new NullPm(MOCK_PM_ID);
+      mockPm = new NullPm(NULL_SPEC);
       registry = await registerPlugin({
         factory: loadScriptRunner,
       });
@@ -106,7 +106,10 @@ describe('@midnight-smoker/plugin-default', function () {
         await expect(
           runScriptRunner(smokerScriptRunner, pkgRunManifest, {emitter}),
           'to be rejected with error satisfying',
-          {code: 'ESMOKER_PACKAGEMANAGER', context: {spec: MOCK_PM_ID}},
+          {
+            code: 'ESMOKER_PACKAGEMANAGER',
+            context: {pkgManager: `${NULL_SPEC}`},
+          },
         );
       });
     });
@@ -126,7 +129,7 @@ describe('@midnight-smoker/plugin-default', function () {
           innerError,
           'some-script',
           'bar',
-          MOCK_PM_ID,
+          NULL_SPEC,
         );
         sandbox
           .stub(mockPm, 'runScript')

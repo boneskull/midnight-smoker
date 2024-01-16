@@ -7,7 +7,7 @@ import {fromZodError} from 'zod-validation-error';
 import {ComponentKinds, type Component} from '../component/component';
 import {InvalidComponentError} from '../component/component/component-error';
 import * as Executor from '../component/executor';
-import * as PkgManager from '../component/package-manager';
+import * as PkgMgr from '../component/package-manager';
 import * as Reporter from '../component/reporter';
 import * as Rule from '../component/rule';
 import * as RuleRunner from '../component/rule-runner';
@@ -68,7 +68,7 @@ export class PluginRegistry {
 
   private reporterMap: Map<string, Component<Reporter.ReporterDef>>;
 
-  private pkgManagerDefMap: Map<string, Component<PkgManager.PkgManagerDef>>;
+  private pkgManagerDefMap: Map<string, Component<PkgMgr.PkgManagerDef>>;
 
   private blessedMetadata?: Readonly<Record<BlessedPlugin, PluginMetadata>>;
 
@@ -167,15 +167,15 @@ export class PluginRegistry {
 
   public async loadPackageManagers(
     executorId: string,
-    specs?: readonly string[],
-    opts: PkgManager.PkgManagerOpts = {},
-  ): Promise<Map<string, PkgManager.PkgManager>> {
+    desiredSpecs?: readonly string[],
+    opts: PkgMgr.PkgManagerOpts = {},
+  ): Promise<Map<Readonly<PkgMgr.PkgManagerSpec>, PkgMgr.PkgManager>> {
     const executor = this.getExecutor(executorId);
 
-    return await PkgManager.loadPackageManagers(
-      [...this.pkgManagerDefMap.values()],
+    return await PkgMgr.loadPackageManagers(
+      this.pkgManagerDefs,
       executor,
-      specs,
+      desiredSpecs,
       opts,
     );
   }
@@ -653,7 +653,7 @@ export class PluginRegistry {
       SchemaUtils,
       Helpers,
       Rule,
-      PkgManager,
+      PkgManager: PkgMgr,
       Errors,
       Executor,
       RuleRunner,

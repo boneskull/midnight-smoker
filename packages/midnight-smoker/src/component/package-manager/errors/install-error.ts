@@ -1,13 +1,14 @@
 import {red} from 'chalk';
 import {BaseSmokerError} from '../../../error/base-error';
 import type {ExecError} from '../../executor';
+import {type PkgManagerSpec} from '../pkg-manager-spec';
 
 /**
  * @group Errors
  */
 export class InstallError extends BaseSmokerError<
   {
-    pmSpec: string;
+    pkgManager: string;
     installSpecs: string[];
     cwd: string;
     exitCode?: number;
@@ -20,7 +21,7 @@ export class InstallError extends BaseSmokerError<
 
   constructor(
     message: string,
-    pmSpec: string,
+    pkgManager: string | PkgManagerSpec,
     installSpecs: string[],
     cwd: string,
     {
@@ -31,10 +32,10 @@ export class InstallError extends BaseSmokerError<
     execError?: ExecError,
   ) {
     super(
-      `Package manager ${pmSpec} failed to install ${installSpecs.join(
+      `Package manager ${pkgManager} failed to install ${installSpecs.join(
         ', ',
       )} in dir ${cwd}: ${red(message)}`,
-      {pmSpec, installSpecs, cwd, exitCode, output, error},
+      {pkgManager: `${pkgManager}`, installSpecs, cwd, exitCode, output, error},
       execError,
     );
   }

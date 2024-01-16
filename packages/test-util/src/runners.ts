@@ -81,6 +81,8 @@ export interface RunScriptRunnerOpts
    * If not provided, a new `EventEmitter` will be created.
    */
   emitter?: EventEmitter;
+
+  bail?: boolean;
 }
 
 export async function runScriptRunner(

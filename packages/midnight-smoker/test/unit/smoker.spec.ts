@@ -1,4 +1,5 @@
 import {
+  NULL_SPEC,
   NullPkgManagerController,
   NullPm,
   createExecaMock,
@@ -100,7 +101,7 @@ describe('midnight-smoker', function () {
       delete mocks.debug;
     }
 
-    nullPm = new NullPm(MOCK_PM_ID);
+    nullPm = new NullPm(NULL_SPEC);
     pkgManagerMap.set(MOCK_PM_ID, nullPm);
 
     ({Smoker} = rewiremock.proxy(() => require('../../src/smoker'), mocks));

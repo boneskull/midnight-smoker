@@ -59,9 +59,11 @@ export abstract class GenericNpmPackageManager
 {
   protected abstract debug: Debug.Debugger;
   protected readonly opts: PkgManager.PkgManagerOpts;
-  public readonly spec: string;
+  public readonly spec: PkgManager.PkgManagerSpec;
   protected readonly executor: Executor.Executor;
   public readonly tmpdir: string;
+
+  public static readonly lockfile = 'package-lock.json';
 
   /**
    * @param spec - Package manager name and version
@@ -70,7 +72,7 @@ export abstract class GenericNpmPackageManager
    * @param opts - Extra options
    */
   public constructor(
-    spec: string,
+    spec: PkgManager.PkgManagerSpec,
     executor: Executor.Executor,
     tmpdir: string,
     opts: PkgManager.PkgManagerOpts = {},
@@ -91,7 +93,7 @@ export abstract class GenericNpmPackageManager
 
   public async runScript(
     manifest: PkgManager.RunScriptManifest,
-    opts: PkgManager.ScriptRunnerOpts,
+    opts: PkgManager.ScriptRunnerOpts = {},
   ): Promise<PkgManager.RunScriptResult> {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!manifest) {
@@ -102,7 +104,6 @@ export abstract class GenericNpmPackageManager
     }
     const {script, pkgName, cwd} = manifest;
     const {signal} = opts;
-
     let result: PkgManager.RunScriptResult;
     try {
       const rawResult = await this.executor(
@@ -127,7 +128,7 @@ export abstract class GenericNpmPackageManager
             err,
             script,
             pkgName,
-            this.spec,
+            `${this.spec}`,
           );
         }
       } else {
@@ -160,7 +161,7 @@ export abstract class GenericNpmPackageManager
         result.error = new PkgManager.Errors.ScriptFailedError(message, {
           script,
           pkgName,
-          pkgManager: this.spec,
+          pkgManager: `${this.spec}`,
           command,
           exitCode,
           output: all || stderr || stdout,

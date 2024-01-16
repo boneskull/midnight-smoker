@@ -72,7 +72,7 @@ export async function execSmoker(args: string[], opts: ExecSmokerOpts = {}) {
   let result: Executor.ExecResult;
   try {
     result = await execa(CLI_PATH, args, {
-      env: {DEBUG: ''},
+      env: {...process.env, DEBUG: ''},
       ...execaOpts,
     });
     if (json) {

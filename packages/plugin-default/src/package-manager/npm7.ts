@@ -20,24 +20,24 @@ export class Npm7
   public static accepts = '^7.0.0 || ^8.0.0';
 
   public constructor(
-    id: string,
+    spec: PkgManager.PkgManagerSpec,
     executor: Executor.Executor,
     tmpdir: string,
     opts: PkgManager.PkgManagerOpts = {},
   ) {
-    super(id, executor, tmpdir, opts);
+    super(spec, executor, tmpdir, opts);
     this.debug = Debug(`midnight-smoker:pm:npm7`);
   }
 
   public static async create(
     this: void,
-    id: string,
+    spec: PkgManager.PkgManagerSpec,
     executor: Executor.Executor,
     helpers: typeof Helpers,
     opts?: PkgManager.PkgManagerOpts,
   ) {
     const tempdir = await helpers.createTempDir();
-    return new Npm7(id, executor, tempdir, opts);
+    return new Npm7(spec, executor, tempdir, opts);
   }
 
   public async install(
@@ -118,7 +118,7 @@ export class Npm7
         if (parsedError) {
           throw new PkgManager.Errors.PackError(
             parsedError.summary,
-            this.spec,
+            `${this.spec}`,
             this.tmpdir,
             {error: parsedError, output: err.stderr, exitCode: err.exitCode},
           );
@@ -126,7 +126,7 @@ export class Npm7
 
         throw new PkgManager.Errors.PackError(
           `Use --verbose for more information`,
-          this.spec,
+          `${this.spec}`,
           this.tmpdir,
           {error: err},
         );
@@ -152,7 +152,7 @@ export class Npm7
       throw isError(err)
         ? new PkgManager.Errors.PackParseError(
             `Failed to parse JSON result of "npm pack"`,
-            this.spec,
+            `${this.spec}`,
             err,
             packOutput,
           )
@@ -182,7 +182,7 @@ export class Npm7
     if (parsedError) {
       return new PkgManager.Errors.InstallError(
         parsedError.summary,
-        this.spec,
+        `${this.spec}`,
         installSpecs,
         this.tmpdir,
         {
@@ -194,7 +194,7 @@ export class Npm7
     } else if (errOrResult.exitCode > 0) {
       return new PkgManager.Errors.InstallError(
         `Use --verbose for more information`,
-        this.spec,
+        `${this.spec}`,
         installSpecs,
         this.tmpdir,
         {
@@ -205,7 +205,7 @@ export class Npm7
     } else if (errOrResult instanceof Error) {
       return new PkgManager.Errors.InstallError(
         'Use --verbose for more information',
-        this.spec,
+        `${this.spec}`,
         installSpecs,
         this.tmpdir,
         {

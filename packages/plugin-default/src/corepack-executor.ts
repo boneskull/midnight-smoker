@@ -5,7 +5,7 @@
  */
 
 import {node as execa} from 'execa';
-import {Executor, Helpers} from 'midnight-smoker/plugin';
+import {Executor, Helpers, type PkgManager} from 'midnight-smoker/plugin';
 import path from 'node:path';
 
 /**
@@ -26,7 +26,7 @@ const COREPACK_PATH = path.resolve(
 );
 
 async function exec(
-  spec: string,
+  spec: PkgManager.PkgManagerSpec,
   args: string[],
   opts: Executor.ExecutorOpts = {},
   spawnOpts: Executor.SpawnOpts = {},
@@ -37,7 +37,7 @@ async function exec(
     // stuff and things
   }
 
-  const proc = execa(COREPACK_PATH, [spec, ...args], {
+  const proc = execa(COREPACK_PATH, [`${spec}`, ...args], {
     env: {...DEFAULT_ENV, ...spawnOpts.env},
     ...spawnOpts,
   });
@@ -60,4 +60,4 @@ async function exec(
   }
 }
 
-export const smokerExecutor: Executor.Executor = exec;
+export const corepackExecutor: Executor.Executor = exec;

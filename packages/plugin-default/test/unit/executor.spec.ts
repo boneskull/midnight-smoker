@@ -1,5 +1,5 @@
 import type {ExecaMock} from '@midnight-smoker/test-util';
-import {createExecaMock} from '@midnight-smoker/test-util';
+import {NULL_SPEC, createExecaMock} from '@midnight-smoker/test-util';
 import type {Executor} from 'midnight-smoker/plugin';
 import {Readable} from 'node:stream';
 import rewiremock from 'rewiremock/node';
@@ -40,7 +40,7 @@ describe('@midnight-smoker/plugin-default', function () {
       describe('exec()', function () {
         describe('when "verbose" ExecOpts option is true', function () {
           beforeEach(async function () {
-            await smokerExecutor(MOCK_PM_SPEC, ['foo'], {verbose: true});
+            await smokerExecutor(NULL_SPEC, ['foo'], {verbose: true});
           });
           it('should pipe to STDOUT', async function () {
             expect(stdout.pipe, 'was called once');
@@ -60,7 +60,7 @@ describe('@midnight-smoker/plugin-default', function () {
 
         describe('when "verbose" ExecOpts option is not true', function () {
           beforeEach(async function () {
-            await smokerExecutor(MOCK_PM_SPEC, ['foo'], {verbose: false});
+            await smokerExecutor(NULL_SPEC, ['foo'], {verbose: false});
           });
           it('should not pipe to STDOUT', async function () {
             expect(stdout.pipe, 'was not called');

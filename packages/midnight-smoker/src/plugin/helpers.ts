@@ -17,11 +17,14 @@ import type {StaticRuleContext} from '../component/rule/static';
 import {DirCreationError} from '../error/util-error';
 import {readPackageJson, readPackageJsonSync} from '../pkg-util';
 import {isErrnoException} from '../util';
-
-export type {
-  ReadPackageJsonNormalizedResult,
-  ReadPackageJsonOpts,
-  ReadPackageJsonResult,
+export {
+  PkgManagerSpec,
+  type SystemPkgManagerSpec,
+} from '../component/package-manager/pkg-manager-spec';
+export {
+  type ReadPackageJsonNormalizedResult,
+  type ReadPackageJsonOpts,
+  type ReadPackageJsonResult,
 } from '../pkg-util';
 export {isExecaError} from '../util';
 export {readPackageJson, readPackageJsonSync};

@@ -1,11 +1,18 @@
+import Debug from 'debug';
 import {memoize} from 'lodash';
+import childProcess from 'node:child_process';
+import {promisify} from 'node:util';
 import readPkgUp from 'read-pkg-up';
 import type {PackageJson} from 'type-fest';
+import {DEFAULT_PKG_MANAGER_VERSION} from './constants';
 import {fromUnknownError} from './error/base-error';
 import {
   MissingPackageJsonError,
   UnreadablePackageJsonError,
 } from './error/util-error';
+
+const debug = Debug('midnight-smoker:pkg-util');
+const execFile = promisify(childProcess.execFile);
 
 /**
  * Options for {@link readPackageJson}
@@ -134,3 +141,28 @@ export function readPackageJsonSync({
 export async function readSmokerPkgJson(): Promise<PackageJson> {
   return (await readPackageJson({cwd: __dirname, strict: true})).packageJson;
 }
+/**
+ * Queries a package manager executable for its version
+ *
+ * @param bin Package manager executable; defined in a {@link PkgManagerDef}
+ * @returns Version string
+ */
+async function _getSystemPkgManagerVersion(bin: string): Promise<string> {
+  try {
+    const {stdout} = await execFile(bin, ['--version']);
+    return stdout.trim();
+  } catch {
+    debug('Failed to get version for %s', bin);
+    return DEFAULT_PKG_MANAGER_VERSION;
+  }
+}
+
+/**
+ * Queries a package manager executable for its version
+ *
+ * Memoized
+ *
+ * @param bin Package manager executable; defined in a {@link PkgManagerDef}
+ * @returns Version string
+ */
+export const getSystemPkgManagerVersion = memoize(_getSystemPkgManagerVersion);

@@ -1,6 +1,6 @@
 import {z} from 'zod';
 import {zBaseRuleOptionsRecord} from '../component/rule/rule';
-import {DEFAULT_COMPONENT_ID, DEFAULT_PACKAGE_MANAGER_SPEC} from '../constants';
+import {DEFAULT_COMPONENT_ID} from '../constants';
 import {
   zDefaultFalse,
   zDefaultTrue,
@@ -65,9 +65,9 @@ const smokerOptionsShape = {
   /**
    * The package manager(s) to use
    */
-  pkgManager: zNonEmptyStringOrArrayThereof
-    .default(DEFAULT_PACKAGE_MANAGER_SPEC)
-    .describe('Package manager(s) to use'),
+  pkgManager: zNonEmptyStringOrArrayThereof.describe(
+    'Package manager(s) to use (by id)',
+  ),
   /**
    * The plugin(s) to load
    */

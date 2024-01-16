@@ -56,7 +56,7 @@
   },
   "dependencies": {
     "chalk": "4.1.2",
-    "corepack": "0.23.0",
+    "corepack": "0.24.1",
     "debug": "4.3.4",
     "execa": "5.1.1",
     "is-file-esm": "1.0.0",

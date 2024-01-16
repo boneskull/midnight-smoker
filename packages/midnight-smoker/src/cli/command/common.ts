@@ -5,14 +5,9 @@
 import Debug from 'debug';
 import {type Writable} from 'type-fest';
 import type {ArgumentsCamelCase, InferredOptionTypes} from 'yargs';
-import {DEFAULT_PACKAGE_MANAGER_SPEC} from '../../constants';
-import {
-  ARRAY_OPT_CFG,
-  type GlobalOptions,
-  type SmokerYargsOptions,
-} from '../cli-util';
+import {type GlobalOptionTypes} from './global-opts';
+import {ARRAY_OPT_CFG, OUTPUT_GROUP, type CommandOptionRecord} from './opts';
 
-const OUTPUT_GROUP = 'Output:';
 const INPUT_GROUP = 'Input:';
 
 /**
@@ -51,7 +46,7 @@ export const CommonOptions = {
     alias: ['p', 'pm'],
     describe: 'Use a specific package manager',
     group: INPUT_GROUP,
-    defaultDescription: DEFAULT_PACKAGE_MANAGER_SPEC,
+    defaultDescription: '(auto)',
     ...ARRAY_OPT_CFG,
   },
   reporter: {
@@ -66,14 +61,7 @@ export const CommonOptions = {
     boolean: true,
     group: OUTPUT_GROUP,
   },
-} as const satisfies SmokerYargsOptions;
-
-/**
- * These are the types of the global options after Yargs has parsed them
- */
-export type GlobalOptionTypes = InferredOptionTypes<
-  Writable<typeof GlobalOptions>
->;
+} as const satisfies CommandOptionRecord;
 
 /**
  * These are the types of the common options after Yargs has parsed them

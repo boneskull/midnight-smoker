@@ -24,7 +24,7 @@ export abstract class PkgManagerController extends createStrictEmitter<PkgManage
 
   public constructor(
     protected readonly pluginRegistry: PluginRegistry,
-    protected readonly pkgManagerSpecs: readonly string[],
+    protected readonly desiredPkgManagers: readonly string[],
     protected readonly opts: PkgManagerControllerOpts = {},
   ) {
     super();

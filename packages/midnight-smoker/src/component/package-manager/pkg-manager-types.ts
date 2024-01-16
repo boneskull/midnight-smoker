@@ -4,10 +4,11 @@
  * @packageDocumentation
  */
 
-import type {Range, SemVer} from 'semver';
+import {type Range, type SemVer} from 'semver';
 import type * as Helpers from '../../plugin/helpers';
-import type {Executor} from '../executor/executor';
-import type {PkgManager} from './pkg-manager-schema';
+import {type Executor} from '../executor/executor';
+import {type PkgManager} from './pkg-manager-schema';
+import {type PkgManagerSpec} from './pkg-manager-spec';
 
 /**
  * Options for {@link PkgManagerFactory}
@@ -28,7 +29,7 @@ export interface PkgManagerOpts {
  * A function which returns an object implementing {@link PkgManager}.
  */
 export type PkgManagerFactory = (
-  id: string,
+  spec: PkgManagerSpec,
   executor: Executor,
   helpers: typeof Helpers,
   opts?: PkgManagerOpts,
@@ -56,6 +57,8 @@ export interface PkgManagerDef {
    * is within the allowed range.
    */
   accepts: PkgManagerAcceptsFn | PkgManagerAcceptsRange;
+
+  lockfile?: string;
 
   /**
    * Creates a {@link PkgManager} object.

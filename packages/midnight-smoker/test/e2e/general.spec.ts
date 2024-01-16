@@ -4,7 +4,7 @@ import path from 'node:path';
 import snapshot from 'snap-shot-it';
 import unexpected from 'unexpected';
 import type {ExecResult} from '../../src/component/executor/executor-schema';
-import {DEFAULT_SPEC} from '../../src/component/package-manager/loader';
+import {DEFAULT_PKG_MANAGER_BIN} from '../../src/constants';
 import {resolveFrom} from '../../src/loader-util';
 import {readPackageJson} from '../../src/pkg-util';
 import assertions from '../assertions';
@@ -49,7 +49,7 @@ describe('midnight-smoker [E2E]', function () {
             scripts: expect
               .it('to have length', 1)
               .and('not to have an item satisfying', {
-                rawResult: expect.it('to contain', DEFAULT_SPEC),
+                rawResult: expect.it('to contain', DEFAULT_PKG_MANAGER_BIN),
               }),
           });
         });

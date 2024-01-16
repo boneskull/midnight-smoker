@@ -5,35 +5,34 @@
  * @packageDocumentation
  */
 
-import Debug from 'debug';
 import {curry, isFunction, isString} from 'lodash';
-import {Range, type SemVer} from 'semver';
+import {Range} from 'semver';
+import {InvalidArgError} from '../../error';
 import * as Helpers from '../../plugin/helpers';
 import type {Executor} from '../executor/executor';
 import {UnsupportedPackageManagerError} from './errors/unsupported-pkg-manager-error';
+import {guessPackageManager} from './guesser';
 import type {PkgManager} from './pkg-manager-schema';
+import {PkgManagerSpec} from './pkg-manager-spec';
 import type {PkgManagerDef, PkgManagerOpts} from './pkg-manager-types';
-import {normalizeVersion} from './version';
 
-const debug = Debug('midnight-smoker:pm:loader');
+// const debug = Debug('midnight-smoker:pm:loader');
 
+/**
+ * Options for {@link loadPackageManagers}.
+ */
 export interface LoadPackageManagersOpts extends PkgManagerOpts {
   /**
    * This can be specified to avoid matching the package manager specs to the
    * package manager modules a second time.
    */
-  pmModuleMap?: Map<string, PkgManagerDef>;
+  pmModuleMap?: Map<PkgManagerSpec, PkgManagerDef>;
 
+  /**
+   * Current working directory (where `smoker` is run)
+   */
   cwd?: string;
 }
-
-/**
- * The default package manager specification
- *
- * This should be the maximum version of `npm` available that our supported
- * platforms will run on.
- */
-export const DEFAULT_SPEC = 'npm@9.x';
 
 /**
  * Makes {@link PkgManager PackageManagers} out of
@@ -45,8 +44,9 @@ export const DEFAULT_SPEC = 'npm@9.x';
  *
  * @param pkgManagerDefs - An array of `PkgManagerDef` objects.
  * @param executor - The {@link Executor} provided to each {@link PkgManager}
- * @param specs - An optional array of package manager specifications of the
- *   format `<name>[@version]`. Defaults to an array containing only `'npm'`.
+ * @param desiredSpecs - An optional array of package manager specifications of
+ *   the format `<name>[@version]`. Defaults to an array containing only
+ *   `'npm'`.
  * @param opts - Optional package manager options.
  * @returns A Promise that resolves to a Map of specs to package manager
  *   instances.
@@ -64,41 +64,53 @@ export const DEFAULT_SPEC = 'npm@9.x';
 export async function loadPackageManagers(
   pkgManagerDefs: PkgManagerDef[],
   executor: Executor,
-  specs: readonly string[] = [],
+  desiredSpecs: readonly string[] = [],
   opts: LoadPackageManagersOpts = {},
-): Promise<Map<string, PkgManager>> {
+): Promise<Map<Readonly<PkgManagerSpec>, PkgManager>> {
   const {pmModuleMap, cwd = process.cwd(), ...pmOpts} = opts;
+  let defsBySpec: Map<PkgManagerSpec, PkgManagerDef>;
+  if (!pmModuleMap) {
+    let specs: Readonly<PkgManagerSpec>[];
+    if (!desiredSpecs.length) {
+      specs = [await guessPackageManager(pkgManagerDefs, cwd)];
+    } else {
+      specs = await Promise.all(
+        desiredSpecs.map(
+          async (desiredSpec) => await PkgManagerSpec.from(desiredSpec),
+        ),
+      );
+    }
 
-  if (!specs.length) {
-    const result = await Helpers.readPackageJson({cwd});
-    specs = result?.packageJson.packageManager
-      ? [result.packageJson.packageManager]
-      : [DEFAULT_SPEC];
+    defsBySpec = await findPackageManagers(pkgManagerDefs, specs);
+  } else {
+    defsBySpec = pmModuleMap;
   }
 
-  const map = pmModuleMap ?? findPackageManagers(pkgManagerDefs, specs);
   return new Map(
     await Promise.all(
-      [...map].map<Promise<[string, PkgManager]>>(async ([spec, pmm]) => [
-        spec,
-        await pmm.create(spec, executor, Helpers, pmOpts),
-      ]),
+      [...defsBySpec].map(
+        async ([spec, def]) =>
+          [spec, await def.create(spec, executor, Helpers, pmOpts)] as [
+            Readonly<PkgManagerSpec>,
+            PkgManager,
+          ],
+      ),
     ),
   );
 }
 
 const matchPkgManager = curry(
-  (name: string, version: SemVer, pkgManagerDef: PkgManagerDef): boolean => {
-    if (pkgManagerDef.bin !== name) {
+  (spec: PkgManagerSpec, pkgManagerDef: PkgManagerDef): boolean => {
+    if (pkgManagerDef.bin !== spec.pkgManager) {
       return false;
     }
     if (isString(pkgManagerDef.accepts)) {
       return new Range(pkgManagerDef.accepts, {includePrerelease: true}).test(
-        version,
+        spec.semver!,
       );
     }
     if (isFunction(pkgManagerDef.accepts)) {
-      return pkgManagerDef.accepts(version);
+      return pkgManagerDef.accepts(spec.semver!);
     }
     return false;
   },
@@ -120,33 +132,30 @@ const matchPkgManager = curry(
  * @todo Remove hardcoded package manager names; replace with whatever
  *   {@link normalizeVersion} has access to
  */
-export function findPackageManagers(
+export async function findPackageManagers(
   pkgManagerDefs: PkgManagerDef[],
-  pkgManagerSpecs: readonly string[],
-): Map<string, PkgManagerDef> {
-  const nameVersionPairs = pkgManagerSpecs.map<[string, SemVer]>((pm) => {
-    const [name, version] = pm.split('@');
-    return [name, normalizeVersion(name, version)];
-  });
+  pkgManagerSpecs: Readonly<PkgManagerSpec>[],
+): Promise<Map<PkgManagerSpec, PkgManagerDef>> {
+  if (!pkgManagerDefs.length) {
+    throw new InvalidArgError('pkgManagerDefs must be a non-empty array', {
+      argName: 'pkgManagerDefs',
+      position: 0,
+    });
+  }
 
-  debug(
-    'Requested PM specs: %O',
-    nameVersionPairs.flatMap(([name, version]) => `${name}@${version}`),
-  );
-
-  return nameVersionPairs.reduce<Map<string, PkgManagerDef>>(
-    (acc, [name, version]) => {
-      const accepts = matchPkgManager(name, version);
+  return pkgManagerSpecs.reduce<Map<PkgManagerSpec, PkgManagerDef>>(
+    (acc, spec) => {
+      const accepts = matchPkgManager(spec);
       const pmm = pkgManagerDefs.find(accepts);
 
       if (!pmm) {
         throw new UnsupportedPackageManagerError(
-          `No package manager found that can handle ${name}@${version}`,
-          name,
-          `${version}`,
+          `No PackageManager component found that can handle "${spec}"`,
+          spec.pkgManager,
+          spec.version,
         );
       }
-      acc.set(`${name}@${version}`, pmm);
+      acc.set(spec, pmm);
       return acc;
     },
     new Map(),

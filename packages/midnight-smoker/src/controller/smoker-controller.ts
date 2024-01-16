@@ -61,7 +61,7 @@ export class SmokerPkgManagerController extends PkgManagerController {
     }
     const pkgManagerMap = await this.pluginRegistry.loadPackageManagers(
       this.executorId,
-      this.pkgManagerSpecs,
+      this.desiredPkgManagers,
       {
         verbose: this.opts.verbose,
         loose: this.opts.loose,
@@ -72,7 +72,7 @@ export class SmokerPkgManagerController extends PkgManagerController {
     debug(
       'Loaded package manager(s): %s for specs %s',
       [...pkgManagerMap.keys()].sort().join(', '),
-      [...this.pkgManagerSpecs].sort().join(', '),
+      [...this.desiredPkgManagers].sort().join(', '),
     );
 
     return this.pkgManagers;

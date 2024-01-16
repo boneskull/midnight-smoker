@@ -1,6 +1,6 @@
 import {NullPm, nullExecutor, nullPmModule} from '@midnight-smoker/test-util';
 import rewiremock from 'rewiremock/node';
-import {parse} from 'semver';
+import {parse, type SemVer} from 'semver';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import type * as PMLoader from '../../../../src/component/package-manager/loader';
@@ -23,7 +23,9 @@ describe('midnight-smoker', function () {
         beforeEach(function () {
           sandbox = createSandbox();
           versionStub = {
-            normalizeVersion: sandbox.stub<[string, string?]>().returnsArg(1),
+            normalizeVersion: sandbox
+              .stub<[string, string?], SemVer | undefined>()
+              .returns(parse('1.0.0')!),
           };
 
           ({loadPackageManagers} = rewiremock.proxy(
@@ -51,7 +53,11 @@ describe('midnight-smoker', function () {
                 nullExecutor,
                 ['nullpm@1'],
               );
-              expect(pmMap.get('nullpm@1.0.0'), 'to be a', NullPm);
+              expect(
+                [...pmMap.values()],
+                'to have items satisfying',
+                expect.it('to be a', NullPm),
+              );
             });
           });
 
@@ -66,7 +72,7 @@ describe('midnight-smoker', function () {
               await expect(
                 loadPackageManagers([nullPmModule], nullExecutor, ['nullpm@3']),
                 'to be rejected with error satisfying',
-                /no package manager found/i,
+                {code: 'ESMOKER_UNSUPPORTEDPACKAGEMANAGER'},
               );
             });
           });
