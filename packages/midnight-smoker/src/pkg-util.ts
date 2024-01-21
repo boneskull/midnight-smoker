@@ -38,6 +38,12 @@ export type ReadPackageJsonResult = readPkgUp.ReadResult;
 export type ReadPackageJsonNormalizedResult = readPkgUp.NormalizedReadResult;
 
 const _readPkgJson = memoize(
+  /**
+   * @param cwd Current working directory
+   * @param normalize If `true`, normalize the resulting `package.json` file
+   * @param strict If `true`, throw if unable to find a `package.json` file
+   * @returns `package.json` and path thereof
+   */
   async (
     cwd: string = process.cwd(),
     normalize?: boolean,
@@ -90,6 +96,13 @@ export async function readPackageJson({
   return _readPkgJson(cwd, normalize, strict);
 }
 
+/**
+ * Resets the memoization cache for {@link readPackageJson}
+ */
+readPackageJson.resetCache = () => {
+  _readPkgJson.cache = new Map();
+};
+
 const _readPkgJsonSync = memoize(
   (cwd: string = process.cwd(), normalize?: boolean, strict?: boolean) => {
     let result: readPkgUp.ReadResult | undefined;
@@ -136,11 +149,23 @@ export function readPackageJsonSync({
 }
 
 /**
- * Reads `midnight-smoker`'s `package.json`
+ * Resets the memoization cache for {@link readPackageJsonSync}
+ */
+readPackageJsonSync.resetCache = () => {
+  _readPkgJsonSync.cache = new Map();
+};
+
+/**
+ * Reads `midnight-smoker`'s own `package.json`
+ *
+ * @remarks
+ * We cannot read it directly because it's outside of TS' `rootDir`. If we were
+ * to change the `rootDir`, then the path would be wrong at runtime.
  */
 export async function readSmokerPkgJson(): Promise<PackageJson> {
   return (await readPackageJson({cwd: __dirname, strict: true})).packageJson;
 }
+
 /**
  * Queries a package manager executable for its version
  *
@@ -160,9 +185,88 @@ async function _getSystemPkgManagerVersion(bin: string): Promise<string> {
 /**
  * Queries a package manager executable for its version
  *
- * Memoized
- *
  * @param bin Package manager executable; defined in a {@link PkgManagerDef}
  * @returns Version string
  */
 export const getSystemPkgManagerVersion = memoize(_getSystemPkgManagerVersion);
+
+/**
+ * Regex string to match a package name.
+ *
+ * Used by {@link PKG_NAME_REGEX} and {@link PKG_NAME_WITH_SPEC_REGEX}.
+ */
+const PKG_NAME_REGEX_STR =
+  '^(@[a-z0-9-~][a-z0-9-._~]*/)?[a-z0-9-~][a-z0-9-._~]*';
+
+/**
+ * Regex to match a package name without a spec
+ */
+const PKG_NAME_REGEX = new RegExp(`${PKG_NAME_REGEX_STR}$`);
+
+/**
+ * Regex to match a package name with a spec.
+ *
+ * @remarks
+ * This does not attempt to validate a semver string, though it could. If it
+ * did, it'd also need to allow any valid package tag. I'm not sure what the
+ * latter is, but the former can be found on
+ * {@link https://stackoverflow.com/a/72900791|StackOverflow}.
+ */
+const PKG_NAME_WITH_SPEC_REGEX = new RegExp(`${PKG_NAME_REGEX_STR}@.+$`);
+
+/**
+ * Fields in `package.json` that might have a dependency we want to install as
+ * an isolated package to help run smoke tests.
+ *
+ * @remarks
+ * Order is important; changing this should be a breaking change
+ */
+const DEP_FIELDS = [
+  'devDependencies',
+  'dependencies',
+  'optionalDependencies',
+  'peerDependencies',
+] as const;
+
+/**
+ * Try to pick a version for a package to install.
+ *
+ * Given an `installable` which is both a) a valid npm package name and b) has
+ * no version specifier, determine the version to install.
+ *
+ * If the `package.json` within `cwd` contains the package of the same name, we
+ * will use that version; otherwise we will use the `latest` tag. If
+ * `installable` is not a package name at all, it passes thru verbatim.
+ *
+ * @param installable The `thing` in `npm install <thing>`
+ * @param cwd Where the command would be run
+ */
+export async function pickPackageVersion(
+  installable: string,
+  cwd = process.cwd(),
+): Promise<string> {
+  if (PKG_NAME_WITH_SPEC_REGEX.test(installable)) {
+    // we were given a package name with a version spec. just use it
+    return installable;
+  }
+
+  if (PKG_NAME_REGEX.test(installable)) {
+    // we were given a package name, no version.
+    // try to see if it's in the package.json
+    const pkgName = installable;
+
+    const {packageJson} = (await readPackageJson({cwd})) ?? {};
+    if (packageJson) {
+      for (const field of DEP_FIELDS) {
+        const deps = packageJson[field];
+        if (deps && pkgName in deps) {
+          return `${pkgName}@${deps[pkgName]}`;
+        }
+      }
+    }
+    return `${pkgName}@latest`;
+  }
+
+  // could be a path or url
+  return installable;
+}

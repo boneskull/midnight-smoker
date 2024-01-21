@@ -1,7 +1,10 @@
+// @ts-check
+
 'use strict';
 
-// const pkg = require('./packages/midnight-smoker/package.json');
-
+/**
+ * @returns {import('wallabyjs').IWallabyConfig}
+ */
 module.exports = () => {
   return {
     env: {
@@ -40,6 +43,7 @@ module.exports = () => {
       './packages/*/test/**/*.spec.ts',
       '!./packages/*/test/e2e/**/*.spec.ts',
     ],
+    // @ts-expect-error - FIXME
     setup(wallaby) {
       process.env.WALLABY_PROJECT_DIR = wallaby.localProjectDir;
 

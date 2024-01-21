@@ -177,7 +177,7 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
       new SmokerPkgManagerController(pluginRegistry, opts.pkgManager, {
         verbose: opts.verbose,
         loose: opts.loose,
-        executorId: opts.executor,
+        defaultExecutorId: opts.executor,
       });
 
     debug(

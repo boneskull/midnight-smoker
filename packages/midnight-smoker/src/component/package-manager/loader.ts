@@ -12,7 +12,7 @@ import * as Helpers from '../../plugin/helpers';
 import type {Executor} from '../executor/executor';
 import {UnsupportedPackageManagerError} from './errors/unsupported-pkg-manager-error';
 import {guessPackageManager} from './guesser';
-import type {PkgManager} from './pkg-manager-schema';
+import {type PkgManager} from './pkg-manager-schema';
 import {PkgManagerSpec} from './pkg-manager-spec';
 import type {PkgManagerDef, PkgManagerOpts} from './pkg-manager-types';
 
@@ -23,16 +23,19 @@ import type {PkgManagerDef, PkgManagerOpts} from './pkg-manager-types';
  */
 export interface LoadPackageManagersOpts extends PkgManagerOpts {
   /**
-   * This can be specified to avoid matching the package manager specs to the
-   * package manager modules a second time.
-   */
-  pmModuleMap?: Map<PkgManagerSpec, PkgManagerDef>;
-
-  /**
    * Current working directory (where `smoker` is run)
    */
   cwd?: string;
+
+  /**
+   * List of desired package managers. If not provided, then
+   * {@link loadPackageManagers} will guess what to use by analyzing the
+   * filesystem.
+   */
+  desiredPkgManagers?: Array<string | Readonly<PkgManagerSpec>>;
 }
+
+export type PkgManagerDefExecutorPair = [PkgManagerDef, Executor];
 
 /**
  * Makes {@link PkgManager PackageManagers} out of
@@ -63,43 +66,43 @@ export interface LoadPackageManagersOpts extends PkgManagerOpts {
  */
 export async function loadPackageManagers(
   pkgManagerDefs: PkgManagerDef[],
-  executor: Executor,
-  desiredSpecs: readonly string[] = [],
+  defaultExecutor: Executor,
+  systemExecutor: Executor,
   opts: LoadPackageManagersOpts = {},
 ): Promise<Map<Readonly<PkgManagerSpec>, PkgManager>> {
-  const {pmModuleMap, cwd = process.cwd(), ...pmOpts} = opts;
-  let defsBySpec: Map<PkgManagerSpec, PkgManagerDef>;
-  if (!pmModuleMap) {
-    let specs: Readonly<PkgManagerSpec>[];
-    if (!desiredSpecs.length) {
-      specs = [await guessPackageManager(pkgManagerDefs, cwd)];
-    } else {
-      specs = await Promise.all(
-        desiredSpecs.map(
-          async (desiredSpec) => await PkgManagerSpec.from(desiredSpec),
+  const {cwd = process.cwd(), desiredPkgManagers = [], ...pmOpts} = opts;
+  const specs: Readonly<PkgManagerSpec>[] = !desiredPkgManagers.length
+    ? [await guessPackageManager(pkgManagerDefs, cwd)]
+    : await Promise.all(
+        desiredPkgManagers.map((desiredSpec) =>
+          PkgManagerSpec.from(desiredSpec),
         ),
       );
-    }
 
-    defsBySpec = await findPackageManagers(pkgManagerDefs, specs);
-  } else {
-    defsBySpec = pmModuleMap;
-  }
+  const defsBySpec = findPackageManagers(pkgManagerDefs, specs);
 
   return new Map(
     await Promise.all(
-      [...defsBySpec].map(
-        async ([spec, def]) =>
-          [spec, await def.create(spec, executor, Helpers, pmOpts)] as [
-            Readonly<PkgManagerSpec>,
-            PkgManager,
-          ],
-      ),
+      [...defsBySpec].map(async ([spec, def]) => {
+        const executor = spec.isSystem ? systemExecutor : defaultExecutor;
+        return [spec, await def.create(spec, executor, Helpers, pmOpts)] as [
+          Readonly<PkgManagerSpec>,
+          PkgManager,
+        ];
+      }),
     ),
   );
 }
 
 const matchPkgManager = curry(
+  /**
+   * Determines whether a package manager definition can serve as a package
+   * manager for the requested definition
+   *
+   * @param spec Package manager specification
+   * @param pkgManagerDef Package manager definition
+   * @returns `true` if the package manager definition can handle the package
+   */
   (spec: PkgManagerSpec, pkgManagerDef: PkgManagerDef): boolean => {
     if (pkgManagerDef.bin !== spec.pkgManager) {
       return false;
@@ -112,6 +115,7 @@ const matchPkgManager = curry(
     if (isFunction(pkgManagerDef.accepts)) {
       return pkgManagerDef.accepts(spec.semver!);
     }
+    /* c8 ignore next */
     return false;
   },
 );
@@ -132,14 +136,20 @@ const matchPkgManager = curry(
  * @todo Remove hardcoded package manager names; replace with whatever
  *   {@link normalizeVersion} has access to
  */
-export async function findPackageManagers(
+export function findPackageManagers(
   pkgManagerDefs: PkgManagerDef[],
   pkgManagerSpecs: Readonly<PkgManagerSpec>[],
-): Promise<Map<PkgManagerSpec, PkgManagerDef>> {
-  if (!pkgManagerDefs.length) {
+): Map<PkgManagerSpec, PkgManagerDef> {
+  if (!pkgManagerDefs?.length) {
     throw new InvalidArgError('pkgManagerDefs must be a non-empty array', {
       argName: 'pkgManagerDefs',
       position: 0,
+    });
+  }
+  if (!pkgManagerSpecs?.length) {
+    throw new InvalidArgError('pkgManagerSpecs must be a non-empty array', {
+      argName: 'pkgManagerSpecs',
+      position: 1,
     });
   }
 

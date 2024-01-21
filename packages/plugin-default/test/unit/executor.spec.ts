@@ -10,10 +10,10 @@ import unexpectedSinon from 'unexpected-sinon';
 const expect = unexpected.clone().use(unexpectedSinon);
 
 describe('@midnight-smoker/plugin-default', function () {
-  describe('smokerExecutor', function () {
+  describe('corepackExecutor', function () {
     const MOCK_PM_SPEC = 'nullpm@1.0.0';
 
-    let smokerExecutor: Executor.Executor;
+    let corepackExecutor: Executor.Executor;
     let sandbox: sinon.SinonSandbox;
     let stdout: sinon.SinonStubbedInstance<Readable>;
     let stderr: sinon.SinonStubbedInstance<Readable>;
@@ -24,8 +24,8 @@ describe('@midnight-smoker/plugin-default', function () {
       stdout = sandbox.createStubInstance(Readable);
       stderr = sandbox.createStubInstance(Readable);
       execaMock = createExecaMock({stdout, stderr});
-      ({smokerExecutor} = rewiremock.proxy(
-        () => require('../../src/executor'),
+      ({corepackExecutor} = rewiremock.proxy(
+        () => require('../../src/corepack-executor'),
         {
           execa: execaMock,
         },
@@ -40,7 +40,7 @@ describe('@midnight-smoker/plugin-default', function () {
       describe('exec()', function () {
         describe('when "verbose" ExecOpts option is true', function () {
           beforeEach(async function () {
-            await smokerExecutor(NULL_SPEC, ['foo'], {verbose: true});
+            await corepackExecutor(NULL_SPEC, ['foo'], {verbose: true});
           });
           it('should pipe to STDOUT', async function () {
             expect(stdout.pipe, 'was called once');
@@ -60,7 +60,7 @@ describe('@midnight-smoker/plugin-default', function () {
 
         describe('when "verbose" ExecOpts option is not true', function () {
           beforeEach(async function () {
-            await smokerExecutor(NULL_SPEC, ['foo'], {verbose: false});
+            await corepackExecutor(NULL_SPEC, ['foo'], {verbose: false});
           });
           it('should not pipe to STDOUT', async function () {
             expect(stdout.pipe, 'was not called');

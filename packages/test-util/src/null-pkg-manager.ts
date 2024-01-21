@@ -4,10 +4,15 @@ import {PkgManager} from 'midnight-smoker/plugin';
 import type {SemVer} from 'semver';
 import {MOCK_TMPDIR} from './constants';
 import {nullExecutor} from './null-executor';
-export const NULL_SPEC = PkgManager.PkgManagerSpec.create('nullpm@1.0.0');
+export const NULL_SPEC = PkgManager.PkgManagerSpec.create({
+  pkgManager: 'nullpm',
+  version: '1.0.0',
+});
 
-export const nullPmModule: PkgManager.PkgManagerDef = {
-  bin: 'nullpm',
+export const nullPmDef: PkgManager.PkgManagerDef = {
+  get bin() {
+    return 'nullpm';
+  },
   async create(spec, executor, helpers, opts) {
     return new NullPm(spec, executor, opts);
   },

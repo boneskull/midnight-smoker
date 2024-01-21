@@ -12,7 +12,11 @@ import * as Reporter from '../component/reporter';
 import * as Rule from '../component/rule';
 import * as RuleRunner from '../component/rule-runner';
 import * as ScriptRunner from '../component/script-runner';
-import {DEFAULT_COMPONENT_ID} from '../constants';
+import {
+  DEFAULT_COMPONENT_ID,
+  DEFAULT_EXECUTOR_ID,
+  SYSTEM_EXECUTOR_ID,
+} from '../constants';
 import * as Errors from '../error/errors';
 import {
   DisallowedPluginError,
@@ -165,17 +169,20 @@ export class PluginRegistry {
     return value;
   }
 
-  public async loadPackageManagers(
-    executorId: string,
-    desiredSpecs?: readonly string[],
-    opts: PkgMgr.PkgManagerOpts = {},
-  ): Promise<Map<Readonly<PkgMgr.PkgManagerSpec>, PkgMgr.PkgManager>> {
-    const executor = this.getExecutor(executorId);
+  public async loadPackageManagers({
+    systemExecutorId = SYSTEM_EXECUTOR_ID,
+    defaultExecutorId = DEFAULT_EXECUTOR_ID,
+    ...opts
+  }: RegistryLoadPackageManagersOpts = {}): Promise<
+    Map<Readonly<PkgMgr.PkgManagerSpec>, PkgMgr.PkgManager>
+  > {
+    const systemExecutor = this.getExecutor(systemExecutorId);
+    const defaultExecutor = this.getExecutor(defaultExecutorId);
 
     return await PkgMgr.loadPackageManagers(
       this.pkgManagerDefs,
-      executor,
-      desiredSpecs,
+      defaultExecutor,
+      systemExecutor,
       opts,
     );
   }
@@ -679,4 +686,10 @@ export class PluginRegistry {
 
     return pluginApi;
   }
+}
+
+export interface RegistryLoadPackageManagersOpts
+  extends PkgMgr.LoadPackageManagersOpts {
+  systemExecutorId?: string;
+  defaultExecutorId?: string;
 }

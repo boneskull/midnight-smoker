@@ -1,8 +1,20 @@
-import {registerPlugin} from '@midnight-smoker/test-util';
+import {
+  DEFAULT_TEST_PLUGIN_NAME,
+  nullExecutor,
+  nullRuleRunner,
+  nullScriptRunner,
+  registerComponent,
+  registerPlugin,
+} from '@midnight-smoker/test-util';
+import {memoize} from 'lodash';
+import {memfs, type IFs} from 'memfs';
 import rewiremock from 'rewiremock/node';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import {ZodError} from 'zod';
+import {ComponentKinds, InvalidComponentError} from '../../../src/component';
+import {DEFAULT_COMPONENT_ID} from '../../../src/constants';
+import {BLESSED_PLUGINS} from '../../../src/plugin/blessed';
 import {PluginMetadata} from '../../../src/plugin/metadata';
 import type * as PR from '../../../src/plugin/registry';
 
@@ -21,10 +33,34 @@ describe('midnight-smoker', function () {
 
   describe('PluginRegistry', function () {
     let PluginRegistry: typeof PR.PluginRegistry;
+    let fs: IFs;
 
     beforeEach(async function () {
-      ({PluginRegistry} = rewiremock.proxy(() =>
-        require('../../../src/plugin/registry'),
+      ({fs} = memfs());
+
+      ({PluginRegistry} = rewiremock.proxy(
+        () => require('../../../src/plugin/registry'),
+        {
+          'node:fs/promises': fs.promises,
+          '../../../src/loader-util': {
+            /**
+             * This thing loads and evals files via the in-memory filesystem.
+             *
+             * For this to do _anything_, you have to call
+             * `fs.promises.writeFile(...)` first.
+             *
+             * It is memoized to better mimic the behavior of Node.js' module
+             * cache
+             */
+            justImport: sandbox.stub().callsFake(
+              memoize(async (moduleId: string) => {
+                const source = await fs.promises.readFile(moduleId, 'utf8');
+                // eslint-disable-next-line no-eval
+                return eval(`${source}`);
+              }),
+            ),
+          },
+        },
       ));
     });
 
@@ -154,6 +190,24 @@ describe('midnight-smoker', function () {
               {code: 'ESMOKER_DUPLICATEPLUGIN'},
             );
           });
+
+          describe('when loaded from disk', function () {
+            beforeEach(async function () {
+              await fs.promises.writeFile(
+                '/plugin.js',
+                'module.exports = {plugin: () => {}}',
+              );
+            });
+
+            it('should reject', async function () {
+              await registry.registerPlugin('/plugin.js', 'bar');
+              await expect(
+                registry.registerPlugin('/plugin.js', 'foo'),
+                'to be rejected with error satisfying',
+                {code: 'ESMOKER_DUPLICATEPLUGIN'},
+              );
+            });
+          });
         });
 
         describe('when the plugin fails to initialize (PluginFactory errors out)', function () {
@@ -244,26 +298,209 @@ describe('midnight-smoker', function () {
         });
       });
 
-      describe('loadPlugins()', function () {
-        describe('when loading the @midnight-smoker/plugin-default plugin', function () {
+      describe('getScriptRunner()', function () {
+        let registry: PR.PluginRegistry;
+
+        beforeEach(async function () {
+          registry = PluginRegistry.create();
+        });
+
+        describe('when a ScriptRunner with the provided componentId exists', function () {
           beforeEach(async function () {
-            await registry.loadPlugins(['@midnight-smoker/plugin-default']);
+            await registerComponent(
+              ComponentKinds.ScriptRunner,
+              nullScriptRunner,
+              {registry},
+            );
           });
 
-          it('should load all components in the @midnight-smoker/plugin-default plugin', function () {
-            expect(registry.toJSON(), 'to exhaustively satisfy', {
-              plugins: [
+          it('should return the ScriptRunner', function () {
+            const scriptRunner = registry.getScriptRunner(
+              `${DEFAULT_TEST_PLUGIN_NAME}/${DEFAULT_COMPONENT_ID}`,
+            );
+            expect(scriptRunner, 'to be a function');
+          });
+        });
+
+        describe('when no ScriptRunner with the provided componentId exists', function () {
+          it('should throw an InvalidComponentError', function () {
+            expect(
+              () => registry.getScriptRunner('nonexistent-component'),
+              'to throw',
+              new InvalidComponentError(
+                'ScriptRunner with component ID nonexistent-component not found',
+                ComponentKinds.ScriptRunner,
+                'nonexistent-component',
+              ),
+            );
+          });
+        });
+
+        describe('when no componentId is provided', function () {
+          describe('and a ScriptRunner with the default componentId exists', function () {
+            beforeEach(async function () {
+              await registerComponent(
+                ComponentKinds.ScriptRunner,
+                nullScriptRunner,
+                {registry, pluginName: BLESSED_PLUGINS[0]},
+              );
+            });
+
+            it('should return the ScriptRunner', function () {
+              const scriptRunner = registry.getScriptRunner();
+              expect(scriptRunner, 'to be a function');
+            });
+          });
+
+          describe('and no ScriptRunner with the default componentId exists', function () {
+            it('should throw an InvalidComponentError', function () {
+              expect(
+                () => registry.getScriptRunner(),
+                'to throw',
+                new InvalidComponentError(
+                  `ScriptRunner with component ID ${DEFAULT_COMPONENT_ID} not found`,
+                  ComponentKinds.ScriptRunner,
+                  DEFAULT_COMPONENT_ID,
+                ),
+              );
+            });
+          });
+        });
+      });
+
+      describe('getExecutor()', function () {
+        let registry: PR.PluginRegistry;
+
+        beforeEach(async function () {
+          registry = PluginRegistry.create();
+        });
+
+        describe('when a Executor with the provided componentId exists', function () {
+          beforeEach(async function () {
+            await registerComponent(ComponentKinds.Executor, nullExecutor, {
+              registry,
+            });
+          });
+
+          it('should return the Executor', function () {
+            const executor = registry.getExecutor(
+              `${DEFAULT_TEST_PLUGIN_NAME}/${DEFAULT_COMPONENT_ID}`,
+            );
+            expect(executor, 'to be a function');
+          });
+        });
+
+        describe('when no Executor with the provided componentId exists', function () {
+          it('should throw an InvalidComponentError', function () {
+            expect(
+              () => registry.getExecutor('nonexistent-component'),
+              'to throw',
+              new InvalidComponentError(
+                'Executor with component ID nonexistent-component not found',
+                ComponentKinds.Executor,
+                'nonexistent-component',
+              ),
+            );
+          });
+        });
+
+        describe('when no componentId is provided', function () {
+          describe('and a Executor with the default componentId exists', function () {
+            beforeEach(async function () {
+              await registerComponent(ComponentKinds.Executor, nullExecutor, {
+                registry,
+                pluginName: BLESSED_PLUGINS[0],
+              });
+            });
+
+            it('should return the Executor', function () {
+              const executor = registry.getExecutor();
+              expect(executor, 'to be a function');
+            });
+          });
+
+          describe('and no Executor with the default componentId exists', function () {
+            it('should throw an InvalidComponentError', function () {
+              expect(
+                () => registry.getExecutor(),
+                'to throw',
+                new InvalidComponentError(
+                  `Executor with component ID ${DEFAULT_COMPONENT_ID} not found`,
+                  ComponentKinds.Executor,
+                  DEFAULT_COMPONENT_ID,
+                ),
+              );
+            });
+          });
+        });
+      });
+
+      describe('getRuleRunner()', function () {
+        let registry: PR.PluginRegistry;
+
+        beforeEach(async function () {
+          registry = PluginRegistry.create();
+        });
+
+        describe('when a RuleRunner with the provided componentId exists', function () {
+          beforeEach(async function () {
+            await registerComponent(ComponentKinds.RuleRunner, nullRuleRunner, {
+              registry,
+            });
+          });
+
+          it('should return the RuleRunner', function () {
+            const rulerunner = registry.getRuleRunner(
+              `${DEFAULT_TEST_PLUGIN_NAME}/${DEFAULT_COMPONENT_ID}`,
+            );
+            expect(rulerunner, 'to be a function');
+          });
+        });
+
+        describe('when no RuleRunner with the provided componentId exists', function () {
+          it('should throw an InvalidComponentError', function () {
+            expect(
+              () => registry.getRuleRunner('nonexistent-component'),
+              'to throw',
+              new InvalidComponentError(
+                'RuleRunner with component ID nonexistent-component not found',
+                ComponentKinds.RuleRunner,
+                'nonexistent-component',
+              ),
+            );
+          });
+        });
+
+        describe('when no componentId is provided', function () {
+          describe('and a RuleRunner with the default componentId exists', function () {
+            beforeEach(async function () {
+              await registerComponent(
+                ComponentKinds.RuleRunner,
+                nullRuleRunner,
                 {
-                  id: '@midnight-smoker/plugin-default',
-                  version: expect.it('to be a string'),
-                  description: expect.it('to be a string'),
-                  entryPoint: expect.it('to be a string'),
+                  registry,
+                  pluginName: BLESSED_PLUGINS[0],
                 },
-              ],
-              scriptRunners: ['default'],
-              ruleRunners: ['default'],
-              executors: ['default'],
-              pkgManagerDefs: ['Npm7', 'Npm9', 'YarnClassic', 'YarnBerry'],
+              );
+            });
+
+            it('should return the RuleRunner', function () {
+              const rulerunner = registry.getRuleRunner();
+              expect(rulerunner, 'to be a function');
+            });
+          });
+
+          describe('and no RuleRunner with the default componentId exists', function () {
+            it('should throw an InvalidComponentError', function () {
+              expect(
+                () => registry.getRuleRunner(),
+                'to throw',
+                new InvalidComponentError(
+                  `RuleRunner with component ID ${DEFAULT_COMPONENT_ID} not found`,
+                  ComponentKinds.RuleRunner,
+                  DEFAULT_COMPONENT_ID,
+                ),
+              );
             });
           });
         });

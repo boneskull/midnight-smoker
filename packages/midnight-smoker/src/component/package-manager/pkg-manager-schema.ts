@@ -1,7 +1,15 @@
+import {Range, SemVer} from 'semver';
 import {z} from 'zod';
 import {zScriptError} from '../../error/error-schema';
-import {customSchema, zAbortSignal, zNonEmptyString} from '../../schema-util';
+import {type Helpers} from '../../plugin';
+import {
+  customSchema,
+  instanceofSchema,
+  zAbortSignal,
+  zNonEmptyString,
+} from '../../schema-util';
 import type {ExecError} from '../executor/exec-error';
+import {zExecutor} from '../executor/executor';
 import {
   zExecError,
   zExecResult,
@@ -174,10 +182,6 @@ export const zPackageManager = z
 
 export type PkgManager = z.infer<typeof zPackageManager>;
 
-// export const zPackageManager = customSchema<PkgManager>(
-//   zInternalPackageManager,
-// );
-
 export type PkgManagerInstallMethod = (
   installManifests: InstallManifest[],
 ) => Promise<ExecResult>;
@@ -218,6 +222,62 @@ export interface PkgManagerInstallManifest extends InstallManifest {
   isAdditional?: boolean;
   pkgManager: PkgManager;
 }
+
+export const zSemVer = instanceofSchema(SemVer);
+
+export const zRange = instanceofSchema(Range);
+
+export const zPkgManagerOpts = z
+  .object({
+    /**
+     * If `true`, show STDERR/STDOUT from the package manager
+     */
+    verbose: z.boolean().optional(),
+    /**
+     * If `true`, ignore missing scripts
+     */
+    loose: z.boolean().optional(),
+  })
+  .optional();
+
+export const zHelpers = customSchema<typeof Helpers>(z.any());
+
+export const zPkgManagerFactory = z
+  .function(z.tuple([zPkgManagerSpec, zExecutor, zHelpers, zPkgManagerOpts]))
+  .returns(z.promise(zPackageManager));
+
+export const zPkgManagerDef = z.object({
+  /**
+   * The name of the package manager's executable.
+   */
+  bin: zNonEmptyString,
+  /**
+   * Either a SemVer range or a function which returns `true` if its parameter
+   * is within the allowed range.
+   */
+  accepts: z.union([
+    /**
+     * Returns `true` if this `PackageManager` can handle the given version.
+     *
+     * @param semver The version to check.
+     * @returns `true` if the package manager can handle the version, `false`
+     *   otherwise.
+     */
+    z
+      .function(z.tuple([zSemVer] as [semver: typeof zSemVer]))
+      .returns(z.boolean()),
+    z.union([zNonEmptyString, zRange]),
+  ]),
+  lockfile: zNonEmptyString.optional(),
+  /**
+   * Creates a {@link PkgManager} object.
+   */
+  create: zPkgManagerFactory,
+});
+
+export type PkgManagerFactory = z.infer<typeof zPkgManagerFactory>;
+
+export type PkgManagerDef = z.infer<typeof zPkgManagerDef>;
 
 export const zPkgManagerInstallManifests = z.array(zPkgManagerInstallManifest);
 

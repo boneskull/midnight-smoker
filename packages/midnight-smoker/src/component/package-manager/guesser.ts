@@ -38,19 +38,23 @@ async function getPkgManagerFromLockfiles(
 
 /**
  * Looks at the closest `package.json` to `cwd` in the `packageManager` field
- * for a value
+ * for a value.
+ *
+ * This should _not_ be a "system" package manager.
  *
  * @param cwd Path with ancestor `package.json` file.
  * @returns Package manager spec, if found
  */
 async function getPkgManagerFromPackageJson(
   cwd = process.cwd(),
-): Promise<Readonly<PkgManagerSpec>> {
+): Promise<Readonly<PkgManagerSpec> | undefined> {
   const result = await readPackageJson({cwd});
 
   const pkgManager = result?.packageJson.packageManager;
 
-  return await PkgManagerSpec.from({pkgManager});
+  if (pkgManager) {
+    return PkgManagerSpec.from(pkgManager);
+  }
 }
 
 /**
@@ -81,7 +85,9 @@ export async function guessPackageManager(
 
   if (!spec) {
     const pkgManager = await getPkgManagerFromLockfiles(pkgManagerDefs, cwd);
-    spec = await PkgManagerSpec.from({pkgManager, isSystem: true});
+    if (pkgManager) {
+      spec = await PkgManagerSpec.from({pkgManager, isSystem: true});
+    }
   }
 
   if (!spec) {

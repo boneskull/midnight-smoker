@@ -17,3 +17,6 @@ export const DEFAULT_PKG_MANAGER_BIN = 'npm';
  * package manager version cannot be determined
  */
 export const DEFAULT_PKG_MANAGER_VERSION = 'latest';
+
+export const DEFAULT_EXECUTOR_ID = 'default';
+export const SYSTEM_EXECUTOR_ID = 'system';

@@ -6,7 +6,7 @@ import {
   type PkgManagerInstallManifest,
   type RunScriptResult,
 } from '../component/schema';
-import {DEFAULT_COMPONENT_ID} from '../constants';
+import {DEFAULT_EXECUTOR_ID, SYSTEM_EXECUTOR_ID} from '../constants';
 import {
   type InstallEvents,
   type PackEvents,
@@ -20,16 +20,19 @@ import {type PluginRegistry} from '../plugin/registry';
  */
 
 export abstract class PkgManagerController extends createStrictEmitter<PkgManagerEvents>() {
-  protected readonly executorId: string;
+  protected readonly defaultExecutorId: string;
+
+  protected readonly systemExecutorId: string;
 
   public constructor(
     protected readonly pluginRegistry: PluginRegistry,
-    protected readonly desiredPkgManagers: readonly string[],
+    protected readonly desiredPkgManagers: string | readonly string[],
     protected readonly opts: PkgManagerControllerOpts = {},
   ) {
     super();
 
-    this.executorId = opts.executorId ?? DEFAULT_COMPONENT_ID;
+    this.defaultExecutorId = opts.defaultExecutorId ?? DEFAULT_EXECUTOR_ID;
+    this.systemExecutorId = opts.systemExecutorId ?? SYSTEM_EXECUTOR_ID;
   }
 
   public abstract getPkgManagers(): Promise<readonly PkgManager[]>;
@@ -60,8 +63,12 @@ export type PkgManagerEvents = InstallEvents & ScriptRunnerEvents & PackEvents;
  */
 
 export interface PkgManagerControllerOpts extends PkgManagerOpts {
-  executorId?: string;
-} /**
+  defaultExecutorId?: string;
+
+  systemExecutorId?: string;
+}
+
+/**
  * Options for {@link SmokerPkgManagerController.runScripts}
  */
 

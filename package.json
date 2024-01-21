@@ -52,6 +52,7 @@
     "@types/node": "20.10.5",
     "@types/sinon": "17.0.2",
     "@types/source-map-support": "0.5.10",
+    "@types/wallabyjs": "0.0.12",
     "@typescript-eslint/eslint-plugin": "6.14.0",
     "@typescript-eslint/parser": "6.14.0",
     "cross-env": "7.0.3",

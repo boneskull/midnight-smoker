@@ -64,6 +64,24 @@ describe('midnight-smoker', function () {
                   },
                 );
               });
+
+              describe('when the version is a SemVer', function () {
+                it('should create a PkgManagerSpec with provided values', function () {
+                  expect(
+                    new PkgManagerSpec({
+                      pkgManager: 'npm',
+                      version: new SemVer('7.0.0'),
+                    }),
+                    'to satisfy',
+                    {
+                      pkgManager: 'npm',
+                      version: '7.0.0',
+                      isValid: true,
+                      isSystem: false,
+                    },
+                  );
+                });
+              });
             });
 
             describe('when the version is invalid', function () {
@@ -389,6 +407,16 @@ describe('midnight-smoker', function () {
                 });
               });
 
+              describe('when the argument is just a name', function () {
+                it('should parse the string and create a PkgManagerSpec', async function () {
+                  const result = await PkgManagerSpec.from('pnpm');
+                  expect(result, 'to satisfy', {
+                    pkgManager: 'pnpm',
+                    version: 'latest',
+                  });
+                });
+              });
+
               describe('when the second argument is true', function () {
                 it('should set the isSystem flag to true', async function () {
                   const result = await PkgManagerSpec.from('npm@7.0.0', true);
@@ -428,17 +456,17 @@ describe('midnight-smoker', function () {
           });
 
           describe('parse()', function () {
-            describe('when the spec is valid', function () {
-              it('should return a tuple with the package manager and version', function () {
+            describe('when the string contains an @', function () {
+              it('should return a tuple, split on @', function () {
                 const result = PkgManagerSpec.parse('npm@7.0.0');
                 expect(result, 'to equal', ['npm', '7.0.0']);
               });
             });
 
-            describe('when the spec is invalid', function () {
-              it('should return undefined', function () {
-                const result = PkgManagerSpec.parse('invalid');
-                expect(result, 'to be undefined');
+            describe('when the string does not contain an @', function () {
+              it('should return a tuple with an undefined version', function () {
+                const result = PkgManagerSpec.parse('herp');
+                expect(result, 'to equal', ['herp', undefined]);
               });
             });
           });

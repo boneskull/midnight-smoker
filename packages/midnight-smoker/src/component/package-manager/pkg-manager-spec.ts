@@ -87,6 +87,7 @@ export class PkgManagerSpec {
       }
       this.version ??= version;
     } else {
+      semvers.set(this, version);
       this.version = version.format();
     }
     this.pkgManager = pkgManager;
@@ -158,11 +159,14 @@ export class PkgManagerSpec {
     }
     if (isString(specOrOpts)) {
       const [pkgManager, version] = PkgManagerSpec.parse(specOrOpts) ?? [];
-      return PkgManagerSpec.create({
-        pkgManager,
-        version,
-        isSystem: specIsSystem,
-      });
+      if (pkgManager && version) {
+        return PkgManagerSpec.create({
+          pkgManager,
+          version,
+          isSystem: specIsSystem,
+        });
+      }
+      specOrOpts = {pkgManager};
     }
 
     let {
@@ -180,7 +184,7 @@ export class PkgManagerSpec {
 
   public static parse(
     spec: string,
-  ): [pkgManager: string, version: string] | undefined {
+  ): [pkgManager: string, version: string | undefined] | undefined {
     let pkgManager: string, version: string;
     const matches = spec.match(PKG_MANAGER_SPEC_REGEX);
     if (matches) {
@@ -207,7 +211,8 @@ export class PkgManagerSpec {
   }
 }
 
-const PKG_MANAGER_SPEC_REGEX = /^([^@]+?)@([^@]+)$/;
+const PKG_MANAGER_SPEC_REGEX = /^([^@]+?)(?:@([^@]+))?$/;
+
 /**
  * {@link SemVer} objecst for {@link PkgManagerSpec} instances.
  *
@@ -215,5 +220,5 @@ const PKG_MANAGER_SPEC_REGEX = /^([^@]+?)@([^@]+)$/;
  * private fields don't make it out.
  */
 const semvers = new WeakMap<PkgManagerSpec, SemVer>();
-export const DEFAULT_PKG_MANAGER_SPEC = PkgManagerSpec.create();
+
 export const zPkgManagerSpec = instanceofSchema(PkgManagerSpec);

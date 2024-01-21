@@ -5,10 +5,7 @@
  */
 
 import {type Range, type SemVer} from 'semver';
-import type * as Helpers from '../../plugin/helpers';
-import {type Executor} from '../executor/executor';
 import {type PkgManager} from './pkg-manager-schema';
-import {type PkgManagerSpec} from './pkg-manager-spec';
 
 /**
  * Options for {@link PkgManagerFactory}
@@ -28,12 +25,7 @@ export interface PkgManagerOpts {
 /**
  * A function which returns an object implementing {@link PkgManager}.
  */
-export type PkgManagerFactory = (
-  spec: PkgManagerSpec,
-  executor: Executor,
-  helpers: typeof Helpers,
-  opts?: PkgManagerOpts,
-) => Promise<PkgManager>;
+export type {PkgManagerFactory} from './pkg-manager-schema';
 
 /**
  * Returns `true` if this `PackageManager` can handle the given version.
@@ -46,24 +38,6 @@ export type PkgManagerAcceptsFn = (semver: SemVer) => boolean;
 
 export type PkgManagerAcceptsRange = string | Range;
 
-export interface PkgManagerDef {
-  /**
-   * The name of the package manager's executable.
-   */
-  bin: string;
-
-  /**
-   * Either a SemVer range or a function which returns `true` if its parameter
-   * is within the allowed range.
-   */
-  accepts: PkgManagerAcceptsFn | PkgManagerAcceptsRange;
-
-  lockfile?: string;
-
-  /**
-   * Creates a {@link PkgManager} object.
-   */
-  create: PkgManagerFactory;
-}
+export type {PkgManagerDef} from './pkg-manager-schema';
 
 export type {PkgManager};

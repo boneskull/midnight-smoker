@@ -59,14 +59,13 @@ export class SmokerPkgManagerController extends PkgManagerController {
     if (this.pkgManagers) {
       return this.pkgManagers;
     }
-    const pkgManagerMap = await this.pluginRegistry.loadPackageManagers(
-      this.executorId,
-      this.desiredPkgManagers,
-      {
-        verbose: this.opts.verbose,
-        loose: this.opts.loose,
-      },
-    );
+    const pkgManagerMap = await this.pluginRegistry.loadPackageManagers({
+      defaultExecutorId: this.defaultExecutorId,
+      systemExecutorId: this.systemExecutorId,
+      desiredPkgManagers: [...this.desiredPkgManagers],
+      verbose: this.opts.verbose,
+      loose: this.opts.loose,
+    });
 
     this.pkgManagers = Object.freeze([...pkgManagerMap.values()]);
     debug(
