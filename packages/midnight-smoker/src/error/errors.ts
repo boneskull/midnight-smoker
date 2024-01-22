@@ -4,5 +4,6 @@
  * @packageDocumentation
  */
 
+export * from './base-error';
 export * from './common-error';
 export * from './smoker-error';

@@ -1,11 +1,21 @@
-import type {Component, Plugin} from 'midnight-smoker/plugin';
+import {type Component} from 'midnight-smoker/component';
 import {
-  Blessed,
-  PluginMetadata,
-  PluginRegistry,
-  Rule,
+  type Plugin,
+  type PluginFactory,
+  type PluginMetadata,
+  type PluginRegistry,
 } from 'midnight-smoker/plugin';
-import {DEFAULT_TEST_PLUGIN_NAME} from './constants';
+import {isBlessedPlugin} from 'midnight-smoker/plugin/blessed';
+import {
+  isPartialRuleDef,
+  type SomeRule,
+  type SomeRuleDef,
+} from 'midnight-smoker/rule';
+import {
+  DEFAULT_TEST_PLUGIN_NAME,
+  DEFAULT_TEST_RULE_DESCRIPTION,
+  DEFAULT_TEST_RULE_NAME,
+} from './constants';
 
 /**
  * Registers a rule in the plugin registry.
@@ -15,41 +25,44 @@ import {DEFAULT_TEST_PLUGIN_NAME} from './constants';
  *   instance of PluginRegistry).
  * @param pluginName - The name of the plugin (optional, default is
  *   'test-plugin').
- * @r e turns The registered rule.
+ * @returns The registered rule.
  */
 export async function registerRule(
-  factoryOrRuleDef: Plugin.PluginFactory | Partial<Rule.SomeRuleDef>,
-  registry = PluginRegistry.create(),
+  registry: PluginRegistry,
+  factoryOrRuleDef: PluginFactory | Partial<SomeRuleDef>,
   pluginName = DEFAULT_TEST_PLUGIN_NAME,
-): Promise<Component<Rule.SomeRule>> {
+): Promise<Component<SomeRule>> {
   const blessedMetadata = await registry.getBlessedMetadata();
+  let phonyMetadata: PluginMetadata | undefined;
+  if (isBlessedPlugin(pluginName)) {
+    phonyMetadata = blessedMetadata[pluginName];
+  }
 
-  const phonyMetadata = Blessed.isBlessedPlugin(pluginName)
-    ? blessedMetadata[pluginName]
-    : PluginMetadata.PluginMetadata.createTransient(pluginName);
+  let factory: PluginFactory;
+  let ruleDef: SomeRuleDef | undefined;
 
-  let factory: Plugin.PluginFactory;
-  let ruleDef: Rule.SomeRuleDef | undefined;
-
-  if (Rule.isPartialRuleDef(factoryOrRuleDef)) {
+  if (isPartialRuleDef(factoryOrRuleDef)) {
     ruleDef = {
       check: () => {},
-      description: 'test description',
-      name: 'test rule',
+      description: DEFAULT_TEST_RULE_DESCRIPTION,
+      name: DEFAULT_TEST_RULE_NAME,
       ...factoryOrRuleDef,
     };
     factory = ({defineRule}) => {
       defineRule(ruleDef!);
     };
   } else {
-    factory = factoryOrRuleDef as Plugin.PluginFactory;
+    factory = factoryOrRuleDef as PluginFactory;
   }
 
-  const metadata = await registry.registerPlugin(phonyMetadata, {
-    plugin: async (api) => {
-      await factory(api);
-    },
-  });
+  const plugin: Plugin = {
+    plugin: factory,
+  };
+
+  // more terrible overload verbosity
+  const metadata = phonyMetadata
+    ? await registry.registerPlugin(phonyMetadata, plugin)
+    : await registry.registerPlugin(pluginName, plugin);
 
   if (ruleDef) {
     return metadata.ruleMap.get(ruleDef.name)!;

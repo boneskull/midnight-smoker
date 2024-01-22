@@ -1,19 +1,27 @@
+import rewiremock from 'rewiremock/node';
 import unexpected from 'unexpected';
-import type {Owner} from '../../../src/component/component';
-import {
-  component,
-  ComponentId,
-  kComponentId,
-} from '../../../src/component/component';
+import type * as C from '../../../../src/component/component';
+import {createFsMocks} from '../../mocks/fs';
 
 const expect = unexpected.clone();
 
 describe('midnight-smoker', function () {
   describe('component', function () {
+    let component: typeof C.component;
+    let ComponentId: typeof C.ComponentId;
+    let kComponentId: typeof C.kComponentId;
+    beforeEach(function () {
+      const {mocks} = createFsMocks();
+      ({component, ComponentId, kComponentId} = rewiremock.proxy(
+        () => require('../../../../src/component/component'),
+        mocks,
+      ));
+    });
+
     describe('component()', function () {
       let name: string;
       let value: Record<string, any>;
-      let owner: Owner;
+      let owner: C.Owner;
 
       beforeEach(function () {
         name = 'example-component';

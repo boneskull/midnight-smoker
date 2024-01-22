@@ -1,6 +1,8 @@
 import type {nullExecutor} from '@midnight-smoker/test-util';
 import {type ExecaError} from 'execa';
-import {Executor, Helpers, PkgManager as PkgMgr} from 'midnight-smoker/plugin';
+import {ExecError} from 'midnight-smoker/executor';
+import {type InstallManifest} from 'midnight-smoker/pkg-manager';
+import * as Helpers from 'midnight-smoker/plugin/helpers';
 import rewiremock from 'rewiremock/node';
 import {Range} from 'semver';
 import {createSandbox} from 'sinon';
@@ -26,8 +28,7 @@ describe('@midnight-smoker/plugin-default', function () {
   let mocks: Npm7SpecMocks;
 
   let Npm7: typeof NPM7.Npm7;
-  let executor: sinon.SinonStubbedMember<typeof nullExecutor> &
-    typeof nullExecutor;
+  let executor: sinon.SinonStubbedMember<typeof nullExecutor>;
 
   beforeEach(function () {
     sandbox = createSandbox();
@@ -43,7 +44,7 @@ describe('@midnight-smoker/plugin-default', function () {
       delete mocks.debug;
     }
 
-    executor = sandbox.stub() as typeof executor;
+    executor = sandbox.stub();
 
     ({Npm7} = rewiremock.proxy(
       () => require('../../../src/package-manager/npm7'),
@@ -57,9 +58,9 @@ describe('@midnight-smoker/plugin-default', function () {
 
   describe('package manager', function () {
     describe('Npm7', function () {
-      let spec: Readonly<PkgMgr.PkgManagerSpec>;
+      let spec: Readonly<Helpers.PkgManagerSpec>;
       before(async function () {
-        spec = await PkgMgr.PkgManagerSpec.from('npm@7.0.0');
+        spec = await Helpers.PkgManagerSpec.from('npm@7.0.0');
       });
 
       describe('static method', function () {
@@ -196,7 +197,7 @@ describe('@midnight-smoker/plugin-default', function () {
 
           describe('when npm failed to spawn', function () {
             beforeEach(function () {
-              executor.rejects(new Executor.ExecError({} as ExecaError));
+              executor.rejects(new ExecError({} as ExecaError));
             });
 
             it('should reject', async function () {
@@ -236,7 +237,7 @@ describe('@midnight-smoker/plugin-default', function () {
         });
 
         describe('install()', function () {
-          const manifest: PkgMgr.InstallManifest[] = [
+          const manifest: InstallManifest[] = [
             {
               spec: `${MOCK_TMPDIR}/bar.tgz`,
               pkgName: 'bar',
@@ -256,7 +257,7 @@ describe('@midnight-smoker/plugin-default', function () {
           });
 
           describe('when npm fails', function () {
-            const err = new Executor.ExecError({} as ExecaError);
+            const err = new ExecError({} as ExecaError);
             beforeEach(function () {
               executor.rejects(err);
             });
@@ -318,7 +319,7 @@ describe('@midnight-smoker/plugin-default', function () {
 
           describe('when npm fails', function () {
             beforeEach(function () {
-              executor.rejects(new Executor.ExecError({} as ExecaError));
+              executor.rejects(new ExecError({} as ExecaError));
             });
 
             it('should resolve with a result containing an error', async function () {

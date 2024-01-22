@@ -17,7 +17,7 @@ import {
   type Component,
 } from '../component/component';
 import type {Executor} from '../component/executor/executor';
-import type {PkgManagerDef} from '../component/package-manager/pkg-manager-types';
+import type {PkgManagerDef} from '../component/pkg-manager/pkg-manager-types';
 import type {ReporterDef} from '../component/reporter/reporter-types';
 import type {RuleRunner} from '../component/rule-runner/rule-runner-schema';
 import {
@@ -29,8 +29,8 @@ import {
 import type {ScriptRunner} from '../component/script-runner/script-runner-schema';
 import {isZodError} from '../error/base-error';
 import {InvalidArgError} from '../error/common-error';
-import {readPackageJson} from '../pkg-util';
-import {zNonEmptyString, zPackageJson} from '../schema-util';
+import {readPackageJson} from '../util/pkg-util';
+import {zNonEmptyString, zPackageJson} from '../util/schema-util';
 import {BLESSED_PLUGINS, type BlessedPlugin} from './blessed';
 import type {StaticPluginMetadata} from './static-metadata';
 
@@ -62,6 +62,7 @@ const zPluginMetadataOptsInput = z.object({
     )
     .describe('The entry point of the plugin as an absolute path'),
   description: zNonEmptyString.optional().describe('Plugin description'),
+  version: zNonEmptyString.optional().describe('Plugin version'),
   id: zId.optional(),
   requestedAs: zNonEmptyString
     .optional()
@@ -197,6 +198,12 @@ export class PluginMetadata implements StaticPluginMetadata {
   public readonly description?: string;
 
   /**
+   * Version of plugin. May be derived from {@link pkgJson} or provided in
+   * {@link PluginMetadataOpts}.
+   */
+  public readonly version?: string;
+
+  /**
    * {@inheritDoc create:(0)}
    */
   protected constructor(entryPoint: string, id?: string);
@@ -231,6 +238,7 @@ export class PluginMetadata implements StaticPluginMetadata {
       this.ruleRunnerMap = new Map();
       this.executorMap = new Map();
       this.reporterMap = new Map();
+      this.version = this.version ?? this.pkgJson?.version;
     } catch (err) {
       // TODO: throw SmokerError
       throw isZodError(err) ? fromZodError(err) : err;
@@ -306,13 +314,6 @@ export class PluginMetadata implements StaticPluginMetadata {
     }
 
     return Object.freeze(metadata);
-  }
-
-  /**
-   * {@inheritDoc StaticPluginMetadata.version}
-   */
-  public get version(): string | undefined {
-    return this.pkgJson?.version;
   }
 
   /**

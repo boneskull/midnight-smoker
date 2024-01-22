@@ -6,7 +6,8 @@
 
 import Debug from 'debug';
 import {isError} from 'lodash';
-import type {PluginAPI, ScriptRunner} from 'midnight-smoker/plugin';
+import {type PluginAPI} from 'midnight-smoker/plugin';
+import type * as SR from 'midnight-smoker/script-runner';
 
 const debug = Debug('midnight-smoker:plugin-default:script-runner');
 
@@ -23,18 +24,18 @@ export function loadScriptRunner(api: PluginAPI) {
    * @param opts - Options for script execution.
    * @returns A promise that resolves to an array of script execution results.
    */
-  const smokerScriptRunner: ScriptRunner.ScriptRunner = async (
+  const smokerScriptRunner: SR.ScriptRunner = async (
     {scriptBegin, scriptOk, scriptFailed},
     runManifest,
     {signal},
-  ): Promise<ScriptRunner.RunScriptResult> => {
+  ): Promise<SR.RunScriptResult> => {
     if (signal?.aborted) {
       throw new api.PkgManager.Errors.RunScriptBailed();
     }
 
     const {pkgManager, script, pkgName} = runManifest;
 
-    let result: ScriptRunner.RunScriptResult;
+    let result: SR.RunScriptResult;
 
     scriptBegin({
       script,

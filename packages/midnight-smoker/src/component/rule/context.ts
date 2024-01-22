@@ -1,5 +1,5 @@
 import type {PackageJson} from 'type-fest';
-import {serialize} from '../../util';
+import {serialize} from '../../util/util';
 import type {Component} from '../component';
 import {RuleError} from '../rule-runner/rule-error';
 import {RuleIssue} from './issue';

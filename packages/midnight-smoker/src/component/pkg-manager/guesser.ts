@@ -4,7 +4,7 @@
  * @packageDocumentation
  */
 import {globIterate} from 'glob';
-import {readPackageJson} from '../../pkg-util';
+import {readPackageJson} from '../../util/pkg-util';
 import {PkgManagerSpec} from './pkg-manager-spec';
 import type {PkgManagerDef} from './pkg-manager-types';
 

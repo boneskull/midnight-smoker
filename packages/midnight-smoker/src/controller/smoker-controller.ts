@@ -7,9 +7,9 @@
  */
 
 import Debug from 'debug';
-import {RunScriptBailed} from '../component/package-manager/errors/bailed-error';
-import {InstallError} from '../component/package-manager/errors/install-error';
-import {PackError} from '../component/package-manager/errors/pack-error';
+import {RunScriptBailed} from '../component/pkg-manager/errors/bailed-error';
+import {InstallError} from '../component/pkg-manager/errors/install-error';
+import {PackError} from '../component/pkg-manager/errors/pack-error';
 import {
   type InstallManifest,
   type InstallResult,

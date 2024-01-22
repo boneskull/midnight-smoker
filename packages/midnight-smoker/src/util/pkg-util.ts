@@ -4,12 +4,12 @@ import childProcess from 'node:child_process';
 import {promisify} from 'node:util';
 import readPkgUp from 'read-pkg-up';
 import type {PackageJson} from 'type-fest';
-import {DEFAULT_PKG_MANAGER_VERSION} from './constants';
-import {fromUnknownError} from './error/base-error';
+import {DEFAULT_PKG_MANAGER_VERSION} from '../constants';
+import {fromUnknownError} from '../error/base-error';
 import {
   MissingPackageJsonError,
   UnreadablePackageJsonError,
-} from './error/util-error';
+} from '../error/util-error';
 
 const debug = Debug('midnight-smoker:pkg-util');
 const execFile = promisify(childProcess.execFile);

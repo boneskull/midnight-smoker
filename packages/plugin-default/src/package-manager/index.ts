@@ -1,4 +1,5 @@
-import type {PkgManager, PluginAPI} from 'midnight-smoker/plugin';
+import type * as PkgManager from 'midnight-smoker/pkg-manager';
+import type {PluginAPI} from 'midnight-smoker/plugin';
 import Npm7 from './npm7';
 import Npm9 from './npm9';
 import YarnBerry from './yarn-berry';

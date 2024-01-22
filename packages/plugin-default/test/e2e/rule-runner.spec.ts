@@ -1,6 +1,7 @@
 import {registerPlugin, runRuleRunner} from '@midnight-smoker/test-util';
-import type {PluginRegistry, RuleRunner} from 'midnight-smoker/plugin';
-import {Rule} from 'midnight-smoker/plugin';
+import {PluginRegistry} from 'midnight-smoker/plugin';
+import * as Rule from 'midnight-smoker/rule';
+import type * as RuleRunner from 'midnight-smoker/rule-runner';
 import path from 'node:path';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
@@ -26,8 +27,9 @@ describe('@midnight-smoker/plugin-default', function () {
 
     beforeEach(async function () {
       sandbox = createSandbox();
+      registry = PluginRegistry.create();
 
-      registry = await registerPlugin({
+      await registerPlugin(registry, {
         factory: (api) => {
           loadRuleRunner(api);
 

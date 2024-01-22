@@ -1,9 +1,11 @@
 import path from 'node:path';
+import rewiremock from 'rewiremock/node';
 import type {PackageJson} from 'type-fest';
 import unexpected from 'unexpected';
 import {isValidationError} from 'zod-validation-error';
-import {InvalidArgError} from '../../../src/error';
-import {PluginMetadata, TRANSIENT} from '../../../src/plugin/metadata';
+import {InvalidArgError} from '../../../src/error/common-error';
+import type * as PM from '../../../src/plugin/metadata';
+import {createFsMocks} from '../mocks/fs';
 
 const expect = unexpected.clone();
 
@@ -18,8 +20,20 @@ const TEST_OPTS = {
 describe('midnight-smoker', function () {
   describe('plugin', function () {
     describe('PluginMetadata', function () {
+      let TRANSIENT: typeof PM.TRANSIENT;
+      let PluginMetadata: typeof PM.PluginMetadata;
+
+      beforeEach(function () {
+        const {mocks} = createFsMocks();
+
+        ({PluginMetadata, TRANSIENT} = rewiremock.proxy(
+          () => require('../../../src/plugin/metadata'),
+          mocks,
+        ));
+      });
+
       describe('instance method', function () {
-        let metadata: PluginMetadata;
+        let metadata: PM.PluginMetadata;
 
         beforeEach(function () {
           metadata = PluginMetadata.create(TEST_OPTS);

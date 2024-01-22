@@ -1,13 +1,13 @@
 import {Range, SemVer} from 'semver';
 import {z} from 'zod';
 import {zScriptError} from '../../error/error-schema';
-import {type Helpers} from '../../plugin';
+import type * as Helpers from '../../plugin/helpers';
 import {
   customSchema,
   instanceofSchema,
   zAbortSignal,
   zNonEmptyString,
-} from '../../schema-util';
+} from '../../util/schema-util';
 import type {ExecError} from '../executor/exec-error';
 import {zExecutor} from '../executor/executor';
 import {

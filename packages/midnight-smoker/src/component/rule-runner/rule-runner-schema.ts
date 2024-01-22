@@ -8,9 +8,10 @@ import {
   zRunRulesFailedEventData,
   zRunRulesOkEventData,
 } from '../../event/rule-events';
-import {zNonEmptyString} from '../../schema-util';
+import {zNonEmptyString} from '../../util/schema-util';
 import type {Component} from '../component/component';
-import {zBaseNormalizedRuleOptionsRecord, zRuleIssue, zSomeRule} from '../rule';
+import {zRuleIssue} from '../rule/issue';
+import {zBaseNormalizedRuleOptionsRecord, zSomeRule} from '../rule/rule';
 import {zRuleOk} from '../rule/rule-result';
 
 export const zRunRulesBeginNotifier = z

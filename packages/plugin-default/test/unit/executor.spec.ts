@@ -1,6 +1,8 @@
 import type {ExecaMock} from '@midnight-smoker/test-util';
-import {NULL_SPEC, createExecaMock} from '@midnight-smoker/test-util';
-import type {Executor} from 'midnight-smoker/plugin';
+import {createExecaMock} from '@midnight-smoker/test-util';
+import {type ExecaError} from 'execa';
+import * as Executor from 'midnight-smoker/executor';
+import {PkgManagerSpec} from 'midnight-smoker/pkg-manager';
 import {Readable} from 'node:stream';
 import rewiremock from 'rewiremock/node';
 import {createSandbox} from 'sinon';
@@ -36,45 +38,85 @@ describe('@midnight-smoker/plugin-default', function () {
       sandbox.restore();
     });
 
-    describe('method', function () {
-      describe('exec()', function () {
-        describe('when "verbose" ExecOpts option is true', function () {
-          beforeEach(async function () {
-            await corepackExecutor(NULL_SPEC, ['foo'], {verbose: true});
-          });
-          it('should pipe to STDOUT', async function () {
-            expect(stdout.pipe, 'was called once');
-          });
-          it('should pipe to STDERR', async function () {
-            expect(stderr.pipe, 'was called once');
-          });
+    describe('when "verbose" ExecOpts option is true', function () {
+      beforeEach(async function () {
+        await corepackExecutor(
+          PkgManagerSpec.create({pkgManager: 'nullpm', version: '1.0.0'}),
+          ['foo'],
+          {verbose: true},
+        );
+      });
+      it('should pipe to STDOUT', async function () {
+        expect(stdout.pipe, 'was called once');
+      });
+      it('should pipe to STDERR', async function () {
+        expect(stderr.pipe, 'was called once');
+      });
 
-          it('should run corepack', function () {
-            expect(execaMock.node, 'to have a call satisfying', [
-              /corepack$/,
-              [MOCK_PM_SPEC, 'foo'],
-              {},
-            ]).and('was called once');
-          });
+      it('should run corepack', function () {
+        expect(execaMock.node, 'to have a call satisfying', [
+          /corepack$/,
+          [MOCK_PM_SPEC, 'foo'],
+          {},
+        ]).and('was called once');
+      });
+    });
+
+    describe('when "verbose" ExecOpts option is not true', function () {
+      beforeEach(async function () {
+        await corepackExecutor(
+          PkgManagerSpec.create({pkgManager: 'nullpm', version: '1.0.0'}),
+          ['foo'],
+          {verbose: false},
+        );
+      });
+      it('should not pipe to STDOUT', async function () {
+        expect(stdout.pipe, 'was not called');
+      });
+      it('should not pipe to STDERR', async function () {
+        expect(stderr.pipe, 'was not called');
+      });
+
+      it('should run corepack', function () {
+        expect(execaMock.node, 'to have a call satisfying', /corepack/).and(
+          'was called once',
+        );
+      });
+    });
+
+    describe('when execution fails', function () {
+      let err: ExecaError;
+
+      beforeEach(async function () {
+        err = Object.assign(new Error('foo'), {
+          isCanceled: false,
+          message: '',
+          shortMessage: '',
+          name: '',
+          command: '',
+          exitCode: 0,
+          signal: '',
+          stdout: '',
+          stderr: '',
+          escapedCommand: '',
+          all: '',
+          failed: false,
+          timedOut: false,
+          killed: false,
+          originalMessage: '',
         });
+        execaMock.node.rejects(err);
+      });
 
-        describe('when "verbose" ExecOpts option is not true', function () {
-          beforeEach(async function () {
-            await corepackExecutor(NULL_SPEC, ['foo'], {verbose: false});
-          });
-          it('should not pipe to STDOUT', async function () {
-            expect(stdout.pipe, 'was not called');
-          });
-          it('should not pipe to STDERR', async function () {
-            expect(stderr.pipe, 'was not called');
-          });
-
-          it('should run corepack', function () {
-            expect(execaMock.node, 'to have a call satisfying', /corepack/).and(
-              'was called once',
-            );
-          });
-        });
+      it('should throw an ExecError', async function () {
+        await expect(
+          corepackExecutor(
+            PkgManagerSpec.create({pkgManager: 'nullpm', version: '1.0.0'}),
+            ['foo'],
+          ),
+          'to be rejected with error satisfying',
+          expect.it('to be a', Executor.ExecError),
+        );
       });
     });
   });

@@ -6,9 +6,9 @@
  * @packageDocumentation
  */
 
-export const PLUGIN_DEFAULTS_ID = '@midnight-smoker/plugin-default';
+export const PLUGIN_DEFAULT_ID = '@midnight-smoker/plugin-default';
 
-export const BLESSED_PLUGINS = [PLUGIN_DEFAULTS_ID] as const;
+export const BLESSED_PLUGINS = [PLUGIN_DEFAULT_ID] as const;
 
 export type BlessedPlugin = (typeof BLESSED_PLUGINS)[number];
 

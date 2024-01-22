@@ -1,4 +1,4 @@
-import type {Executor} from 'midnight-smoker/plugin';
+import type * as Executor from 'midnight-smoker/executor';
 import {createExecaMock} from './execa';
 
 const execaMock = createExecaMock();

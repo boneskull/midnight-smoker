@@ -1,5 +1,6 @@
 import type {nullExecutor} from '@midnight-smoker/test-util';
-import {Helpers, PkgManager as PkgMgr} from 'midnight-smoker/plugin';
+import {type InstallManifest} from 'midnight-smoker/pkg-manager';
+import * as Helpers from 'midnight-smoker/plugin/helpers';
 import rewiremock from 'rewiremock/node';
 import {Range} from 'semver';
 import {createSandbox} from 'sinon';
@@ -20,15 +21,14 @@ interface Npm9SpecMocks {
 
 describe('@midnight-smoker/plugin-default', function () {
   let sandbox: sinon.SinonSandbox;
-  let executor: sinon.SinonStubbedMember<typeof nullExecutor> &
-    typeof nullExecutor;
+  let executor: sinon.SinonStubbedMember<typeof nullExecutor>;
   let mocks: Npm9SpecMocks;
 
   let Npm9: typeof NPM9.Npm9;
   beforeEach(function () {
     sandbox = createSandbox();
 
-    executor = sandbox.stub() as typeof executor;
+    executor = sandbox.stub();
 
     sandbox.stub(Helpers, 'createTempDir').resolves(MOCK_TMPDIR);
 
@@ -54,10 +54,10 @@ describe('@midnight-smoker/plugin-default', function () {
 
   describe('package manager', function () {
     describe('Npm9', function () {
-      let spec: Readonly<PkgMgr.PkgManagerSpec>;
+      let spec: Readonly<Helpers.PkgManagerSpec>;
 
       before(async function () {
-        spec = await PkgMgr.PkgManagerSpec.from('npm@9.8.1');
+        spec = await Helpers.PkgManagerSpec.from('npm@9.8.1');
       });
 
       describe('static method', function () {
@@ -89,7 +89,7 @@ describe('@midnight-smoker/plugin-default', function () {
         });
 
         describe('install()', function () {
-          const manifest: PkgMgr.InstallManifest[] = [
+          const manifest: InstallManifest[] = [
             {
               spec: `${MOCK_TMPDIR}/bar.tgz`,
               pkgName: 'bar',

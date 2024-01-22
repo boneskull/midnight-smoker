@@ -11,7 +11,7 @@ import {
   serializeObject,
   zNonEmptyString,
   zNonNegativeInteger,
-} from '../schema-util';
+} from '../util/schema-util';
 
 export interface RuleEvents {
   /**

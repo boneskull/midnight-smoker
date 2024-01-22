@@ -6,7 +6,7 @@
 
 export * from './component';
 export * from './executor';
-export * from './package-manager';
+export * from './pkg-manager';
 export * from './reporter';
 export * from './rule';
 export * from './rule-runner';

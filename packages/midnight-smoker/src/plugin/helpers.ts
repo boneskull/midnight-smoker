@@ -15,18 +15,18 @@ import type {RuleOk} from '../component/rule/rule-result';
 import type {RuleSeverity} from '../component/rule/severity';
 import type {StaticRuleContext} from '../component/rule/static';
 import {DirCreationError} from '../error/util-error';
-import {readPackageJson, readPackageJsonSync} from '../pkg-util';
-import {isErrnoException} from '../util';
+import {readPackageJson, readPackageJsonSync} from '../util/pkg-util';
+import {isErrnoException} from '../util/util';
 export {
   PkgManagerSpec,
   type SystemPkgManagerSpec,
-} from '../component/package-manager/pkg-manager-spec';
+} from '../component/pkg-manager/pkg-manager-spec';
 export {
   type ReadPackageJsonNormalizedResult,
   type ReadPackageJsonOpts,
   type ReadPackageJsonResult,
-} from '../pkg-util';
-export {isExecaError} from '../util';
+} from '../util/pkg-util';
+export {isExecaError} from '../util/util';
 export {readPackageJson, readPackageJsonSync};
 
 // TODO move most of this stuff into other places

@@ -1,6 +1,7 @@
 import {registerRule, safePath} from '@midnight-smoker/test-util';
-import type {Component} from 'midnight-smoker/plugin';
-import {Rule} from 'midnight-smoker/plugin';
+import {type Component} from 'midnight-smoker/component';
+import {PluginRegistry} from 'midnight-smoker/plugin';
+import {RuleSeverities, type SomeRule} from 'midnight-smoker/rule';
 import unexpected from 'unexpected';
 import noBannedFilesDef from '../../../src/rules/no-banned-files';
 import {applyRule} from './helpers';
@@ -8,12 +9,13 @@ import {applyRule} from './helpers';
 const expect = unexpected.clone();
 
 describe('@midnight-smoker/plugin-default', function () {
-  let noBannedFiles: Component<Rule.SomeRule>;
+  let noBannedFiles: Component<SomeRule>;
 
   describe('rule', function () {
     describe('no-banned-files', function () {
       before(async function () {
-        noBannedFiles = await registerRule(noBannedFilesDef);
+        const registry = PluginRegistry.create();
+        noBannedFiles = await registerRule(registry, noBannedFilesDef);
       });
 
       describe('when the package contains a banned file', function () {
@@ -31,7 +33,7 @@ describe('@midnight-smoker/plugin-default', function () {
                   pkgJson: expect.it('to be an object'),
                   pkgJsonPath: expect.it('to be a string'),
                   installPath: expect.it('to be a string'),
-                  severity: Rule.RuleSeverities.Error,
+                  severity: RuleSeverities.Error,
                 },
               },
             ],
@@ -60,7 +62,7 @@ describe('@midnight-smoker/plugin-default', function () {
                   pkgJson: expect.it('to be an object'),
                   pkgJsonPath: expect.it('to be a string'),
                   installPath: expect.it('to be a string'),
-                  severity: Rule.RuleSeverities.Error,
+                  severity: RuleSeverities.Error,
                 },
               },
             ],

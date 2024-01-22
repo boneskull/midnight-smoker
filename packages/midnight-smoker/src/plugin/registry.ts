@@ -1,13 +1,14 @@
-import Debug from 'debug';
-import {isError, isString} from 'lodash';
+import Reg from 'debug';
+import {isEmpty, isError, isString} from 'lodash';
 import {dirname} from 'node:path';
 import util from 'node:util';
+import {type PackageJson} from 'type-fest';
 import {z} from 'zod';
 import {fromZodError} from 'zod-validation-error';
 import {ComponentKinds, type Component} from '../component/component';
 import {InvalidComponentError} from '../component/component/component-error';
 import * as Executor from '../component/executor';
-import * as PkgMgr from '../component/package-manager';
+import * as PkgMgr from '../component/pkg-manager';
 import * as Reporter from '../component/reporter';
 import * as Rule from '../component/rule';
 import * as RuleRunner from '../component/rule-runner';
@@ -28,10 +29,10 @@ import {
   UnresolvablePluginError,
 } from '../error/internal-error';
 import * as Event from '../event';
-import {justImport, resolveFrom} from '../loader-util';
-import {readPackageJson} from '../pkg-util';
-import * as SchemaUtils from '../schema-util';
-import {isErrnoException} from '../util';
+import {justImport, resolveFrom} from '../util/loader-util';
+import {readPackageJson} from '../util/pkg-util';
+import * as SchemaUtils from '../util/schema-util';
+import {isErrnoException} from '../util/util';
 import {isBlessedPlugin, type BlessedPlugin} from './blessed';
 import * as Helpers from './helpers';
 import {PluginMetadata, initBlessedMetadata} from './metadata';
@@ -39,7 +40,7 @@ import {zPlugin, type Plugin} from './plugin';
 import type * as API from './plugin-api';
 import {type StaticPluginMetadata} from './static-metadata';
 
-const debug = Debug('midnight-smoker:plugin-registry');
+const debug = Reg('midnight-smoker:plugin-registry');
 
 export type RuleFilter = (rule: Component<Rule.SomeRule>) => boolean;
 
@@ -319,11 +320,13 @@ export class PluginRegistry {
     metadata: Readonly<PluginMetadata>,
     plugin?: Plugin,
   ): Readonly<PluginMetadata> {
-    if (plugin?.name || plugin?.description) {
-      return PluginMetadata.create(metadata, {
+    if (plugin?.name || plugin?.description || plugin?.version) {
+      const updates = {
         id: plugin.name ?? metadata.id,
         description: plugin.description ?? metadata.description,
-      });
+        version: plugin.version ?? metadata.version,
+      };
+      return PluginMetadata.create(metadata, updates);
     }
     return metadata;
   }
@@ -412,7 +415,20 @@ export class PluginRegistry {
       // currently not possible to use this functionality outside of a test context.
       if (typeof nameOrPlugin === 'object') {
         plugin = nameOrPlugin;
-        metadata = PluginMetadata.createTransient(metadataOrName);
+        const pkg: PackageJson = {};
+        if (plugin.name) {
+          pkg.name = plugin.name;
+        }
+        if (plugin.description) {
+          pkg.description = plugin.description;
+        }
+        if (plugin.version) {
+          pkg.version = plugin.version;
+        }
+        metadata = PluginMetadata.createTransient(
+          metadataOrName,
+          isEmpty(pkg) ? undefined : pkg,
+        );
       } else {
         metadata = PluginMetadata.create({
           entryPoint: metadataOrName,

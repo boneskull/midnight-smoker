@@ -1,14 +1,21 @@
 import {
-  NULL_SPEC,
   NullPm,
   registerPlugin,
   runScriptRunner,
 } from '@midnight-smoker/test-util';
+import {ExecError} from 'midnight-smoker/executor';
 import {
-  Executor,
-  ScriptRunner,
-  type PluginRegistry,
-} from 'midnight-smoker/plugin';
+  PkgManagerSpec,
+  type PkgManagerRunScriptManifest,
+  type RunScriptResult,
+} from 'midnight-smoker/pkg-manager';
+import {PluginRegistry} from 'midnight-smoker/plugin';
+import {
+  RunScriptError,
+  type ScriptError,
+  type ScriptRunner,
+  type ScriptRunnerEmitter,
+} from 'midnight-smoker/script-runner';
 import {EventEmitter} from 'node:events';
 import path from 'node:path';
 import {createSandbox} from 'sinon';
@@ -29,16 +36,17 @@ describe('@midnight-smoker/plugin-default', function () {
   describe('smokerScriptRunner', function () {
     let sandbox: sinon.SinonSandbox;
     let mockPm: NullPm;
-    let pkgRunManifest: ScriptRunner.PkgManagerRunScriptManifest;
-    let emitter: ScriptRunner.ScriptRunnerEmitter;
+    let pkgRunManifest: PkgManagerRunScriptManifest;
+    let emitter: ScriptRunnerEmitter;
     let registry: PluginRegistry;
-    let smokerScriptRunner: ScriptRunner.ScriptRunner;
+    let smokerScriptRunner: ScriptRunner;
 
     beforeEach(async function () {
       sandbox = createSandbox();
 
-      mockPm = new NullPm(NULL_SPEC);
-      registry = await registerPlugin({
+      mockPm = new NullPm();
+      registry = PluginRegistry.create();
+      await registerPlugin(registry, {
         factory: loadScriptRunner,
       });
 
@@ -108,50 +116,48 @@ describe('@midnight-smoker/plugin-default', function () {
           'to be rejected with error satisfying',
           {
             code: 'ESMOKER_PACKAGEMANAGER',
-            context: {pkgManager: `${NULL_SPEC}`},
+            context: {pkgManager: 'nullpm@1.0.0'},
           },
         );
       });
     });
 
     describe('when a script fails', function () {
-      let error: ScriptRunner.ScriptError;
-      let innerError: Executor.ExecError;
+      let error: ScriptError;
+      let innerError: ExecError;
       beforeEach(function () {
-        innerError = new Executor.ExecError({
+        innerError = new ExecError({
           exitCode: 1,
           command: 'some command',
           stderr: 'some stderr',
           stdout: 'some stdout',
         } as any);
 
-        error = new ScriptRunner.RunScriptError(
+        error = new RunScriptError(
           innerError,
           'some-script',
           'bar',
-          NULL_SPEC,
+          PkgManagerSpec.create({pkgManager: 'nullpm', version: '1.0.0'}),
         );
         sandbox
           .stub(mockPm, 'runScript')
           .callThrough()
           .onFirstCall()
-          .callsFake(
-            async (runManifest): Promise<ScriptRunner.RunScriptResult> => {
-              return {
-                pkgName: runManifest.pkgName,
-                error,
-                script: runManifest.script,
-                rawResult: {
-                  stdout: '',
-                  stderr: '',
-                  command: '',
-                  exitCode: 0,
-                  failed: false,
-                },
-                cwd: '/some/path',
-              };
-            },
-          );
+          .callsFake(async (runManifest): Promise<RunScriptResult> => {
+            return {
+              pkgName: runManifest.pkgName,
+              error,
+              script: runManifest.script,
+              rawResult: {
+                stdout: '',
+                stderr: '',
+                command: '',
+                exitCode: 0,
+                failed: false,
+              },
+              cwd: '/some/path',
+            };
+          });
       });
 
       it('should call the runScriptFailed notifier', async function () {
@@ -160,7 +166,7 @@ describe('@midnight-smoker/plugin-default', function () {
           'RunScriptFailed',
           {
             pkgName: 'bar',
-            error: expect.it('to be a', ScriptRunner.RunScriptError),
+            error: expect.it('to be a', RunScriptError),
             script: 'foo',
             current: 0,
             total: 1,

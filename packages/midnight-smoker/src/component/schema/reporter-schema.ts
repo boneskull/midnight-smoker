@@ -12,7 +12,7 @@ import {
   zEventEmitter,
   zNonEmptyString,
   zPackageJson,
-} from '../../schema-util';
+} from '../../util/schema-util';
 import type {
   ReporterDef,
   ReporterFn,

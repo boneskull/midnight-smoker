@@ -4,8 +4,11 @@
  * @packageDocumentation
  */
 
-import type {ValidationError, ZodError} from 'zod-validation-error';
-import {fromZodError} from 'zod-validation-error';
+import {
+  fromZodError,
+  type ValidationError,
+  type ZodError,
+} from 'zod-validation-error';
 import {BaseSmokerError, isZodError} from './base-error';
 
 /**

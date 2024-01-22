@@ -14,7 +14,7 @@ import {
   type InferredOptionTypes,
   type PositionalOptions,
 } from 'yargs';
-import {guessPackageManager} from '../../component/package-manager/guesser';
+import {guessPackageManager} from '../../component/pkg-manager/guesser';
 import {Smoker} from '../../smoker';
 import {BaseCommand} from './base-cmd';
 import {type GlobalOptionTypes} from './global-opts';

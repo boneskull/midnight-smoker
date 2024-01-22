@@ -1,26 +1,31 @@
+import rewiremock from 'rewiremock/node';
 import unexpected from 'unexpected';
 import {RuleError} from '../../../../src/component/rule-runner/rule-error';
-import type {
-  RuleIssueParams,
-  StaticRuleIssue,
-} from '../../../../src/component/rule/issue';
-import {
-  RuleIssue,
-  zStaticRuleIssue,
-} from '../../../../src/component/rule/issue';
+import type * as I from '../../../../src/component/rule/issue';
 import {RuleSeverities} from '../../../../src/component/rule/severity';
 import type {
   StaticRule,
   StaticRuleContext,
 } from '../../../../src/component/rule/static';
+import {createFsMocks} from '../../mocks/fs';
 
 const expect = unexpected.clone();
 
 describe('midnight-smoker', function () {
   describe('component', function () {
     describe('rule', function () {
+      let RuleIssue: typeof I.RuleIssue;
+      let zStaticRuleIssue: typeof I.zStaticRuleIssue;
+
+      beforeEach(function () {
+        const {mocks} = createFsMocks();
+        ({RuleIssue, zStaticRuleIssue} = rewiremock.proxy(
+          () => require('../../../../src/component/rule/issue'),
+          mocks,
+        ));
+      });
       describe('RuleIssue', function () {
-        let params: RuleIssueParams<StaticRuleContext, StaticRule>;
+        let params: I.RuleIssueParams<StaticRuleContext, StaticRule>;
         const exampleStaticRule: StaticRule = {
           name: 'example-rule',
           description: 'This is an example rule',
@@ -36,7 +41,7 @@ describe('midnight-smoker', function () {
           installPath: '/path/to/example-package',
           severity: 'error',
         };
-        let issue: RuleIssue;
+        let issue: I.RuleIssue;
 
         beforeEach(function () {
           params = {
@@ -117,7 +122,7 @@ describe('midnight-smoker', function () {
         describe('instance method', function () {
           describe('toJSON()', function () {
             it('should return a StaticRuleIssue', function () {
-              const expected: StaticRuleIssue = {
+              const expected: I.StaticRuleIssue = {
                 rule: params.rule,
                 context: params.context,
                 message: params.message,

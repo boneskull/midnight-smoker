@@ -1,18 +1,14 @@
-import {
-  NULL_SPEC,
-  NullPm,
-  nullExecutor,
-  nullPmDef,
-} from '@midnight-smoker/test-util';
+import {NullPm, nullExecutor, nullPmDef} from '@midnight-smoker/test-util';
 import rewiremock from 'rewiremock/node';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
-import {UnsupportedPackageManagerError} from '../../../../src/component/package-manager/errors/unsupported-pkg-manager-error';
-import type * as PMLoader from '../../../../src/component/package-manager/loader';
-import {PkgManagerSpec} from '../../../../src/component/package-manager/pkg-manager-spec';
-import {type PkgManagerDef} from '../../../../src/component/package-manager/pkg-manager-types';
+import {UnsupportedPackageManagerError} from '../../../../src/component/pkg-manager/errors/unsupported-pkg-manager-error';
+import type * as PMLoader from '../../../../src/component/pkg-manager/loader';
+import type * as PMS from '../../../../src/component/pkg-manager/pkg-manager-spec';
+import {type PkgManagerDef} from '../../../../src/component/pkg-manager/pkg-manager-types';
 import {InvalidArgError} from '../../../../src/error/common-error';
+import {createFsMocks} from '../../mocks/fs';
 
 const expect = unexpected.clone().use(unexpectedSinon);
 
@@ -20,15 +16,23 @@ describe('midnight-smoker', function () {
   describe('component', function () {
     describe('package manager', function () {
       describe('loader', function () {
+        let PkgManagerSpec: typeof PMS.PkgManagerSpec;
         let sandbox: sinon.SinonSandbox;
         let loadPackageManagers: typeof PMLoader.loadPackageManagers;
         let findPackageManagers: typeof PMLoader.findPackageManagers;
 
         beforeEach(function () {
           sandbox = createSandbox();
+          const {mocks} = createFsMocks();
 
-          ({loadPackageManagers, findPackageManagers} = rewiremock.proxy(() =>
-            require('../../../../src/component/package-manager/loader'),
+          ({loadPackageManagers, findPackageManagers} = rewiremock.proxy(
+            () => require('../../../../src/component/pkg-manager/loader'),
+            mocks,
+          ));
+          ({PkgManagerSpec} = rewiremock.proxy(
+            () =>
+              require('../../../../src/component/pkg-manager/pkg-manager-spec'),
+            mocks,
           ));
         });
 
@@ -38,11 +42,13 @@ describe('midnight-smoker', function () {
 
         describe('findPackageManagers()', function () {
           let pkgManagerDefs: PkgManagerDef[];
-          let pkgManagerSpecs: Readonly<PkgManagerSpec>[];
+          let pkgManagerSpecs: Readonly<PMS.PkgManagerSpec>[];
 
           beforeEach(function () {
             pkgManagerDefs = [nullPmDef];
-            pkgManagerSpecs = [NULL_SPEC];
+            pkgManagerSpecs = [
+              PkgManagerSpec.create({pkgManager: 'nullpm', version: '1.0.0'}),
+            ];
           });
 
           describe('when pkgManagerDefs is empty', function () {
@@ -101,7 +107,19 @@ describe('midnight-smoker', function () {
                 pkgManagerDefs,
                 pkgManagerSpecs,
               );
-              expect(result, 'to equal', new Map([[NULL_SPEC, nullPmDef]]));
+              expect(
+                result,
+                'to equal',
+                new Map([
+                  [
+                    PkgManagerSpec.create({
+                      pkgManager: 'nullpm',
+                      version: '1.0.0',
+                    }),
+                    nullPmDef,
+                  ],
+                ]),
+              );
             });
           });
 

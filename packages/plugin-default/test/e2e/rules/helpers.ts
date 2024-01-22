@@ -1,5 +1,10 @@
-import type {Component, Rule} from 'midnight-smoker/plugin';
-import {Helpers} from 'midnight-smoker/plugin';
+import {type Component} from 'midnight-smoker/component';
+import {createRuleContext} from 'midnight-smoker/plugin/helpers';
+import {
+  type RuleIssue,
+  type RuleOptions,
+  type SomeRule,
+} from 'midnight-smoker/rule';
 import {SmokerRuleRunner} from '../../../src/rule-runner';
 
 /**
@@ -11,16 +16,16 @@ import {SmokerRuleRunner} from '../../../src/rule-runner';
  *   merged over default options
  * @returns This will be empty if there were no issues raised
  */
-export async function applyRule<R extends Component<Rule.SomeRule>>(
+export async function applyRule<R extends Component<SomeRule>>(
   rule: R,
   installPath: string,
-  opts?: Rule.RuleOptions<R['schema']>,
-): Promise<readonly Rule.RuleIssue[] | undefined> {
+  opts?: RuleOptions<R['schema']>,
+): Promise<readonly RuleIssue[] | undefined> {
   const config = {
     severity: rule.defaultSeverity,
     opts: {...rule.defaultOptions, ...opts},
   };
-  const ctx = await Helpers.createRuleContext(rule, installPath, config);
+  const ctx = await createRuleContext(rule, installPath, config);
   await SmokerRuleRunner.runRule(ctx, rule, config);
   return ctx.finalize();
 }

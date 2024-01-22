@@ -1,4 +1,4 @@
-import type {RunScriptResult} from '../component/package-manager/pkg-manager-schema';
+import type {RunScriptResult} from '../component/pkg-manager/pkg-manager-schema';
 import type {RunRulesResult} from '../component/rule-runner/rule-runner-schema';
 import type {ScriptRunnerEvents} from '../component/script-runner/script-runner-events';
 import type {SmokeFailedError} from '../error/smoker-error';

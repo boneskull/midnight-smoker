@@ -10,8 +10,10 @@ import {
   yellow,
 } from 'chalk';
 import {error, info, warning} from 'log-symbols';
-import type {Reporter} from 'midnight-smoker/plugin';
-import {Blessed, Event, Rule} from 'midnight-smoker/plugin';
+import * as Event from 'midnight-smoker/event';
+import {Blessed} from 'midnight-smoker/plugin';
+import type * as Reporter from 'midnight-smoker/reporter';
+import * as Rule from 'midnight-smoker/rule';
 import ora from 'ora';
 import pluralize from 'pluralize';
 

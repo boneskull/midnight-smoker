@@ -13,12 +13,10 @@
  */
 
 import Debug from 'debug';
-import type {
-  Component,
-  PluginAPI,
-  Rule,
-  RuleRunner,
-} from 'midnight-smoker/plugin';
+import {type Component} from 'midnight-smoker/component';
+import {type PluginAPI} from 'midnight-smoker/plugin';
+import type * as Rule from 'midnight-smoker/rule';
+import type * as RuleRunner from 'midnight-smoker/rule-runner';
 
 const debug = Debug('midnight-smoker:plugin-default:rule-runner');
 

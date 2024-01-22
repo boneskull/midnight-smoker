@@ -1,5 +1,7 @@
 import type Debug from 'debug';
-import {Errors, Executor, PkgManager} from 'midnight-smoker/plugin';
+import * as Errors from 'midnight-smoker/error';
+import * as Executor from 'midnight-smoker/executor';
+import * as PkgManager from 'midnight-smoker/pkg-manager';
 
 /**
  * When `npm` fails when run with `--json`, the error output is also in JSON.

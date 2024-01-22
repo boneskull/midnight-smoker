@@ -32,8 +32,78 @@
       "typedoc": "./src/plugin/index.ts",
       "default": "./dist/plugin/index.js"
     },
+    "./plugin/helpers": {
+      "types": "./dist/plugin/helpers.d.ts",
+      "typedoc": "./src/plugin/helpers.ts",
+      "default": "./dist/plugin/helpers.js"
+    },
+    "./plugin/blessed": {
+      "types": "./dist/plugin/blessed.d.ts",
+      "typedoc": "./src/plugin/blessed.ts",
+      "default": "./dist/plugin/blessed.js"
+    },
+    "./component": {
+      "types": "./dist/component/component/index.d.ts",
+      "typedoc": "./src/component/component/index.ts",
+      "default": "./dist/component/component/index.js"
+    },
+    "./error": {
+      "types": "./dist/error/index.d.ts",
+      "typedoc": "./src/error/index.ts",
+      "default": "./dist/error/index.js"
+    },
+    "./event": {
+      "types": "./dist/event/index.d.ts",
+      "typedoc": "./src/event/index.ts",
+      "default": "./dist/event/index.js"
+    },
+    "./rule": {
+      "types": "./dist/component/rule/index.d.ts",
+      "typedoc": "./src/component/rule/index.ts",
+      "default": "./dist/component/rule/index.js"
+    },
+    "./reporter": {
+      "types": "./dist/component/reporter/index.d.ts",
+      "typedoc": "./src/component/reporter/index.ts",
+      "default": "./dist/component/reporter/index.js"
+    },
+    "./executor": {
+      "types": "./dist/component/executor/index.d.ts",
+      "typedoc": "./src/component/executor/index.ts",
+      "default": "./dist/component/executor/index.js"
+    },
+    "./pkg-manager": {
+      "types": "./dist/component/pkg-manager/index.d.ts",
+      "typedoc": "./src/component/pkg-manager/index.ts",
+      "default": "./dist/component/pkg-manager/index.js"
+    },
+    "./rule-runner": {
+      "types": "./dist/component/rule-runner/index.d.ts",
+      "typedoc": "./src/component/rule-runner/index.ts",
+      "default": "./dist/component/rule-runner/index.js"
+    },
+    "./script-runner": {
+      "types": "./dist/component/script-runner/index.d.ts",
+      "typedoc": "./src/component/script-runner/index.ts",
+      "default": "./dist/component/script-runner/index.js"
+    },
     "./package.json": "./package.json",
-    "./smoker": "./bin/smoker.js"
+    "./smoker": "./bin/smoker.js",
+    "./constants": {
+      "types": "./dist/constants.d.ts",
+      "typedoc": "./src/constants.ts",
+      "default": "./dist/constants.js"
+    },
+    "./controller": {
+      "types": "./dist/controller/index.d.ts",
+      "typedoc": "./src/controller/index.ts",
+      "default": "./dist/controller/index.js"
+    },
+    "./util": {
+      "types": "./dist/util/index.d.ts",
+      "typedoc": "./src/util/index.ts",
+      "default": "./dist/util/index.js"
+    }
   },
   "types": "./dist/index.d.ts",
   "files": [

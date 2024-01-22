@@ -1,13 +1,22 @@
+import rewiremock from 'rewiremock/node';
 import {SemVer, parse} from 'semver';
 import unexpected from 'unexpected';
 import npmDistTags from '../../../../data/npm-dist-tags.json';
-import {normalizeVersion} from '../../../../src/component/package-manager/version';
-
+import type * as V from '../../../../src/component/pkg-manager/version';
+import {createFsMocks} from '../../mocks/fs';
 const expect = unexpected.clone();
 
 describe('midnight-smoker', function () {
   describe('package manager', function () {
     describe('normalizeVersion()', function () {
+      let normalizeVersion: typeof V.normalizeVersion;
+      beforeEach(function () {
+        const {mocks} = createFsMocks();
+        ({normalizeVersion} = rewiremock.proxy(
+          () => require('../../../../src/component/pkg-manager/version'),
+          mocks,
+        ));
+      });
       describe('when provided a known package manager', function () {
         describe('when provided a version range', function () {
           describe('when the range is valid semver', function () {

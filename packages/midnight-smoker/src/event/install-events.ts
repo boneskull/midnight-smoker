@@ -1,5 +1,5 @@
-import type {InstallError} from '../component/package-manager/errors/install-error';
-import type {InstallManifest} from '../component/package-manager/pkg-manager-schema';
+import type {InstallError} from '../component/pkg-manager/errors/install-error';
+import type {InstallManifest} from '../component/pkg-manager/pkg-manager-schema';
 
 export interface InstallEvents {
   /**

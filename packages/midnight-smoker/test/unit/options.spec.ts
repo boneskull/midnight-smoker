@@ -1,22 +1,80 @@
-import {registerRule} from '@midnight-smoker/test-util';
+import {
+  DEFAULT_TEST_PLUGIN_NAME,
+  DEFAULT_TEST_RULE_NAME,
+} from '@midnight-smoker/test-util/constants';
+import {registerRule} from '@midnight-smoker/test-util/register';
+import {memoize} from 'lodash';
+import rewiremock from 'rewiremock/node';
+import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import {z} from 'zod';
 import {isValidationError} from 'zod-validation-error';
-import type {Rule} from '../../src/component';
-import {RuleSeverities} from '../../src/component';
-import {OptionParser} from '../../src/options';
-import {BLESSED_PLUGINS} from '../../src/plugin/blessed';
-import {PluginRegistry} from '../../src/plugin/registry';
+import type {SomeRule} from '../../src/component/rule/rule';
+import {RuleSeverities} from '../../src/component/rule/severity';
+import type * as OP from '../../src/options/parser';
+import type * as PR from '../../src/plugin/registry';
+import {createFsMocks} from './mocks/fs';
 
 const expect = unexpected.clone();
+
+const RULE_ID = `${DEFAULT_TEST_PLUGIN_NAME}/${DEFAULT_TEST_RULE_NAME}`;
 
 describe('midnight-smoker', function () {
   describe('OptionParser', function () {
     describe('method', function () {
-      let parser: OptionParser;
+      let parser: OP.OptionParser;
+      let OptionParser: typeof OP.OptionParser;
+      let PluginRegistry: typeof PR.PluginRegistry;
+      let sandbox: sinon.SinonSandbox;
 
       beforeEach(function () {
+        sandbox = createSandbox();
+        const {fs, mocks} = createFsMocks();
+
+        const PMM = rewiremock.proxy(
+          () => require('../../src/plugin/metadata'),
+          mocks,
+        );
+        const Registry = rewiremock.proxy(
+          () => require('../../src/plugin/registry'),
+          {
+            ...mocks,
+            '../../src/util/loader-util': {
+              /**
+               * This thing loads and evals files via the in-memory filesystem.
+               *
+               * For this to do _anything_, you have to call
+               * `fs.promises.writeFile(...)` first.
+               */
+              justImport: sandbox.stub().callsFake(
+                memoize(async (moduleId: string) => {
+                  const source = await fs.promises.readFile(moduleId, 'utf8');
+                  // eslint-disable-next-line no-eval
+                  return eval(`${source}`);
+                }),
+              ),
+            },
+            // this is horrid, but otherwise the PluginRegistry won't have the same
+            // PluginMetadata class as we use here in the test file
+            '../../src/plugin/metadata': PMM,
+          },
+        );
+
+        ({OptionParser} = rewiremock.proxy(
+          () => require('../../src/options/parser'),
+          {
+            ...mocks,
+            '../../src/plugin/registry': Registry,
+          },
+        ));
+
+        ({PluginRegistry} = Registry);
+
         parser = OptionParser.create(PluginRegistry.create());
+      });
+
+      afterEach(function () {
+        sandbox.restore();
       });
 
       describe('parse()', function () {
@@ -55,11 +113,13 @@ describe('midnight-smoker', function () {
           describe('when rule-specific options are provided', function () {
             it('should apply defaults and pass through', function () {
               expect(
-                parser.parse({rules: {'test-rule': {cows: 'moo'}}}),
+                parser.parse({
+                  rules: {[RULE_ID]: {cows: 'moo'}},
+                }),
                 'to satisfy',
                 {
                   rules: {
-                    'test-rule': expect.it('to equal', {
+                    [RULE_ID]: expect.it('to equal', {
                       opts: {cows: 'moo'},
                       severity: RuleSeverities.Error,
                     }),
@@ -72,18 +132,14 @@ describe('midnight-smoker', function () {
 
         describe('when called after plugin registration', function () {
           describe('when rules provide no options', function () {
-            let registry: PluginRegistry;
-            let parser: OptionParser;
+            let registry: PR.PluginRegistry;
+            let parser: OP.OptionParser;
 
             before(async function () {
               registry = PluginRegistry.create();
-              await registerRule(
-                {
-                  name: 'test-rule',
-                },
-                registry,
-                '@midnight-smoker/plugin-default',
-              );
+              sandbox.stub(registry, 'getBlessedMetadata').resolves();
+
+              await registerRule(registry, {name: DEFAULT_TEST_RULE_NAME});
               parser = OptionParser.create(registry);
             });
 
@@ -94,28 +150,32 @@ describe('midnight-smoker', function () {
             it('should never parse rule-specific options as undefined', function () {
               expect(parser.parse(), 'to satisfy', {
                 rules: expect.it('to equal', {
-                  'test-rule': {severity: 'error', opts: {}},
+                  [RULE_ID]: {
+                    severity: 'error',
+                    opts: {},
+                  },
                 }),
               });
             });
           });
 
           describe('"rules" property', function () {
-            let registry: PluginRegistry;
-            let parser: OptionParser;
-            let rule: Rule<string, any>;
+            let registry: PR.PluginRegistry;
+            let parser: OP.OptionParser;
+            let rule: SomeRule;
 
             before(async function () {
               registry = PluginRegistry.create();
+              sandbox.stub(registry, 'getBlessedMetadata').resolves();
               rule = await registerRule(
+                registry,
                 {
-                  name: 'test-rule',
+                  name: DEFAULT_TEST_RULE_NAME,
                   schema: z.object({
                     foo: z.string().default('bar'),
                   }),
                 },
-                registry,
-                BLESSED_PLUGINS[0],
+                DEFAULT_TEST_PLUGIN_NAME,
               );
               parser = OptionParser.create(registry);
             });
@@ -133,34 +193,33 @@ describe('midnight-smoker', function () {
             });
 
             it('should allow user-provided rule-specific severity', function () {
-              expect(
-                parser.parse({rules: {'test-rule': 'warn'}}),
-                'to satisfy',
-                {
-                  rules: {
-                    'test-rule': {
-                      severity: 'warn',
-                    },
+              expect(parser.parse({rules: {[RULE_ID]: 'warn'}}), 'to satisfy', {
+                rules: {
+                  [`${DEFAULT_TEST_PLUGIN_NAME}/${DEFAULT_TEST_RULE_NAME}`]: {
+                    severity: 'warn',
                   },
                 },
-              );
+              });
             });
 
             it('should disallow invalid user-provided rule-specific severity', async function () {
               expect(
-                // @ts-expect-error bad types
-                () => parser.parse({rules: {'test-rule': 'sylvester'}}),
+                () =>
+                  parser.parse({
+                    // @ts-expect-error bad types
+                    rules: {[RULE_ID]: 'sylvester'},
+                  }),
                 'to error',
               ).and((err: Error) => isValidationError(err), 'to be true');
             });
 
             it('should allow valid user-provided rule-specific options', function () {
               expect(
-                parser.parse({rules: {'test-rule': {foo: 'bar'}}}),
+                parser.parse({rules: {[RULE_ID]: {foo: 'bar'}}}),
                 'to satisfy',
                 {
                   rules: {
-                    'test-rule': {
+                    [RULE_ID]: {
                       opts: {
                         foo: 'bar',
                       },
@@ -174,7 +233,7 @@ describe('midnight-smoker', function () {
               expect(
                 () =>
                   parser.parse({
-                    rules: {'test-rule': {foo: 3}},
+                    rules: {[RULE_ID]: {foo: 3}},
                   }),
                 'to error',
               ).and((err: Error) => isValidationError(err), 'to be true');
@@ -184,7 +243,7 @@ describe('midnight-smoker', function () {
               expect(
                 parser.parse({
                   rules: {
-                    'test-rule': {
+                    [RULE_ID]: {
                       opts: {foo: 'baz'},
                       severity: RuleSeverities.Error,
                     },
@@ -193,7 +252,7 @@ describe('midnight-smoker', function () {
                 'to satisfy',
                 {
                   rules: {
-                    'test-rule': expect.it('to equal', {
+                    [RULE_ID]: expect.it('to equal', {
                       severity: 'error',
                       opts: {
                         foo: 'baz',
@@ -208,13 +267,13 @@ describe('midnight-smoker', function () {
               expect(
                 parser.parse({
                   rules: {
-                    'test-rule': {},
+                    [RULE_ID]: {},
                   },
                 }),
                 'to satisfy',
                 {
                   rules: {
-                    'test-rule': expect.it('to equal', {
+                    [RULE_ID]: expect.it('to equal', {
                       severity: rule.defaultSeverity,
                       opts: {foo: 'bar'},
                     }),
@@ -226,12 +285,12 @@ describe('midnight-smoker', function () {
             it('should allow user-provided rule-specific options and severity', function () {
               expect(
                 parser.parse({
-                  rules: {'test-rule': ['warn', {foo: 'baz'}]},
+                  rules: {[RULE_ID]: ['warn', {foo: 'baz'}]},
                 }),
                 'to satisfy',
                 {
                   rules: {
-                    'test-rule': {
+                    [RULE_ID]: {
                       severity: 'warn',
                       opts: {
                         foo: 'baz',

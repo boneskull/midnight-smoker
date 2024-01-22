@@ -5,9 +5,13 @@
  */
 
 import {z} from 'zod';
+import {instanceofSchema} from '../../util/schema-util';
+import {ExecError} from './exec-error';
 
 /**
  * Schema for the result of running an `Executor`
+ *
+ * Based on {@link execa.ExecaReturnValue}
  */
 export const zExecResult = z
   .object({
@@ -23,9 +27,7 @@ export const zExecResult = z
 /**
  * It's {@link zExecResult}, except it's also an `Error`
  */
-export const zExecError = zExecResult.refine(
-  (result) => result instanceof Error,
-);
+export const zExecError = instanceofSchema(ExecError);
 
 /**
  * The result of running an `Executor`.

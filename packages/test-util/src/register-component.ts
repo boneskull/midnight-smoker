@@ -4,58 +4,58 @@
  * @packageDocumentation
  */
 
-import type {
-  Executor,
-  PkgManager,
-  Plugin,
-  PluginAPI,
-  RuleRunner,
-  ScriptRunner,
+import {DEFAULT_COMPONENT_ID} from 'midnight-smoker/constants';
+import {type Executor} from 'midnight-smoker/executor';
+import {type PkgManagerDef} from 'midnight-smoker/pkg-manager';
+import {
+  type Plugin,
+  type PluginAPI,
+  type PluginRegistry,
 } from 'midnight-smoker/plugin';
-import {DEFAULT_COMPONENT_ID, PluginRegistry} from 'midnight-smoker/plugin';
+import {type RuleRunner} from 'midnight-smoker/rule-runner';
+import {type ScriptRunner} from 'midnight-smoker/script-runner';
 import {DEFAULT_TEST_PLUGIN_NAME} from './constants';
 
 export interface RegisterComponentOpts {
-  registry?: PluginRegistry;
   name?: string;
   pluginName?: string;
   api?: Partial<PluginAPI>;
 }
 
 type ComponentTypes = {
-  RuleRunner: RuleRunner.RuleRunner;
-  ScriptRunner: ScriptRunner.ScriptRunner;
-  Executor: Executor.Executor;
-  PackageManager: PkgManager.PkgManagerDef;
+  RuleRunner: RuleRunner;
+  ScriptRunner: ScriptRunner;
+  Executor: Executor;
+  PackageManager: PkgManagerDef;
 };
 
 type ComponentType = keyof ComponentTypes;
 
 export async function registerComponent<T extends ComponentType>(
+  registry: PluginRegistry,
   type: T,
   component: ComponentTypes[T],
   {
-    registry = PluginRegistry.create(),
     name = DEFAULT_COMPONENT_ID,
     pluginName = DEFAULT_TEST_PLUGIN_NAME,
     api: apiOverrides,
   }: RegisterComponentOpts = {},
 ): Promise<PluginRegistry> {
-  const plugin: Plugin.Plugin = {
+  const plugin: Plugin = {
     plugin: (api) => {
       api = {...api, ...apiOverrides};
       switch (type) {
         case 'RuleRunner':
-          api.defineRuleRunner(component as RuleRunner.RuleRunner, name);
+          api.defineRuleRunner(component as RuleRunner, name);
           break;
         case 'ScriptRunner':
-          api.defineScriptRunner(component as ScriptRunner.ScriptRunner, name);
+          api.defineScriptRunner(component as ScriptRunner, name);
           break;
         case 'Executor':
-          api.defineExecutor(component as Executor.Executor, name);
+          api.defineExecutor(component as Executor, name);
           break;
         case 'PackageManager':
-          api.definePackageManager(component as PkgManager.PkgManagerDef, name);
+          api.definePackageManager(component as PkgManagerDef, name);
           break;
         default:
           throw new Error(`Unknown component type: ${type}`);
@@ -67,29 +67,33 @@ export async function registerComponent<T extends ComponentType>(
 }
 
 export async function registerRuleRunner(
-  component: RuleRunner.RuleRunner,
+  registry: PluginRegistry,
+  component: RuleRunner,
   options: RegisterComponentOpts = {},
 ): Promise<PluginRegistry> {
-  return registerComponent('RuleRunner', component, options);
+  return registerComponent(registry, 'RuleRunner', component, options);
 }
 
 export async function registerScriptRunner(
-  component: ScriptRunner.ScriptRunner,
+  registry: PluginRegistry,
+  component: ScriptRunner,
   options: RegisterComponentOpts = {},
 ): Promise<PluginRegistry> {
-  return registerComponent('ScriptRunner', component, options);
+  return registerComponent(registry, 'ScriptRunner', component, options);
 }
 
 export async function registerExecutor(
-  component: Executor.Executor,
+  registry: PluginRegistry,
+  component: Executor,
   options: RegisterComponentOpts = {},
 ): Promise<PluginRegistry> {
-  return registerComponent('Executor', component, options);
+  return registerComponent(registry, 'Executor', component, options);
 }
 
 export async function registerPackageManager(
-  component: PkgManager.PkgManagerDef,
+  registry: PluginRegistry,
+  component: PkgManagerDef,
   options: RegisterComponentOpts = {},
 ): Promise<PluginRegistry> {
-  return registerComponent('PackageManager', component, options);
+  return registerComponent(registry, 'PackageManager', component, options);
 }

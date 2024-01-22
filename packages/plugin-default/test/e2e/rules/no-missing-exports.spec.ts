@@ -1,5 +1,7 @@
 import {registerRule, safePath} from '@midnight-smoker/test-util';
-import type {Component, Rule} from 'midnight-smoker/plugin';
+import {type Component} from 'midnight-smoker/component';
+import {PluginRegistry} from 'midnight-smoker/plugin';
+import {type SomeRule} from 'midnight-smoker/rule';
 import unexpected from 'unexpected';
 import noMissingExportsDef from '../../../src/rules/no-missing-exports';
 import {applyRule} from './helpers';
@@ -7,12 +9,15 @@ import {applyRule} from './helpers';
 const expect = unexpected.clone();
 
 describe('@midnight-smoker/plugin-default', function () {
-  let noMissingExports: Component<Rule.SomeRule>;
+  let noMissingExports: Component<SomeRule>;
 
   describe('rule', function () {
     describe('no-missing-exports', function () {
       before(async function () {
-        noMissingExports = await registerRule(noMissingExportsDef);
+        noMissingExports = await registerRule(
+          PluginRegistry.create(),
+          noMissingExportsDef,
+        );
       });
 
       describe('when the package contains no "exports" field', function () {

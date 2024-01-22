@@ -1,5 +1,5 @@
 import {execSmoker, fixupOutput} from '@midnight-smoker/test-util';
-import type {Executor} from 'midnight-smoker/plugin';
+import {type ExecResult} from 'midnight-smoker/executor';
 import path from 'node:path';
 import snapshot from 'snap-shot-it';
 import unexpected from 'unexpected';
@@ -32,7 +32,7 @@ describe('@midnight-smoker/plugin-default', function () {
       describe('when the script succeeds', function () {
         const cwd = path.join(__dirname, 'fixture', 'single-script');
 
-        let result: Executor.ExecResult;
+        let result: ExecResult;
 
         before(async function () {
           result = await execSmoker(['run', 'smoke', '--json', '--no-lint'], {
@@ -67,13 +67,13 @@ describe('@midnight-smoker/plugin-default', function () {
       describe('when the script fails', function () {
         const cwd = path.join(__dirname, 'fixture', 'failure');
 
-        let result: Executor.ExecResult;
+        let result: ExecResult;
 
         before(async function () {
           try {
             await execSmoker(['run', 'smoke', '--json', '--no-lint'], {cwd});
           } catch (err) {
-            result = err as Executor.ExecResult;
+            result = err as ExecResult;
           }
         });
 

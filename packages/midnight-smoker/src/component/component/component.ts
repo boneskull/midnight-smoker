@@ -27,7 +27,7 @@ import {z} from 'zod';
 
 import {has, isFunction, isObject} from 'lodash';
 import {InvalidArgError} from '../../error/common-error';
-import {zNonEmptyString} from '../../schema-util';
+import {zNonEmptyString} from '../../util/schema-util';
 import {ComponentId} from './component-id';
 import {ComponentKinds, type ComponentKind} from './component-kind';
 

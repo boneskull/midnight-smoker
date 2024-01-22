@@ -1,13 +1,25 @@
+import rewiremock from 'rewiremock/node';
 import unexpected from 'unexpected';
 import type {Component, SomeRule} from '../../../../src/component';
-import {RuleContext} from '../../../../src/component/rule/context';
+import type * as Ctx from '../../../../src/component/rule/context';
 import type {StaticRuleContext} from '../../../../src/component/rule/static';
+import {createFsMocks} from '../../mocks/fs';
 
 const expect = unexpected.clone();
 
 describe('midnight-smoker', function () {
   describe('component', function () {
     describe('rule', function () {
+      let RuleContext: typeof Ctx.RuleContext;
+
+      beforeEach(function () {
+        const {mocks} = createFsMocks();
+        RuleContext = rewiremock.proxy(
+          () => require('../../../../src/component/rule/context'),
+          mocks,
+        ).RuleContext;
+      });
+
       describe('RuleContext', function () {
         const rule = {
           id: 'example-rule',
@@ -29,7 +41,7 @@ describe('midnight-smoker', function () {
 
         describe('static method', function () {
           describe('create()', function () {
-            let context: Readonly<RuleContext>;
+            let context: Readonly<Ctx.RuleContext>;
 
             beforeEach(function () {
               context = RuleContext.create(rule, staticCtx);
@@ -58,7 +70,7 @@ describe('midnight-smoker', function () {
         });
 
         describe('instance method', function () {
-          let context: Readonly<RuleContext>;
+          let context: Readonly<Ctx.RuleContext>;
 
           beforeEach(function () {
             context = RuleContext.create(rule, staticCtx);
@@ -153,7 +165,7 @@ describe('midnight-smoker', function () {
         });
 
         describe('computed property', function () {
-          let context: Readonly<RuleContext>;
+          let context: Readonly<Ctx.RuleContext>;
 
           beforeEach(function () {
             context = RuleContext.create(rule, staticCtx);

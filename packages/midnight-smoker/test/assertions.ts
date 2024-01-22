@@ -4,7 +4,7 @@
 import type {ExecaReturnValue} from 'execa';
 import {isBoolean, isInteger, isObject, isString} from 'lodash';
 import type unexpected from 'unexpected';
-import {readPackageJsonSync} from '../src/pkg-util';
+import {readPackageJsonSync} from '../src/util/pkg-util';
 
 const {packageJson} = readPackageJsonSync({cwd: __dirname, strict: true});
 export default {

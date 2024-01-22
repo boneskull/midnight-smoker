@@ -1,11 +1,9 @@
 import Debug from 'debug';
 import {isError} from 'lodash';
-import {
-  Errors,
-  Executor,
-  PkgManager,
-  type Helpers,
-} from 'midnight-smoker/plugin';
+import * as Errors from 'midnight-smoker/error';
+import * as Executor from 'midnight-smoker/executor';
+import * as PkgManager from 'midnight-smoker/pkg-manager';
+import type * as Helpers from 'midnight-smoker/plugin/helpers';
 import path from 'node:path';
 import {GenericNpmPackageManager, type NpmPackItem} from './npm';
 

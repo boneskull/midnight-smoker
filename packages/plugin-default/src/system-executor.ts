@@ -5,12 +5,10 @@
  */
 
 import {node as execa} from 'execa';
-import {
-  Errors,
-  Executor,
-  Helpers,
-  type PkgManager,
-} from 'midnight-smoker/plugin';
+import * as Errors from 'midnight-smoker/error';
+import * as Executor from 'midnight-smoker/executor';
+import type * as PkgManager from 'midnight-smoker/pkg-manager';
+import * as Helpers from 'midnight-smoker/plugin/helpers';
 
 async function exec(
   spec: PkgManager.PkgManagerSpec,

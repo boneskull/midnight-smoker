@@ -20,14 +20,14 @@ import type {
   SomeRule,
 } from './component';
 import {RuleSeverities} from './component';
-import {InstallError} from './component/package-manager/errors/install-error';
-import {PackError} from './component/package-manager/errors/pack-error';
-import type {ScriptError} from './component/package-manager/errors/script-error';
+import {InstallError} from './component/pkg-manager/errors/install-error';
+import {PackError} from './component/pkg-manager/errors/pack-error';
+import type {ScriptError} from './component/pkg-manager/errors/script-error';
 import type {
   InstallResult,
   PkgManagerInstallManifest,
   RunScriptResult,
-} from './component/package-manager/pkg-manager-schema';
+} from './component/pkg-manager/pkg-manager-schema';
 import type {RuleError} from './component/rule-runner/rule-error';
 import {createRuleRunnerNotifiers} from './component/rule-runner/rule-runner-notifier';
 import type {PkgManagerController} from './controller/controller';
@@ -45,14 +45,14 @@ import {
 import type {SmokeResults, SmokerEvents} from './event/event-types';
 import type {StrictEmitter} from './event/strict-emitter';
 import {createStrictEmitter} from './event/strict-emitter';
-import {OptionParser} from './options';
 import type {RawSmokerOptions, SmokerOptions} from './options/options';
-import {readSmokerPkgJson} from './pkg-util';
+import {OptionParser} from './options/parser';
 import {BLESSED_PLUGINS, isBlessedPlugin} from './plugin/blessed';
 import {PluginRegistry} from './plugin/registry';
 import type {StaticPluginMetadata} from './plugin/static-metadata';
-import {castArray} from './schema-util';
-import {isErrnoException} from './util';
+import {readSmokerPkgJson} from './util/pkg-util';
+import {castArray} from './util/schema-util';
+import {isErrnoException} from './util/util';
 
 const debug = Debug('midnight-smoker:smoker');
 

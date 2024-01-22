@@ -9,7 +9,7 @@ import type {
   PkgManagerInstallManifest,
   PkgManagerRunScriptManifest,
   RunScriptResult,
-} from '../component/package-manager/pkg-manager-schema';
+} from '../component/pkg-manager/pkg-manager-schema';
 import type {
   RunScriptsEndEventData,
   RunScriptsEventData,

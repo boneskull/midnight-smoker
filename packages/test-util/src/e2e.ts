@@ -5,7 +5,8 @@
  */
 import Debug from 'debug';
 import {node as execa, type NodeOptions} from 'execa';
-import {Helpers, type Executor} from 'midnight-smoker/plugin';
+import type * as Executor from 'midnight-smoker/executor';
+import * as Helpers from 'midnight-smoker/plugin/helpers';
 import stripAnsi from 'strip-ansi';
 import type {Merge} from 'type-fest';
 

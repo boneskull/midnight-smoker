@@ -1,5 +1,7 @@
 import Debug from 'debug';
-import {Executor, type Helpers, type PkgManager} from 'midnight-smoker/plugin';
+import * as Executor from 'midnight-smoker/executor';
+import type * as PkgManager from 'midnight-smoker/pkg-manager';
+import type * as Helpers from 'midnight-smoker/plugin/helpers';
 import {Npm7} from './npm7';
 
 export class Npm9 extends Npm7 implements PkgManager.PkgManager {

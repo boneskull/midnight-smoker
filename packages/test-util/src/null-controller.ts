@@ -6,17 +6,26 @@
  * @packageDocumentation
  */
 
-import {Controller, type PkgManager} from 'midnight-smoker/plugin';
+import {type PkgManagerInstallManifest} from 'midnight-smoker';
+import {
+  PkgManagerController,
+  type PkgManagerControllerRunScriptsOpts,
+} from 'midnight-smoker/controller';
+import {
+  type InstallResult,
+  type PkgManager,
+  type RunScriptResult,
+} from 'midnight-smoker/pkg-manager';
 
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-export class NullPkgManagerController extends Controller.PkgManagerController {
+export class NullPkgManagerController extends PkgManagerController {
   /**
    * Returns no package managers.
    *
    * @returns Empty array
    */
-  public async getPkgManagers(): Promise<readonly PkgManager.PkgManager[]> {
+  public async getPkgManagers(): Promise<readonly PkgManager[]> {
     return [];
   }
 
@@ -27,8 +36,8 @@ export class NullPkgManagerController extends Controller.PkgManagerController {
    * @returns Empty array
    */
   public async install(
-    installManifests: PkgManager.PkgManagerInstallManifest[],
-  ): Promise<PkgManager.InstallResult[]> {
+    installManifests: PkgManagerInstallManifest[],
+  ): Promise<InstallResult[]> {
     return [];
   }
 
@@ -37,7 +46,7 @@ export class NullPkgManagerController extends Controller.PkgManagerController {
    *
    * @returns Empty array
    */
-  public async pack(): Promise<PkgManager.PkgManagerInstallManifest[]> {
+  public async pack(): Promise<PkgManagerInstallManifest[]> {
     return [];
   }
 
@@ -51,9 +60,9 @@ export class NullPkgManagerController extends Controller.PkgManagerController {
    */
   public async runScripts(
     scripts: string[],
-    installResults: PkgManager.InstallResult[],
-    opts: Controller.PkgManagerControllerRunScriptsOpts,
-  ): Promise<PkgManager.RunScriptResult[]> {
+    installResults: InstallResult[],
+    opts: PkgManagerControllerRunScriptsOpts,
+  ): Promise<RunScriptResult[]> {
     return [];
   }
 }

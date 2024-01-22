@@ -6,7 +6,7 @@ import {
   zDefaultTrue,
   zNonEmptyString,
   zNonEmptyStringOrArrayThereof,
-} from '../schema-util';
+} from '../util/schema-util';
 
 /**
  * Properties of {@link SmokerOptions} in camelCase.

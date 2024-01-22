@@ -4,7 +4,7 @@ import {Module} from 'node:module';
 import path from 'node:path';
 import type {PackageJson} from 'type-fest';
 import type {TranspileOptions} from 'typescript';
-import {isErrnoException} from './util';
+import {isErrnoException} from '../util/util';
 
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 let ts: typeof import('typescript');
@@ -61,15 +61,16 @@ export const importTs = async (
   } finally {
     await fs.rm(compiledFilepath, {force: true});
   }
-}; /**
+};
+
+/**
  * Attempts to gracefully load an unknown module.
  *
  * `await import()` on a CJS module will always return an object with a
- * `default` export. Modules which have been, say, compiled with TS into CJS
- * and _also_ have a default export will be wrapped in _another_ `default`
- * property. That sucks, but it can be avoided by just `require`-ing the CJS
- * module instead. We will still need to unwrap the `default` property if it
- * exists.
+ * `default` export. Modules which have been, say, compiled with TS into CJS and
+ * _also_ have a default export will be wrapped in _another_ `default` property.
+ * That sucks, but it can be avoided by just `require`-ing the CJS module
+ * instead. We will still need to unwrap the `default` property if it exists.
  *
  * The `pkgJson` parameter is used to help us guess at the type of module we're
  * importing.
@@ -78,7 +79,6 @@ export const importTs = async (
  * @param pkgJson - `package.json` associated with the module, if any
  * @returns Hopefully, whatever is exported
  */
-
 export async function justImport(moduleId: string, pkgJson?: PackageJson) {
   // no zalgo here
   await Promise.resolve();

@@ -1,13 +1,13 @@
 import type {z} from 'zod';
 import type * as Executor from '../component/executor/executor';
-import type * as PkgManager from '../component/package-manager';
+import type * as PkgManager from '../component/pkg-manager';
 import type * as Reporter from '../component/reporter';
 import type * as Rule from '../component/rule';
 import type * as RuleRunner from '../component/rule-runner';
 import type * as ScriptRunner from '../component/script-runner';
 import type * as Errors from '../error/errors';
 import type * as Event from '../event';
-import type * as SchemaUtils from '../schema-util';
+import type * as SchemaUtils from '../util/schema-util';
 import type * as Helpers from './helpers';
 import type {PluginMetadata} from './metadata';
 import type {StaticPluginMetadata} from './static-metadata';

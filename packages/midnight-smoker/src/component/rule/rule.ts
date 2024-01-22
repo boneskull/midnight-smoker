@@ -5,7 +5,7 @@ import {
   dualCasedObjectSchema,
   instanceofSchema,
   zEmptyObject,
-} from '../../schema-util';
+} from '../../util/schema-util';
 import {
   ComponentKinds,
   component,

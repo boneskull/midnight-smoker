@@ -1,5 +1,5 @@
 import {z} from 'zod';
-import {zNonEmptyString, zPackageJson} from '../../schema-util';
+import {zNonEmptyString, zPackageJson} from '../../util/schema-util';
 import {zRuleSeverity} from './severity';
 
 export const zStaticRuleContext = z

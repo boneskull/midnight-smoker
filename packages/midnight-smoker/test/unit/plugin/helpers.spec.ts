@@ -1,29 +1,30 @@
-import type {mkdtemp} from 'node:fs/promises';
-import path from 'node:path';
+import {type IFs} from 'memfs';
+import os from 'node:os';
 import rewiremock from 'rewiremock/node';
 import sinon from 'sinon';
 import unexpected from 'unexpected';
 import type * as H from '../../../src/plugin/helpers';
+import {createFsMocks} from '../mocks/fs';
 
 const expect = unexpected.clone();
-const MOCK_TMPROOT = '/some/tmp';
-const MOCK_TMPDIR = path.join(MOCK_TMPROOT, 'midnight-smoker-');
 
 describe('midnight-smoker', function () {
   let Helpers: typeof H;
   let sandbox: sinon.SinonSandbox;
-  let mkdtempStub: sinon.SinonStubbedMember<typeof mkdtemp>;
+  let fs: IFs;
 
-  beforeEach(function () {
+  beforeEach(async function () {
     sandbox = sinon.createSandbox();
-    mkdtempStub = sandbox
-      .stub<Parameters<typeof mkdtemp>>()
-      .resolves(MOCK_TMPDIR);
-    Helpers = rewiremock.proxy(() => require('../../../src/plugin/helpers'), {
-      'node:fs/promises': {
-        mkdtemp: mkdtempStub,
-      },
-    });
+    const {mocks, fs: _fs} = createFsMocks();
+    fs = _fs;
+
+    Helpers = rewiremock.proxy(
+      () => require('../../../src/plugin/helpers'),
+      mocks,
+    );
+
+    // mock fs needs the tmpdir root
+    await fs.promises.mkdir(os.tmpdir(), {recursive: true});
   });
 
   afterEach(function () {
@@ -36,15 +37,17 @@ describe('midnight-smoker', function () {
         it('should return the path to the temp directory', async function () {
           await expect(
             Helpers.createTempDir(),
-            'to be fulfilled with',
-            MOCK_TMPDIR,
+            'to be fulfilled with value satisfying',
+            expect.it('to be a string'),
           );
         });
       });
 
       describe('when mkdtemp() fails', function () {
         beforeEach(function () {
-          mkdtempStub.rejects(Object.assign(new Error('foo'), {code: 'DERP'}));
+          sandbox
+            .stub(fs.promises, 'mkdtemp')
+            .rejects(Object.assign(new Error('foo'), {code: 'DERP'}));
         });
 
         it('should reject', async function () {

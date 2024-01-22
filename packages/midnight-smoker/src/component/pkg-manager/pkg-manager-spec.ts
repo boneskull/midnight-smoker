@@ -1,11 +1,12 @@
+/* eslint-disable @typescript-eslint/no-var-requires */
 import {isString} from 'lodash';
 import {type SemVer} from 'semver';
 import {
   DEFAULT_PKG_MANAGER_BIN,
   DEFAULT_PKG_MANAGER_VERSION,
 } from '../../constants';
-import {getSystemPkgManagerVersion} from '../../pkg-util';
-import {instanceofSchema} from '../../schema-util';
+import type * as PkgUtil from '../../util/pkg-util';
+import {instanceofSchema} from '../../util/schema-util';
 import {normalizeVersion} from './version';
 
 export type SystemPkgManagerSpec = PkgManagerSpec & {
@@ -176,7 +177,9 @@ export class PkgManagerSpec {
     } = specOrOpts;
 
     if (isSystem) {
-      version = await getSystemPkgManagerVersion(pkgManager);
+      version = await (
+        require('../../util/pkg-util') as typeof PkgUtil
+      ).getSystemPkgManagerVersion(pkgManager);
     }
 
     return PkgManagerSpec.create({pkgManager, version, isSystem});

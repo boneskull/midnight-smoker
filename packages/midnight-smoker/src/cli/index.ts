@@ -4,7 +4,7 @@ import terminalLink from 'terminal-link';
 import {hideBin} from 'yargs/helpers';
 import yargs from 'yargs/yargs';
 import {readConfigFile} from '../config-file';
-import {readSmokerPkgJson} from '../pkg-util';
+import {readSmokerPkgJson} from '../util/pkg-util';
 import {handleRejection, mergeOptions} from './cli-util';
 import {
   LintCommand,

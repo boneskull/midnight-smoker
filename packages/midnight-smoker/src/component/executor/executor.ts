@@ -16,11 +16,11 @@ import {
   customSchema,
   zAbortSignal,
   zNonEmptyStringArray,
-} from '../../schema-util';
+} from '../../util/schema-util';
 import {
   zPkgManagerSpec,
   type PkgManagerSpec,
-} from '../package-manager/pkg-manager-spec';
+} from '../pkg-manager/pkg-manager-spec';
 import {zExecResult, type ExecResult} from './executor-schema';
 
 /**

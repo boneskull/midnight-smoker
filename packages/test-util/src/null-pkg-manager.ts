@@ -1,15 +1,23 @@
+/* eslint-disable import/no-duplicates */
+/* eslint-disable @typescript-eslint/no-var-requires */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import type {Executor} from 'midnight-smoker/plugin';
-import {PkgManager} from 'midnight-smoker/plugin';
+import {type ExecResult, type Executor} from 'midnight-smoker/executor';
+import type * as PM from 'midnight-smoker/pkg-manager';
+import {
+  type InstallManifest,
+  type PackOptions,
+  type PkgManager,
+  type PkgManagerDef,
+  type PkgManagerOpts,
+  type PkgManagerRunScriptOpts,
+  type PkgManagerSpec,
+  type RunScriptManifest,
+  type RunScriptResult,
+} from 'midnight-smoker/pkg-manager';
 import type {SemVer} from 'semver';
 import {MOCK_TMPDIR} from './constants';
-import {nullExecutor} from './null-executor';
-export const NULL_SPEC = PkgManager.PkgManagerSpec.create({
-  pkgManager: 'nullpm',
-  version: '1.0.0',
-});
 
-export const nullPmDef: PkgManager.PkgManagerDef = {
+export const nullPmDef: PkgManagerDef = {
   get bin() {
     return 'nullpm';
   },
@@ -21,16 +29,24 @@ export const nullPmDef: PkgManager.PkgManagerDef = {
   },
 };
 
-export class NullPm implements PkgManager.PkgManager {
+export class NullPm implements PkgManager {
+  spec: Readonly<PkgManagerSpec>;
   constructor(
-    public readonly spec: PkgManager.PkgManagerSpec,
-    public executor: PkgManager.Executor = nullExecutor,
-    public opts: PkgManager.PkgManagerOpts = {},
-  ) {}
+    spec?: PkgManagerSpec,
+    public executor?: Executor,
+    public opts: PkgManagerOpts = {},
+  ) {
+    this.spec =
+      spec ??
+      (
+        require('midnight-smoker/pkg-manager') as typeof PM
+      ).PkgManagerSpec.create({
+        pkgManager: 'nullpm',
+        version: '1.0.0',
+      });
+  }
 
-  async install(
-    installManifests: PkgManager.InstallManifest[],
-  ): Promise<Executor.ExecResult> {
+  async install(installManifests: InstallManifest[]): Promise<ExecResult> {
     return {
       stdout: '',
       stderr: '',
@@ -40,7 +56,7 @@ export class NullPm implements PkgManager.PkgManager {
     };
   }
 
-  async pack(opts: PkgManager.PackOptions) {
+  async pack(opts: PackOptions) {
     return [
       {
         spec: `${MOCK_TMPDIR}/bar.tgz`,
@@ -63,9 +79,9 @@ export class NullPm implements PkgManager.PkgManager {
   }
 
   public async runScript(
-    runManifest: PkgManager.RunScriptManifest,
-    opts: PkgManager.PkgManagerRunScriptOpts,
-  ): Promise<PkgManager.RunScriptResult> {
+    runManifest: RunScriptManifest,
+    opts: PkgManagerRunScriptOpts,
+  ): Promise<RunScriptResult> {
     return {
       pkgName: runManifest.pkgName,
       script: runManifest.script,

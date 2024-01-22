@@ -10,7 +10,7 @@
 import Debug from 'debug';
 import {glob} from 'glob';
 import isESMFile from 'is-file-esm';
-import {type Rule} from 'midnight-smoker/plugin';
+import type * as Rule from 'midnight-smoker/rule';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type {Opaque, PackageJson} from 'type-fest';

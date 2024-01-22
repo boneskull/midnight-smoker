@@ -1,5 +1,7 @@
 import Debug from 'debug';
-import {Executor, Helpers, PkgManager} from 'midnight-smoker/plugin';
+import * as Executor from 'midnight-smoker/executor';
+import * as PkgManager from 'midnight-smoker/pkg-manager';
+import * as Helpers from 'midnight-smoker/plugin/helpers';
 import path from 'node:path';
 import {YarnClassic} from './yarn-classic';
 

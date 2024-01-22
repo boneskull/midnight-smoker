@@ -3,9 +3,10 @@ import {SemVer} from 'semver';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
-import type * as PMS from '../../../../src/component/package-manager/pkg-manager-spec';
+import type * as PMS from '../../../../src/component/pkg-manager/pkg-manager-spec';
 import {DEFAULT_PKG_MANAGER_BIN} from '../../../../src/constants';
-import {type getSystemPkgManagerVersion} from '../../../../src/pkg-util';
+import {type getSystemPkgManagerVersion} from '../../../../src/util/pkg-util';
+import {createFsMocks} from '../../mocks/fs';
 
 const expect = unexpected.clone().use(unexpectedSinon);
 
@@ -20,14 +21,16 @@ describe('midnight-smoker', function () {
         >;
         beforeEach(function () {
           sandbox = createSandbox();
+          const {mocks} = createFsMocks();
           getSystemPkgManagerVersionStub = sandbox
             .stub<[string], Promise<string>>()
             .resolves('1.22.10');
           ({PkgManagerSpec} = rewiremock.proxy(
             () =>
-              require('../../../../src/component/package-manager/pkg-manager-spec'),
+              require('../../../../src/component/pkg-manager/pkg-manager-spec'),
             {
-              '../../../../src/pkg-util': {
+              ...mocks,
+              '../../../../src/util/pkg-util': {
                 getSystemPkgManagerVersion: getSystemPkgManagerVersionStub,
               },
             },

@@ -10,3 +10,5 @@ export const mockDebug: DebugMock = sinon
 
 export const MOCK_TMPROOT = '/some/tmp';
 export const MOCK_TMPDIR = path.join(MOCK_TMPROOT, 'midnight-smoker-');
+
+export * from './fs';

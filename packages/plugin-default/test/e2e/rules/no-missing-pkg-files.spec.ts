@@ -1,6 +1,7 @@
 import {registerRule, safePath} from '@midnight-smoker/test-util';
-import type {Component} from 'midnight-smoker/plugin';
-import {Rule} from 'midnight-smoker/plugin';
+import {type Component} from 'midnight-smoker/component';
+import {PluginRegistry} from 'midnight-smoker/plugin';
+import {RuleSeverities, type SomeRule} from 'midnight-smoker/rule';
 import unexpected from 'unexpected';
 import noMissingPkgFilesDef from '../../../src/rules/no-missing-pkg-files';
 import {applyRule} from './helpers';
@@ -8,12 +9,15 @@ import {applyRule} from './helpers';
 const expect = unexpected.clone();
 
 describe('@midnight-smoker/plugin-default', function () {
-  let noMissingPkgFiles: Component<Rule.SomeRule>;
+  let noMissingPkgFiles: Component<SomeRule>;
 
   describe('rule', function () {
     describe('no-missing-pkg-files', function () {
       before(async function () {
-        noMissingPkgFiles = await registerRule(noMissingPkgFilesDef);
+        noMissingPkgFiles = await registerRule(
+          PluginRegistry.create(),
+          noMissingPkgFilesDef,
+        );
       });
 
       describe('when run without options', function () {
@@ -36,7 +40,7 @@ describe('@midnight-smoker/plugin-default', function () {
                       pkgJson: expect.it('to be an object'),
                       pkgJsonPath: expect.it('to be a string'),
                       installPath: expect.it('to be a string'),
-                      severity: Rule.RuleSeverities.Error,
+                      severity: RuleSeverities.Error,
                     },
                   },
                 ],
@@ -77,7 +81,7 @@ describe('@midnight-smoker/plugin-default', function () {
                     pkgJson: expect.it('to be an object'),
                     pkgJsonPath: expect.it('to be a string'),
                     installPath: expect.it('to be a string'),
-                    severity: Rule.RuleSeverities.Error,
+                    severity: RuleSeverities.Error,
                   },
                 },
               ],
@@ -103,7 +107,7 @@ describe('@midnight-smoker/plugin-default', function () {
                     pkgJson: expect.it('to be an object'),
                     pkgJsonPath: expect.it('to be a string'),
                     installPath: expect.it('to be a string'),
-                    severity: Rule.RuleSeverities.Error,
+                    severity: RuleSeverities.Error,
                   },
                 },
               ],
@@ -129,7 +133,7 @@ describe('@midnight-smoker/plugin-default', function () {
                     pkgJson: expect.it('to be an object'),
                     pkgJsonPath: expect.it('to be a string'),
                     installPath: expect.it('to be a string'),
-                    severity: Rule.RuleSeverities.Error,
+                    severity: RuleSeverities.Error,
                   },
                 },
               ],

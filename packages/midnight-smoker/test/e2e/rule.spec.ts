@@ -1,13 +1,13 @@
 import {registerRule} from '@midnight-smoker/test-util';
 import unexpected from 'unexpected';
-import type {SomeRule} from '../../../../src/component';
-import {BLESSED_PLUGINS} from '../../../../src/plugin/blessed';
-import {PluginRegistry} from '../../../../src/plugin/registry';
+import type {SomeRule} from '../../src/component';
+import {PLUGIN_DEFAULT_ID} from '../../src/plugin/blessed';
+import {PluginRegistry} from '../../src/plugin/registry';
 
 const expect = unexpected.clone();
 
-describe('midnight-smoker', function () {
-  describe('rule', function () {
+describe('midnight-smoker [E2E]', function () {
+  describe('component', function () {
     describe('Rule', function () {
       describe('property', function () {
         describe('id', function () {
@@ -16,11 +16,11 @@ describe('midnight-smoker', function () {
             beforeEach(async function () {
               const registry = PluginRegistry.create();
               rule = await registerRule(
+                registry,
                 {
                   name: 'foo',
                 },
-                registry,
-                BLESSED_PLUGINS[0],
+                PLUGIN_DEFAULT_ID,
               );
             });
 
@@ -34,10 +34,10 @@ describe('midnight-smoker', function () {
             beforeEach(async function () {
               const registry = PluginRegistry.create();
               rule = await registerRule(
+                registry,
                 {
                   name: 'foo',
                 },
-                registry,
                 'my-plugin',
               );
             });

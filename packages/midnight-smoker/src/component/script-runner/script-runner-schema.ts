@@ -1,12 +1,12 @@
 import {z} from 'zod';
 import {zScriptError} from '../../error/error-schema';
-import {zNonEmptyString} from '../../schema-util';
+import {zNonEmptyString} from '../../util/schema-util';
 import {
   zControllerRunScriptManifest,
   zRunScriptManifest,
   zRunScriptResult,
   zScriptRunnerOpts,
-} from '../package-manager/pkg-manager-schema';
+} from '../pkg-manager/pkg-manager-schema';
 
 export const zRunScriptBeginNotifierParams = z.object({
   script: zNonEmptyString.describe('Name of the script to run'),
