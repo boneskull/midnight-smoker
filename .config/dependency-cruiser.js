@@ -131,7 +131,7 @@ module.exports = {
       severity: 'error',
       from: {},
       to: {
-        path: '.spec.ts$',
+        path: '\\.spec\\.ts$',
       },
     },
     {
