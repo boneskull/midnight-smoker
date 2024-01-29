@@ -22,7 +22,7 @@ import {
   zDefaultFalse,
   zDefaultTrue,
   zNonEmptyStringOrArrayThereof,
-} from '../src/schema-util';
+} from '../src/util/schema-util';
 
 const DEST = path.join(
   __dirname,
