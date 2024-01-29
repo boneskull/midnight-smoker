@@ -9,7 +9,7 @@ import {fromUnknownError} from '../error/base-error';
 import {
   MissingPackageJsonError,
   UnreadablePackageJsonError,
-} from '../error/util-error';
+} from './util-error';
 
 const debug = Debug('midnight-smoker:pkg-util');
 const execFile = promisify(childProcess.execFile);
@@ -130,7 +130,7 @@ const _readPkgJsonSync = memoize(
  *
  * @remarks
  * Use {@link readPackageJson} instead if possible
- * @param options Options
+ * @param opts Options
  * @returns Object with `packageJson` and `path` properties or `undefined` if
  *   not in `strict` mode
  */

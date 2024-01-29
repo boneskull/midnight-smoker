@@ -28,13 +28,13 @@ import type {
   PkgManagerInstallManifest,
   RunScriptResult,
 } from './component/pkg-manager/pkg-manager-schema';
+import {ReporterError} from './component/reporter/reporter-error';
 import type {RuleError} from './component/rule-runner/rule-error';
 import {createRuleRunnerNotifiers} from './component/rule-runner/rule-runner-notifier';
 import type {PkgManagerController} from './controller/controller';
 import {SmokerPkgManagerController} from './controller/smoker-controller';
 import {fromUnknownError} from './error/base-error';
 import {InvalidArgError} from './error/common-error';
-import {ReporterError} from './error/reporter-error';
 import {CleanupError, SmokeFailedError} from './error/smoker-error';
 import {
   InstallEvent,

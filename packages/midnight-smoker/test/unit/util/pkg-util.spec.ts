@@ -1,13 +1,16 @@
-import {memfs, type IFs} from 'memfs';
+import {type IFs} from 'memfs';
 import {type Volume} from 'memfs/lib/volume';
 import type {execFile} from 'node:child_process';
+import path from 'node:path';
 import util from 'node:util';
+import type readPkgUp from 'read-pkg-up';
 import rewiremock from 'rewiremock/node';
 import sinon from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
 import {DEFAULT_PKG_MANAGER_VERSION} from '../../../src/constants';
 import type * as PkgUtil from '../../../src/util/pkg-util';
+import {createFsMocks, type FsMocks} from '../mocks/fs';
 
 const expect = unexpected.clone().use(unexpectedSinon);
 
@@ -34,8 +37,13 @@ describe('midnight-smoker', function () {
     const CWD = '/somewhere';
 
     beforeEach(function () {
-      ({vol, fs} = memfs());
+      let mocks: FsMocks;
+      ({vol, fs, mocks} = createFsMocks());
       sandbox = sinon.createSandbox();
+
+      // so, yeah, we don't use execFile, we use the promisified execFile,
+      // which is actually a property on the real execFile function.
+      // I do not know if this is a public API.
       execFileStub = sandbox.stub().resolves({stdout: '1.0.0\n'});
       ChildProcess = {
         execFile: Object.assign(sandbox.stub(), {
@@ -43,11 +51,34 @@ describe('midnight-smoker', function () {
         }),
       } as typeof ChildProcess;
 
+      vol.fromJSON(
+        {
+          './package.json': JSON.stringify({
+            name: 'some-pkg',
+            version: '1.0.0',
+          }),
+        },
+        CWD,
+      );
+
       Util = rewiremock.proxy(() => require('../../../src/util/pkg-util'), {
-        'node:fs/promises': fs.promises,
-        fs,
-        'node:fs': fs,
+        ...mocks,
         'node:child_process': ChildProcess,
+
+        // unfortunately, it's exceedingly difficult to _not_ load this module prior to running this test
+        // without compartments or DI or something.
+        // this forces it to load from the mock filesystem.
+        'read-pkg-up': sandbox
+          .stub()
+          .callsFake(async ({cwd = CWD}: readPkgUp.Options) => {
+            const filepath = path.join(cwd, 'package.json');
+            return {
+              packageJson: JSON.parse(
+                (await fs.promises.readFile(filepath, 'utf8')) as string,
+              ),
+              path: filepath,
+            };
+          }),
       });
 
       ({readPackageJson, pickPackageVersion, getSystemPkgManagerVersion} =

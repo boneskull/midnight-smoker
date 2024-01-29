@@ -1,7 +1,7 @@
 /**
  * Handles parsing of options (CLI, API, or config file) for `midnight-smoker`
  *
- * @packageDocumentation
+ * @module midnight-smoker/options
  */
 
 export * from './options';

@@ -1,4 +1,5 @@
 import {BaseSmokerError} from '../../../error/base-error';
+import {instanceofSchema} from '../../../util';
 
 /**
  * @group Errors
@@ -15,3 +16,9 @@ export class ScriptFailedError extends BaseSmokerError<{
 }> {
   public readonly id = 'ScriptFailedError';
 }
+
+/**
+ * Represents the zod schema for a {@link ScriptFailedError} instance.
+ */
+
+export const zScriptFailedError = instanceofSchema(ScriptFailedError);

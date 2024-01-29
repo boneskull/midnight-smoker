@@ -3,7 +3,7 @@
  *
  * Any `Component`s provided by these plugins will have bare identifiers.
  *
- * @packageDocumentation
+ * @module midnight-smoker/plugin/blessed
  */
 
 export const PLUGIN_DEFAULT_ID = '@midnight-smoker/plugin-default';

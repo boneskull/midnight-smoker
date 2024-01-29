@@ -4,7 +4,7 @@
  *
  * An implementation of `Executor` can then transform commands as needed.
  *
- * @packageDocumentation
+ * @module
  * @todo Creating a custom `Executor` is not yet supported by the public plugin
  *   API.
  */

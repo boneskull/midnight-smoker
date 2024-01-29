@@ -1,6 +1,6 @@
 import {z} from 'zod';
-import {zScriptError} from '../../error/error-schema';
 import {zNonEmptyString} from '../../util/schema-util';
+import {zScriptError} from '../pkg-manager/errors/script-error';
 import {
   zControllerRunScriptManifest,
   zRunScriptManifest,

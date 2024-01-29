@@ -80,7 +80,6 @@ export async function loadPackageManagers(
       );
 
   const defsBySpec = findPackageManagers(pkgManagerDefs, specs);
-
   return new Map(
     await Promise.all(
       [...defsBySpec].map(async ([spec, def]) => {

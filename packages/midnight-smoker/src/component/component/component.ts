@@ -80,7 +80,7 @@ export interface ComponentApi {
  * Functions are mainly allowed through verbatim because of conflicts with
  * `sinon`; it adds its own `id` prop to stubs.
  */
-const zComponentizable = z.custom<Componentizable<object>>(
+export const zComponentizable = z.custom<Componentizable<object>>(
   (value) =>
     isFunction(value) ||
     (isObject(value) &&
@@ -95,8 +95,6 @@ const zComponentizable = z.custom<Componentizable<object>>(
 /**
  * Checks whether or not the object can be shoehorned into a component. It
  * cannot have conflicting properties
- *
- * @internal
  *
  * @todo Should we use `never` and the inverse of this conditional?
  */

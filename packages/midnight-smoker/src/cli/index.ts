@@ -1,3 +1,11 @@
+/**
+ * The `smoker` CLI
+ *
+ * This module exports nothing. Don't try to import it.
+ *
+ * @module midnight-smoker/cli
+ */
+
 import Debug from 'debug';
 import {omit} from 'lodash';
 import terminalLink from 'terminal-link';

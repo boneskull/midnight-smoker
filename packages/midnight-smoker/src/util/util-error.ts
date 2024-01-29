@@ -1,4 +1,4 @@
-import {BaseSmokerError} from './base-error';
+import {BaseSmokerError} from '../error/base-error';
 
 /**
  * @group Errors
@@ -11,6 +11,7 @@ export class MissingPackageJsonError extends BaseSmokerError<{
     super(message, {cwd});
   }
 }
+
 /**
  * @group Errors
  */
@@ -26,6 +27,7 @@ export class UnreadablePackageJsonError extends BaseSmokerError<
     super(message, {pkgJsonPath}, error);
   }
 }
+
 /**
  * @group Errors
  */

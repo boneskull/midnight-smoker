@@ -1,16 +1,14 @@
 /* eslint-disable import/no-duplicates */
-/* eslint-disable @typescript-eslint/no-var-requires */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import {type ExecResult, type Executor} from 'midnight-smoker/executor';
-import type * as PM from 'midnight-smoker/pkg-manager';
 import {
+  PkgManagerSpec,
   type InstallManifest,
   type PackOptions,
   type PkgManager,
   type PkgManagerDef,
   type PkgManagerOpts,
   type PkgManagerRunScriptOpts,
-  type PkgManagerSpec,
   type RunScriptManifest,
   type RunScriptResult,
 } from 'midnight-smoker/pkg-manager';
@@ -38,9 +36,7 @@ export class NullPm implements PkgManager {
   ) {
     this.spec =
       spec ??
-      (
-        require('midnight-smoker/pkg-manager') as typeof PM
-      ).PkgManagerSpec.create({
+      PkgManagerSpec.create({
         pkgManager: 'nullpm',
         version: '1.0.0',
       });

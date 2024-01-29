@@ -1,3 +1,9 @@
+/**
+ * Utils for working with Zod schemas
+ *
+ * @packageDocumentation
+ */
+
 import type {Many} from 'lodash';
 import {
   castArray as _castArray,

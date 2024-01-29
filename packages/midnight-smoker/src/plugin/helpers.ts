@@ -1,3 +1,7 @@
+/**
+ * @module midnight-smoker/plugin/helpers
+ */
+
 import fs from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
@@ -14,9 +18,9 @@ import type {
 import type {RuleOk} from '../component/rule/rule-result';
 import type {RuleSeverity} from '../component/rule/severity';
 import type {StaticRuleContext} from '../component/rule/static';
-import {DirCreationError} from '../error/util-error';
 import {readPackageJson, readPackageJsonSync} from '../util/pkg-util';
 import {isErrnoException} from '../util/util';
+import {DirCreationError} from '../util/util-error';
 export {
   PkgManagerSpec,
   type SystemPkgManagerSpec,

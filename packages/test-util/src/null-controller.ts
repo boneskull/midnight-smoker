@@ -32,7 +32,7 @@ export class NullPkgManagerController extends PkgManagerController {
   /**
    * Installs nothing
    *
-   * @param installManifests: Install manifests
+   * @param installManifests - Install manifests
    * @returns Empty array
    */
   public async install(

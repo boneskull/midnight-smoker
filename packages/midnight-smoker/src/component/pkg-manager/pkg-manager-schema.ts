@@ -1,6 +1,5 @@
 import {Range, SemVer} from 'semver';
 import {z} from 'zod';
-import {zScriptError} from '../../error/error-schema';
 import type * as Helpers from '../../plugin/helpers';
 import {
   customSchema,
@@ -8,14 +7,13 @@ import {
   zAbortSignal,
   zNonEmptyString,
 } from '../../util/schema-util';
-import type {ExecError} from '../executor/exec-error';
 import {zExecutor} from '../executor/executor';
 import {
   zExecError,
   zExecResult,
   type ExecResult,
 } from '../executor/executor-schema';
-import type {ScriptError} from './errors/script-error';
+import {zScriptError} from './errors/script-error';
 import {zPkgManagerSpec} from './pkg-manager-spec';
 
 export const zBaseRunScriptManifest = z.object({
@@ -34,27 +32,55 @@ export interface RunScriptManifest {
   script: string;
 }
 
-export const zRunScriptResult = customSchema<RunScriptResult>(
-  z
-    .object({
-      cwd: zNonEmptyString.optional(),
-      error: zScriptError.optional(),
-      pkgName: zNonEmptyString,
-      rawResult: z.union([zExecResult, zExecError]),
-      script: zNonEmptyString,
-      skipped: z.boolean().optional(),
-    })
-    .describe('The result of running a single custom script'),
-);
+/**
+ * Describes the result of running a custom script.
+ *
+ * The contents of this object describe whether the script failed (and how) or
+ * not.
+ */
+export const zRunScriptResult = z
+  .object({
+    /**
+     * The directory in which the script ran.
+     */
+    cwd: zNonEmptyString
+      .optional()
+      .describe('Directory in which the script ran'),
+    /**
+     * The error if the script failed.
+     */
+    error: zScriptError
+      .optional()
+      .describe('Error if abnormal failure (not a script failure)'),
+    /**
+     * The name of the package in which the script ran.
+     */
+    pkgName: zNonEmptyString.describe(
+      'Name of the package in which the script ran',
+    ),
+    /**
+     * The raw result of running the script.
+     */
+    rawResult: z
+      .union([zExecResult, zExecError])
+      .describe('Raw result of running the script'),
+    /**
+     * The name of the script that ran.
+     */
+    script: zNonEmptyString.describe('Name of script'),
+    /**
+     * Whether the script was skipped.
+     */
+    skipped: z.boolean().optional().describe('Whether the script was skipped'),
+  })
+  .describe('The result of running a single custom script');
 
-export interface RunScriptResult {
-  cwd?: string;
-  error?: ScriptError;
-  pkgName: string;
-  rawResult: ExecError | ExecResult;
-  script: string;
-  skipped?: boolean;
-}
+/**
+ * {@inheritDoc zRunScriptResult}
+ *
+ * @see {@link zRunScriptResult}
+ */
+export type RunScriptResult = z.infer<typeof zRunScriptResult>;
 
 export const zBaseInstallManifest = z
   .object({

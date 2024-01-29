@@ -41,10 +41,9 @@ export type RegisterPluginOpts =
  * When provided no options, it creates a no-op plugin with the name
  * {@link DEFAULT_TEST_PLUGIN_NAME} and other default values.
  *
- * @param id - Plugin name
+ * @param registry - Plugin registry
  * @param opts - Options; optionally supply `plugin` or `factory` but not both
- * @returns If `opts.registry` provided, then that value; otherwise a new
- *   {@link PluginRegistry} instance.
+ * @returns The {@link PluginRegistry} instance
  */
 export async function registerPlugin(
   registry: PluginRegistry,

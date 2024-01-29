@@ -1,8 +1,10 @@
 import {bold, cyan, italic, magenta, yellow} from 'chalk';
 import {format} from 'node:util';
 import {BaseSmokerError} from '../../../error/base-error';
+import {instanceofSchema} from '../../../util';
 import type {ExecError} from '../../executor/exec-error';
 import type {PkgManagerSpec} from '../pkg-manager-spec';
+
 /**
  * @group Errors
  */
@@ -46,3 +48,9 @@ export class RunScriptError extends BaseSmokerError<
     );
   }
 }
+
+/**
+ * Represents the zod schema for a {@link RunScriptError} instance.
+ */
+
+export const zRunScriptError = instanceofSchema(RunScriptError);

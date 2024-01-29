@@ -15,10 +15,6 @@ import {
 import {createStrictEmitter} from '../event/strict-emitter';
 import {type PluginRegistry} from '../plugin/registry';
 
-/**
- * @internal
- */
-
 export abstract class PkgManagerController extends createStrictEmitter<PkgManagerEvents>() {
   protected readonly defaultExecutorId: string;
 

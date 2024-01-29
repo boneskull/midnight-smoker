@@ -1,3 +1,7 @@
+/**
+ * @module midnight-smoker/script-runner
+ */
+
 export * from '../pkg-manager/errors/for-script-runner';
 export type {
   PkgManagerRunScriptManifest,

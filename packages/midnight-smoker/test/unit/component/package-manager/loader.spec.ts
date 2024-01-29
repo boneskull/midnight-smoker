@@ -32,7 +32,12 @@ describe('midnight-smoker', function () {
           ({PkgManagerSpec} = rewiremock.proxy(
             () =>
               require('../../../../src/component/pkg-manager/pkg-manager-spec'),
-            mocks,
+            {
+              ...mocks,
+              '../../../../src/util/pkg-util': {
+                getSystemPkgManagerVersion: sandbox.stub().resolves('1.0.0'),
+              },
+            },
           ));
         });
 

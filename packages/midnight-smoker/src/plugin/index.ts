@@ -9,3 +9,4 @@ export * from './metadata';
 export * from './plugin';
 export * from './plugin-api';
 export * from './registry';
+export * from './static-metadata';

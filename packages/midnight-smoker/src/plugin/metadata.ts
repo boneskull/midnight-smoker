@@ -37,7 +37,10 @@ import type {StaticPluginMetadata} from './static-metadata';
 const debug = Debug('midnight-smoker:plugin:metadata');
 
 /**
- * Used as the {@link PluginMetadata.entryPoint} for in-memory plugins
+ * Serves as the {@link entryPoint} for plugins which exist only in memory (as
+ * far as this package is concerned)
+ *
+ * @internal
  */
 export const TRANSIENT = '<transient>';
 
@@ -116,8 +119,7 @@ export type PluginMetadataOpts = z.input<typeof zPluginMetadataOpts>;
  */
 export class PluginMetadata implements StaticPluginMetadata {
   /**
-   * Serves as the {@link entryPoint} for plugins which exist only in memory (as
-   * far as this package is concerned)
+   * {@inheritDoc }
    *
    * @internal
    */

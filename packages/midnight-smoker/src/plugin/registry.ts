@@ -18,7 +18,7 @@ import {
   DEFAULT_EXECUTOR_ID,
   SYSTEM_EXECUTOR_ID,
 } from '../constants';
-import * as Errors from '../error/errors';
+import * as Errors from '../error';
 import {
   DisallowedPluginError,
   DuplicatePluginError,

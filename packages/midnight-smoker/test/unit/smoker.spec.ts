@@ -50,7 +50,7 @@ interface SmokerSpecMocks extends FsMocks {
   execa: ExecaMock;
 }
 
-describe.skip('midnight-smoker', function () {
+describe('midnight-smoker', function () {
   let sandbox: sinon.SinonSandbox;
 
   let Smoker: typeof MS.Smoker;

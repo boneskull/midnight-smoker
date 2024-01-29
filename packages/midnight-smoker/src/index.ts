@@ -17,11 +17,14 @@
 
 import {Smoker} from './smoker';
 export type {PkgManagerInstallManifest} from './component/pkg-manager/pkg-manager-schema';
+export type * from './controller';
 export type {SmokeResults} from './event/event-types';
 export {
   zBaseSmokerOptions,
   type RawSmokerOptions,
   type SmokerOptions,
 } from './options';
+export type * from './plugin/registry';
+export type {SmokerCapabilities} from './smoker';
 export {Smoker};
 export const {smoke} = Smoker;

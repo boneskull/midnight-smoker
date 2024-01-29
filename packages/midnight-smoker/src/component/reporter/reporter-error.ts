@@ -1,5 +1,5 @@
-import type {ReporterDef} from '../component/reporter/reporter-types';
-import {BaseSmokerError} from './base-error';
+import {BaseSmokerError} from '../../error/base-error';
+import type {ReporterDef} from './reporter-types';
 
 /**
  * @group Errors
