@@ -4,7 +4,11 @@
     "types": ["node"],
     "composite": true,
     "customConditions": ["typedoc"],
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "resolvePackageJsonImports": true
   },
-  "ts-node": {"transpileOnly": true}
+  "ts-node": {
+    "transpileOnly": true,
+    "swc": true
+  }
 }
