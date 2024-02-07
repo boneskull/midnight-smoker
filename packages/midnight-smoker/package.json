@@ -21,6 +21,27 @@
     "smoker": "bin/smoker.js"
   },
   "main": "./dist/index.js",
+  "imports": {
+    "#schema/*": "./dist/component/schema/*",
+    "#constants": "./dist/constants.js",
+    "#component": "./dist/component/component/index.js",
+    "#executor": "./dist/component/executor/index.js",
+    "#rule-runner": "./dist/component/rule-runner/index.js",
+    "#rule": "./dist/component/rule/index.js",
+    "#rule/*": "./dist/component/rule/*",
+    "#script-runner": "./dist/component/script-runner/index.js",
+    "#plugin": "./dist/plugin/index.js",
+    "#pkg-manager": "./dist/component/pkg-manager/index.js",
+    "#pkg-manager/*": "./dist/component/pkg-manager/*",
+    "#reporter": "./dist/component/reporter/index.js",
+    "#util": "./dist/util/index.js",
+    "#util/*": "./dist/util/*",
+    "#event/*": "./dist/event/*",
+    "#event": "./dist/event/index.js",
+    "#error/*": "./dist/error/*",
+    "#error": "./dist/error/index.js",
+    "#plugin/*": "./dist/plugin/*"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

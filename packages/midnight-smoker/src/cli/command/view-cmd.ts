@@ -14,7 +14,7 @@ import {
   type InferredOptionTypes,
   type PositionalOptions,
 } from 'yargs';
-import {guessPackageManager} from '../../component/pkg-manager/guesser';
+import {guessPackageManager} from '../../component/pkg-manager/pkg-manager-guesser';
 import {Smoker} from '../../smoker';
 import {BaseCommand} from './base-cmd';
 import {type GlobalOptionTypes} from './global-opts';
@@ -92,6 +92,7 @@ const Items = {
   defaultPkgManager: 'default-pkg-manager',
   config: 'config',
 } as const;
+
 /**
  * The positional options for the "view" command
  */
@@ -102,6 +103,7 @@ const ViewPositionals = {
     type: 'string',
   },
 } as const satisfies Record<string, PositionalOptions>;
+
 /**
  * The option-options for the "view" command
  */

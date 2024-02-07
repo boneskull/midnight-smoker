@@ -22,6 +22,7 @@ export class CleanupError extends BaseSmokerError<
     super(message, {dir}, error);
   }
 }
+
 /**
  * Thrown when _anything_ in `Smoker.smoke()` fails.
  *

@@ -6,28 +6,28 @@
  * @packageDocumentation
  */
 
-import Debug from 'debug';
-import {RunScriptBailed} from '../component/pkg-manager/errors/bailed-error';
-import {InstallError} from '../component/pkg-manager/errors/install-error';
-import {PackError} from '../component/pkg-manager/errors/pack-error';
-import {
-  type InstallManifest,
-  type InstallResult,
-  type PackOptions,
-  type PkgManager,
-  type PkgManagerInstallManifest,
-  type PkgManagerRunScriptManifest,
-  type RunScriptResult,
-} from '../component/schema';
-import {createScriptRunnerNotifiers} from '../component/script-runner/script-runner-notifier';
-import {SmokerEvent} from '../event/event-constants';
+import {InstallError} from '#error/install-error.js';
+import {PackError} from '#error/pack-error.js';
+import {ScriptBailed} from '#error/script-bailed.js';
+import {SmokerEvent} from '#event/event-constants.js';
 import {
   buildInstallEventData,
   buildPackBeginEventData,
   buildPackOkEventData,
   buildRunScriptsBeginEventData,
   buildRunScriptsEndEventData,
-} from '../event/event-util';
+} from '#event/event-util.js';
+import {
+  type InstallManifest,
+  type PkgManagerInstallManifest,
+} from '#schema/install-manifest.js';
+import {type InstallResult} from '#schema/install-result.js';
+import {type PackOptions} from '#schema/pack-options.js';
+import {type PkgManager} from '#schema/pkg-manager.js';
+import {type RunScriptManifest} from '#schema/run-script-manifest.js';
+import {type RunScriptResult} from '#schema/run-script-result.js';
+import {createScriptRunnerNotifiers} from '#script-runner';
+import Debug from 'debug';
 import {
   PkgManagerController,
   type PkgManagerControllerRunScriptsOpts,
@@ -233,15 +233,16 @@ export class SmokerPkgManagerController extends PkgManagerController {
     const ac = new AbortController();
     const scriptRunner = this.pluginRegistry.getScriptRunner();
 
-    const runManifests: PkgManagerRunScriptManifest[] = installResults.flatMap(
+    const runManifests: RunScriptManifestWithPkgMgr[] = installResults.flatMap(
       ({installManifests}) =>
         scripts.flatMap((script) =>
           installManifests
             .filter((installManifest) => installManifest.installPath)
-            .map((installManifest) => ({
-              ...installManifest,
+            .map(({pkgManager, pkgName, installPath: cwd}) => ({
+              pkgName,
               script,
-              cwd: installManifest.installPath!,
+              cwd: cwd!,
+              pkgManager,
             })),
         ),
     );
@@ -261,13 +262,15 @@ export class SmokerPkgManagerController extends PkgManagerController {
     const results: RunScriptResult[] = [];
 
     try {
-      for (const runManifest of runManifests) {
+      for (const {pkgManager, ...runManifest} of runManifests) {
         try {
           results.push(
-            await scriptRunner(notifiers, runManifest, {signal: ac.signal}),
+            await scriptRunner(notifiers, runManifest, pkgManager, {
+              signal: ac.signal,
+            }),
           );
         } catch (err) {
-          if (err instanceof RunScriptBailed) {
+          if (err instanceof ScriptBailed) {
             break;
           }
           if (opts.bail) {
@@ -291,3 +294,7 @@ export class SmokerPkgManagerController extends PkgManagerController {
     }
   }
 }
+
+export type RunScriptManifestWithPkgMgr = RunScriptManifest & {
+  pkgManager: PkgManager;
+};

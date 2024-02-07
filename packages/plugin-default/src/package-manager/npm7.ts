@@ -1,16 +1,24 @@
 import Debug from 'debug';
 import {isError} from 'lodash';
-import * as Errors from 'midnight-smoker/error';
-import * as Executor from 'midnight-smoker/executor';
-import * as PkgManager from 'midnight-smoker/pkg-manager';
-import type * as Helpers from 'midnight-smoker/plugin/helpers';
+import {PackError, PackParseError} from 'midnight-smoker/error';
+import {
+  type ExecError,
+  type ExecResult,
+  type Executor,
+} from 'midnight-smoker/executor';
+import {
+  type InstallManifest,
+  type PackOptions,
+  type PkgManager,
+  type PkgManagerDef,
+  type PkgManagerOpts,
+  type PkgManagerSpec,
+} from 'midnight-smoker/pkg-manager';
+import {type PluginHelpers} from 'midnight-smoker/plugin';
 import path from 'node:path';
 import {GenericNpmPackageManager, type NpmPackItem} from './npm';
 
-export class Npm7
-  extends GenericNpmPackageManager
-  implements PkgManager.PkgManager
-{
+export class Npm7 extends GenericNpmPackageManager implements PkgManager {
   protected debug: Debug.Debugger;
 
   public static readonly bin = 'npm';
@@ -18,10 +26,10 @@ export class Npm7
   public static accepts = '^7.0.0 || ^8.0.0';
 
   public constructor(
-    spec: PkgManager.PkgManagerSpec,
-    executor: Executor.Executor,
+    spec: PkgManagerSpec,
+    executor: Executor,
     tmpdir: string,
-    opts: PkgManager.PkgManagerOpts = {},
+    opts: PkgManagerOpts = {},
   ) {
     super(spec, executor, tmpdir, opts);
     this.debug = Debug(`midnight-smoker:pm:npm7`);
@@ -29,62 +37,27 @@ export class Npm7
 
   public static async create(
     this: void,
-    spec: PkgManager.PkgManagerSpec,
-    executor: Executor.Executor,
-    helpers: typeof Helpers,
-    opts?: PkgManager.PkgManagerOpts,
+    spec: PkgManagerSpec,
+    executor: Executor,
+    helpers: PluginHelpers,
+    opts?: PkgManagerOpts,
   ) {
     const tempdir = await helpers.createTempDir();
     return new Npm7(spec, executor, tempdir, opts);
   }
 
   public async install(
-    installManifests: PkgManager.InstallManifest[],
-  ): Promise<Executor.ExecResult> {
-    if (!installManifests.length) {
-      throw new Errors.InvalidArgError(
-        'installManifests must be a non-empty array',
-        {argName: 'installManifests'},
-      );
-    }
-
-    const installSpecs = installManifests.map(({spec}) => spec);
-    let err: PkgManager.Errors.InstallError | undefined;
-    const installArgs = [
-      'install',
+    installManifests: InstallManifest[],
+  ): Promise<ExecResult> {
+    return this._install(installManifests, [
       '--no-audit',
       '--no-package-lock',
       '--global-style',
       '--json',
-      ...installSpecs,
-    ];
-
-    let installResult: Executor.ExecResult;
-    try {
-      installResult = await this.executor(
-        this.spec,
-        installArgs,
-        {},
-        {cwd: this.tmpdir},
-      );
-      err = this.handleInstallError(installResult, installSpecs);
-    } catch (e) {
-      if (e instanceof Executor.ExecError) {
-        err = this.handleInstallError(e, installSpecs);
-      } else {
-        throw e;
-      }
-    }
-    if (err) {
-      throw err;
-    }
-    this.debug('(install) Installed %d packages', installSpecs.length);
-    return installResult!;
+    ]);
   }
 
-  public async pack(
-    opts: PkgManager.PackOptions = {},
-  ): Promise<PkgManager.InstallManifest[]> {
+  public async pack(opts: PackOptions = {}): Promise<InstallManifest[]> {
     let packArgs = [
       'pack',
       '--json',
@@ -103,18 +76,19 @@ export class Npm7
       }
     }
 
-    let packResult: Executor.ExecResult;
+    let packResult: ExecResult;
 
     try {
       packResult = await this.executor(this.spec, packArgs);
-    } catch (err) {
-      if (err instanceof Executor.ExecError) {
-        this.debug('(pack) Failed: %O', err);
+    } catch (e) {
+      this.debug('(pack) Failed: %O', e);
+      const err = e as ExecError;
+      if (err.id === 'ExecError') {
         // in some cases we can get something more user-friendly via the JSON output
         const parsedError = this.parseNpmError(err.stdout);
 
         if (parsedError) {
-          throw new PkgManager.Errors.PackError(
+          throw new PackError(
             parsedError.summary,
             `${this.spec}`,
             this.tmpdir,
@@ -122,14 +96,14 @@ export class Npm7
           );
         }
 
-        throw new PkgManager.Errors.PackError(
+        throw new PackError(
           `Use --verbose for more information`,
           `${this.spec}`,
           this.tmpdir,
           {error: err},
         );
       }
-      throw err;
+      throw e;
     }
 
     let parsed: NpmPackItem[];
@@ -148,7 +122,7 @@ export class Npm7
     } catch (err) {
       this.debug('(pack) Failed to parse JSON: %s', packOutput);
       throw isError(err)
-        ? new PkgManager.Errors.PackParseError(
+        ? new PackParseError(
             `Failed to parse JSON result of "npm pack"`,
             `${this.spec}`,
             err,
@@ -171,49 +145,6 @@ export class Npm7
 
     return installManifest;
   }
-
-  protected handleInstallError(
-    errOrResult: Executor.ExecError | Executor.ExecResult,
-    installSpecs: string[],
-  ) {
-    const parsedError = this.parseNpmError(errOrResult.stdout);
-    if (parsedError) {
-      return new PkgManager.Errors.InstallError(
-        parsedError.summary,
-        `${this.spec}`,
-        installSpecs,
-        this.tmpdir,
-        {
-          error: parsedError,
-          output: errOrResult.all || errOrResult.stderr || errOrResult.stdout,
-          exitCode: errOrResult.exitCode,
-        },
-      );
-    } else if (errOrResult.exitCode > 0) {
-      return new PkgManager.Errors.InstallError(
-        `Use --verbose for more information`,
-        `${this.spec}`,
-        installSpecs,
-        this.tmpdir,
-        {
-          output: errOrResult.all || errOrResult.stderr || errOrResult.stdout,
-          exitCode: errOrResult.exitCode,
-        },
-      );
-    } else if (errOrResult instanceof Error) {
-      return new PkgManager.Errors.InstallError(
-        'Use --verbose for more information',
-        `${this.spec}`,
-        installSpecs,
-        this.tmpdir,
-        {
-          output: errOrResult.all || errOrResult.stderr || errOrResult.stdout,
-          exitCode: errOrResult.exitCode,
-        },
-        errOrResult,
-      );
-    }
-  }
 }
 
-export default Npm7 satisfies PkgManager.PkgManagerDef;
+export default Npm7 satisfies PkgManagerDef;

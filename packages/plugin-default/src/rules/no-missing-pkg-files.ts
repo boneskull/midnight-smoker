@@ -22,7 +22,7 @@ export default function noMissingPkgFiles({
   z,
   SchemaUtils: schemaUtils,
 }: PluginAPI) {
-  const {zDefaultTrue, zNonEmptyStringOrArrayThereof} = schemaUtils;
+  const {DefaultTrueSchema, NonEmptyStringToArraySchema} = schemaUtils;
   defineRule({
     async check({pkgJson, installPath, addIssue}, opts) {
       let {fields} = opts;
@@ -68,10 +68,12 @@ export default function noMissingPkgFiles({
          * Fieldname in `package.json`
          */
         field: string;
+
         /**
          * Assumed to be a relative path
          */
         relativePath: string;
+
         /**
          * Present if the field is an object (e.g., `bin` as an object instead
          * of `string`); the object key
@@ -137,14 +139,20 @@ export default function noMissingPkgFiles({
     description:
       'Checks that files referenced in package.json exist in the tarball',
     schema: z.object({
-      bin: zDefaultTrue.describe('Check the "bin" field (if it exists)'),
-      browser: zDefaultTrue.describe(
+      bin: DefaultTrueSchema.describe('Check the "bin" field (if it exists)'),
+      browser: DefaultTrueSchema.describe(
         'Check the "browser" field (if it exists)',
       ),
-      types: zDefaultTrue.describe('Check the "types" field (if it exists)'),
-      unpkg: zDefaultTrue.describe('Check the "unpkg" field (if it exists)'),
-      module: zDefaultTrue.describe('Check the "module" field (if it exists)'),
-      fields: zNonEmptyStringOrArrayThereof.describe(
+      types: DefaultTrueSchema.describe(
+        'Check the "types" field (if it exists)',
+      ),
+      unpkg: DefaultTrueSchema.describe(
+        'Check the "unpkg" field (if it exists)',
+      ),
+      module: DefaultTrueSchema.describe(
+        'Check the "module" field (if it exists)',
+      ),
+      fields: NonEmptyStringToArraySchema.describe(
         'Check files referenced by these additional top-level fields',
       ),
     }),

@@ -1,13 +1,12 @@
-import {NullPm, nullExecutor, nullPmDef} from '@midnight-smoker/test-util';
+import type * as PMLoader from '#component/pkg-manager/pkg-manager-loader.js';
+import type * as PMS from '#component/pkg-manager/pkg-manager-spec.js';
+import {ErrorCodes} from '#error';
+import {type PkgManagerDef} from '#schema/pkg-manager-def.js';
+import {nullPmDef} from '@midnight-smoker/test-util';
 import rewiremock from 'rewiremock/node';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
-import {UnsupportedPackageManagerError} from '../../../../src/component/pkg-manager/errors/unsupported-pkg-manager-error';
-import type * as PMLoader from '../../../../src/component/pkg-manager/loader';
-import type * as PMS from '../../../../src/component/pkg-manager/pkg-manager-spec';
-import {type PkgManagerDef} from '../../../../src/component/pkg-manager/pkg-manager-types';
-import {InvalidArgError} from '../../../../src/error/common-error';
 import {createFsMocks} from '../../mocks/fs';
 
 const expect = unexpected.clone().use(unexpectedSinon);
@@ -26,7 +25,8 @@ describe('midnight-smoker', function () {
           const {mocks} = createFsMocks();
 
           ({loadPackageManagers, findPackageManagers} = rewiremock.proxy(
-            () => require('../../../../src/component/pkg-manager/loader'),
+            () =>
+              require('../../../../src/component/pkg-manager/pkg-manager-loader'),
             mocks,
           ));
           ({PkgManagerSpec} = rewiremock.proxy(
@@ -61,13 +61,10 @@ describe('midnight-smoker', function () {
               expect(
                 () => findPackageManagers([], pkgManagerSpecs),
                 'to throw',
-                new InvalidArgError(
-                  'pkgManagerDefs must be a non-empty array',
-                  {
-                    argName: 'pkgManagerDefs',
-                    position: 0,
-                  },
-                ),
+                {
+                  code: ErrorCodes.InvalidArgError,
+                  context: {argName: 'pkgManagerDefs', position: 0},
+                },
               );
             });
           });
@@ -78,13 +75,10 @@ describe('midnight-smoker', function () {
                 // @ts-expect-error - bad usage
                 () => findPackageManagers(),
                 'to throw',
-                new InvalidArgError(
-                  'pkgManagerDefs must be a non-empty array',
-                  {
-                    argName: 'pkgManagerDefs',
-                    position: 0,
-                  },
-                ),
+                {
+                  code: ErrorCodes.InvalidArgError,
+                  context: {argName: 'pkgManagerDefs', position: 0},
+                },
               );
             });
           });
@@ -95,13 +89,10 @@ describe('midnight-smoker', function () {
                 // @ts-expect-error - bad usage
                 () => findPackageManagers([nullPmDef]),
                 'to throw',
-                new InvalidArgError(
-                  'pkgManagerSpecs must be a non-empty array',
-                  {
-                    argName: 'pkgManagerSpecs',
-                    position: 1,
-                  },
-                ),
+                {
+                  code: ErrorCodes.InvalidArgError,
+                  context: {argName: 'pkgManagerSpecs', position: 1},
+                },
               );
             });
           });
@@ -140,11 +131,10 @@ describe('midnight-smoker', function () {
                     unmatchedSpec,
                   ]),
                 'to throw',
-                new UnsupportedPackageManagerError(
-                  `No PackageManager component found that can handle "${unmatchedSpec}"`,
-                  unmatchedSpec.pkgManager,
-                  unmatchedSpec.version,
-                ),
+                {
+                  code: ErrorCodes.UnsupportedPackageManagerError,
+                  context: {name: 'pnpm', version: 'latest'},
+                },
               );
             });
           });
@@ -155,11 +145,11 @@ describe('midnight-smoker', function () {
             it('should reject', function () {
               expect(
                 () =>
-                  loadPackageManagers([nullPmDef], nullExecutor, nullExecutor, {
+                  loadPackageManagers([nullPmDef], {
                     desiredPkgManagers: ['pnpm'],
                   }),
                 'to be rejected with error satisfying',
-                {code: 'ESMOKER_UNSUPPORTEDPACKAGEMANAGER'},
+                {code: ErrorCodes.UnsupportedPackageManagerError},
               );
             });
           });
@@ -172,53 +162,23 @@ describe('midnight-smoker', function () {
 
             it('should guess a package manager', async function () {
               await expect(
-                loadPackageManagers(
-                  [nullPmDef],
-                  nullExecutor,
-                  nullExecutor,
-                ).then((map) => [...map.values()]),
+                loadPackageManagers([nullPmDef]).then((map) => [
+                  ...map.values(),
+                ]),
                 'to be fulfilled with value satisfying',
-                [expect.it('to be a', NullPm)],
+                [expect.it('to be', nullPmDef)],
               );
-            });
-          });
-
-          describe('when provided a "system" desired pkg manager', function () {
-            beforeEach(function () {
-              sandbox.spy(nullPmDef, 'create');
-            });
-            it('should load the package manager', async function () {
-              const systemNullExecutor = sandbox.stub() as typeof nullExecutor;
-              const desiredSpec = PkgManagerSpec.create({
-                pkgManager: 'nullpm',
-                version: '1.0.0',
-                isSystem: true,
-              });
-              await loadPackageManagers(
-                [nullPmDef],
-                nullExecutor,
-                systemNullExecutor,
-                {
-                  desiredPkgManagers: [desiredSpec],
-                },
-              );
-              expect(nullPmDef.create, 'to have a call satisfying', [
-                desiredSpec.toJSON(), // non-plain-objects cannot be compared using "satisfying"
-                expect.it('to be', systemNullExecutor),
-                {},
-                {},
-              ]).and('was called once');
             });
           });
 
           describe('when provided a version within the accepted range', function () {
             it('should load the package manager', async function () {
               await expect(
-                loadPackageManagers([nullPmDef], nullExecutor, nullExecutor, {
+                loadPackageManagers([nullPmDef], {
                   desiredPkgManagers: ['nullpm@1'],
                 }).then((map) => [...map.values()]),
                 'to be fulfilled with value satisfying',
-                [expect.it('to be a', NullPm)],
+                [expect.it('to be', nullPmDef)],
               );
             });
           });
@@ -230,11 +190,11 @@ describe('midnight-smoker', function () {
 
             it('should reject', async function () {
               await expect(
-                loadPackageManagers([nullPmDef], nullExecutor, nullExecutor, {
+                loadPackageManagers([nullPmDef], {
                   desiredPkgManagers: ['nullpm@3'],
                 }),
                 'to be rejected with error satisfying',
-                {code: 'ESMOKER_UNSUPPORTEDPACKAGEMANAGER'},
+                {code: ErrorCodes.UnsupportedPackageManagerError},
               );
             });
           });

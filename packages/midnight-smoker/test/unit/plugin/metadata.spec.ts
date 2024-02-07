@@ -1,10 +1,10 @@
+import {ErrorCodes} from '#error/codes.js';
+import type * as PM from '#plugin/metadata.js';
 import path from 'node:path';
 import rewiremock from 'rewiremock/node';
 import type {PackageJson} from 'type-fest';
 import unexpected from 'unexpected';
 import {isValidationError} from 'zod-validation-error';
-import {InvalidArgError} from '../../../src/error/common-error';
-import type * as PM from '../../../src/plugin/metadata';
 import {createFsMocks} from '../mocks/fs';
 
 const expect = unexpected.clone();
@@ -90,8 +90,8 @@ describe('midnight-smoker', function () {
               expect(
                 // @ts-expect-error - invalid args
                 () => PluginMetadata.create(),
-                'to throw an',
-                InvalidArgError,
+                'to throw',
+                {code: ErrorCodes.InvalidArgError},
               );
             });
           });
@@ -206,8 +206,9 @@ describe('midnight-smoker', function () {
               expect(
                 // @ts-expect-error - bad args
                 () => PluginMetadata.createTransient(),
-                'to throw an',
-                InvalidArgError,
+                'to throw',
+                // XXX if I had to guess, it's possible the constructor isn't identical due to rewiremock
+                {code: ErrorCodes.InvalidArgError},
               );
             });
           });

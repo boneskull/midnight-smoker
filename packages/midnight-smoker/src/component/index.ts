@@ -10,4 +10,3 @@ export * from './pkg-manager';
 export * from './reporter';
 export * from './rule';
 export * from './rule-runner';
-export * from './schema';

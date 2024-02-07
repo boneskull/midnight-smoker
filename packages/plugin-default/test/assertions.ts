@@ -2,10 +2,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import type {ExecaReturnValue} from 'execa';
-import {readPackageJsonSync} from 'midnight-smoker/plugin/helpers';
+import {Helpers} from 'midnight-smoker/plugin';
 import type unexpected from 'unexpected';
 
-const {packageJson} = readPackageJsonSync({
+const {packageJson} = Helpers.readPackageJsonSync({
   cwd: __dirname,
   strict: true,
 });

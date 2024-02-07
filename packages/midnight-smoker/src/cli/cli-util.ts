@@ -5,6 +5,7 @@ import stringWidth from 'string-width';
 import type {MergeDeep, Primitive} from 'type-fest';
 import {BaseSmokerError} from '../error/base-error';
 import {isSerializable} from '../util/util';
+
 /**
  * Creates a table (for display in the console) with the given items and
  * headers.

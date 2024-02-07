@@ -1,6 +1,6 @@
+import {pickPackageVersion} from '#util/pkg-util.js';
 import path from 'node:path';
 import unexpected from 'unexpected';
-import {pickPackageVersion} from '../../src/util/pkg-util';
 const expect = unexpected.clone();
 
 const FIXTURE_DIR = path.join(

@@ -7,60 +7,65 @@
  */
 
 /* eslint-disable no-labels */
-import Debug from 'debug';
-import {isFunction} from 'lodash';
-import {Console} from 'node:console';
-import fs from 'node:fs/promises';
-import type {
-  Component,
-  PkgManagerDef,
-  ReporterDef,
-  RunRulesManifest,
-  RunRulesResult,
-  SomeRule,
-} from './component';
-import {RuleSeverities} from './component';
-import {InstallError} from './component/pkg-manager/errors/install-error';
-import {PackError} from './component/pkg-manager/errors/pack-error';
-import type {ScriptError} from './component/pkg-manager/errors/script-error';
-import type {
-  InstallResult,
-  PkgManagerInstallManifest,
-  RunScriptResult,
-} from './component/pkg-manager/pkg-manager-schema';
-import {ReporterError} from './component/reporter/reporter-error';
-import type {RuleError} from './component/rule-runner/rule-error';
-import {createRuleRunnerNotifiers} from './component/rule-runner/rule-runner-notifier';
-import type {PkgManagerController} from './controller/controller';
-import {SmokerPkgManagerController} from './controller/smoker-controller';
-import {fromUnknownError} from './error/base-error';
-import {InvalidArgError} from './error/common-error';
-import {CleanupError, SmokeFailedError} from './error/smoker-error';
+import {type Component} from '#component';
+import {RuleSeverities} from '#constants';
+import {
+  CleanupError,
+  InstallError,
+  InvalidArgError,
+  PackError,
+  ReporterError,
+  SmokeFailedError,
+  fromUnknownError,
+  type RuleError,
+  type ScriptError,
+} from '#error';
 import {
   InstallEvent,
   PackEvent,
   RunScriptEvent,
   SmokerEvent,
-} from './event/event-constants';
-import type {SmokeResults, SmokerEvents} from './event/event-types';
-import type {StrictEmitter} from './event/strict-emitter';
-import {createStrictEmitter} from './event/strict-emitter';
+  createStrictEmitter,
+  type SmokeResults,
+  type SmokerEvents,
+  type StrictEmitter,
+} from '#event';
+import {Blessed, PluginRegistry, type StaticPluginMetadata} from '#plugin';
+import {createRuleRunnerNotifiers} from '#rule-runner';
+import type {PkgManagerInstallManifest} from '#schema/install-manifest.js';
+import type {InstallResult} from '#schema/install-result.js';
+import {type PkgManagerDef} from '#schema/pkg-manager-def.js';
+import {type ReporterDef} from '#schema/reporter-def.js';
+import {type RunRulesManifest} from '#schema/rule-runner-manifest.js';
+import {type RunRulesResult} from '#schema/rule-runner-result.js';
+import {type SomeRule} from '#schema/rule.js';
+import type {RunScriptResult} from '#schema/run-script-result.js';
+import {isErrnoException} from '#util/error-util.js';
+import {readSmokerPkgJson} from '#util/pkg-util.js';
+import {castArray} from '#util/schema-util.js';
+import Debug from 'debug';
+import {isFunction} from 'lodash';
+import {Console} from 'node:console';
+import fs from 'node:fs/promises';
+import type {PkgManagerController} from './controller/controller';
+import {SmokerPkgManagerController} from './controller/smoker-controller';
 import type {RawSmokerOptions, SmokerOptions} from './options/options';
 import {OptionParser} from './options/parser';
-import {BLESSED_PLUGINS, isBlessedPlugin} from './plugin/blessed';
-import {PluginRegistry} from './plugin/registry';
-import type {StaticPluginMetadata} from './plugin/static-metadata';
-import {readSmokerPkgJson} from './util/pkg-util';
-import {castArray} from './util/schema-util';
-import {isErrnoException} from './util/util';
 
 const debug = Debug('midnight-smoker:smoker');
 
 export type SmokerEmitter = StrictEmitter<SmokerEvents>;
 
+/**
+ * Currently, capabilities are for testing purposes because it's a huge pain to
+ * make them do much more than that.
+ *
+ * This allows a prebuilt {@link PluginRegistry} to be provided when creating a
+ * {@link Smoker} instance.
+ */
 export interface SmokerCapabilities {
   registry?: PluginRegistry;
-  pmController?: PkgManagerController;
+  pkgManagerController?: PkgManagerController;
 }
 
 type SetupResult =
@@ -79,36 +84,44 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
    * List of extra dependencies to install
    */
   private readonly add: string[];
+
   /**
    * Whether to run against all workspaces
    */
   private readonly allWorkspaces: boolean;
+
   /**
    * Whether to bail on the first script failure
    */
   private readonly bail: boolean;
+
   /**
    * Whether or not to run checks
    */
-  private readonly enableChecks: boolean;
+  private readonly shouldLint: boolean;
+
   /**
    * Whether to include the workspace root
    */
   private readonly includeWorkspaceRoot;
+
   /**
    * Whether to keep temp dirs around (debugging purposes)
    */
   private readonly linger: boolean;
+
   /**
    * Mapping of plugin identifiers (names) to plugin "instances", which can
    * contain a collection of rules and other stuff (in the future)
    */
   private readonly pluginRegistry: PluginRegistry;
+
   /**
    * @internal
    */
-  private readonly pmController: PkgManagerController;
+  private readonly pkgManagerController: PkgManagerController;
   private readonly reporters: Set<string>;
+
   /**
    * List of specific workspaces to run against
    */
@@ -121,6 +134,7 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
    * {@link SmokerEvent.SmokeFailed}
    */
   public readonly opts: Readonly<SmokerOptions>;
+
   /**
    * List of scripts to run in each workspace
    */
@@ -146,7 +160,7 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
       workspace,
       ruleRunner,
       scriptRunner,
-      lint: checks,
+      lint,
       reporter: reporters,
     } = opts;
     this.opts = Object.freeze(opts);
@@ -159,7 +173,7 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
     this.bail = bail;
     this.allWorkspaces = all;
     this.workspaces = workspace;
-    this.enableChecks = checks;
+    this.shouldLint = lint;
     this.reporters = new Set(reporters);
 
     /**
@@ -172,7 +186,7 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
     }
 
     this.pluginRegistry = pluginRegistry;
-    this.pmController =
+    this.pkgManagerController =
       pmController ??
       new SmokerPkgManagerController(pluginRegistry, opts.pkgManager, {
         verbose: opts.verbose,
@@ -180,11 +194,7 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
         defaultExecutorId: opts.executor,
       });
 
-    debug(
-      'Smoker instantiated with %d plugins',
-      this.pluginRegistry.plugins.length,
-    );
-    debug(`${this.pluginRegistry}`);
+    debug(`Smoker instantiated with registry: ${this.pluginRegistry}`);
   }
 
   /**
@@ -210,7 +220,7 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
     opts?: RawSmokerOptions,
     caps: SmokerCapabilities = {},
   ) {
-    const {registry, pmController} = caps;
+    const {registry, pkgManagerController: pmController} = caps;
     const {pluginRegistry, options} = await Smoker.bootstrap(opts, registry);
     return new Smoker(options, pluginRegistry, pmController);
   }
@@ -287,7 +297,7 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
    *   implementation.
    */
   public async cleanup(): Promise<void> {
-    const pkgManagers = await this.pmController.getPkgManagers();
+    const pkgManagers = await this.pkgManagerController.getPkgManagers();
     if (!this.linger) {
       await Promise.all(
         pkgManagers.map(async (pm) => {
@@ -348,17 +358,17 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
     return delegate;
   }
 
-  public getEnabledReporterDefs() {
+  public getEnabledReporters() {
     return this.pluginRegistry.reporters.filter(
-      (listener) =>
-        this.reporters.has(listener.id) ||
-        (listener.when ? listener.when(this.opts) : false),
+      (reporter) =>
+        this.reporters.has(reporter.id) ||
+        (reporter.when ? reporter.when(this.opts) : false),
     );
   }
 
   public getReporters() {
     return this.pluginRegistry.reporters.filter(
-      (listener) => listener.isReporter !== false,
+      (reporter) => reporter.isHidden !== true,
     );
   }
 
@@ -380,16 +390,19 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
     }
 
     for (const evt of Object.values(InstallEvent)) {
-      this.pmController.addListener(evt, (...args) => {
+      this.pkgManagerController.addListener(evt, (...args) => {
         this.emit(evt, ...args);
       });
     }
 
     try {
-      return await this.pmController.install(installManifests, this.add);
+      return await this.pkgManagerController.install(
+        installManifests,
+        this.add,
+      );
     } finally {
       for (const evt of Object.values(InstallEvent)) {
-        this.pmController.removeAllListeners(evt);
+        this.pkgManagerController.removeAllListeners(evt);
       }
     }
   }
@@ -399,7 +412,7 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
       return;
     }
     const {opts} = this;
-    const reporterDefs = this.getEnabledReporterDefs();
+    const reporterDefs = this.getEnabledReporters();
     const emitter = (this.reporterDelegate = this.createReporterDelegate());
 
     const pkgJson = await readSmokerPkgJson();
@@ -445,20 +458,20 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
    */
   public async pack(): Promise<PkgManagerInstallManifest[]> {
     for (const evt of Object.values(PackEvent)) {
-      this.pmController.addListener(evt, (...args) => {
+      this.pkgManagerController.addListener(evt, (...args) => {
         this.emit(evt, ...args);
       });
     }
 
     try {
-      return await this.pmController.pack({
+      return await this.pkgManagerController.pack({
         allWorkspaces: this.allWorkspaces,
         workspaces: this.workspaces,
         includeWorkspaceRoot: this.includeWorkspaceRoot,
       });
     } finally {
       for (const evt of Object.values(PackEvent)) {
-        this.pmController.removeAllListeners(evt);
+        this.pkgManagerController.removeAllListeners(evt);
       }
     }
   }
@@ -489,7 +502,7 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
           Map<string, {pkgName: string; installPath: string}>
         >((acc, {isAdditional, spec, installPath, pkgName}) => {
           if (!isAdditional && !acc.has(pkgName)) {
-            /* c8 ignore next */
+            // c8 ignore next
             if (!installPath) {
               throw new TypeError(
                 `Expected an installPath for ${pkgName} (${spec})`,
@@ -520,19 +533,23 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
     installResults: InstallResult[],
   ): Promise<RunScriptResult[]> {
     for (const evt of Object.values(RunScriptEvent)) {
-      this.pmController.on(evt, (...args) => {
+      this.pkgManagerController.on(evt, (...args) => {
         this.emit(evt, ...args);
       });
     }
 
     try {
-      return await this.pmController.runScripts(this.scripts, installResults, {
-        bail: this.bail,
-        scriptRunnerId: this.scriptRunnerId,
-      });
+      return await this.pkgManagerController.runScripts(
+        this.scripts,
+        installResults,
+        {
+          bail: this.bail,
+          scriptRunnerId: this.scriptRunnerId,
+        },
+      );
     } finally {
       for (const evt of Object.values(RunScriptEvent)) {
-        this.pmController.removeAllListeners(evt);
+        this.pkgManagerController.removeAllListeners(evt);
       }
     }
   }
@@ -664,7 +681,7 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
       if ('installResults' in setupResult) {
         const {installResults} = setupResult;
         // RUN CHECKS
-        if (this.enableChecks) {
+        if (this.shouldLint) {
           ruleResults = await this.runChecks(installResults);
         }
 
@@ -692,9 +709,11 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
    *
    * Several things have to happen, in order, before we can start smoking:
    *
-   * 1. Built-in plugins must {@link PluginRegistry.loadPlugins be loaded}
-   * 2. External plugins then must be loaded.
-   * 3. The registry should refuse further registrations.
+   * 1. Assuming we have no prebuilt registry, built-in plugins must
+   *    {@link PluginRegistry.loadPlugins be loaded}
+   * 2. Assuming we have no prebuilt registry, external plugins then must be
+   *    loaded.
+   * 3. The registry must refuse further registrations.
    * 4. {@link OptionParser.parse Parse} the options.
    *
    * @param opts - The options for the smoker.
@@ -705,15 +724,20 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
   private static async bootstrap(
     this: void,
     opts: RawSmokerOptions = {},
-    registry = PluginRegistry.create(),
+    registry?: PluginRegistry,
   ) {
     const plugins = castArray(opts.plugin).filter(
-      (requested) => !isBlessedPlugin(requested),
+      (requested) => !Blessed.isBlessedPlugin(requested),
     );
     debug('Requested external plugins: %O', plugins);
-    // this must be done in sequence to protect the blessed plugins
-    await registry.loadPlugins(BLESSED_PLUGINS);
-    await registry.loadPlugins(plugins);
+
+    if (!registry) {
+      registry = PluginRegistry.create();
+      // this must be done in sequence to protect the blessed plugins
+      await registry.loadPlugins(Blessed.BLESSED_PLUGINS);
+      await registry.loadPlugins(plugins);
+    }
+
     // disable new registrations
     registry.close();
 

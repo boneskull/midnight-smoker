@@ -1,4 +1,5 @@
 import {italic, white, whiteBright, yellow} from 'chalk';
+import Debug from 'debug';
 import {isError} from 'lodash';
 import {format, formatWithOptions} from 'node:util';
 import stringify from 'stringify-object';
@@ -7,9 +8,17 @@ import {castArray} from '../util/schema-util';
 import type {SmokerErrorCode, SmokerErrorId} from './codes';
 import {ErrorCodes} from './codes';
 
+const debug = Debug('midnight-smoker:error');
+
 /**
  * Lookup an error code for a given `SmokerError` subclass instance.
  *
+ * Because this is used in {@link BaseSmokerError.constructor}, there is not yet
+ * access to the `id` property of the subclass; otherwise we'd use that.
+ *
+ * @remarks
+ * This probably has some implications around minification that I am not
+ * worrying about.
  * @throws {ReferenceError} - If the subclass is missing from the `ErrorCodes`.
  *   Note that this will throw _during_ the instantiation of an `Error` about to
  *   be thrown.
@@ -147,20 +156,24 @@ export interface SmokerError<
    * Arbitrary contextual data
    */
   context?: Context;
+
   /**
    * The error code.
    */
   code: SmokerErrorCode;
+
   /**
    * The name of the error.
    *
    * Should _usually_ be the same as `this.constructor.name`
    */
   id: SmokerErrorId;
+
   /**
    * Message!
    */
   message: string;
+
   /**
    * Like `toString()`, except fancy.
    *
@@ -191,5 +204,6 @@ export function isZodError(value: unknown): value is ZodError {
  * @returns The original thing (if an `Error`) otherwise a new `Error`
  */
 export function fromUnknownError(err: unknown): Error {
+  debug('Handling unknown error: %o', err);
   return isError(err) ? err : new Error(`Unknown error: ${err}`);
 }

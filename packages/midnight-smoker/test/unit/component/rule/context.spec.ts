@@ -1,8 +1,10 @@
 import rewiremock from 'rewiremock/node';
 import unexpected from 'unexpected';
-import type {Component, SomeRule} from '../../../../src/component';
-import type * as Ctx from '../../../../src/component/rule/context';
-import type {StaticRuleContext} from '../../../../src/component/rule/static';
+
+import {type Component} from '#component';
+import type * as Ctx from '#component/rule/context.js';
+import {type StaticRuleContext} from '#schema/rule-static.js';
+import {type SomeRule} from '#schema/rule.js';
 import {createFsMocks} from '../../mocks/fs';
 
 const expect = unexpected.clone();

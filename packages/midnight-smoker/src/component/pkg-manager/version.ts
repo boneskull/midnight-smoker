@@ -1,3 +1,13 @@
+/**
+ * Normalizes package manager versions.
+ *
+ * @packageDocumentation
+ * @see {@link normalizeVersion}
+ * @todo The information in `Versions` and `DistTags` needs to move into the
+ *   `plugin-default` plugin. It may be prudent to allow PM implementations to
+ *   provide this information themselves.
+ */
+
 import {maxSatisfying, parse, valid, validRange, type SemVer} from 'semver';
 import type {StringKeyOf} from 'type-fest';
 import npmDistTags from '../../../data/npm-dist-tags.json';
@@ -6,14 +16,14 @@ import yarnDistTags from '../../../data/yarn-dist-tags.json';
 import yarnTags from '../../../data/yarn-tags.json';
 import yarnVersions from '../../../data/yarn-versions.json';
 import {DEFAULT_PKG_MANAGER_VERSION} from '../../constants';
-import {UnknownDistTagError} from './errors/unknown-dist-tag-error';
-import {UnknownVersionError} from './errors/unknown-version-error';
-import {UnknownVersionRangeError} from './errors/unknown-version-range-error';
+import {UnknownDistTagError} from '../../error/unknown-dist-tag-error';
+import {UnknownVersionError} from '../../error/unknown-version-error';
+import {UnknownVersionRangeError} from '../../error/unknown-version-range-error';
 
 /**
  * Known versions of supported package managers
  */
-export const Versions = {
+const Versions = {
   npm: new Set(npmVersions),
   yarn: new Set([...yarnVersions, ...yarnTags.tags]),
 } as const;
@@ -21,7 +31,7 @@ export const Versions = {
 /**
  * Known dist tags of supported package managers
  */
-export const DistTags = {
+const DistTags = {
   npm: npmDistTags,
   yarn: {
     ...yarnDistTags,
@@ -36,18 +46,32 @@ export const DistTags = {
  * @param tag - The tag to check.
  * @returns A boolean indicating whether the tag is a known distribution tag.
  */
-export function hasDistTag<P extends keyof typeof DistTags>(
+function hasDistTag<P extends keyof typeof DistTags>(
   name: P,
   tag: string,
 ): tag is StringKeyOf<(typeof DistTags)[P]> {
   return tag in DistTags[name];
 }
 
-export function isKnownDistTag(name: string): name is keyof typeof DistTags {
+/**
+ * Returns `true` if the given pkg manager is a property of {@link DistTags}
+ *
+ * @param name - Pkg manager name
+ * @returns Pkg manager name is a property of {@link DistTags}
+ */
+function isKnownPkgManagerByDistTag(
+  name: string,
+): name is keyof typeof DistTags {
   return name in DistTags;
 }
 
-export function isKnownPkgManagerVersion(
+/**
+ * Returns `true` if the given package manager is a property of {@link Versions}
+ *
+ * @param name - Package manager name
+ * @returns Package manager name is a property of {@link Versions}
+ */
+function isKnownPkgManagerByVersion(
   name: string,
 ): name is keyof typeof Versions {
   return name in Versions;
@@ -71,7 +95,7 @@ export function normalizeVersion(
 ): SemVer | undefined {
   version = version?.length ? version : DEFAULT_PKG_MANAGER_VERSION;
 
-  if (isKnownPkgManagerVersion(name)) {
+  if (isKnownPkgManagerByVersion(name)) {
     const versions = Versions[name];
     if (valid(version)) {
       if (versions.has(version)) {
@@ -98,7 +122,7 @@ export function normalizeVersion(
     }
   }
 
-  if (isKnownDistTag(name)) {
+  if (isKnownPkgManagerByDistTag(name)) {
     const distTags = DistTags[name];
     if (hasDistTag(name, version)) {
       return parse(distTags[version])!;

@@ -1,8 +1,8 @@
+import type * as E from '#error/exec-error.js';
 import {type ExecaError} from 'execa';
 import {pick} from 'lodash';
 import rewiremock from 'rewiremock/node';
 import unexpected from 'unexpected';
-import type * as E from '../../../../src/component/executor/exec-error';
 import {createFsMocks} from '../../mocks';
 
 const expect = unexpected.clone();
@@ -15,7 +15,7 @@ describe('midnight-smoker', function () {
       beforeEach(function () {
         const {mocks} = createFsMocks();
         ({ExecError} = rewiremock.proxy(
-          () => require('../../../../src/component/executor/exec-error'),
+          () => require('../../../../src/error/exec-error'),
           mocks,
         ));
       });

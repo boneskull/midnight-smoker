@@ -50,7 +50,7 @@ export function castArray<T>(value?: Many<T>): T[] {
 /**
  * Schema representing a non-empty string
  */
-export const zNonEmptyString = z
+export const NonEmptyStringSchema = z
   .string()
   .min(1)
   .trim()
@@ -59,7 +59,7 @@ export const zNonEmptyString = z
 /**
  * Schema representing a `boolean` which defaults to `false`
  */
-export const zDefaultFalse = z
+export const DefaultFalseSchema = z
   .boolean()
   .default(false)
   .describe('A boolean defaulting to false');
@@ -67,7 +67,7 @@ export const zDefaultFalse = z
 /**
  * Schema representing a `boolean` which defaults to `true`
  */
-export const zDefaultTrue = z
+export const DefaultTrueSchema = z
   .boolean()
   .default(true)
   .describe('A boolean defaulting to true');
@@ -75,19 +75,19 @@ export const zDefaultTrue = z
 /**
  * Array of non-empty strings
  */
-export const zNonEmptyStringArray = z
-  .array(zNonEmptyString)
+export const NonEmptyStringArraySchema = z
+  .array(NonEmptyStringSchema)
   .describe('An array of non-empty strings');
 
 /**
  * Schema representing a non-empty string or array of non-empty strings, which
  * is then cast to an array
  */
-export const zNonEmptyStringOrArrayThereof = z
-  .union([zNonEmptyString, zNonEmptyStringArray])
+export const NonEmptyStringToArraySchema = z
+  .union([NonEmptyStringSchema, NonEmptyStringArraySchema])
   .default([])
   .transform(castArray)
-  .pipe(z.array(zNonEmptyString))
+  .pipe(NonEmptyStringArraySchema)
   .describe(
     'A non-empty string or array of non-empty strings, normalized to an array',
   );
@@ -97,19 +97,19 @@ export const zNonEmptyStringOrArrayThereof = z
  *
  * @see {@link PackageJson}
  */
-export const zPackageJson = z
+export const PackageJsonSchema = z
   .custom<PackageJson>((val) => typeof val === 'object' && !Array.isArray(val))
   .describe('package.json contents');
 
 /**
  * Schema representing an empty object
  */
-export const zEmptyObject = z.object({}).describe('Empty object');
+export const EmptyObjectSchema = z.object({}).describe('Empty object');
 
 /**
  * Schema representing a non-negative integer
  */
-export const zNonNegativeInteger = z
+export const NonNegativeIntSchema = z
   .number()
   .int()
   .gte(0)
@@ -170,7 +170,7 @@ export function customSchema<T>(schema?: z.ZodTypeAny) {
 /**
  * Schema for a {@link AbortSignal}
  */
-export const zAbortSignal = instanceofSchema(AbortSignal);
+export const AbortSignalSchema = instanceofSchema(AbortSignal);
 
 /**
  * Rough schema for a {@link EventEmitter}-like object.
@@ -178,10 +178,8 @@ export const zAbortSignal = instanceofSchema(AbortSignal);
  * This is not an `instanceof` check against Node.js' `EventEmitter` because
  * alternative implementations may be used.
  */
-export const zEventEmitter = customSchema<EventEmitter>(
-  z
-    .object({on: z.function(), once: z.function(), emit: z.function()})
-    .passthrough(),
+export const EventEmitterSchema = customSchema<EventEmitter>(
+  z.object({on: z.function(), once: z.function(), emit: z.function()}),
 );
 
 /**

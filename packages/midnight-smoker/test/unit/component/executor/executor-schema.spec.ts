@@ -1,6 +1,6 @@
+import type * as E from '#component/executor';
 import rewiremock from 'rewiremock/node';
 import unexpected from 'unexpected';
-import type * as E from '../../../../src/component/executor';
 import {createFsMocks} from '../../mocks/fs';
 
 const expect = unexpected.clone();
@@ -10,12 +10,12 @@ describe('midnight-smoker', function () {
     describe('executor', function () {
       describe('schema', function () {
         let ExecError: typeof E.ExecError;
-        let zExecError: typeof E.zExecError;
-        let zExecResult: typeof E.zExecResult;
+        let ExecErrorSchema: typeof E.ExecErrorSchema;
+        let ExecResultSchema: typeof E.ExecResultSchema;
 
         beforeEach(function () {
           const {mocks} = createFsMocks();
-          ({ExecError, zExecError, zExecResult} = rewiremock.proxy(
+          ({ExecError, ExecErrorSchema, ExecResultSchema} = rewiremock.proxy(
             () => require('../../../../src/component/executor'),
             mocks,
           ));
@@ -23,7 +23,7 @@ describe('midnight-smoker', function () {
         describe('ExecError schema', function () {
           describe('when provided invalid data', function () {
             it('should throw', function () {
-              expect(() => zExecError.parse({}), 'to throw');
+              expect(() => ExecErrorSchema.parse({}), 'to throw');
             });
           });
 
@@ -31,7 +31,7 @@ describe('midnight-smoker', function () {
             it('should not throw', function () {
               expect(
                 () =>
-                  zExecError.parse(
+                  ExecErrorSchema.parse(
                     new ExecError(
                       Object.assign(new Error('foo'), {
                         exitCode: 1,
@@ -57,7 +57,7 @@ describe('midnight-smoker', function () {
         describe('ExecResult schema', function () {
           describe('when provided invalid data', function () {
             it('should throw', function () {
-              expect(() => zExecResult.parse({}), 'to throw');
+              expect(() => ExecResultSchema.parse({}), 'to throw');
             });
           });
 
@@ -65,7 +65,7 @@ describe('midnight-smoker', function () {
             it('should not throw', function () {
               expect(
                 () =>
-                  zExecResult.parse({
+                  ExecResultSchema.parse({
                     all: '',
                     stdout: 'foo',
                     stderr: 'bar',

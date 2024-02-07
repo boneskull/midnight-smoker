@@ -1,5 +1,5 @@
 import {execSmoker, fixupOutput} from '@midnight-smoker/test-util';
-import * as Helpers from 'midnight-smoker/plugin/helpers';
+import {Helpers} from 'midnight-smoker/plugin';
 import path from 'node:path';
 import unexpected from 'unexpected';
 

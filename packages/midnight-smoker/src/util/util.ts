@@ -4,11 +4,8 @@
  * @packageDocumentation
  */
 
-import {type ExecaError} from 'execa';
-import {isError, isFunction, isObject} from 'lodash';
+import {isFunction, isObject} from 'lodash';
 import type {Opaque} from 'type-fest';
-import {z} from 'zod';
-import {instanceofSchema} from './schema-util';
 
 /**
  * A branded string referring to a unique identifier.
@@ -76,39 +73,4 @@ export function serialize<T>(value: T) {
     return value.toJSON();
   }
   return value;
-}
-
-/**
- * Type guard for {@link NodeJS.ErrnoException}
- *
- * @param value - Any value
- * @returns `true` if `value` is an {@link NodeJS.ErrnoException}
- */
-export function isErrnoException(
-  value: unknown,
-): value is NodeJS.ErrnoException {
-  return isError(value) && 'code' in value;
-}
-
-const zExecaError = instanceofSchema(Error).pipe(
-  z.object({
-    command: z.string(),
-    exitCode: z.number(),
-    all: z.string().optional(),
-    stderr: z.string(),
-    stdout: z.string(),
-    failed: z.boolean(),
-  }),
-);
-
-/**
- * Type guard for an {@link ExecaError}.
- *
- * If there was a class exported, that'd be better, but there ain't.
- *
- * @param error - Any value
- * @returns `true` if `error` is an {@link ExecaError}
- */
-export function isExecaError(error: unknown): error is ExecaError {
-  return zExecaError.safeParse(error).success;
 }

@@ -1,8 +1,9 @@
+import type * as V from '#component/pkg-manager/version.js';
+import {ErrorCodes} from '#error';
 import rewiremock from 'rewiremock/node';
 import {SemVer, parse} from 'semver';
 import unexpected from 'unexpected';
 import npmDistTags from '../../../../data/npm-dist-tags.json';
-import type * as V from '../../../../src/component/pkg-manager/version';
 import {createFsMocks} from '../../mocks/fs';
 const expect = unexpected.clone();
 
@@ -31,7 +32,7 @@ describe('midnight-smoker', function () {
             describe('when the range is not satisfied', function () {
               it('should throw', function () {
                 expect(() => normalizeVersion('npm', '^999999'), 'to throw', {
-                  code: 'ESMOKER_UNKNOWNVERSIONRANGE',
+                  code: ErrorCodes.UnknownVersionRangeError,
                 });
               });
             });
@@ -47,7 +48,7 @@ describe('midnight-smoker', function () {
         describe('when provided an invalid version', function () {
           it('should reject', function () {
             expect(() => normalizeVersion('npm', '0.999.0'), 'to throw', {
-              code: 'ESMOKER_UNKNOWNVERSION',
+              code: ErrorCodes.UnknownVersionError,
             });
           });
         });
@@ -74,8 +75,8 @@ describe('midnight-smoker', function () {
 
         describe('when provided an unknown dist-tag/range', function () {
           it('should reject', function () {
-            expect(() => normalizeVersion('npm', 'moooo'), 'to throw error', {
-              code: 'ESMOKER_UNKNOWNDISTTAG',
+            expect(() => normalizeVersion('npm', 'moooo'), 'to throw', {
+              code: ErrorCodes.UnknownDistTagError,
             });
           });
         });

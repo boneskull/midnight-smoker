@@ -1,12 +1,10 @@
+import type * as I from '#component/rule/issue.js';
+import {RuleSeverities} from '#constants';
+import {RuleError} from '#error/rule-error.js';
+import * as IS from '#schema/rule-issue-static.js';
+import type {StaticRule, StaticRuleContext} from '#schema/rule-static.js';
 import rewiremock from 'rewiremock/node';
 import unexpected from 'unexpected';
-import {RuleError} from '../../../../src/component/rule-runner/rule-error';
-import type * as I from '../../../../src/component/rule/issue';
-import {RuleSeverities} from '../../../../src/component/rule/severity';
-import type {
-  StaticRule,
-  StaticRuleContext,
-} from '../../../../src/component/rule/static';
 import {createFsMocks} from '../../mocks/fs';
 
 const expect = unexpected.clone();
@@ -15,11 +13,10 @@ describe('midnight-smoker', function () {
   describe('component', function () {
     describe('rule', function () {
       let RuleIssue: typeof I.RuleIssue;
-      let zStaticRuleIssue: typeof I.zStaticRuleIssue;
 
       beforeEach(function () {
         const {mocks} = createFsMocks();
-        ({RuleIssue, zStaticRuleIssue} = rewiremock.proxy(
+        ({RuleIssue} = rewiremock.proxy(
           () => require('../../../../src/component/rule/issue'),
           mocks,
         ));
@@ -122,7 +119,7 @@ describe('midnight-smoker', function () {
         describe('instance method', function () {
           describe('toJSON()', function () {
             it('should return a StaticRuleIssue', function () {
-              const expected: I.StaticRuleIssue = {
+              const expected: IS.StaticRuleIssue = {
                 rule: params.rule,
                 context: params.context,
                 message: params.message,
@@ -134,7 +131,7 @@ describe('midnight-smoker', function () {
               };
               expect(issue.toJSON(), 'to equal', expected).and(
                 'when passed as parameter to',
-                zStaticRuleIssue.parse,
+                IS.StaticRuleIssueSchema.parse,
                 'to equal',
                 expected,
               );

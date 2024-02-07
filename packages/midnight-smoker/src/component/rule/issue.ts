@@ -4,13 +4,11 @@
  * @packageDocumentation
  */
 
-import {z} from 'zod';
-import {instanceofSchema, zNonEmptyString} from '../../util/schema-util';
-import {uniqueIdFactoryFactory} from '../../util/util';
-import type {RuleError} from '../rule-runner/rule-error';
-import {RuleSeverities, zRuleSeverity} from './severity';
-import type {StaticRule, StaticRuleContext} from './static';
-import {zStaticRule, zStaticRuleContext} from './static';
+import {RuleSeverities} from '#constants';
+import {type StaticRuleIssue} from '#schema/rule-issue-static.js';
+import {type StaticRule, type StaticRuleContext} from '#schema/rule-static.js';
+import {uniqueIdFactoryFactory} from '#util/util.js';
+import type {RuleError} from '../../error/rule-error';
 
 /**
  * Properties for a {@link RuleIssue}.
@@ -25,19 +23,23 @@ export interface RuleIssueParams<
    * The {@link StaticRuleContext} for this issue, for public consumption.
    */
   context: Ctx;
+
   /**
    * Arbitrary data attached to the issue by the rule implementation
    */
   data?: unknown;
+
   /**
    * A {@link RuleError} which was caught during the execution of the rule, if
    * any
    */
   error?: RuleError;
+
   /**
    * The message for this issue
    */
   message: string;
+
   /**
    * The serialized rule definition for this issue
    */
@@ -59,22 +61,27 @@ export class RuleIssue implements StaticRuleIssue {
    * {@inheritDoc RuleIssueParams.context}
    */
   public readonly context: StaticRuleContext;
+
   /**
    * {@inheritDoc RuleIssueParams.data}
    */
   public readonly data?: unknown;
+
   /**
    * {@inheritDoc RuleIssueParams.error}
    */
   public readonly error?: RuleError;
+
   /**
    * Unique identifier; created within constructor
    */
   public readonly id: string;
+
   /**
    * {@inheritDoc RuleIssueParams.message}
    */
   public readonly message: string;
+
   /**
    * {@inheritDoc RuleIssueParams.rule}
    */
@@ -161,31 +168,3 @@ export class RuleIssue implements StaticRuleIssue {
     return a.id.localeCompare(b.id, 'en');
   }
 }
-
-/**
- * Schema for a {@link StaticRuleIssue}, which is a {@link RuleIssue} in a
- * serializable format
- */
-export const zStaticRuleIssue = z.object({
-  rule: zStaticRule,
-  context: zStaticRuleContext,
-  message: zNonEmptyString.describe(
-    'The human-=readable message for this issue',
-  ),
-  data: z.unknown().optional().describe('Arbitrary data attached to the issue'),
-  error: instanceofSchema(Error).optional().describe('An error, if any'),
-  id: zNonEmptyString.describe('A unique identifier for this issue'),
-  failed: z.boolean().describe('Whether or not this issue is a failure'),
-  severity: zRuleSeverity.describe('The severity that this rule was run at'),
-});
-
-/**
- * Represents a static rule issue, which is a {@link RuleIssue} in a serializable
- * format
- */
-export type StaticRuleIssue = z.infer<typeof zStaticRuleIssue>;
-
-/**
- * Schema for a {@link RuleIssue}
- */
-export const zRuleIssue = instanceofSchema(RuleIssue);

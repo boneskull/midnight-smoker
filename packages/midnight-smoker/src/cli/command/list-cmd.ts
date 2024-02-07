@@ -180,6 +180,7 @@ export class ListCommand extends BaseCommand {
 }
 
 const debug = Debug('midnight-smoker:cli:list');
+
 /**
  * Positional options for the `list` command
  */
@@ -190,6 +191,7 @@ const ListPositionals = {
     type: 'string',
   },
 } as const satisfies Record<string, PositionalOptions>;
+
 /**
  * Option options for the `list` command
  */

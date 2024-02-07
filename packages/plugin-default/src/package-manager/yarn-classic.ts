@@ -1,7 +1,21 @@
 import Debug from 'debug';
-import * as Executor from 'midnight-smoker/executor';
-import * as PkgManager from 'midnight-smoker/pkg-manager';
-import type * as Helpers from 'midnight-smoker/plugin/helpers';
+import {ExecError, InstallError, PackError} from 'midnight-smoker/error';
+import {type ExecResult, type Executor} from 'midnight-smoker/executor';
+import {
+  type InstallManifest,
+  type PackOptions,
+  type PkgManager,
+  type PkgManagerDef,
+  type PkgManagerOpts,
+  type PkgManagerSpec,
+} from 'midnight-smoker/pkg-manager';
+import type {PluginHelpers} from 'midnight-smoker/plugin';
+import {
+  RunScriptError,
+  ScriptFailedError,
+  type RunScriptManifest,
+  type RunScriptResult,
+} from 'midnight-smoker/script-runner';
 import path from 'node:path';
 
 interface WorkspaceInfo {
@@ -10,7 +24,7 @@ interface WorkspaceInfo {
   [key: string]: any;
 }
 
-export class YarnClassic implements PkgManager.PkgManager {
+export class YarnClassic implements PkgManager {
   protected readonly debug: Debug.Debugger;
 
   public static readonly bin = 'yarn';
@@ -20,11 +34,11 @@ export class YarnClassic implements PkgManager.PkgManager {
   public static readonly lockfile = 'yarn.lock';
 
   constructor(
-    public readonly spec: PkgManager.PkgManagerSpec,
-    protected readonly executor: Executor.Executor,
+    public readonly spec: PkgManagerSpec,
+    protected readonly executor: Executor,
     public readonly tmpdir: string,
-    protected readonly helpers: typeof Helpers,
-    protected readonly opts: PkgManager.PkgManagerOpts = {},
+    protected readonly helpers: PluginHelpers,
+    protected readonly opts: PkgManagerOpts = {},
   ) {
     this.debug = Debug(`midnight-smoker:pm:yarn1`);
   }
@@ -33,18 +47,18 @@ export class YarnClassic implements PkgManager.PkgManager {
 
   public static async create(
     this: void,
-    spec: PkgManager.PkgManagerSpec,
-    executor: Executor.Executor,
-    helpers: typeof Helpers,
-    opts?: PkgManager.PkgManagerOpts,
+    spec: PkgManagerSpec,
+    executor: Executor,
+    helpers: PluginHelpers,
+    opts?: PkgManagerOpts,
   ) {
     const tmpdir = await helpers.createTempDir();
     return new YarnClassic(spec, executor, tmpdir, helpers, opts);
   }
 
   public async install(
-    installManifests: PkgManager.InstallManifest[],
-  ): Promise<Executor.ExecResult> {
+    installManifests: InstallManifest[],
+  ): Promise<ExecResult> {
     if (!installManifests.length) {
       throw new TypeError('installManifests must be a non-empty array');
     }
@@ -52,7 +66,7 @@ export class YarnClassic implements PkgManager.PkgManager {
     const installSpecs = installManifests.map(({spec}) => spec);
     const installArgs = ['add', '--no-lockfile', '--force', ...installSpecs];
 
-    let installResult: Executor.ExecResult;
+    let installResult: ExecResult;
     try {
       installResult = await this.executor(
         this.spec,
@@ -63,8 +77,8 @@ export class YarnClassic implements PkgManager.PkgManager {
         },
       );
     } catch (err) {
-      if (err instanceof Executor.ExecError) {
-        throw new PkgManager.Errors.InstallError(
+      if (err instanceof ExecError) {
+        throw new InstallError(
           err.message,
           `${this.spec}`,
           installSpecs,
@@ -82,9 +96,7 @@ export class YarnClassic implements PkgManager.PkgManager {
     return installResult;
   }
 
-  public async pack(
-    opts: PkgManager.PackOptions = {},
-  ): Promise<PkgManager.InstallManifest[]> {
+  public async pack(opts: PackOptions = {}): Promise<InstallManifest[]> {
     interface PackCommand {
       command: string[];
       cwd: string;
@@ -151,8 +163,8 @@ export class YarnClassic implements PkgManager.PkgManager {
         stdout = lines.join('\n');
         workspaceInfo = JSON.parse(stdout) as Record<string, WorkspaceInfo>;
       } catch (err) {
-        if (err instanceof Executor.ExecError) {
-          throw new PkgManager.Errors.PackError(
+        if (err instanceof ExecError) {
+          throw new PackError(
             'Unable to read workspace information',
             `${this.spec}`,
             this.tmpdir,
@@ -176,7 +188,7 @@ export class YarnClassic implements PkgManager.PkgManager {
                 ([, info]) => info.location === workspace,
               );
               if (!info) {
-                throw new PkgManager.Errors.PackError(
+                throw new PackError(
                   `Unable to find workspace "${workspace}`,
                   `${this.spec}`,
                   this.tmpdir,
@@ -215,23 +227,18 @@ export class YarnClassic implements PkgManager.PkgManager {
 
     this.debug(commands);
 
-    const installManifests: PkgManager.InstallManifest[] = [];
+    const installManifests: InstallManifest[] = [];
 
     for await (const {command, cwd, tarball, pkgName} of commands) {
       try {
         await this.executor(this.spec, command, {}, {cwd});
       } catch (err) {
-        if (err instanceof Executor.ExecError) {
-          throw new PkgManager.Errors.PackError(
-            err.message,
-            `${this.spec}`,
-            this.tmpdir,
-            {
-              error: err,
-              exitCode: err.exitCode,
-              output: err.all || err.stderr || err.stdout,
-            },
-          );
+        if (err instanceof ExecError) {
+          throw new PackError(err.message, `${this.spec}`, this.tmpdir, {
+            error: err,
+            exitCode: err.exitCode,
+            output: err.all || err.stderr || err.stdout,
+          });
         }
         throw err;
       }
@@ -249,11 +256,11 @@ export class YarnClassic implements PkgManager.PkgManager {
   }
 
   public async runScript(
-    manifest: PkgManager.RunScriptManifest,
-  ): Promise<PkgManager.RunScriptResult> {
+    manifest: RunScriptManifest,
+  ): Promise<RunScriptResult> {
     const {script, pkgName, cwd} = manifest;
     const args = ['run', script];
-    let result: PkgManager.RunScriptResult;
+    let result: RunScriptResult;
     try {
       const rawResult = await this.executor(
         this.spec,
@@ -265,7 +272,7 @@ export class YarnClassic implements PkgManager.PkgManager {
       );
       result = {pkgName, script, rawResult, cwd};
     } catch (err) {
-      if (err instanceof PkgManager.Errors.ExecError) {
+      if (err instanceof ExecError) {
         result = {
           pkgName,
           script,
@@ -275,7 +282,7 @@ export class YarnClassic implements PkgManager.PkgManager {
         if (this.opts.loose && /Command ".+?" not found/i.test(err.stderr)) {
           result.skipped = true;
         } else {
-          result.error = new PkgManager.Errors.RunScriptError(
+          result.error = new RunScriptError(
             err,
             script,
             pkgName,
@@ -302,7 +309,7 @@ export class YarnClassic implements PkgManager.PkgManager {
         }
       }
 
-      result.error = new PkgManager.Errors.ScriptFailedError(message, {
+      result.error = new ScriptFailedError(message, {
         script,
         pkgName,
         pkgManager: this.name,
@@ -333,4 +340,4 @@ export class YarnClassic implements PkgManager.PkgManager {
   }
 }
 
-export default YarnClassic satisfies PkgManager.PkgManagerDef;
+export default YarnClassic satisfies PkgManagerDef;

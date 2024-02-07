@@ -11,7 +11,7 @@
 
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import {EventEmitter} from 'events';
-import {type RuleEvents, type StrictEmitter} from 'midnight-smoker/event';
+import {type RuleRunnerEvents, type StrictEmitter} from 'midnight-smoker/event';
 import {type PluginRegistry, type RuleFilter} from 'midnight-smoker/plugin';
 import {
   RuleContext,
@@ -111,6 +111,7 @@ export interface RunRuleRunnerOpts {
    * If not provided, a new `EventEmitter` will be created.
    */
   emitter?: EventEmitter;
+
   /**
    * Filter the rules to run (e.g., only those that are not disabled)
    */
@@ -136,7 +137,7 @@ export async function runRuleRunner(
   opts: RunRuleRunnerOpts = {},
 ): Promise<RunRulesResult> {
   const notifiers = createRuleRunnerNotifiers(
-    (opts.emitter ?? new EventEmitter()) as StrictEmitter<RuleEvents>,
+    (opts.emitter ?? new EventEmitter()) as StrictEmitter<RuleRunnerEvents>,
   );
 
   const filter: RuleFilter = opts.filter

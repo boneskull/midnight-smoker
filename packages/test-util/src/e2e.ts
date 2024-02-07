@@ -5,8 +5,7 @@
  */
 import Debug from 'debug';
 import {node as execa, type NodeOptions} from 'execa';
-import type * as Executor from 'midnight-smoker/executor';
-import * as Helpers from 'midnight-smoker/plugin/helpers';
+import * as Executor from 'midnight-smoker/executor';
 import stripAnsi from 'strip-ansi';
 import type {Merge} from 'type-fest';
 
@@ -80,7 +79,7 @@ export async function execSmoker(args: string[], opts: ExecSmokerOpts = {}) {
       return JSON.parse(result.stdout) as unknown;
     }
   } catch (err) {
-    if (Helpers.isExecaError(err) && json) {
+    if (Executor.isExecaError(err) && json) {
       return JSON.parse(err.stdout) as unknown;
     }
     throw err;

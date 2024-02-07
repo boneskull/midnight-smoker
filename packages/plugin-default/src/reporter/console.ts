@@ -74,7 +74,7 @@ export const ConsoleReporter: Reporter.ReporterDef = {
   description: 'Default console reporter (for humans)',
   reporter: ({emitter, opts, pkgJson, console, stderr}) => {
     const spinner = ora({stream: stderr});
-    const scriptFailedEvts: Event.RunScriptFailedEventData[] = [];
+    const scriptFailedEvts: Event.ScriptFailedEventData[] = [];
     const ruleFailedEvts: Event.RunRuleFailedEventData[] = [];
     const {SmokerEvent} = Event;
 

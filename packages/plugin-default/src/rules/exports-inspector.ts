@@ -149,7 +149,7 @@ export function typeOf(
   }
 }
 
-export class ExportsInspector<Schema extends Rule.RuleOptionSchema> {
+export class ExportsInspector<Schema extends Rule.RuleDefSchemaValue> {
   protected taskQueue: Promise<void>[];
 
   constructor(

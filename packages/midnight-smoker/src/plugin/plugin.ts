@@ -1,6 +1,6 @@
 import {isFunction, isObject} from 'lodash';
 import {z} from 'zod';
-import {zNonEmptyString} from '../util/schema-util';
+import {NonEmptyStringSchema} from '../util/schema-util';
 import type {PluginAPI} from './plugin-api';
 
 /**
@@ -26,9 +26,9 @@ export const zPlugin = z
         : value,
     z.object({
       plugin: zPluginFactory,
-      name: zNonEmptyString.optional(),
-      description: zNonEmptyString.optional(),
-      version: zNonEmptyString.optional(),
+      name: NonEmptyStringSchema.optional(),
+      description: NonEmptyStringSchema.optional(),
+      version: NonEmptyStringSchema.optional(),
     }),
   )
   .describe(

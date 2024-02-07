@@ -20,7 +20,7 @@ const nullStream = new PassThrough();
 export const ExitListener: Reporter.ReporterDef = {
   name: 'exit',
   when: () => true,
-  isReporter: false,
+  isHidden: true,
   stdout: nullStream, // should never write to stdout
   stderr: nullStream, // should never write to stderr
   description: 'Determines when to set the process exit code to 1',

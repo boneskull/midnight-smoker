@@ -67,14 +67,10 @@ exports['@midnight-smoker/plugin-default reporter json when the script succeeds 
         "pkgName": "single-script",
         "rawResult": {
           "command": "<path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> run --json smoke",
-          "escapedCommand": "\"<path/to/>/bin/node\" \"<path/to/>/.bin/corepack\" \"npm@<version>\" run --json smoke",
           "exitCode": 0,
           "failed": false,
-          "isCanceled": false,
-          "killed": false,
           "stderr": "",
-          "stdout": "\n> single-script@1.0.0 smoke\n> exit 0\n",
-          "timedOut": false
+          "stdout": "\n> single-script@1.0.0 smoke\n> exit 0\n"
         },
         "script": "smoke"
       }
@@ -198,25 +194,11 @@ exports['@midnight-smoker/plugin-default reporter json when the script fails sho
             },
             "pkgName": "fail",
             "rawResult": {
-              "cause": {
-                "command": "<path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> run --json smoke",
-                "escapedCommand": "\"<path/to/>/bin/node\" \"<path/to/>/.bin/corepack\" \"npm@<version>\" run --json smoke",
-                "exitCode": 1,
-                "failed": true,
-                "isCanceled": false,
-                "killed": false,
-                "shortMessage": "Command failed with exit code 1: <path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> run --json smoke",
-                "stderr": "",
-                "stdout": "\n> fail@1.0.0 smoke\n> exit 1\n",
-                "timedOut": false
-              },
-              "code": "ESMOKER_EXEC",
-              "context": {
-                "command": "<path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> run --json smoke"
-              },
-              "id": "ExecError",
-              "message": "Command failed with exit code 1: <path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> run --json smoke\n\n> fail@1.0.0 smoke\n> exit 1\n",
-              "stack": "Error: Command failed with exit code 1: <path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> run --json smoke\n\n> fail@1.0.0 smoke\n> exit 1\n\n<loc>:<line>:<col>\n<loc>:<line>:<col>\n<loc>:<line>:<col>\n<loc>:<line>:<col>\n<loc>:<line>:<col>n<loc>:<line>:<col>\n<loc>:<line>:<col>\n<loc>:<line>:<col>\n<loc>:<line>:<col>"
+              "command": "<path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> run --json smoke",
+              "exitCode": 1,
+              "failed": true,
+              "stderr": "",
+              "stdout": "\n> fail@1.0.0 smoke\n> exit 1\n"
             },
             "script": "smoke"
           }

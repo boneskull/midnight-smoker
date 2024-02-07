@@ -1,43 +1,45 @@
-import {SmokerEvent} from '../../event/event-constants';
-import type {RuleEvents} from '../../event/rule-events';
-import type {StrictEmitter} from '../../event/strict-emitter';
-import {RuleIssue} from '../rule/issue';
-import type {RuleRunnerNotifiers} from './rule-runner-schema';
+import {SmokerEvent} from '#event/event-constants.js';
+import type {RuleRunnerEvents} from '#event/rule-runner-events.js';
+import type {StrictEmitter} from '#event/strict-emitter.js';
+import type {RuleRunnerNotifiers} from '#schema/rule-runner-notifier.js';
 import {
-  zRuleBeginNotifier,
-  zRuleErrorNotifier,
-  zRuleFailedNotifier,
-  zRuleOkNotifier,
-  zRunRulesBeginNotifier,
-  zRunRulesFailedNotifier,
-  zRunRulesOkNotifier,
-} from './rule-runner-schema';
+  RuleBeginNotifierSchema,
+  RuleErrorNotifierSchema,
+  RuleFailedNotifierSchema,
+  RuleOkNotifierSchema,
+  RunRulesBeginNotifierSchema,
+  RunRulesFailedNotifierSchema,
+  RunRulesOkNotifierSchema,
+} from '#schema/rule-runner-notifier.js';
+import {RuleIssue} from '../rule/issue';
+
+export type RuleRunnerEmitter = StrictEmitter<RuleRunnerEvents>;
 
 export function createRuleRunnerNotifiers(
-  smoker: StrictEmitter<RuleEvents>,
+  smoker: RuleRunnerEmitter,
 ): RuleRunnerNotifiers {
   return {
-    runRulesBegin: zRunRulesBeginNotifier.implement((data) => {
+    runRulesBegin: RunRulesBeginNotifierSchema.implement((data) => {
       smoker.emit(SmokerEvent.RunRulesBegin, data);
     }),
-    runRulesOk: zRunRulesOkNotifier.implement((data) => {
+    runRulesOk: RunRulesOkNotifierSchema.implement((data) => {
       smoker.emit(SmokerEvent.RunRulesOk, data);
     }),
-    runRulesFailed: zRunRulesFailedNotifier.implement((data) => {
+    runRulesFailed: RunRulesFailedNotifierSchema.implement((data) => {
       smoker.emit(SmokerEvent.RunRulesFailed, data);
     }),
-    ruleBegin: zRuleBeginNotifier.implement((data) => {
+    ruleBegin: RuleBeginNotifierSchema.implement((data) => {
       smoker.emit(SmokerEvent.RunRuleBegin, data);
     }),
-    ruleOk: zRuleOkNotifier.implement((data) => {
+    ruleOk: RuleOkNotifierSchema.implement((data) => {
       smoker.emit(SmokerEvent.RunRuleOk, data);
     }),
-    ruleFailed: zRuleFailedNotifier.implement((data) => {
+    ruleFailed: RuleFailedNotifierSchema.implement((data) => {
       // for stable results
       data.failed = data.failed.sort(RuleIssue.compare);
       smoker.emit(SmokerEvent.RunRuleFailed, data);
     }),
-    ruleError: zRuleErrorNotifier.implement((data) => {
+    ruleError: RuleErrorNotifierSchema.implement((data) => {
       smoker.emit(SmokerEvent.RuleError, data);
     }),
   };

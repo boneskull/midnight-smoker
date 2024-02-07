@@ -1,6 +1,7 @@
+import type * as C from '#component';
+import {ErrorCodes} from '#error';
 import rewiremock from 'rewiremock/node';
 import unexpected from 'unexpected';
-import type * as C from '../../../../src/component/component';
 import {createFsMocks} from '../../mocks/fs';
 
 const expect = unexpected.clone();
@@ -78,7 +79,7 @@ describe('midnight-smoker', function () {
             () => component({name, value, owner: {} as any, kind: 'Reporter'}),
             'to throw',
             {
-              code: 'ESMOKER_INVALIDARG',
+              code: ErrorCodes.InvalidArgError,
             },
           );
         });
@@ -97,7 +98,7 @@ describe('midnight-smoker', function () {
               component({name, value: value as any, owner, kind: 'Reporter'}),
             'to throw',
             {
-              code: 'ESMOKER_INVALIDARG',
+              code: ErrorCodes.InvalidArgError,
             },
           );
         });
@@ -109,7 +110,7 @@ describe('midnight-smoker', function () {
               component({name, value: value as any, owner, kind: 'Reporter'}),
             'to throw',
             {
-              code: 'ESMOKER_INVALIDARG',
+              code: ErrorCodes.InvalidArgError,
             },
           );
         });
@@ -121,7 +122,7 @@ describe('midnight-smoker', function () {
               component({name, value: value as any, owner, kind: 'Reporter'}),
             'to throw',
             {
-              code: 'ESMOKER_INVALIDARG',
+              code: ErrorCodes.InvalidArgError,
             },
           );
         });
@@ -133,7 +134,7 @@ describe('midnight-smoker', function () {
               component({name, value: value as any, owner, kind: 'Reporter'}),
             'to throw',
             {
-              code: 'ESMOKER_INVALIDARG',
+              code: ErrorCodes.InvalidArgError,
             },
           );
         });

@@ -1,11 +1,11 @@
 import {z} from 'zod';
-import {zBaseRuleOptionsRecord} from '../component/rule/rule';
+import {BaseRuleOptionsRecordSchema} from '../component/schema/rule-options';
 import {DEFAULT_COMPONENT_ID} from '../constants';
 import {
-  zDefaultFalse,
-  zDefaultTrue,
-  zNonEmptyString,
-  zNonEmptyStringOrArrayThereof,
+  DefaultFalseSchema,
+  DefaultTrueSchema,
+  NonEmptyStringSchema,
+  NonEmptyStringToArraySchema,
 } from '../util/schema-util';
 
 /**
@@ -15,97 +15,114 @@ const smokerOptionsShape = {
   /**
    * Add an extra package to the list of packages to be installed
    */
-  add: zNonEmptyStringOrArrayThereof.describe(
+  add: NonEmptyStringToArraySchema.describe(
     'Add an extra package to the list of packages to be installed',
   ),
+
   /**
    * Operate on all workspaces. The root workspace is omitted unless
    */
-  all: zDefaultFalse.describe(
+  all: DefaultFalseSchema.describe(
     'Operate on all workspaces. The root workspace is omitted unless `includeRoot` is `true`',
   ),
+
   /**
    * Fail on first script failure
    */
-  bail: zDefaultFalse.describe('Fail on first script failure'),
+  bail: DefaultFalseSchema.describe('Fail on first script failure'),
+
   /**
    * If `false`, do not lint when running custom scripts
    */
-  lint: zDefaultTrue.describe(
+  lint: DefaultTrueSchema.describe(
     'If `false`, do not lint when running custom scripts',
   ),
+
   /**
    * Component ID of Executor implementation
    */
-  executor: zNonEmptyString
-    .describe('Component ID of Executor implementation')
-    .default(DEFAULT_COMPONENT_ID),
+  executor: NonEmptyStringSchema.describe(
+    'Component ID of Executor implementation',
+  ).default(DEFAULT_COMPONENT_ID),
+
   /**
    * Operate on the root workspace. Only has an effect if `all` is `true`
    */
-  includeRoot: zDefaultFalse.describe(
+  includeRoot: DefaultFalseSchema.describe(
     'Operate on the root workspace. Only has an effect if `all` is `true`',
   ),
+
   /**
    * Output JSON only
    */
-  json: zDefaultFalse.describe('Output JSON only'),
+  json: DefaultFalseSchema.describe('Output JSON only'),
+
   /**
    * Do not delete temp directories after completion
    */
-  linger: zDefaultFalse.describe(
+  linger: DefaultFalseSchema.describe(
     'Do not delete temp directories after completion',
   ),
+
   /**
    * If `true`, fail if a workspace is missing a script
    */
-  loose: zDefaultFalse.describe(
+  loose: DefaultFalseSchema.describe(
     'If `true`, fail if a workspace is missing a script',
   ),
+
   /**
    * The package manager(s) to use
    */
-  pkgManager: zNonEmptyStringOrArrayThereof.describe(
+  pkgManager: NonEmptyStringToArraySchema.describe(
     'Package manager(s) to use (by id)',
   ),
+
   /**
    * The plugin(s) to load
    */
-  plugin: zNonEmptyStringOrArrayThereof.describe('One or more plugins to load'),
+  plugin: NonEmptyStringToArraySchema.describe('One or more plugins to load'),
+
   /**
    * The reporter(s) to use
    */
-  reporter: zNonEmptyStringOrArrayThereof
-    .describe('Component ID of Reporter implementation')
-    .default(['console']),
+  reporter: NonEmptyStringToArraySchema.describe(
+    'Component ID of Reporter implementation',
+  ).default(['console']),
+
   /**
    * The RuleRunners(s) to use
    */
-  ruleRunner: zNonEmptyString
-    .describe('Component ID of RuleRunner implementation')
-    .default(DEFAULT_COMPONENT_ID),
+  ruleRunner: NonEmptyStringSchema.describe(
+    'Component ID of RuleRunner implementation',
+  ).default(DEFAULT_COMPONENT_ID),
+
   /**
    * Rule config
    */
-  rules: zBaseRuleOptionsRecord.default({}),
+  rules: BaseRuleOptionsRecordSchema.default({}),
+
   /**
    * Script(s) to run.
    */
-  script: zNonEmptyStringOrArrayThereof.describe('Script(s) to run.'),
+  script: NonEmptyStringToArraySchema.describe('Script(s) to run.'),
+
   /**
    * ScriptRunners(s) to use.
    */
-  scriptRunner: zNonEmptyString
-    .describe('Component ID of ScriptRunner implementation')
-    .default(DEFAULT_COMPONENT_ID),
+  scriptRunner: NonEmptyStringSchema.describe(
+    'Component ID of ScriptRunner implementation',
+  ).default(DEFAULT_COMPONENT_ID),
+
   /**
    * Verbose logging
    */
-  verbose: zDefaultFalse.describe('Verbose logging'),
+  verbose: DefaultFalseSchema.describe('Verbose logging'),
+
   /**
    * One or more workspaces to operate in
    */
-  workspace: zNonEmptyStringOrArrayThereof.describe(
+  workspace: NonEmptyStringToArraySchema.describe(
     'One or more workspaces to run scripts in',
   ),
 };

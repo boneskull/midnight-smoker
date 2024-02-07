@@ -23,15 +23,16 @@
  * @todo Assert that we're probably enforcing uniqueness.
  */
 
-import {z} from 'zod';
-
+import {ComponentKinds, type ComponentKind} from '#constants';
+import {InvalidArgError} from '#error/common-error.js';
+import {NonEmptyStringSchema} from '#util/schema-util.js';
+import Debug from 'debug';
 import {has, isFunction, isObject} from 'lodash';
-import {InvalidArgError} from '../../error/common-error';
-import {zNonEmptyString} from '../../util/schema-util';
+import {z} from 'zod';
 import {ComponentId} from './component-id';
-import {ComponentKinds, type ComponentKind} from './component-kind';
 
-export {ComponentId, ComponentKinds, type ComponentKind};
+const debug = Debug('midnight-smoker:component');
+
 export const kComponentId: unique symbol = Symbol('component-id');
 
 /**
@@ -58,14 +59,17 @@ export interface ComponentApi {
    * The unique identifier for the component; {@link ComponentId.id}
    */
   readonly [kId]: string;
+
   /**
    * The raw {@link ComponentId} object
    */
   readonly [kComponentId]: ComponentId;
+
   /**
    * The result of {@link ComponentId.isBlessed}
    */
   readonly [kIsBlessed]: boolean;
+
   /**
    * The component kind
    */
@@ -125,7 +129,7 @@ export type Component<T extends object> = T & ComponentApi;
  *
  * This property is used by {@link ComponentId} to compute the unique ID.
  */
-const zOwner = z.object({id: zNonEmptyString});
+const zOwner = z.object({id: NonEmptyStringSchema});
 
 export interface ComponentDef<T extends object> {
   name: string;
@@ -134,8 +138,8 @@ export interface ComponentDef<T extends object> {
   owner: Owner;
 }
 
-export const zComponentDef = z.object({
-  name: zNonEmptyString,
+export const ComponentDefSchema = z.object({
+  name: NonEmptyStringSchema,
   value: zComponentizable,
   kind: z.nativeEnum(ComponentKinds),
   owner: zOwner,
@@ -162,13 +166,14 @@ export function component<T extends object>({
   //   throw new InvalidArgError(componentizableResult.error);
   // }
 
-  const result = zComponentDef.safeParse({name, value, kind, owner});
+  const result = ComponentDefSchema.safeParse({name, value, kind, owner});
   if (!result.success) {
     throw new InvalidArgError(result.error);
   }
 
   const id = ComponentId.create(owner.id, name);
 
+  debug('Created %s component with ID %s in plugin %s', kind, id.id, owner.id);
   return new Proxy(value, {
     get(target, p, receiver) {
       // the switch seems to convince TS better than an object literal

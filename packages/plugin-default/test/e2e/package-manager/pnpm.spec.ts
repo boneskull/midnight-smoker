@@ -1,4 +1,5 @@
 import {execSmoker} from '@midnight-smoker/test-util';
+import {ErrorCodes} from 'midnight-smoker/error';
 import path from 'node:path';
 import unexpected from 'unexpected';
 
@@ -15,7 +16,7 @@ describe('@midnight-smoker/plugin-default', function () {
             json: true,
           }),
           'to be fulfilled with value satisfying',
-          {error: {code: 'ESMOKER_UNSUPPORTEDPACKAGEMANAGER'}},
+          {error: {code: ErrorCodes.UnsupportedPackageManagerError}},
         );
       });
     });

@@ -5,21 +5,19 @@
  */
 
 import {node as execa} from 'execa';
-import * as Errors from 'midnight-smoker/error';
-import * as Executor from 'midnight-smoker/executor';
-import type * as PkgManager from 'midnight-smoker/pkg-manager';
-import * as Helpers from 'midnight-smoker/plugin/helpers';
+import {InvalidArgError} from 'midnight-smoker/error';
+import {ExecError, isExecaError, type Executor} from 'midnight-smoker/executor';
 
-async function exec(
-  spec: PkgManager.PkgManagerSpec,
-  args: string[],
-  opts: Executor.ExecutorOpts = {},
-  spawnOpts: Executor.SpawnOpts = {},
-): Promise<Executor.ExecResult> {
+export const systemExecutor: Executor = async (
+  spec,
+  args,
+  opts = {},
+  spawnOpts = {},
+) => {
   const {verbose, signal} = opts;
 
   if (!spec.isSystem) {
-    throw new Errors.InvalidArgError(
+    throw new InvalidArgError(
       'Non-system package manager spec passed to system executor; this is a bug.',
       {argName: 'spec', position: 0},
     );
@@ -49,8 +47,6 @@ async function exec(
   try {
     return await proc;
   } catch (err) {
-    throw Helpers.isExecaError(err) ? new Executor.ExecError(err) : err;
+    throw isExecaError(err) ? new ExecError(err) : err;
   }
-}
-
-export const systemExecutor: Executor.Executor = exec;
+};

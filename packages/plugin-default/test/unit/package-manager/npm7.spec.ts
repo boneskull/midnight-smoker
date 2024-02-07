@@ -1,8 +1,15 @@
-import type {nullExecutor} from '@midnight-smoker/test-util';
 import {type ExecaError} from 'execa';
-import {ExecError} from 'midnight-smoker/executor';
-import {type InstallManifest} from 'midnight-smoker/pkg-manager';
-import * as Helpers from 'midnight-smoker/plugin/helpers';
+import {ErrorCodes} from 'midnight-smoker/error';
+import {
+  ExecError,
+  type ExecResult,
+  type Executor,
+} from 'midnight-smoker/executor';
+import {
+  PkgManagerSpec,
+  type InstallManifest,
+} from 'midnight-smoker/pkg-manager';
+import {Helpers} from 'midnight-smoker/plugin';
 import rewiremock from 'rewiremock/node';
 import {Range} from 'semver';
 import {createSandbox} from 'sinon';
@@ -10,6 +17,7 @@ import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
 import {type NpmPackItem} from '../../../src/package-manager/npm';
 import type * as NPM7 from '../../../src/package-manager/npm7';
+
 import type {ConsoleMock, DebugMock} from '../../mocks';
 import {mockConsole, mockDebug} from '../../mocks';
 
@@ -26,9 +34,9 @@ describe('@midnight-smoker/plugin-default', function () {
   let sandbox: sinon.SinonSandbox;
 
   let mocks: Npm7SpecMocks;
-
+  let result: ExecResult;
   let Npm7: typeof NPM7.Npm7;
-  let executor: sinon.SinonStubbedMember<typeof nullExecutor>;
+  let executor: sinon.SinonStubbedMember<Executor>;
 
   beforeEach(function () {
     sandbox = createSandbox();
@@ -44,7 +52,14 @@ describe('@midnight-smoker/plugin-default', function () {
       delete mocks.debug;
     }
 
-    executor = sandbox.stub();
+    result = {
+      stdout: '',
+      stderr: '',
+      command: '',
+      exitCode: 0,
+      failed: false,
+    };
+    executor = sandbox.stub().resolves(result) as typeof executor;
 
     ({Npm7} = rewiremock.proxy(
       () => require('../../../src/package-manager/npm7'),
@@ -58,9 +73,9 @@ describe('@midnight-smoker/plugin-default', function () {
 
   describe('package manager', function () {
     describe('Npm7', function () {
-      let spec: Readonly<Helpers.PkgManagerSpec>;
+      let spec: Readonly<PkgManagerSpec>;
       before(async function () {
-        spec = await Helpers.PkgManagerSpec.from('npm@7.0.0');
+        spec = await PkgManagerSpec.from('npm@7.0.0');
       });
 
       describe('static method', function () {
@@ -196,25 +211,44 @@ describe('@midnight-smoker/plugin-default', function () {
           });
 
           describe('when npm failed to spawn', function () {
-            beforeEach(function () {
-              executor.rejects(new ExecError({} as ExecaError));
+            beforeEach(async function () {
+              const execaError: ExecaError = {
+                isCanceled: false,
+                message: '',
+                shortMessage: '',
+                name: '',
+                command: '',
+                escapedCommand: '',
+                exitCode: 0,
+                stdout: JSON.stringify({
+                  error: {
+                    summary: 'foo',
+                  },
+                }),
+                stderr: '',
+                failed: false,
+                timedOut: false,
+                killed: false,
+              };
+              executor.rejects(new ExecError(execaError));
             });
 
             it('should reject', async function () {
               await expect(npm.pack(), 'to be rejected with error satisfying', {
-                code: 'ESMOKER_PACK',
+                code: ErrorCodes.PackError,
               });
             });
           });
 
           describe(`when npm's stdout returns something other than a JSON string`, function () {
             beforeEach(function () {
+              executor.resetBehavior();
               executor.resolves({stdout: '{not json}'} as any);
             });
 
             it('should reject', async function () {
               await expect(npm.pack(), 'to be rejected with error satisfying', {
-                code: 'ESMOKER_PACKPARSE',
+                code: ErrorCodes.PackParseError,
               });
             });
           });
@@ -256,7 +290,7 @@ describe('@midnight-smoker/plugin-default', function () {
             executor.resolves({stdout: 'stuff', exitCode: 0} as any);
           });
 
-          describe('when npm fails', function () {
+          describe('when npm fails and outputs garbage', function () {
             const err = new ExecError({} as ExecaError);
             beforeEach(function () {
               executor.rejects(err);
@@ -267,7 +301,7 @@ describe('@midnight-smoker/plugin-default', function () {
                 npm.install(manifest),
                 'to be rejected with error satisfying',
                 {
-                  code: 'ESMOKER_INSTALL',
+                  code: ErrorCodes.InstallError,
                   cause: err,
                 },
               );
@@ -296,7 +330,7 @@ describe('@midnight-smoker/plugin-default', function () {
               await expect(
                 npm.install([]),
                 'to be rejected with error satisfying',
-                {code: 'ESMOKER_INVALIDARG'},
+                {code: ErrorCodes.InvalidArgError},
               );
             });
           });
@@ -312,7 +346,7 @@ describe('@midnight-smoker/plugin-default', function () {
                 // @ts-expect-error - intentionally passing no args
                 npm.runScript(),
                 'to be rejected with error satisfying',
-                {code: 'ESMOKER_INVALIDARG'},
+                {code: ErrorCodes.InvalidArgError},
               );
             });
           });
@@ -334,7 +368,7 @@ describe('@midnight-smoker/plugin-default', function () {
                 ),
                 'to be fulfilled with value satisfying',
                 {
-                  error: {code: 'ESMOKER_RUNSCRIPT'},
+                  error: {code: ErrorCodes.RunScriptError},
                 },
               );
             });
@@ -361,7 +395,10 @@ describe('@midnight-smoker/plugin-default', function () {
                 ),
                 'to be fulfilled with value satisfying',
                 {
-                  error: {code: 'ESMOKER_SCRIPTFAILED', context: {exitCode: 1}},
+                  error: {
+                    code: ErrorCodes.ScriptFailedError,
+                    context: {exitCode: 1},
+                  },
                 },
               );
             });
@@ -387,7 +424,7 @@ describe('@midnight-smoker/plugin-default', function () {
                 ),
                 'to be fulfilled with value satisfying',
                 {
-                  error: {code: 'ESMOKER_UNKNOWNSCRIPT'},
+                  error: {code: ErrorCodes.UnknownScriptError},
                 },
               );
             });

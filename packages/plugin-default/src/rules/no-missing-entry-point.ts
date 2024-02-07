@@ -54,7 +54,9 @@ export default function noMissingEntryPoint({defineRule}: PluginAPI) {
           try {
             await fs.stat(filepath);
             found = true;
-          } catch {}
+          } catch {
+            // ignored
+          }
         }
         if (!found) {
           addIssue(

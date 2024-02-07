@@ -1,3 +1,8 @@
+import {ComponentKinds, DEFAULT_COMPONENT_ID} from '#constants';
+import {ErrorCodes} from '#error/codes.js';
+import {PLUGIN_DEFAULT_ID} from '#plugin/blessed.js';
+import type * as PM from '#plugin/metadata.js';
+import type * as Reg from '#plugin/registry.js';
 import {DEFAULT_TEST_PLUGIN_NAME} from '@midnight-smoker/test-util/constants';
 import {
   registerExecutor,
@@ -11,12 +16,6 @@ import rewiremock from 'rewiremock/node';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import {ZodError} from 'zod';
-import {InvalidComponentError} from '../../../src/component/component/component-error';
-import {ComponentKinds} from '../../../src/component/component/component-kind';
-import {DEFAULT_COMPONENT_ID} from '../../../src/constants';
-import {PLUGIN_DEFAULT_ID} from '../../../src/plugin/blessed';
-import type * as PM from '../../../src/plugin/metadata';
-import type * as Reg from '../../../src/plugin/registry';
 import {createFsMocks, type FsMocks} from '../mocks';
 
 const expect = unexpected.clone();
@@ -52,7 +51,7 @@ describe('midnight-smoker', function () {
           () => require('../../../src/plugin/registry'),
           {
             ...mocks,
-            '../../../src/util/loader-util': {
+            '#util/loader-util.js': {
               /**
                * This thing loads and evals files via the in-memory filesystem.
                *
@@ -177,7 +176,7 @@ describe('midnight-smoker', function () {
               await expect(
                 registry.registerPlugin('test-plugin', pluginB),
                 'to be rejected with error satisfying',
-                {code: 'ESMOKER_PLUGINCONFLICT'},
+                {code: ErrorCodes.PluginConflictError},
               );
             });
           });
@@ -187,7 +186,7 @@ describe('midnight-smoker', function () {
               await expect(
                 registry.registerPlugin('/path/to/nonexistent-plugin'),
                 'to be rejected with error satisfying',
-                {code: 'ESMOKER_PLUGINIMPORT'},
+                {code: ErrorCodes.PluginImportError},
               );
             });
           });
@@ -199,7 +198,7 @@ describe('midnight-smoker', function () {
               await expect(
                 registry.registerPlugin('test-plugin-2', plugin),
                 'to be rejected with error satisfying',
-                {code: 'ESMOKER_DUPLICATEPLUGIN'},
+                {code: ErrorCodes.DuplicatePluginError},
               );
             });
 
@@ -216,7 +215,7 @@ describe('midnight-smoker', function () {
                 await expect(
                   registry.registerPlugin('/plugin.js', 'foo'),
                   'to be rejected with error satisfying',
-                  {code: 'ESMOKER_DUPLICATEPLUGIN'},
+                  {code: ErrorCodes.DuplicatePluginError},
                 );
               });
             });
@@ -233,7 +232,7 @@ describe('midnight-smoker', function () {
               await expect(
                 registry.registerPlugin('test-plugin', pluginObject),
                 'to be rejected with error satisfying',
-                {code: 'ESMOKER_PLUGININIT', cause: err},
+                {code: ErrorCodes.PluginInitializationError, cause: err},
               );
             });
           });
@@ -244,7 +243,7 @@ describe('midnight-smoker', function () {
               await expect(
                 registry.registerPlugin('test-plugin', {plugin: () => {}}),
                 'to be rejected with error satisfying',
-                {code: 'ESMOKER_DISALLOWEDPLUGIN'},
+                {code: ErrorCodes.DisallowedPluginError},
               );
             });
           });
@@ -326,11 +325,13 @@ describe('midnight-smoker', function () {
               expect(
                 () => registry.getScriptRunner('nonexistent-component'),
                 'to throw',
-                new InvalidComponentError(
-                  'ScriptRunner with component ID nonexistent-component not found',
-                  ComponentKinds.ScriptRunner,
-                  'nonexistent-component',
-                ),
+                {
+                  code: ErrorCodes.InvalidComponentError,
+                  context: {
+                    id: 'nonexistent-component',
+                    kind: ComponentKinds.ScriptRunner,
+                  },
+                },
               );
             });
           });
@@ -351,15 +352,13 @@ describe('midnight-smoker', function () {
 
             describe('and no ScriptRunner with the default componentId exists', function () {
               it('should throw an InvalidComponentError', function () {
-                expect(
-                  () => registry.getScriptRunner(),
-                  'to throw',
-                  new InvalidComponentError(
-                    `ScriptRunner with component ID ${DEFAULT_COMPONENT_ID} not found`,
-                    ComponentKinds.ScriptRunner,
-                    DEFAULT_COMPONENT_ID,
-                  ),
-                );
+                expect(() => registry.getScriptRunner(), 'to throw', {
+                  code: ErrorCodes.InvalidComponentError,
+                  context: {
+                    id: DEFAULT_COMPONENT_ID,
+                    kind: ComponentKinds.ScriptRunner,
+                  },
+                });
               });
             });
           });
@@ -390,11 +389,13 @@ describe('midnight-smoker', function () {
               expect(
                 () => registry.getExecutor('nonexistent-component'),
                 'to throw',
-                new InvalidComponentError(
-                  'Executor with component ID nonexistent-component not found',
-                  ComponentKinds.Executor,
-                  'nonexistent-component',
-                ),
+                {
+                  code: ErrorCodes.InvalidComponentError,
+                  context: {
+                    id: 'nonexistent-component',
+                    kind: ComponentKinds.Executor,
+                  },
+                },
               );
             });
           });
@@ -415,15 +416,13 @@ describe('midnight-smoker', function () {
 
             describe('and no Executor with the default componentId exists', function () {
               it('should throw an InvalidComponentError', function () {
-                expect(
-                  () => registry.getExecutor(),
-                  'to throw',
-                  new InvalidComponentError(
-                    `Executor with component ID ${DEFAULT_COMPONENT_ID} not found`,
-                    ComponentKinds.Executor,
-                    DEFAULT_COMPONENT_ID,
-                  ),
-                );
+                expect(() => registry.getExecutor(), 'to throw', {
+                  code: ErrorCodes.InvalidComponentError,
+                  context: {
+                    id: DEFAULT_COMPONENT_ID,
+                    kind: ComponentKinds.Executor,
+                  },
+                });
               });
             });
           });
@@ -454,11 +453,13 @@ describe('midnight-smoker', function () {
               expect(
                 () => registry.getRuleRunner('nonexistent-component'),
                 'to throw',
-                new InvalidComponentError(
-                  'RuleRunner with component ID nonexistent-component not found',
-                  ComponentKinds.RuleRunner,
-                  'nonexistent-component',
-                ),
+                {
+                  code: ErrorCodes.InvalidComponentError,
+                  context: {
+                    id: 'nonexistent-component',
+                    kind: ComponentKinds.RuleRunner,
+                  },
+                },
               );
             });
           });
@@ -479,15 +480,13 @@ describe('midnight-smoker', function () {
 
             describe('and no RuleRunner with the default componentId exists', function () {
               it('should throw an InvalidComponentError', function () {
-                expect(
-                  () => registry.getRuleRunner(),
-                  'to throw',
-                  new InvalidComponentError(
-                    `RuleRunner with component ID ${DEFAULT_COMPONENT_ID} not found`,
-                    ComponentKinds.RuleRunner,
-                    DEFAULT_COMPONENT_ID,
-                  ),
-                );
+                expect(() => registry.getRuleRunner(), 'to throw', {
+                  code: ErrorCodes.InvalidComponentError,
+                  context: {
+                    id: DEFAULT_COMPONENT_ID,
+                    kind: ComponentKinds.RuleRunner,
+                  },
+                });
               });
             });
           });

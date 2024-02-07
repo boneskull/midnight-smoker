@@ -1,12 +1,12 @@
-import type {RunScriptResult} from '../component/pkg-manager/pkg-manager-schema';
-import type {RunRulesResult} from '../component/rule-runner/rule-runner-schema';
-import type {ScriptRunnerEvents} from '../component/script-runner/script-runner-events';
+import type {ScriptRunnerEvents} from '#event/script-runner-events.js';
+import type {RunRulesResult} from '#schema/rule-runner-result.js';
+import type {RunScriptResult} from '#schema/run-script-result.js';
 import type {SmokeFailedError} from '../error/smoker-error';
 import type {SmokerOptions} from '../options/options';
 import type {StaticPluginMetadata} from '../plugin/static-metadata';
 import type {InstallEvents} from './install-events';
 import type {PackEvents} from './pack-events';
-import type {RuleEvents} from './rule-events';
+import type {RuleRunnerEvents} from './rule-runner-events';
 
 /**
  * Describes the data emitted by each event.
@@ -15,7 +15,7 @@ export interface SmokerEvents
   extends ScriptRunnerEvents,
     InstallEvents,
     PackEvents,
-    RuleEvents {
+    RuleRunnerEvents {
   /**
    * Emitted after all other events have been emitted, and just before exit.
    *

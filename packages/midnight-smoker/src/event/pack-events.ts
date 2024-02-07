@@ -1,4 +1,4 @@
-import type {PackError} from '../component/pkg-manager/errors/pack-error';
+import type {PackError} from '../error/pack-error';
 import type {InstallEventData} from './install-events';
 
 export interface PackEvents {

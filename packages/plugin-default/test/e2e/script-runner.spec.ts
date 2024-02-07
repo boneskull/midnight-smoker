@@ -3,10 +3,11 @@ import {
   registerPlugin,
   runScriptRunner,
 } from '@midnight-smoker/test-util';
+import {ErrorCodes} from 'midnight-smoker/error';
 import {ExecError} from 'midnight-smoker/executor';
 import {
   PkgManagerSpec,
-  type PkgManagerRunScriptManifest,
+  type RunScriptManifest,
   type RunScriptResult,
 } from 'midnight-smoker/pkg-manager';
 import {PluginRegistry} from 'midnight-smoker/plugin';
@@ -36,7 +37,7 @@ describe('@midnight-smoker/plugin-default', function () {
   describe('smokerScriptRunner', function () {
     let sandbox: sinon.SinonSandbox;
     let mockPm: NullPm;
-    let pkgRunManifest: PkgManagerRunScriptManifest;
+    let manifest: RunScriptManifest;
     let emitter: ScriptRunnerEmitter;
     let registry: PluginRegistry;
     let smokerScriptRunner: ScriptRunner;
@@ -52,11 +53,9 @@ describe('@midnight-smoker/plugin-default', function () {
 
       emitter = new EventEmitter() as any;
       sandbox.spy(emitter, 'emit');
-      pkgRunManifest = {
-        pkgManager: mockPm,
+      manifest = {
         script: 'foo',
         pkgName: 'bar',
-        spec: 'bar',
         cwd: `${MOCK_TMPDIR}/node_modules/bar`,
       };
 
@@ -69,7 +68,7 @@ describe('@midnight-smoker/plugin-default', function () {
 
     it('should call the runScriptBegin notifier', async function () {
       await expect(
-        () => runScriptRunner(smokerScriptRunner, pkgRunManifest, {emitter}),
+        () => runScriptRunner(smokerScriptRunner, manifest, mockPm, {emitter}),
         'to emit from',
         emitter,
         'RunScriptBegin',
@@ -89,7 +88,8 @@ describe('@midnight-smoker/plugin-default', function () {
     describe('when the scripts succeed', function () {
       it('should call the runScriptOk notifier', async function () {
         await expect(
-          () => runScriptRunner(smokerScriptRunner, pkgRunManifest, {emitter}),
+          () =>
+            runScriptRunner(smokerScriptRunner, manifest, mockPm, {emitter}),
           'to emit from',
           emitter,
           'RunScriptOk',
@@ -98,7 +98,7 @@ describe('@midnight-smoker/plugin-default', function () {
 
       it(`should resolve with an array of run results`, async function () {
         await expect(
-          runScriptRunner(smokerScriptRunner, pkgRunManifest, {emitter}),
+          runScriptRunner(smokerScriptRunner, manifest, mockPm, {emitter}),
           'to be fulfilled with value satisfying',
           [{pkgName: 'bar', script: 'foo'}],
         );
@@ -112,10 +112,10 @@ describe('@midnight-smoker/plugin-default', function () {
 
       it('should reject', async function () {
         await expect(
-          runScriptRunner(smokerScriptRunner, pkgRunManifest, {emitter}),
+          runScriptRunner(smokerScriptRunner, manifest, mockPm, {emitter}),
           'to be rejected with error satisfying',
           {
-            code: 'ESMOKER_PACKAGEMANAGER',
+            code: ErrorCodes.PackageManagerError,
             context: {pkgManager: 'nullpm@1.0.0'},
           },
         );
@@ -161,7 +161,7 @@ describe('@midnight-smoker/plugin-default', function () {
       });
 
       it('should call the runScriptFailed notifier', async function () {
-        await runScriptRunner(smokerScriptRunner, pkgRunManifest, {emitter});
+        await runScriptRunner(smokerScriptRunner, manifest, mockPm, {emitter});
         expect(emitter.emit, 'to have a call satisfying', [
           'RunScriptFailed',
           {
@@ -177,7 +177,7 @@ describe('@midnight-smoker/plugin-default', function () {
       describe('when the "bail" option is false', function () {
         it('should execute all scripts', async function () {
           await expect(
-            runScriptRunner(smokerScriptRunner, pkgRunManifest, {
+            runScriptRunner(smokerScriptRunner, manifest, mockPm, {
               emitter,
               bail: false,
             }),
@@ -190,7 +190,7 @@ describe('@midnight-smoker/plugin-default', function () {
       describe('when the "bail" option is true', function () {
         it('should execute only until a script fails', async function () {
           await expect(
-            runScriptRunner(smokerScriptRunner, pkgRunManifest, {
+            runScriptRunner(smokerScriptRunner, manifest, mockPm, {
               emitter,
               bail: true,
             }),

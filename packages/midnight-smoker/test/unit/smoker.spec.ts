@@ -1,3 +1,8 @@
+import {InstallEvent, PackEvent, SmokerEvent} from '#event/event-constants.js';
+import type * as PR from '#plugin/registry.js';
+import {type PkgManagerInstallManifest} from '#schema/install-manifest.js';
+import {type InstallResult} from '#schema/install-result.js';
+import {type PkgManager} from '#schema/pkg-manager.js';
 import {NullPkgManagerController} from '@midnight-smoker/test-util/controller';
 import {
   createExecaMock,
@@ -19,18 +24,7 @@ import unexpected from 'unexpected';
 import unexpectedEventEmitter from 'unexpected-eventemitter';
 import unexpectedSinon from 'unexpected-sinon';
 import {z} from 'zod';
-import type {
-  InstallResult,
-  PkgManager,
-  PkgManagerInstallManifest,
-} from '../../src/component/pkg-manager/pkg-manager-schema';
 import type {PkgManagerController} from '../../src/controller';
-import {
-  InstallEvent,
-  PackEvent,
-  SmokerEvent,
-} from '../../src/event/event-constants';
-import type * as PR from '../../src/plugin/registry';
 import type * as MS from '../../src/smoker';
 import * as Mocks from './mocks';
 import {createFsMocks, type FsMocks} from './mocks/fs';
@@ -107,7 +101,7 @@ describe('midnight-smoker', function () {
 
         smoker = await Smoker.createWithCapabilities(
           {script: 'foo'},
-          {registry, pmController},
+          {registry, pkgManagerController: pmController},
         );
       });
 
@@ -156,12 +150,11 @@ describe('midnight-smoker', function () {
 
         describe('when the "linger" option is true and a temp dir was created', function () {
           beforeEach(async function () {
-            registry = PluginRegistry.create();
             await fs.promises.mkdir(os.tmpdir(), {recursive: true});
-            smoker = await Smoker.createWithCapabilities(
-              {script: 'foo', linger: true},
-              {registry},
-            );
+            smoker = await Smoker.createWithCapabilities({
+              script: 'foo',
+              linger: true,
+            });
           });
 
           it('should not attempt to prune the temp directories', async function () {
@@ -378,7 +371,7 @@ describe('midnight-smoker', function () {
             {ruleRunner: 'run-checks/default'},
             {
               registry,
-              pmController: sandbox.createStubInstance(
+              pkgManagerController: sandbox.createStubInstance(
                 NullPkgManagerController,
               ),
             },

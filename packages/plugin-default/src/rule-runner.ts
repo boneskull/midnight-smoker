@@ -15,27 +15,43 @@
 import Debug from 'debug';
 import {type Component} from 'midnight-smoker/component';
 import {type PluginAPI} from 'midnight-smoker/plugin';
-import type * as Rule from 'midnight-smoker/rule';
-import type * as RuleRunner from 'midnight-smoker/rule-runner';
+import {
+  type BaseNormalizedRuleOptionsRecord,
+  type Rule,
+  type RuleConfig,
+  type RuleContext,
+  type RuleDefSchemaValue,
+  type RuleIssue,
+  type RuleOk,
+  type SomeRule,
+} from 'midnight-smoker/rule';
+import {
+  RuleError,
+  createRuleContext,
+  createRuleOkResult,
+  getConfigForRule,
+  type RuleRunner,
+  type RuleRunnerNotifiers,
+  type RunRulesManifest,
+  type RunRulesResult,
+} from 'midnight-smoker/rule-runner';
 
 const debug = Debug('midnight-smoker:plugin-default:rule-runner');
 
-export class SmokerRuleRunner<T extends Rule.BaseNormalizedRuleOptionsRecord> {
+export class SmokerRuleRunner<T extends BaseNormalizedRuleOptionsRecord> {
   protected constructor(
-    protected readonly notifiers: RuleRunner.RuleRunnerNotifiers,
-    protected readonly rules: Component<Rule.SomeRule>[],
+    protected readonly notifiers: RuleRunnerNotifiers,
+    protected readonly rules: Component<SomeRule>[],
     protected readonly rulesConfig: T,
-    protected readonly api: PluginAPI,
   ) {}
 
   public static create(
     this: void,
-    notifiers: RuleRunner.RuleRunnerNotifiers,
-    rules: Component<Rule.SomeRule>[],
-    ruleConfig: Rule.BaseNormalizedRuleOptionsRecord,
-    api: PluginAPI,
+    notifiers: RuleRunnerNotifiers,
+    rules: Component<SomeRule>[],
+    ruleConfig: BaseNormalizedRuleOptionsRecord,
   ) {
-    return new SmokerRuleRunner(notifiers, rules, ruleConfig, api);
+    return new SmokerRuleRunner(notifiers, rules, ruleConfig);
   }
 
   /**
@@ -43,10 +59,10 @@ export class SmokerRuleRunner<T extends Rule.BaseNormalizedRuleOptionsRecord> {
    * against each installed package in the results.
    */
   public async runAll(
-    runRulesManifest: RuleRunner.RunRulesManifest,
-  ): Promise<RuleRunner.RunRulesResult> {
-    const allIssues: Rule.RuleIssue[] = [];
-    const allOk: Rule.RuleOk[] = [];
+    runRulesManifest: RunRulesManifest,
+  ): Promise<RunRulesResult> {
+    const allIssues: RuleIssue[] = [];
+    const allOk: RuleOk[] = [];
     const rulesConfig = this.rulesConfig;
 
     const runnableRules = this.rules;
@@ -62,10 +78,7 @@ export class SmokerRuleRunner<T extends Rule.BaseNormalizedRuleOptionsRecord> {
 
     await Promise.all(
       runnableRules.map(async (rule, current) => {
-        const config = this.api.Helpers.getConfigForRule(
-          rule,
-          this.rulesConfig,
-        );
+        const config = getConfigForRule(rule, this.rulesConfig);
 
         // XXX: this needs to be in the loop, but the installPath has to be in the object
 
@@ -79,11 +92,7 @@ export class SmokerRuleRunner<T extends Rule.BaseNormalizedRuleOptionsRecord> {
             pkgName,
           });
           // TODO: create a `withContext()` helper that performs the next 3 operations
-          const context = await this.api.Helpers.createRuleContext(
-            rule,
-            installPath,
-            config,
-          );
+          const context = await createRuleContext(rule, installPath, config);
           await SmokerRuleRunner.runRule(context, rule, config);
           const issues = context.finalize();
 
@@ -117,7 +126,7 @@ export class SmokerRuleRunner<T extends Rule.BaseNormalizedRuleOptionsRecord> {
               installPath,
               pkgName,
             });
-            allOk.push(this.api.Helpers.createRuleOkResult(rule, context));
+            allOk.push(createRuleOkResult(rule, context));
           }
         }
       }),
@@ -161,12 +170,12 @@ export class SmokerRuleRunner<T extends Rule.BaseNormalizedRuleOptionsRecord> {
    */
   public static async runRule<
     const Name extends string,
-    Schema extends Rule.RuleOptionSchema | void = void,
+    Schema extends RuleDefSchemaValue | void = void,
   >(
     this: void,
-    context: Readonly<Rule.RuleContext>,
-    rule: Rule.Rule<Name, Schema>,
-    config: Rule.RuleConfig<Schema>,
+    context: Readonly<RuleContext>,
+    rule: Rule<Name, Schema>,
+    config: RuleConfig<Schema>,
   ): Promise<void> {
     const {name: ruleName} = rule;
 
@@ -183,33 +192,34 @@ export class SmokerRuleRunner<T extends Rule.BaseNormalizedRuleOptionsRecord> {
         context.addIssueFromError(err);
         /* istanbul ignore next */
       } else {
-        throw new TypeError(
+        throw new RuleError(
           `Rule "${ruleName}" rejected with a non-Error: ${err}`,
+          context,
+          ruleName,
+          err as Error,
         );
       }
     }
   }
 }
 
+const smokerRuleRunner: RuleRunner = async (
+  notifiers,
+  rules,
+  ruleConfig,
+  installResults,
+) => {
+  return SmokerRuleRunner.create(notifiers, rules, ruleConfig).runAll(
+    installResults,
+  );
+};
+
 /**
  * Creates a {@link RuleRunner} and registers it with the plugin API.
  *
- * @remarks
- * `RuleRunner` is returned for testing purposes only
  * @param api - Plugin API
  * @returns The `RuleRunner` itself
  */
 export function loadRuleRunner(api: PluginAPI) {
-  const smokerRuleRunner: RuleRunner.RuleRunner = async (
-    notifiers,
-    rules,
-    ruleConfig,
-    installResults,
-  ) => {
-    return SmokerRuleRunner.create(notifiers, rules, ruleConfig, api).runAll(
-      installResults,
-    );
-  };
   api.defineRuleRunner(smokerRuleRunner);
-  // return smokerRuleRunner;
 }

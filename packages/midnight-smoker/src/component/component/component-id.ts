@@ -1,7 +1,4 @@
-import Debug from 'debug';
-import {isBlessedPlugin} from '../../plugin/blessed';
-
-const debug = Debug('midnight-smoker:component:component-id');
+import {isBlessedPlugin} from '#plugin/blessed.js';
 
 /**
  * For parsing a string ID into a {@link ComponentId}
@@ -98,8 +95,6 @@ export class ComponentId {
     pluginName: string,
     name: string,
   ): Readonly<ComponentId> {
-    const id = Object.freeze(new ComponentId(pluginName, name));
-    debug('Created component from plugin %s with ID %s', pluginName, id);
-    return id;
+    return Object.freeze(new ComponentId(pluginName, name));
   }
 }

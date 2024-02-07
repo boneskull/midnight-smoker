@@ -7,7 +7,9 @@ import {
 } from 'midnight-smoker/plugin';
 import {isBlessedPlugin} from 'midnight-smoker/plugin/blessed';
 import {
-  isPartialRuleDef,
+  RuleDefSchema,
+  type RuleDef,
+  type RuleDefSchemaValue,
   type SomeRule,
   type SomeRuleDef,
 } from 'midnight-smoker/rule';
@@ -16,6 +18,13 @@ import {
   DEFAULT_TEST_RULE_DESCRIPTION,
   DEFAULT_TEST_RULE_NAME,
 } from './constants';
+
+export function isPartialRuleDef<
+  const Name extends string,
+  Schema extends RuleDefSchemaValue | void = void,
+>(value: any): value is Partial<RuleDef<Name, Schema>> {
+  return RuleDefSchema.partial().safeParse(value).success;
+}
 
 /**
  * Registers a rule in the plugin registry.

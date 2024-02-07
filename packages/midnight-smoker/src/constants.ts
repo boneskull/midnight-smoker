@@ -36,3 +36,36 @@ export const DEFAULT_EXECUTOR_ID = 'default';
  * The "system" executor, which invokes the system package manager.
  */
 export const SYSTEM_EXECUTOR_ID = 'system';
+
+/**
+ * Enum-like object for severity levels a rule can be set to.
+ */
+export const RuleSeverities = {
+  Error: 'error',
+  Warn: 'warn',
+  Off: 'off',
+} as const;
+
+/**
+ * Default severity level of all rules.
+ */
+export const DEFAULT_RULE_SEVERITY = RuleSeverities.Error;
+
+/**
+ * Represents the kinds of components in the system.
+ */
+export const ComponentKinds = {
+  Rule: 'Rule',
+  RuleRunner: 'RuleRunner',
+  ScriptRunner: 'ScriptRunner',
+  PkgManagerDef: 'PkgManagerDef',
+  Executor: 'Executor',
+  Reporter: 'Reporter',
+} as const;
+
+/**
+ * Represents the "kind" of a component.
+ *
+ * @see {@link ComponentKinds}
+ */
+export type ComponentKind = keyof typeof ComponentKinds;

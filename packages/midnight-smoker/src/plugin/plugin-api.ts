@@ -1,12 +1,12 @@
+import type * as Event from '#event';
+import type * as Executor from '#executor';
+import type * as PkgManager from '#pkg-manager';
+import type * as Reporter from '#reporter';
+import type * as Rule from '#rule';
+import type * as RuleRunner from '#rule-runner';
+import type * as ScriptRunner from '#script-runner';
 import type {z} from 'zod';
-import type * as Executor from '../component/executor';
-import type * as PkgManager from '../component/pkg-manager';
-import type * as Reporter from '../component/reporter';
-import type * as Rule from '../component/rule';
-import type * as RuleRunner from '../component/rule-runner';
-import type * as ScriptRunner from '../component/script-runner';
 import type * as Errors from '../error';
-import type * as Event from '../event';
 import type * as SchemaUtils from '../util/schema-util';
 import type * as Helpers from './helpers';
 import type {PluginMetadata} from './metadata';
@@ -17,7 +17,7 @@ import type {StaticPluginMetadata} from './static-metadata';
  */
 export type DefineRuleFn = <
   Name extends string,
-  Schema extends Rule.RuleOptionSchema | void = void,
+  Schema extends Rule.RuleDefSchemaValue | void = void,
 >(
   ruleDef: Rule.RuleDef<Name, Schema>,
 ) => PluginAPI;
@@ -75,7 +75,7 @@ export interface PluginAPI {
   /**
    * Collection of helpers for various components
    */
-  Helpers: typeof Helpers;
+  Helpers: Helpers.PluginHelpers;
 
   /**
    * Namespace related to `PackageManager`s.

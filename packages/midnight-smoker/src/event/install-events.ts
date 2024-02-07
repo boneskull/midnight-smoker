@@ -1,5 +1,5 @@
-import type {InstallError} from '../component/pkg-manager/errors/install-error';
-import type {InstallManifest} from '../component/pkg-manager/pkg-manager-schema';
+import type {InstallManifest} from '#schema/install-manifest.js';
+import type {InstallError} from '../error/install-error';
 
 export interface InstallEvents {
   /**
@@ -40,6 +40,7 @@ export interface InstallEventData {
    * (depending on context).
    */
   uniquePkgs: string[];
+
   /**
    * List of unique package manager specifiers, each of which corresponding to a
    * package manager which will (or did) execute the current operation.

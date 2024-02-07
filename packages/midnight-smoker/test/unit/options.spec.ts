@@ -1,3 +1,6 @@
+import {RuleSeverities} from '#constants';
+import type * as PR from '#plugin/registry.js';
+import type {SomeRule} from '#schema/rule.js';
 import {
   DEFAULT_TEST_PLUGIN_NAME,
   DEFAULT_TEST_RULE_NAME,
@@ -9,10 +12,7 @@ import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import {z} from 'zod';
 import {isValidationError} from 'zod-validation-error';
-import type {SomeRule} from '../../src/component/rule/rule';
-import {RuleSeverities} from '../../src/component/rule/severity';
 import type * as OP from '../../src/options/parser';
-import type * as PR from '../../src/plugin/registry';
 import {createFsMocks} from './mocks/fs';
 
 const expect = unexpected.clone();

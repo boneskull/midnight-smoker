@@ -1,4 +1,3 @@
-/* eslint-disable import/no-duplicates */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import {type ExecResult, type Executor} from 'midnight-smoker/executor';
 import {
@@ -8,7 +7,7 @@ import {
   type PkgManager,
   type PkgManagerDef,
   type PkgManagerOpts,
-  type PkgManagerRunScriptOpts,
+  type PkgManagerRunScriptFnOpts,
   type RunScriptManifest,
   type RunScriptResult,
 } from 'midnight-smoker/pkg-manager';
@@ -76,7 +75,7 @@ export class NullPm implements PkgManager {
 
   public async runScript(
     runManifest: RunScriptManifest,
-    opts: PkgManagerRunScriptOpts,
+    opts: PkgManagerRunScriptFnOpts,
   ): Promise<RunScriptResult> {
     return {
       pkgName: runManifest.pkgName,

@@ -1,10 +1,11 @@
 import {type Component} from 'midnight-smoker/component';
-import {createRuleContext} from 'midnight-smoker/plugin/helpers';
+
 import {
   type RuleIssue,
   type RuleOptions,
   type SomeRule,
 } from 'midnight-smoker/rule';
+import {createRuleContext} from 'midnight-smoker/rule-runner';
 import {SmokerRuleRunner} from '../../../src/rule-runner';
 
 /**

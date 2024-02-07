@@ -1,9 +1,9 @@
+import {type ExecError} from '#error/exec-error.js';
+import {readPackageJson} from '#util/pkg-util.js';
 import {execSmoker, fixupOutput} from '@midnight-smoker/test-util';
 import path from 'node:path';
 import snapshot from 'snap-shot-it';
 import unexpected from 'unexpected';
-import {type ExecError} from '../../src/component';
-import {readPackageJson} from '../../src/util/pkg-util';
 import assertions from '../assertions';
 
 const expect = unexpected.clone().use(assertions);

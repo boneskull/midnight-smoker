@@ -1,15 +1,15 @@
+import type {PluginHelpers} from '#plugin';
 import {type IFs} from 'memfs';
 import os from 'node:os';
 import rewiremock from 'rewiremock/node';
 import sinon from 'sinon';
 import unexpected from 'unexpected';
-import type * as H from '../../../src/plugin/helpers';
 import {createFsMocks} from '../mocks/fs';
 
 const expect = unexpected.clone();
 
 describe('midnight-smoker', function () {
-  let Helpers: typeof H;
+  let Helpers: PluginHelpers;
   let sandbox: sinon.SinonSandbox;
   let fs: IFs;
 
@@ -18,10 +18,10 @@ describe('midnight-smoker', function () {
     const {mocks, fs: _fs} = createFsMocks();
     fs = _fs;
 
-    Helpers = rewiremock.proxy(
+    ({Helpers} = rewiremock.proxy(
       () => require('../../../src/plugin/helpers'),
       mocks,
-    );
+    ));
 
     // mock fs needs the tmpdir root
     await fs.promises.mkdir(os.tmpdir(), {recursive: true});

@@ -1,6 +1,9 @@
 import type {nullExecutor} from '@midnight-smoker/test-util';
-import {type InstallManifest} from 'midnight-smoker/pkg-manager';
-import * as Helpers from 'midnight-smoker/plugin/helpers';
+import {
+  PkgManagerSpec,
+  type InstallManifest,
+} from 'midnight-smoker/pkg-manager';
+import {Helpers} from 'midnight-smoker/plugin';
 import rewiremock from 'rewiremock/node';
 import {Range} from 'semver';
 import {createSandbox} from 'sinon';
@@ -54,10 +57,10 @@ describe('@midnight-smoker/plugin-default', function () {
 
   describe('package manager', function () {
     describe('Npm9', function () {
-      let spec: Readonly<Helpers.PkgManagerSpec>;
+      let spec: Readonly<PkgManagerSpec>;
 
       before(async function () {
-        spec = await Helpers.PkgManagerSpec.from('npm@9.8.1');
+        spec = await PkgManagerSpec.from('npm@9.8.1');
       });
 
       describe('static method', function () {

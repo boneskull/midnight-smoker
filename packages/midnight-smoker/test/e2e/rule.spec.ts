@@ -1,8 +1,8 @@
+import {PLUGIN_DEFAULT_ID} from '#plugin/blessed.js';
+import {PluginRegistry} from '#plugin/registry.js';
+import {type SomeRule} from '#schema/rule.js';
 import {registerRule} from '@midnight-smoker/test-util';
 import unexpected from 'unexpected';
-import type {SomeRule} from '../../src/component';
-import {PLUGIN_DEFAULT_ID} from '../../src/plugin/blessed';
-import {PluginRegistry} from '../../src/plugin/registry';
 
 const expect = unexpected.clone();
 

@@ -1,5 +1,5 @@
+import {PluginRegistry} from '#plugin/registry.js';
 import unexpected from 'unexpected';
-import {PluginRegistry} from '../../src/plugin';
 
 const expect = unexpected.clone();
 
@@ -28,6 +28,7 @@ describe('midnight-smoker [E2E]', function () {
             ruleRunners: ['default'],
             executors: ['default', 'system'],
             pkgManagerDefs: ['Npm7', 'Npm9', 'YarnClassic', 'YarnBerry'],
+            reporterDefs: ['console', 'json', 'exit'],
           });
         });
       });

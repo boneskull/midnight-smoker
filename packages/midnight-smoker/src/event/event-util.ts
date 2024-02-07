@@ -4,16 +4,14 @@
  * @packageDocumentation
  */
 
-import type {
-  PkgManager,
-  PkgManagerInstallManifest,
-  PkgManagerRunScriptManifest,
-  RunScriptResult,
-} from '../component/pkg-manager/pkg-manager-schema';
+import type {PkgManagerInstallManifest} from '#schema/install-manifest.js';
+import type {PkgManager} from '#schema/pkg-manager.js';
+import type {RunScriptResult} from '#schema/run-script-result.js';
+import {type RunScriptManifestWithPkgMgr} from '..';
 import type {
   RunScriptsEndEventData,
   RunScriptsEventData,
-} from '../component/script-runner/script-runner-events';
+} from '../component/schema/script-runner-events';
 
 import type {InstallEventData} from './install-events';
 import type {PackBeginEventData} from './pack-events';
@@ -53,20 +51,20 @@ export function buildRunScriptsEndEventData(
 /**
  * Builds the event data for the `RunScriptsBegin` event.
  *
- * @param controllerRunManifests - An array of package manager run manifests.
+ * @param runScriptManifests - An array of package manager run manifests.
  * @returns The event data object containing the package manager run manifests
  *   and the total number of scripts.
  * @internal
  */
 export function buildRunScriptsBeginEventData(
-  controllerRunManifests: PkgManagerRunScriptManifest[],
+  runScriptManifests: RunScriptManifestWithPkgMgr[],
 ): RunScriptsEventData {
-  const totalScripts = controllerRunManifests.length;
+  const totalScripts = runScriptManifests.length;
 
   const pkgRunManifestForEmit: RunScriptsEventData['manifest'] =
-    controllerRunManifests.reduce<RunScriptsEventData['manifest']>(
-      (acc, manifest) => {
-        const spec = `${manifest.pkgManager.spec}`;
+    runScriptManifests.reduce<RunScriptsEventData['manifest']>(
+      (acc, {pkgManager, ...manifest}) => {
+        const spec = `${pkgManager.spec}`;
         if (spec in acc) {
           acc[spec].push(manifest);
         } else {

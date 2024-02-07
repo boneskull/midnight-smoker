@@ -5,9 +5,7 @@
  */
 
 import {node as execa} from 'execa';
-import * as Executor from 'midnight-smoker/executor';
-import type * as PkgManager from 'midnight-smoker/pkg-manager';
-import * as Helpers from 'midnight-smoker/plugin/helpers';
+import {ExecError, isExecaError, type Executor} from 'midnight-smoker/executor';
 import path from 'node:path';
 
 /**
@@ -27,12 +25,12 @@ const COREPACK_PATH = path.resolve(
   'corepack',
 );
 
-async function exec(
-  spec: PkgManager.PkgManagerSpec,
-  args: string[],
-  opts: Executor.ExecutorOpts = {},
-  spawnOpts: Executor.SpawnOpts = {},
-): Promise<Executor.ExecResult> {
+export const corepackExecutor: Executor = async (
+  spec,
+  args,
+  opts = {},
+  spawnOpts = {},
+) => {
   const {verbose, signal} = opts;
 
   if (signal?.aborted) {
@@ -58,8 +56,6 @@ async function exec(
   try {
     return await proc;
   } catch (err) {
-    throw Helpers.isExecaError(err) ? new Executor.ExecError(err) : err;
+    throw isExecaError(err) ? new ExecError(err) : err;
   }
-}
-
-export const corepackExecutor: Executor.Executor = exec;
+};

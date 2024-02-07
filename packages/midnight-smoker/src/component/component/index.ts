@@ -5,7 +5,7 @@
  * @module midnight-smoker/component
  */
 
+export {ComponentKinds, type ComponentKind} from '#constants';
+export * from '#error/component-error.js';
 export * from './component';
-export * from './component-error';
 export * from './component-id';
-export * from './component-kind';

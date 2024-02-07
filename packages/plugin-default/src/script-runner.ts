@@ -21,19 +21,21 @@ export function loadScriptRunner(api: PluginAPI) {
    * @param notifiers - Run script notifier functions
    * @param runManifest - Object containing information about the script to be
    *   executed.
+   * @param pkgManager - Package manager to use for script execution.
    * @param opts - Options for script execution.
    * @returns A promise that resolves to an array of script execution results.
    */
   const smokerScriptRunner: SR.ScriptRunner = async (
     {scriptBegin, scriptOk, scriptFailed},
     runManifest,
+    pkgManager,
     {signal},
   ): Promise<SR.RunScriptResult> => {
     if (signal?.aborted) {
-      throw new api.PkgManager.Errors.RunScriptBailed();
+      throw new api.Errors.ScriptBailed();
     }
 
-    const {pkgManager, script, pkgName} = runManifest;
+    const {script, pkgName} = runManifest;
 
     let result: SR.RunScriptResult;
 
@@ -48,7 +50,7 @@ export function loadScriptRunner(api: PluginAPI) {
         signal,
       });
     } catch (err) {
-      if (err instanceof api.ScriptRunner.RunScriptBailed) {
+      if (err instanceof api.ScriptRunner.ScriptBailed) {
         throw err;
       }
       if (isError(err)) {
@@ -63,7 +65,7 @@ export function loadScriptRunner(api: PluginAPI) {
 
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (signal?.aborted) {
-      throw new api.ScriptRunner.RunScriptBailed();
+      throw new api.ScriptRunner.ScriptBailed();
     }
 
     if (result.error) {

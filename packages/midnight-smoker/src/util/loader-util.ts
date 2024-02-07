@@ -1,10 +1,10 @@
+import {isErrnoException} from '#util/error-util.js';
 import {isError, isObject} from 'lodash';
 import fs from 'node:fs/promises';
 import {Module} from 'node:module';
 import path from 'node:path';
 import type {PackageJson} from 'type-fest';
 import type {TranspileOptions} from 'typescript';
-import {isErrnoException} from '../util/util';
 
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 let ts: typeof import('typescript');

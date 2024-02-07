@@ -1,7 +1,27 @@
 import type Debug from 'debug';
-import * as Errors from 'midnight-smoker/error';
-import * as Executor from 'midnight-smoker/executor';
-import * as PkgManager from 'midnight-smoker/pkg-manager';
+import {pickBy} from 'lodash';
+import {InstallError, InvalidArgError} from 'midnight-smoker/error';
+import {
+  ExecError,
+  type ExecResult,
+  type Executor,
+} from 'midnight-smoker/executor';
+import {
+  type InstallManifest,
+  type PackOptions,
+  type PkgManager,
+  type PkgManagerOpts,
+  type PkgManagerRunScriptFnOpts,
+  type PkgManagerSpec,
+} from 'midnight-smoker/pkg-manager';
+import {
+  RunScriptError,
+  ScriptFailedError,
+  UnknownScriptError,
+  type RunScriptManifest,
+  type RunScriptResult,
+} from 'midnight-smoker/script-runner';
+import {isSmokerError} from 'midnight-smoker/util';
 
 /**
  * When `npm` fails when run with `--json`, the error output is also in JSON.
@@ -43,10 +63,12 @@ export interface NpmPackItem {
    * Filename of tarball
    */
   filename: string;
+
   /**
    * Files in the tarball
    */
   files: NpmPackItemFileEntry[];
+
   /**
    * Package name
    */
@@ -56,14 +78,8 @@ export interface NpmPackItem {
 /**
  * Intended to provide whatever we can that's common to all versions of `npm`.
  */
-export abstract class GenericNpmPackageManager
-  implements PkgManager.PkgManager
-{
+export abstract class GenericNpmPackageManager implements PkgManager {
   protected abstract debug: Debug.Debugger;
-  protected readonly opts: PkgManager.PkgManagerOpts;
-  public readonly spec: PkgManager.PkgManagerSpec;
-  protected readonly executor: Executor.Executor;
-  public readonly tmpdir: string;
 
   public static readonly lockfile = 'package-lock.json';
 
@@ -74,39 +90,32 @@ export abstract class GenericNpmPackageManager
    * @param opts - Extra options
    */
   public constructor(
-    spec: PkgManager.PkgManagerSpec,
-    executor: Executor.Executor,
-    tmpdir: string,
-    opts: PkgManager.PkgManagerOpts = {},
-  ) {
-    this.spec = spec;
-    this.executor = executor;
-    this.tmpdir = tmpdir;
-    this.opts = opts;
-  }
+    public readonly spec: PkgManagerSpec,
+    protected readonly executor: Executor,
+    public readonly tmpdir: string,
+    protected readonly opts: PkgManagerOpts = {},
+  ) {}
 
   public abstract install(
-    installManifest: PkgManager.InstallManifest[],
-  ): Promise<Executor.ExecResult>;
+    installManifest: InstallManifest[],
+  ): Promise<ExecResult>;
 
-  public abstract pack(
-    opts?: PkgManager.PackOptions,
-  ): Promise<PkgManager.InstallManifest[]>;
+  public abstract pack(opts?: PackOptions): Promise<InstallManifest[]>;
 
   public async runScript(
-    manifest: PkgManager.RunScriptManifest,
-    opts: PkgManager.ScriptRunnerOpts = {},
-  ): Promise<PkgManager.RunScriptResult> {
+    manifest: RunScriptManifest,
+    opts: PkgManagerRunScriptFnOpts = {},
+  ): Promise<RunScriptResult> {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!manifest) {
-      throw new Errors.InvalidArgError(
+      throw new InvalidArgError(
         'manifest must be a valid RunScriptManifest object',
         {argName: 'manifest'},
       );
     }
     const {script, pkgName, cwd} = manifest;
     const {signal} = opts;
-    let result: PkgManager.RunScriptResult;
+    let result: RunScriptResult;
     try {
       const rawResult = await this.executor(
         this.spec,
@@ -115,8 +124,9 @@ export abstract class GenericNpmPackageManager
         {cwd},
       );
       result = {pkgName, script, rawResult, cwd};
-    } catch (err) {
-      if (err instanceof Executor.ExecError) {
+    } catch (e) {
+      const err = e as ExecError;
+      if (err?.id === 'ExecError') {
         result = {
           pkgName,
           script,
@@ -126,7 +136,7 @@ export abstract class GenericNpmPackageManager
         if (this.opts.loose && /missing script:/i.test(err.stderr)) {
           result.skipped = true;
         } else {
-          result.error = new PkgManager.Errors.RunScriptError(
+          result.error = new RunScriptError(
             err,
             script,
             pkgName,
@@ -144,7 +154,7 @@ export abstract class GenericNpmPackageManager
         /missing script:/i.test(result.rawResult.stderr)
       ) {
         if (!this.opts.loose) {
-          result.error = new PkgManager.Errors.UnknownScriptError(
+          result.error = new UnknownScriptError(
             `Script "${script}" in package "${pkgName}" not found`,
             script,
             pkgName,
@@ -160,7 +170,7 @@ export abstract class GenericNpmPackageManager
         } else {
           message = `Script "${script}" in package "${pkgName}" failed`;
         }
-        result.error = new PkgManager.Errors.ScriptFailedError(message, {
+        result.error = new ScriptFailedError(message, {
           script,
           pkgName,
           pkgManager: `${this.spec}`,
@@ -187,6 +197,88 @@ export abstract class GenericNpmPackageManager
 
     return result;
   }
+  protected async _install(
+    installManifests: InstallManifest[],
+    args: string[],
+  ): Promise<ExecResult> {
+    if (!installManifests.length) {
+      throw new InvalidArgError('installManifests must be a non-empty array', {
+        argName: 'installManifests',
+      });
+    }
+
+    const installSpecs = installManifests.map(({spec}) => spec);
+    let err: InstallError | undefined;
+    const installArgs = ['install', ...args, ...installSpecs];
+
+    let installResult: ExecResult;
+    try {
+      installResult = await this.executor(
+        this.spec,
+        installArgs,
+        {},
+        {cwd: this.tmpdir},
+      );
+      err = this.handleInstallError(installResult, installSpecs);
+    } catch (e) {
+      if (isSmokerError(ExecError, e)) {
+        err = this.handleInstallError(e, installSpecs);
+      } else {
+        throw e;
+      }
+    }
+    if (err) {
+      throw err;
+    }
+    this.debug('(install) Installed %d packages', installSpecs.length);
+    return installResult!;
+  }
+
+  protected handleInstallError(
+    errOrResult: ExecError | ExecResult,
+    installSpecs: string[],
+  ): InstallError | undefined {
+    if (isSmokerError(ExecError, errOrResult)) {
+      try {
+        const parsedError = this.parseNpmError(errOrResult.stdout);
+        return new InstallError(
+          parsedError.summary,
+          `${this.spec}`,
+          installSpecs,
+          this.tmpdir,
+          {
+            error: parsedError,
+            output: errOrResult.all || errOrResult.stderr || errOrResult.stdout,
+            exitCode: errOrResult.exitCode,
+          },
+          errOrResult,
+        );
+      } catch (e) {
+        return new InstallError(
+          `Unable to parse npm output. Use --verbose for more information`,
+          `${this.spec}`,
+          installSpecs,
+          this.tmpdir,
+          {
+            output: errOrResult.all || errOrResult.stderr || errOrResult.stdout,
+            exitCode: errOrResult.exitCode,
+          },
+          errOrResult,
+        );
+      }
+    } else if (errOrResult.exitCode > 0 || errOrResult instanceof Error) {
+      return new InstallError(
+        `Use --verbose for more information`,
+        `${this.spec}`,
+        installSpecs,
+        this.tmpdir,
+        {
+          output: errOrResult.all || errOrResult.stderr || errOrResult.stdout,
+          exitCode: errOrResult.exitCode,
+        },
+      );
+    }
+  }
 
   /**
    * When run with `--json`, `npm` will output an error a JSON blob on `stdout`
@@ -195,15 +287,9 @@ export abstract class GenericNpmPackageManager
    * @param json - JSON string to parse (typically `stdout` of a child process)
    * @returns Parsed error object, or `undefined` if parsing failed
    */
-  parseNpmError(json: string): NpmJsonOutput['error'] | undefined {
-    try {
-      const parsed = JSON.parse(json) as NpmJsonOutput;
-      // trim falsy values, which seems to happen a lot.
-      return Object.fromEntries(
-        Object.entries(parsed.error).filter(([, v]) => Boolean(v)),
-      ) as NpmJsonOutput['error'];
-    } catch {
-      // ignore
-    }
+  parseNpmError(json: string): NpmJsonOutput['error'] {
+    const parsed = JSON.parse(json) as NpmJsonOutput;
+    // trim falsy values, which seems to happen a lot.
+    return pickBy(parsed.error, Boolean) as NpmJsonOutput['error'];
   }
 }

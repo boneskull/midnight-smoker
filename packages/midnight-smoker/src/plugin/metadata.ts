@@ -4,6 +4,14 @@
  * @packageDocumentation
  * @see {@link PluginMetadata}
  */
+import type {PkgManagerDef} from '#schema/pkg-manager-def.js';
+import type {ReporterDef} from '#schema/reporter-def.js';
+import {type RuleDef} from '#schema/rule-def.js';
+import {type RuleDefSchemaValue} from '#schema/rule-options.js';
+import type {RuleRunner} from '#schema/rule-runner.js';
+import {type SomeRule} from '#schema/rule.js';
+import type {ScriptRunner} from '#schema/script-runner.js';
+import {readPackageJson} from '#util/pkg-util.js';
 import Debug from 'debug';
 import {isString} from 'lodash';
 import path from 'node:path';
@@ -16,21 +24,11 @@ import {
   component,
   type Component,
 } from '../component/component';
-import type {Executor} from '../component/executor/executor';
-import type {PkgManagerDef} from '../component/pkg-manager/pkg-manager-types';
-import type {ReporterDef} from '../component/reporter/reporter-types';
-import type {RuleRunner} from '../component/rule-runner/rule-runner-schema';
-import {
-  Rule,
-  type RuleDef,
-  type RuleOptionSchema,
-  type SomeRule,
-} from '../component/rule/rule';
-import type {ScriptRunner} from '../component/script-runner/script-runner-schema';
+import {Rule} from '../component/rule/rule';
+import type {Executor} from '../component/schema/executor';
 import {isZodError} from '../error/base-error';
 import {InvalidArgError} from '../error/common-error';
-import {readPackageJson} from '../util/pkg-util';
-import {zNonEmptyString, zPackageJson} from '../util/schema-util';
+import {NonEmptyStringSchema, PackageJsonSchema} from '../util/schema-util';
 import {BLESSED_PLUGINS, type BlessedPlugin} from './blessed';
 import type {StaticPluginMetadata} from './static-metadata';
 
@@ -47,7 +45,7 @@ export const TRANSIENT = '<transient>';
 /**
  * Plugin ID.
  */
-const zId = zNonEmptyString.describe(
+const zId = NonEmptyStringSchema.describe(
   'The plugin (package) name, derived from its `package.json` if possible',
 );
 
@@ -59,20 +57,18 @@ const zPluginMetadataOptsInput = z.object({
   entryPoint: z
     .literal(TRANSIENT)
     .or(
-      zNonEmptyString.refine((entryPoint) => path.isAbsolute(entryPoint), {
+      NonEmptyStringSchema.refine((entryPoint) => path.isAbsolute(entryPoint), {
         message: 'Must be an absolute path',
       }),
     )
     .describe('The entry point of the plugin as an absolute path'),
-  description: zNonEmptyString.optional().describe('Plugin description'),
-  version: zNonEmptyString.optional().describe('Plugin version'),
+  description: NonEmptyStringSchema.optional().describe('Plugin description'),
+  version: NonEmptyStringSchema.optional().describe('Plugin version'),
   id: zId.optional(),
-  requestedAs: zNonEmptyString
-    .optional()
-    .describe(
-      'The module name as requested by the user. Must be resolvable by Node.js and may differ from id',
-    ),
-  pkgJson: zPackageJson.optional(),
+  requestedAs: NonEmptyStringSchema.optional().describe(
+    'The module name as requested by the user. Must be resolvable by Node.js and may differ from id',
+  ),
+  pkgJson: PackageJsonSchema.optional(),
 });
 
 /**
@@ -209,6 +205,7 @@ export class PluginMetadata implements StaticPluginMetadata {
    * {@inheritDoc create:(0)}
    */
   protected constructor(entryPoint: string, id?: string);
+
   /**
    * {@inheritDoc create:(1)}
    */
@@ -425,7 +422,7 @@ export class PluginMetadata implements StaticPluginMetadata {
 
   public addRule<
     const Name extends string,
-    Schema extends RuleOptionSchema | void = void,
+    Schema extends RuleDefSchemaValue | void = void,
   >(ruleDef: RuleDef<Name, Schema>): void {
     const {name} = ruleDef;
     const rule = Rule.create(ruleDef, this);

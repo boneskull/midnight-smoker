@@ -1,15 +1,13 @@
+import {DEFAULT_PKG_MANAGER_VERSION} from '#constants';
+import {fromUnknownError} from '#error/base-error.js';
+import {MissingPackageJsonError} from '#error/missing-pkg-json-error.js';
+import {UnreadablePackageJsonError} from '#error/unreadable-pkg-json-error.js';
 import Debug from 'debug';
 import {memoize} from 'lodash';
 import childProcess from 'node:child_process';
 import {promisify} from 'node:util';
 import readPkgUp from 'read-pkg-up';
 import type {PackageJson} from 'type-fest';
-import {DEFAULT_PKG_MANAGER_VERSION} from '../constants';
-import {fromUnknownError} from '../error/base-error';
-import {
-  MissingPackageJsonError,
-  UnreadablePackageJsonError,
-} from './util-error';
 
 const debug = Debug('midnight-smoker:pkg-util');
 const execFile = promisify(childProcess.execFile);
@@ -23,10 +21,12 @@ export interface ReadPackageJsonOpts {
    * Defaults to `process.cwd()`
    */
   cwd?: string;
+
   /**
    * Normalize the `package.json`
    */
   normalize?: boolean;
+
   /**
    * Reject if not found
    */

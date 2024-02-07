@@ -1,24 +1,33 @@
-import Reg from 'debug';
+import {ComponentKinds, type Component} from '#component';
+import {DEFAULT_COMPONENT_ID} from '#constants';
+import {
+  loadPackageManagers,
+  type LoadPackageManagersOpts,
+} from '#pkg-manager/pkg-manager-loader.js';
+import {type PkgManagerSpec} from '#pkg-manager/pkg-manager-spec.js';
+import {type Executor} from '#schema/executor.js';
+import {
+  type PkgManagerDef,
+  type PkgManagerOpts,
+} from '#schema/pkg-manager-def.js';
+import {type PkgManager} from '#schema/pkg-manager.js';
+import {type ReporterDef} from '#schema/reporter-def.js';
+import {BaseRuleOptionsSchema} from '#schema/rule-options.js';
+import {type RuleRunner} from '#schema/rule-runner.js';
+import {type SomeRule} from '#schema/rule.js';
+import {type ScriptRunner} from '#schema/script-runner.js';
+import {isErrnoException} from '#util/error-util.js';
+import {justImport, resolveFrom} from '#util/loader-util.js';
+import {readPackageJson} from '#util/pkg-util.js';
+import * as SchemaUtils from '#util/schema-util.js';
+import Debug from 'debug';
 import {isEmpty, isError, isString} from 'lodash';
 import {dirname} from 'node:path';
 import util from 'node:util';
 import {type PackageJson} from 'type-fest';
 import {z} from 'zod';
 import {fromZodError} from 'zod-validation-error';
-import {ComponentKinds, type Component} from '../component/component';
-import {InvalidComponentError} from '../component/component/component-error';
-import * as Executor from '../component/executor';
-import * as PkgMgr from '../component/pkg-manager';
-import * as Reporter from '../component/reporter';
-import * as Rule from '../component/rule';
-import * as RuleRunner from '../component/rule-runner';
-import * as ScriptRunner from '../component/script-runner';
-import {
-  DEFAULT_COMPONENT_ID,
-  DEFAULT_EXECUTOR_ID,
-  SYSTEM_EXECUTOR_ID,
-} from '../constants';
-import * as Errors from '../error';
+import {InvalidComponentError} from '../error/component-error';
 import {
   DisallowedPluginError,
   DuplicatePluginError,
@@ -28,21 +37,16 @@ import {
   PluginResolutionError,
   UnresolvablePluginError,
 } from '../error/internal-error';
-import * as Event from '../event';
-import {justImport, resolveFrom} from '../util/loader-util';
-import {readPackageJson} from '../util/pkg-util';
-import * as SchemaUtils from '../util/schema-util';
-import {isErrnoException} from '../util/util';
 import {isBlessedPlugin, type BlessedPlugin} from './blessed';
-import * as Helpers from './helpers';
+import {createPluginAPI} from './create-plugin-api';
+import {Helpers} from './helpers';
 import {PluginMetadata, initBlessedMetadata} from './metadata';
 import {zPlugin, type Plugin} from './plugin';
-import type * as API from './plugin-api';
 import {type StaticPluginMetadata} from './static-metadata';
 
-const debug = Reg('midnight-smoker:plugin-registry');
+const debug = Debug('midnight-smoker:plugin-registry');
 
-export type RuleFilter = (rule: Component<Rule.SomeRule>) => boolean;
+export type RuleFilter = (rule: Component<SomeRule>) => boolean;
 
 /**
  * Static metadata about a {@link PluginRegistry}
@@ -55,25 +59,24 @@ export interface StaticPluginRegistry {
   ruleRunners: string[];
   executors: string[];
   pkgManagerDefs: string[];
+  reporterDefs: string[];
 }
 
 export class PluginRegistry {
   private pluginMap: Map<string, PluginMetadata>;
   private seenRawPlugins: Map<unknown, string>;
 
-  private apiMap: WeakMap<PluginMetadata, API.PluginAPI>;
+  private ruleMap: Map<string, Component<SomeRule>[]>;
 
-  private ruleMap: Map<string, Component<Rule.SomeRule>[]>;
+  private scriptRunnerMap: Map<string, Component<ScriptRunner>>;
 
-  private scriptRunnerMap: Map<string, Component<ScriptRunner.ScriptRunner>>;
+  private ruleRunnerMap: Map<string, Component<RuleRunner>>;
 
-  private ruleRunnerMap: Map<string, Component<RuleRunner.RuleRunner>>;
+  private executorMap: Map<string, Component<Executor>>;
 
-  private executorMap: Map<string, Component<Executor.Executor>>;
+  private reporterDefMap: Map<string, Component<ReporterDef>>;
 
-  private reporterMap: Map<string, Component<Reporter.ReporterDef>>;
-
-  private pkgManagerDefMap: Map<string, Component<PkgMgr.PkgManagerDef>>;
+  private pkgManagerDefMap: Map<string, Component<PkgManagerDef>>;
 
   private blessedMetadata?: Readonly<Record<BlessedPlugin, PluginMetadata>>;
 
@@ -81,13 +84,12 @@ export class PluginRegistry {
 
   private constructor() {
     this.pluginMap = new Map();
-    this.apiMap = new WeakMap();
     this.ruleMap = new Map();
     this.scriptRunnerMap = new Map();
     this.ruleRunnerMap = new Map();
     this.executorMap = new Map();
     this.pkgManagerDefMap = new Map();
-    this.reporterMap = new Map();
+    this.reporterDefMap = new Map();
     this.seenRawPlugins = new Map();
   }
 
@@ -116,14 +118,13 @@ export class PluginRegistry {
    * Clears all plugins from the registry and resets all internal state.
    */
   public clear(): void {
-    this.apiMap = new WeakMap();
     this.ruleMap.clear();
     this.ruleRunnerMap.clear();
     this.scriptRunnerMap.clear();
     this.executorMap.clear();
     this.pkgManagerDefMap.clear();
     this.pluginMap.clear();
-    this.reporterMap.clear();
+    this.reporterDefMap.clear();
     this.seenRawPlugins.clear();
     this.#isClosed = false;
   }
@@ -170,21 +171,35 @@ export class PluginRegistry {
     return value;
   }
 
-  public async loadPackageManagers({
-    systemExecutorId = SYSTEM_EXECUTOR_ID,
-    defaultExecutorId = DEFAULT_EXECUTOR_ID,
-    ...opts
-  }: RegistryLoadPackageManagersOpts = {}): Promise<
-    Map<Readonly<PkgMgr.PkgManagerSpec>, PkgMgr.PkgManager>
-  > {
-    const systemExecutor = this.getExecutor(systemExecutorId);
-    const defaultExecutor = this.getExecutor(defaultExecutorId);
+  public async loadPackageManagers(
+    opts: RegistryLoadPackageManagersOpts & PkgManagerOpts = {},
+  ): Promise<Map<Readonly<PkgManagerSpec>, PkgManager>> {
+    const {
+      cwd,
+      desiredPkgManagers,
+      defaultExecutorId,
+      systemExecutorId,
+      ...pmOpts
+    } = opts;
 
-    return await PkgMgr.loadPackageManagers(
-      this.pkgManagerDefs,
-      defaultExecutor,
-      systemExecutor,
-      opts,
+    const defaultExecutor = this.getExecutor(defaultExecutorId);
+    const systemExecutor = this.getExecutor(systemExecutorId);
+
+    const defsBySpec = await loadPackageManagers(this.pkgManagerDefs, {
+      cwd,
+      desiredPkgManagers,
+    });
+
+    return new Map(
+      await Promise.all(
+        [...defsBySpec].map(async ([spec, def]) => {
+          const executor = spec.isSystem ? systemExecutor : defaultExecutor;
+          return [spec, await def.create(spec, executor, Helpers, pmOpts)] as [
+            Readonly<PkgManagerSpec>,
+            PkgManager,
+          ];
+        }),
+      ),
     );
   }
 
@@ -193,12 +208,12 @@ export class PluginRegistry {
   }
 
   public get reporters() {
-    return [...this.reporterMap.values()];
+    return [...this.reporterDefMap.values()];
   }
 
   private validateRequestedPluginIds(pluginIds: string[] = []): string[] {
     const zRequestedPlugins = z
-      .array(SchemaUtils.zNonEmptyString)
+      .array(SchemaUtils.NonEmptyStringSchema)
       .min(1)
       .transform((plugins) => [...new Set([...plugins])]);
 
@@ -230,17 +245,18 @@ export class PluginRegistry {
     debug('Loading plugin(s): %O', pluginIds);
 
     await Promise.all(
-      pluginIds.map((plugin) =>
-        this.resolvePlugin(plugin, cwd)
-          .then((metadata) => this.registerPlugin(metadata))
-          .catch((err) => {
-            // TODO: throw SmokeError instead
-            if (err instanceof z.ZodError) {
-              throw fromZodError(err);
-            }
-            throw err;
-          }),
-      ),
+      pluginIds.map(async (plugin) => {
+        try {
+          const metadata = await this.resolvePlugin(plugin, cwd);
+          await this.registerPlugin(metadata);
+        } catch (err) {
+          // TODO: throw SmokeError instead
+          if (err instanceof z.ZodError) {
+            throw fromZodError(err);
+          }
+          throw err;
+        }
+      }),
     );
 
     return this;
@@ -289,10 +305,10 @@ export class PluginRegistry {
             [...metadata.ruleMap.values()].reduce(
               (zRuleSchema, rule) =>
                 zRuleSchema.setKey(rule.id, rule.zRuleSchema),
-              z.object({}).catchall(Rule.zBaseRuleOptions),
+              z.object({}).catchall(BaseRuleOptionsSchema),
             ),
           ),
-        z.object({}).catchall(Rule.zBaseRuleOptions),
+        z.object({}).catchall(BaseRuleOptionsSchema),
       )
       .describe('Rule configuration for automated checks');
   }
@@ -473,41 +489,43 @@ export class PluginRegistry {
 
     metadata = this.maybeUpdatePluginMetadata(metadata, plugin);
 
-    const pluginApi = this.createPluginAPI(metadata);
+    const pluginApi = createPluginAPI(this, metadata);
 
     try {
       await plugin.plugin(pluginApi);
-      this.pluginMap.set(metadata.id, metadata);
-
-      this.ruleMap.set(metadata.id, [...metadata.ruleMap.values()]);
-
-      for (const component of metadata.scriptRunnerMap.values()) {
-        this.scriptRunnerMap.set(`${component.id}`, component);
-      }
-
-      for (const component of metadata.ruleRunnerMap.values()) {
-        this.ruleRunnerMap.set(`${component.id}`, component);
-      }
-
-      for (const component of metadata.executorMap.values()) {
-        this.executorMap.set(`${component.id}`, component);
-      }
-
-      for (const component of metadata.pkgManagerDefMap.values()) {
-        this.pkgManagerDefMap.set(`${component.id}`, component);
-      }
-
-      for (const component of metadata.reporterMap.values()) {
-        this.reporterMap.set(`${component.id}`, component);
-      }
-
-      debug('Loaded plugin %s successfully', metadata);
-      return metadata;
     } catch (err) {
+      debug(err);
       throw isError(err)
         ? new PluginInitializationError(err, metadata, plugin)
         : err;
     }
+
+    this.pluginMap.set(metadata.id, metadata);
+
+    this.ruleMap.set(metadata.id, [...metadata.ruleMap.values()]);
+
+    for (const component of metadata.scriptRunnerMap.values()) {
+      this.scriptRunnerMap.set(`${component.id}`, component);
+    }
+
+    for (const component of metadata.ruleRunnerMap.values()) {
+      this.ruleRunnerMap.set(`${component.id}`, component);
+    }
+
+    for (const component of metadata.executorMap.values()) {
+      this.executorMap.set(`${component.id}`, component);
+    }
+
+    for (const component of metadata.pkgManagerDefMap.values()) {
+      this.pkgManagerDefMap.set(`${component.id}`, component);
+    }
+
+    for (const component of metadata.reporterMap.values()) {
+      this.reporterDefMap.set(`${component.id}`, component);
+    }
+
+    debug('Loaded plugin %s successfully: %O', metadata, metadata);
+    return metadata;
   }
 
   /**
@@ -598,114 +616,13 @@ export class PluginRegistry {
       ruleRunners: [...this.ruleRunnerMap.keys()],
       executors: [...this.executorMap.keys()],
       pkgManagerDefs: [...this.pkgManagerDefMap.keys()],
+      reporterDefs: [...this.reporterDefMap.keys()],
     };
-  }
-
-  /**
-   * Creates a {@link API.PluginAPI} object for use by a specific plugin.
-   *
-   * @param metadata - Plugin metadata
-   * @returns A {@link API.PluginAPI} object for use by a specific plugin
-   */
-  createPluginAPI(metadata: PluginMetadata): Readonly<API.PluginAPI> {
-    if (this.apiMap.has(metadata)) {
-      return this.apiMap.get(metadata)!;
-    }
-
-    // TODO: validate ruleDef
-    const defineRule: API.DefineRuleFn = <
-      const Name extends string,
-      Schema extends Rule.RuleOptionSchema | void = void,
-    >(
-      ruleDef: Rule.RuleDef<Name, Schema>,
-    ) => {
-      metadata.addRule(ruleDef);
-      debug(
-        'Rule with name %s defined by plugin %s',
-        ruleDef.name,
-        metadata.id,
-      );
-      return pluginApi;
-    };
-
-    const definePackageManager: API.DefinePackageManagerFn = (
-      pkgManagerDef,
-      name = DEFAULT_COMPONENT_ID,
-    ) => {
-      metadata.addPkgManagerDef(name, pkgManagerDef);
-      return pluginApi;
-    };
-
-    const defineScriptRunner: API.DefineScriptRunnerFn = (
-      scriptRunner,
-      name = DEFAULT_COMPONENT_ID,
-    ) => {
-      metadata.addScriptRunner(
-        name,
-        ScriptRunner.zScriptRunner.parse(scriptRunner),
-      );
-      return pluginApi;
-    };
-
-    const defineRuleRunner: API.DefineRuleRunnerFn = (
-      ruleRunner,
-      name = DEFAULT_COMPONENT_ID,
-    ) => {
-      metadata.addRuleRunner(name, RuleRunner.zRuleRunner.parse(ruleRunner));
-      return pluginApi;
-    };
-
-    const defineExecutor: API.DefineExecutorFn = (
-      executor,
-      name = DEFAULT_COMPONENT_ID,
-    ) => {
-      metadata.addExecutor(name, Executor.zExecutor.parse(executor));
-      return pluginApi;
-    };
-
-    const defineReporter: API.DefineReporterFn = (reporterDef) => {
-      metadata.addReporter(Reporter.zReporterDef.parse(reporterDef));
-      return pluginApi;
-    };
-
-    const getPlugins = () => {
-      return this.plugins;
-    };
-
-    const pluginApi: API.PluginAPI = {
-      SchemaUtils,
-      Helpers,
-      Rule,
-      PkgManager: PkgMgr,
-      Errors,
-      Executor,
-      RuleRunner,
-      ScriptRunner,
-      Event,
-      z,
-      zod: z,
-
-      metadata,
-
-      get plugins() {
-        return getPlugins();
-      },
-
-      defineRule,
-      definePackageManager,
-      defineScriptRunner,
-      defineRuleRunner,
-      defineExecutor,
-      defineReporter,
-    };
-    this.apiMap.set(metadata, pluginApi);
-
-    return pluginApi;
   }
 }
 
 export interface RegistryLoadPackageManagersOpts
-  extends PkgMgr.LoadPackageManagersOpts {
+  extends LoadPackageManagersOpts {
   systemExecutorId?: string;
   defaultExecutorId?: string;
 }

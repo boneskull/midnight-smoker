@@ -4,44 +4,39 @@
 /**
  * Script to generate/update the JSON schema for `SmokerOptions`
  *
+ * **This overwrites `../schema/midnight-smoker.schema.json`**
+ *
  * Uses {@link https://npm.im/zod-to-json-schema zod-to-json-schema} and
  * {@link https://npm.im/prettier prettier}.
  *
  * @packageDocumentation
  */
 
+import {Blessed, PluginRegistry} from '#plugin';
+import {RuleSeveritySchema} from '#schema/rule-severity.js';
 import {writeFile} from 'node:fs/promises';
-import path from 'node:path';
 import prettier from 'prettier';
 import {zodToJsonSchema} from 'zod-to-json-schema';
-import {zRuleSeverity} from '../src/component/rule/severity';
 import {OptionParser} from '../src/options';
-import {BLESSED_PLUGINS} from '../src/plugin/blessed';
-import {PluginRegistry} from '../src/plugin/registry';
 import {
-  zDefaultFalse,
-  zDefaultTrue,
-  zNonEmptyStringOrArrayThereof,
+  DefaultFalseSchema,
+  DefaultTrueSchema,
+  NonEmptyStringToArraySchema,
 } from '../src/util/schema-util';
 
-const DEST = path.join(
-  __dirname,
-  '..',
-  'schema',
-  'midnight-smoker.schema.json',
-);
+const DEST = require.resolve('../schema/midnight-smoker.schema.json');
 
 async function main() {
   const registry = PluginRegistry.create();
-  await registry.loadPlugins(BLESSED_PLUGINS);
-  const zSmokerOptions = OptionParser.buildSmokerOptions(registry);
+  await registry.loadPlugins(Blessed.BLESSED_PLUGINS);
+  const SmokerOptsSchema = OptionParser.buildSmokerOptions(registry);
 
-  const jsonSchema = zodToJsonSchema(zSmokerOptions, {
+  const jsonSchema = zodToJsonSchema(SmokerOptsSchema, {
     definitions: {
-      defaultTrue: zDefaultTrue,
-      defaultFalse: zDefaultFalse,
-      arrayOfNonEmptyStrings: zNonEmptyStringOrArrayThereof,
-      severity: zRuleSeverity,
+      defaultTrue: DefaultTrueSchema,
+      defaultFalse: DefaultFalseSchema,
+      arrayOfNonEmptyStrings: NonEmptyStringToArraySchema,
+      severity: RuleSeveritySchema,
     },
     definitionPath: '$defs',
   });

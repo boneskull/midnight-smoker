@@ -122,16 +122,17 @@ export default function noBannedFiles({
     name: 'no-banned-files',
     description: `Ensures banned files won't be published to the registry`,
     url: 'https://boneskull.github.io/midnight-smoker/rules/no-banned-files',
+
     /**
      * @todo Add a a list of paths to ignore (e.g., `node_modules`)
      *
      * @todo Allow `RegExp` strings or glob pattern matching
      */
     schema: z.object({
-      allow: schemaUtils.zNonEmptyStringOrArrayThereof.describe(
+      allow: schemaUtils.NonEmptyStringToArraySchema.describe(
         'Allow these banned files',
       ),
-      deny: schemaUtils.zNonEmptyStringOrArrayThereof.describe(
+      deny: schemaUtils.NonEmptyStringToArraySchema.describe(
         'Deny these additional files',
       ),
     }),

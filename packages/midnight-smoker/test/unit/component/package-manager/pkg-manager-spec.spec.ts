@@ -1,11 +1,12 @@
+import type * as PMS from '#component/pkg-manager/pkg-manager-spec.js';
+import {DEFAULT_PKG_MANAGER_BIN} from '#constants';
+import {ErrorCodes} from '#error';
+import {type getSystemPkgManagerVersion} from '#util/pkg-util.js';
 import rewiremock from 'rewiremock/node';
 import {SemVer} from 'semver';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
-import type * as PMS from '../../../../src/component/pkg-manager/pkg-manager-spec';
-import {DEFAULT_PKG_MANAGER_BIN} from '../../../../src/constants';
-import {type getSystemPkgManagerVersion} from '../../../../src/util/pkg-util';
 import {createFsMocks} from '../../mocks/fs';
 
 const expect = unexpected.clone().use(unexpectedSinon);
@@ -30,7 +31,7 @@ describe('midnight-smoker', function () {
               require('../../../../src/component/pkg-manager/pkg-manager-spec'),
             {
               ...mocks,
-              '../../../../src/util/pkg-util': {
+              '#util/pkg-util.js': {
                 getSystemPkgManagerVersion: getSystemPkgManagerVersionStub,
               },
             },
@@ -93,7 +94,7 @@ describe('midnight-smoker', function () {
                   () => new PkgManagerSpec({pkgManager: 'npm', version: 'foo'}),
                   'to throw',
                   {
-                    code: 'ESMOKER_UNKNOWNDISTTAG',
+                    code: ErrorCodes.UnknownDistTagError,
                   },
                 );
               });

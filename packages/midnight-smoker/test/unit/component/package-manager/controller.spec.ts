@@ -1,3 +1,13 @@
+import {component} from '#component';
+import type * as PkgMgr from '#component/pkg-manager';
+import * as Errors from '#error';
+import {SmokerEvent} from '#event/event-constants.js';
+import {PluginRegistry} from '#plugin/registry.js';
+import {type RunScriptResult} from '#schema/run-script-result.js';
+import type {ScriptFailedEventData} from '#schema/script-runner-events.js';
+import {type ScriptRunnerNotifiers} from '#schema/script-runner-notifier.js';
+import {type ScriptRunnerOpts} from '#schema/script-runner-opts.js';
+import {type ScriptRunner} from '#schema/script-runner.js';
 import {
   MOCK_TMPDIR,
   NullPm,
@@ -9,21 +19,7 @@ import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedEE from 'unexpected-eventemitter';
 import unexpectedSinon from 'unexpected-sinon';
-import {
-  component,
-  type InstallResult,
-  type PkgManagerRunScriptManifest,
-  type RunScriptResult,
-  type ScriptRunner,
-  type ScriptRunnerNotifiers,
-  type ScriptRunnerOpts,
-} from '../../../../src/component';
-import type * as PkgMgr from '../../../../src/component/pkg-manager';
-import * as Errors from '../../../../src/component/pkg-manager/errors';
 import type * as Controller from '../../../../src/controller';
-import {SmokerEvent} from '../../../../src/event/event-constants';
-import type {RunScriptFailedEventData} from '../../../../src/event/script-runner-events';
-import {PluginRegistry} from '../../../../src/plugin';
 import {createFsMocks} from '../../mocks/fs';
 
 const expect = unexpected.clone().use(unexpectedEE).use(unexpectedSinon);
@@ -218,7 +214,7 @@ describe('midnight-smoker', function () {
           describe('runScripts()', function () {
             const scripts = ['script1', 'script2'];
             const opts: Controller.PkgManagerControllerRunScriptsOpts = {}; // replace with actual options
-            let installResults: InstallResult[];
+            let installResults: PkgMgr.InstallResult[];
 
             beforeEach(function () {
               registry.getScriptRunner.returns(
@@ -303,16 +299,17 @@ describe('midnight-smoker', function () {
                   .callsFake(
                     async (
                       notifiers: ScriptRunnerNotifiers,
-                      runManifest: PkgManagerRunScriptManifest,
+                      runManifest: PkgMgr.RunScriptManifest,
+                      pkgManager: PkgMgr.PkgManager,
                       opts: ScriptRunnerOpts,
                     ) => {
                       await Promise.resolve();
                       if (opts.signal?.aborted) {
-                        throw new Errors.RunScriptBailed();
+                        throw new Errors.ScriptBailed();
                       }
                       controller.emit(
                         SmokerEvent.RunScriptFailed,
-                        result as RunScriptFailedEventData,
+                        result as ScriptFailedEventData,
                       );
                       return result;
                     },

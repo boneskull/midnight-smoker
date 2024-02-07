@@ -1,10 +1,10 @@
 {
-  "extends": "../../../.config/tsconfig.src.json",
+  "extends": [
+    "../../../.config/tsconfig.src.json",
+    "../.config/tsconfig.paths.json"
+  ],
   "compilerOptions": {
-    "outDir": "../dist",
-    "paths": {
-      "../data": ["../data"]
-    }
+    "outDir": "../dist"
   },
   "include": ["."],
   "references": [{"path": "../data/tsconfig.json"}]

@@ -28,19 +28,19 @@ export default function noMissingExports({
     url: 'https://boneskull.github.io/midnight-smoker/rules/no-missing-exports',
     description: `Checks that all files in the "${EXPORTS_FIELD}" field (if present) exist`,
     schema: z.object({
-      types: schemaUtils.zDefaultTrue.describe(
+      types: schemaUtils.DefaultTrueSchema.describe(
         `Assert a "${CONDITIONAL_EXPORT_TYPES}" conditional export matches a file with a .d.ts extension`,
       ),
-      require: schemaUtils.zDefaultTrue.describe(
+      require: schemaUtils.DefaultTrueSchema.describe(
         `Assert a "${CONDITIONAL_EXPORT_REQUIRE}" conditional export matches a CJS script`,
       ),
-      import: schemaUtils.zDefaultTrue.describe(
+      import: schemaUtils.DefaultTrueSchema.describe(
         `Assert an "${CONDITIONAL_EXPORT_IMPORT}" conditional export matches a ESM module`,
       ),
-      order: schemaUtils.zDefaultTrue.describe(
+      order: schemaUtils.DefaultTrueSchema.describe(
         `Assert conditional export "${CONDITIONAL_EXPORT_DEFAULT}", if present, is the last export`,
       ),
-      glob: schemaUtils.zDefaultTrue.describe(
+      glob: schemaUtils.DefaultTrueSchema.describe(
         'Allow glob patterns in subpath exports',
       ),
     }),

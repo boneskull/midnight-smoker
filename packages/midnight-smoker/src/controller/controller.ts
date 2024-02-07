@@ -1,19 +1,15 @@
-import {type PkgManagerOpts} from '../component';
-import {
-  type InstallResult,
-  type PackOptions,
-  type PkgManager,
-  type PkgManagerInstallManifest,
-  type RunScriptResult,
-} from '../component/schema';
-import {DEFAULT_EXECUTOR_ID, SYSTEM_EXECUTOR_ID} from '../constants';
-import {
-  type InstallEvents,
-  type PackEvents,
-  type ScriptRunnerEvents,
-} from '../event';
-import {createStrictEmitter} from '../event/strict-emitter';
-import {type PluginRegistry} from '../plugin/registry';
+import {DEFAULT_EXECUTOR_ID, SYSTEM_EXECUTOR_ID} from '#constants';
+import {type InstallEvents} from '#event/install-events.js';
+import {type PackEvents} from '#event/pack-events.js';
+import {type ScriptRunnerEvents} from '#event/script-runner-events.js';
+import {createStrictEmitter} from '#event/strict-emitter.js';
+import {type PluginRegistry} from '#plugin/registry.js';
+import {type PkgManagerInstallManifest} from '#schema/install-manifest.js';
+import {type InstallResult} from '#schema/install-result.js';
+import {type PackOptions} from '#schema/pack-options.js';
+import {type PkgManagerOpts} from '#schema/pkg-manager-def.js';
+import {type PkgManager} from '#schema/pkg-manager.js';
+import {type RunScriptResult} from '#schema/run-script-result.js';
 
 export abstract class PkgManagerController extends createStrictEmitter<PkgManagerEvents>() {
   protected readonly defaultExecutorId: string;
@@ -23,7 +19,7 @@ export abstract class PkgManagerController extends createStrictEmitter<PkgManage
   public constructor(
     protected readonly pluginRegistry: PluginRegistry,
     protected readonly desiredPkgManagers: string | readonly string[],
-    protected readonly opts: PkgManagerControllerOpts = {},
+    protected readonly opts: PkgManagerControllerOpts & PkgManagerOpts = {},
   ) {
     super();
 
@@ -54,11 +50,12 @@ export abstract class PkgManagerController extends createStrictEmitter<PkgManage
  */
 
 export type PkgManagerEvents = InstallEvents & ScriptRunnerEvents & PackEvents;
+
 /**
  * Options for the {@link SmokerPkgManagerController} class.
  */
 
-export interface PkgManagerControllerOpts extends PkgManagerOpts {
+export interface PkgManagerControllerOpts {
   defaultExecutorId?: string;
 
   systemExecutorId?: string;
