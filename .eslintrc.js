@@ -7,8 +7,8 @@ module.exports = {
     es2020: true,
     node: true,
   },
-  extends: ['semistandard', 'prettier', 'plugin:n/recommended'],
-
+  extends: ['eslint:recommended', 'plugin:n/recommended'],
+  plugins: ['@stylistic/ts', '@stylistic/js'],
   rules: {
     // either eslint-plugin-n's module resolution is busted or it's too confusing to configure properly
     'n/no-unpublished-bin': 'off',
@@ -16,21 +16,49 @@ module.exports = {
     'n/no-extraneous-import': 'off',
     'n/no-missing-require': 'off',
     'n/no-extraneous-require': 'off',
+    'n/no-unsupported-features/es-syntax': 'off',
+
+    'no-empty': [
+      'error',
+      {
+        allowEmptyCatch: true,
+      },
+    ],
   },
   parserOptions: {
     sourceType: 'script',
   },
   overrides: [
+    // JS overrides
     {
-      files: '**/*.mjs',
-      parserOptions: {
-        sourceType: 'module',
-        ecmaVersion: 'latest',
-      },
+      files: ['**/*.js', '**/*.mjs', '**/*.cjs'],
       rules: {
-        'n/no-unsupported-features/es-syntax': 'off',
+        '@stylistic/js/semi': ['error', 'always'],
+        '@stylistic/js/lines-around-comment': [
+          'warn',
+          {
+            beforeBlockComment: true,
+            // these conflict with prettier, so we must allow them
+            allowObjectStart: true,
+            allowClassStart: true,
+          },
+        ],
       },
+      overrides: [
+        {
+          files: '**/*.mjs',
+          parserOptions: {
+            sourceType: 'module',
+            ecmaVersion: 'latest',
+          },
+          rules: {
+            'n/no-unsupported-features/es-syntax': 'off',
+          },
+        },
+      ],
     },
+
+    // TS overrides
     {
       files: '**/*.ts',
       extends: ['plugin:@typescript-eslint/strict-type-checked'],
@@ -101,7 +129,19 @@ module.exports = {
           {fixMixedExportsWithInlineTypeSpecifier: true},
         ],
 
-        'n/no-unsupported-features/es-syntax': 'off',
+        '@stylistic/ts/lines-around-comment': [
+          'warn',
+          {
+            beforeBlockComment: true,
+            // these conflict with prettier, so we must allow them
+            allowObjectStart: true,
+            allowClassStart: true,
+            allowInterfaceStart: true,
+            allowBlockStart: true,
+          },
+        ],
+
+        '@stylistic/ts/semi': ['error', 'always'],
       },
 
       parser: '@typescript-eslint/parser',
@@ -128,13 +168,25 @@ module.exports = {
 
             // conflicts with sinon
             '@typescript-eslint/unbound-method': 'off',
-            // 'no-useless-constructor': 'off',
 
             // safeParse() triggers this rule
+            // TODO: get rid of this and safeParse()
             'n/no-path-concat': 'off',
           },
         },
       ],
     },
+  ],
+  ignorePatterns: [
+    'node_modules',
+    'coverage',
+    'dist',
+    '__snapshots__',
+    '*.tpl',
+    'fixture',
+    'docs/api',
+    'example',
+    '.astro',
+    'env.d.ts',
   ],
 };
