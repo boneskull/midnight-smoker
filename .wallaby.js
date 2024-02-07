@@ -43,7 +43,8 @@ module.exports = () => {
       './packages/*/test/**/*.spec.ts',
       '!./packages/*/test/e2e/**/*.spec.ts',
     ],
-    // @ts-expect-error - FIXME
+    runMode: 'onsave',
+    workers: {recycle: true},
     setup(wallaby) {
       process.env.WALLABY_PROJECT_DIR = wallaby.localProjectDir;
 
