@@ -1,5 +1,4 @@
 #!/usr/bin/env ts-node
-/* eslint-disable n/shebang */
 
 /**
  * Script to generate/update the JSON schema for `SmokerOptions`
@@ -14,17 +13,18 @@
 
 import {Blessed, PluginRegistry} from '#plugin';
 import {RuleSeveritySchema} from '#schema/rule-severity.js';
-import {writeFile} from 'node:fs/promises';
-import prettier from 'prettier';
-import {zodToJsonSchema} from 'zod-to-json-schema';
-import {OptionParser} from '../src/options';
 import {
   DefaultFalseSchema,
   DefaultTrueSchema,
   NonEmptyStringToArraySchema,
-} from '../src/util/schema-util';
+} from '#util/schema-util.js';
+import {writeFile} from 'node:fs/promises';
+import {normalize} from 'node:path';
+import prettier from 'prettier';
+import {zodToJsonSchema} from 'zod-to-json-schema';
+import {OptionParser} from '../src/options';
 
-const DEST = require.resolve('../schema/midnight-smoker.schema.json');
+const DEST = normalize(`${__dirname}/../schema/midnight-smoker.schema.json`);
 
 async function main() {
   const registry = PluginRegistry.create();
