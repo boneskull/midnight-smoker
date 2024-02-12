@@ -21,7 +21,7 @@
   },
   "scripts": {
     "build": "tsc -b",
-    "clean": "tsc -b --clean",
+    "clean": "shx rm -rf \"packages/*/dist\"",
     "dev": "tsc -b --watch",
     "dev:docs": "npm run -w packages/docs dev",
     "husky-install": "husky install",

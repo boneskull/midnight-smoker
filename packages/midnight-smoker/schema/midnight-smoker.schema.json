@@ -4,26 +4,40 @@
     "add": {
       "allOf": [
         {
-          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0"
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "description": "A non-empty string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/properties/add/allOf/0/anyOf/0"
+              },
+              "description": "An array of non-empty strings"
+            }
+          ],
+          "default": []
         },
         {
-          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0/anyOf/1"
+          "$ref": "#/properties/add/allOf/0/anyOf/1"
         }
       ],
       "description": "Add an extra package to the list of packages to be installed"
     },
     "all": {
-      "$ref": "#/$defs/defaultFalse",
+      "type": "boolean",
       "default": false,
       "description": "Operate on all workspaces. The root workspace is omitted unless `includeRoot` is `true`"
     },
     "bail": {
-      "$ref": "#/$defs/defaultFalse",
+      "$ref": "#/properties/all",
       "default": false,
       "description": "Fail on first script failure"
     },
     "lint": {
-      "$ref": "#/$defs/defaultTrue",
+      "type": "boolean",
       "default": true,
       "description": "If `false`, do not lint when running custom scripts"
     },
@@ -34,32 +48,32 @@
       "default": "default"
     },
     "includeRoot": {
-      "$ref": "#/$defs/defaultFalse",
+      "$ref": "#/properties/all",
       "default": false,
       "description": "Operate on the root workspace. Only has an effect if `all` is `true`"
     },
     "json": {
-      "$ref": "#/$defs/defaultFalse",
+      "$ref": "#/properties/all",
       "default": false,
       "description": "Output JSON only"
     },
     "linger": {
-      "$ref": "#/$defs/defaultFalse",
+      "$ref": "#/properties/all",
       "default": false,
       "description": "Do not delete temp directories after completion"
     },
     "loose": {
-      "$ref": "#/$defs/defaultFalse",
+      "$ref": "#/properties/all",
       "default": false,
       "description": "If `true`, fail if a workspace is missing a script"
     },
     "pkgManager": {
       "allOf": [
         {
-          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0"
+          "$ref": "#/properties/add/allOf/0"
         },
         {
-          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0/anyOf/1"
+          "$ref": "#/properties/add/allOf/0/anyOf/1"
         }
       ],
       "description": "Package manager(s) to use (by id)"
@@ -67,10 +81,10 @@
     "plugin": {
       "allOf": [
         {
-          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0"
+          "$ref": "#/properties/add/allOf/0"
         },
         {
-          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0/anyOf/1"
+          "$ref": "#/properties/add/allOf/0/anyOf/1"
         }
       ],
       "description": "One or more plugins to load"
@@ -78,10 +92,10 @@
     "reporter": {
       "allOf": [
         {
-          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0"
+          "$ref": "#/properties/add/allOf/0"
         },
         {
-          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0/anyOf/1"
+          "$ref": "#/properties/add/allOf/0/anyOf/1"
         }
       ],
       "description": "Component ID of Reporter implementation",
@@ -106,24 +120,10 @@
                     "allow": {
                       "allOf": [
                         {
-                          "anyOf": [
-                            {
-                              "type": "string",
-                              "minLength": 1,
-                              "description": "A non-empty string"
-                            },
-                            {
-                              "type": "array",
-                              "items": {
-                                "$ref": "#/properties/rules/properties/no-banned-files/allOf/0/anyOf/0/properties/allow/allOf/0/anyOf/0"
-                              },
-                              "description": "An array of non-empty strings"
-                            }
-                          ],
-                          "default": []
+                          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0"
                         },
                         {
-                          "$ref": "#/properties/rules/properties/no-banned-files/allOf/0/anyOf/0/properties/allow/allOf/0/anyOf/1"
+                          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0/anyOf/1"
                         }
                       ],
                       "description": "Allow these banned files"
@@ -131,10 +131,10 @@
                     "deny": {
                       "allOf": [
                         {
-                          "$ref": "#/properties/rules/properties/no-banned-files/allOf/0/anyOf/0/properties/allow/allOf/0"
+                          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0"
                         },
                         {
-                          "$ref": "#/properties/rules/properties/no-banned-files/allOf/0/anyOf/0/properties/allow/allOf/0/anyOf/1"
+                          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0/anyOf/1"
                         }
                       ],
                       "description": "Deny these additional files"
@@ -241,27 +241,27 @@
                   "type": "object",
                   "properties": {
                     "types": {
-                      "type": "boolean",
+                      "$ref": "#/$defs/defaultTrue",
                       "default": true,
                       "description": "Assert a \"types\" conditional export matches a file with a .d.ts extension"
                     },
                     "require": {
-                      "$ref": "#/properties/rules/properties/no-missing-exports/allOf/0/anyOf/0/properties/types",
+                      "$ref": "#/$defs/defaultTrue",
                       "default": true,
                       "description": "Assert a \"require\" conditional export matches a CJS script"
                     },
                     "import": {
-                      "$ref": "#/properties/rules/properties/no-missing-exports/allOf/0/anyOf/0/properties/types",
+                      "$ref": "#/$defs/defaultTrue",
                       "default": true,
                       "description": "Assert an \"import\" conditional export matches a ESM module"
                     },
                     "order": {
-                      "$ref": "#/properties/rules/properties/no-missing-exports/allOf/0/anyOf/0/properties/types",
+                      "$ref": "#/$defs/defaultTrue",
                       "default": true,
                       "description": "Assert conditional export \"default\", if present, is the last export"
                     },
                     "glob": {
-                      "$ref": "#/properties/rules/properties/no-missing-exports/allOf/0/anyOf/0/properties/types",
+                      "$ref": "#/$defs/defaultTrue",
                       "default": true,
                       "description": "Allow glob patterns in subpath exports"
                     }
@@ -321,37 +321,37 @@
                   "type": "object",
                   "properties": {
                     "bin": {
-                      "$ref": "#/properties/rules/properties/no-missing-exports/allOf/0/anyOf/0/properties/types",
+                      "$ref": "#/$defs/defaultTrue",
                       "default": true,
                       "description": "Check the \"bin\" field (if it exists)"
                     },
                     "browser": {
-                      "$ref": "#/properties/rules/properties/no-missing-exports/allOf/0/anyOf/0/properties/types",
+                      "$ref": "#/$defs/defaultTrue",
                       "default": true,
                       "description": "Check the \"browser\" field (if it exists)"
                     },
                     "types": {
-                      "$ref": "#/properties/rules/properties/no-missing-exports/allOf/0/anyOf/0/properties/types",
+                      "$ref": "#/$defs/defaultTrue",
                       "default": true,
                       "description": "Check the \"types\" field (if it exists)"
                     },
                     "unpkg": {
-                      "$ref": "#/properties/rules/properties/no-missing-exports/allOf/0/anyOf/0/properties/types",
+                      "$ref": "#/$defs/defaultTrue",
                       "default": true,
                       "description": "Check the \"unpkg\" field (if it exists)"
                     },
                     "module": {
-                      "$ref": "#/properties/rules/properties/no-missing-exports/allOf/0/anyOf/0/properties/types",
+                      "$ref": "#/$defs/defaultTrue",
                       "default": true,
                       "description": "Check the \"module\" field (if it exists)"
                     },
                     "fields": {
                       "allOf": [
                         {
-                          "$ref": "#/properties/rules/properties/no-banned-files/allOf/0/anyOf/0/properties/allow/allOf/0"
+                          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0"
                         },
                         {
-                          "$ref": "#/properties/rules/properties/no-banned-files/allOf/0/anyOf/0/properties/allow/allOf/0/anyOf/1"
+                          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0/anyOf/1"
                         }
                       ],
                       "description": "Check files referenced by these additional top-level fields"
@@ -481,10 +481,10 @@
     "script": {
       "allOf": [
         {
-          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0"
+          "$ref": "#/properties/add/allOf/0"
         },
         {
-          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0/anyOf/1"
+          "$ref": "#/properties/add/allOf/0/anyOf/1"
         }
       ],
       "description": "Script(s) to run."
@@ -496,17 +496,17 @@
       "default": "default"
     },
     "verbose": {
-      "$ref": "#/$defs/defaultFalse",
+      "$ref": "#/properties/all",
       "default": false,
       "description": "Verbose logging"
     },
     "workspace": {
       "allOf": [
         {
-          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0"
+          "$ref": "#/properties/add/allOf/0"
         },
         {
-          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0/anyOf/1"
+          "$ref": "#/properties/add/allOf/0/anyOf/1"
         }
       ],
       "description": "One or more workspaces to run scripts in"
