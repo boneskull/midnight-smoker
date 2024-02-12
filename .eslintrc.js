@@ -169,10 +169,6 @@ module.exports = {
 
             // conflicts with sinon
             '@typescript-eslint/unbound-method': 'off',
-
-            // safeParse() triggers this rule
-            // TODO: get rid of this and safeParse()
-            'n/no-path-concat': 'off',
           },
         },
       ],
@@ -182,6 +178,14 @@ module.exports = {
     {
       files: ['**/tsconfig*.json', '**/*.json5', '**/*.jsonc'],
       extends: ['plugin:jsonc/prettier'],
+    },
+
+    // script overrides
+    {
+      files: ['**/scripts/**/*'],
+      rules: {
+        'n/shebang': 'off',
+      },
     },
   ],
   ignorePatterns: [
