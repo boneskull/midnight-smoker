@@ -177,6 +177,12 @@ module.exports = {
         },
       ],
     },
+
+    // JSON5 overrides
+    {
+      files: ['**/tsconfig*.json', '**/*.json5', '**/*.jsonc'],
+      extends: ['plugin:jsonc/prettier'],
+    },
   ],
   ignorePatterns: [
     'node_modules',

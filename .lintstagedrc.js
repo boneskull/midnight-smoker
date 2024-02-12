@@ -13,5 +13,5 @@ module.exports = {
       'npm run update-schema',
       'git add -A packages/midnight-smoker/schema/midnight-smoker.schema.json',
     ],
-  '*.json': ['prettier --write'],
+  '*.{json,json5}': ['prettier --write'],
 };

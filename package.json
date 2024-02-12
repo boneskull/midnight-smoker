@@ -60,6 +60,7 @@
     "cross-env": "7.0.3",
     "dependency-cruiser": "15.5.0",
     "eslint": "8.55.0",
+    "eslint-plugin-jsonc": "2.13.0",
     "eslint-plugin-n": "15.7.0",
     "husky": "8.0.3",
     "lint-staged": "14.0.1",
