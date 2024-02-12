@@ -1,7 +1,7 @@
 {
   "extends": "../../../.config/tsconfig.workspace.json",
+  "include": ["*.ts"],
   "compilerOptions": {
-    "resolveJsonModule": true
-  },
-  "include": ["*.json"]
+    "noEmit": true
+  }
 }

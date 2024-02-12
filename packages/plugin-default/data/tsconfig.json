@@ -1,4 +1,7 @@
 {
   "extends": "../../../.config/tsconfig.workspace.json",
-  "files": ["git-deny-patterns.json"]
+  "compilerOptions": {
+    "resolveJsonModule": true
+  },
+  "include": ["*.json"]
 }

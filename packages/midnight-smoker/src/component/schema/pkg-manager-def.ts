@@ -3,19 +3,15 @@ import {ExecutorSchema, type Executor} from '#schema/executor.js';
 import {PkgManagerSchema, type PkgManager} from '#schema/pkg-manager.js';
 import {
   NonEmptyStringSchema,
+  SemVerRangeSchema,
+  SemVerSchema,
   customSchema,
-  instanceofSchema,
 } from '#util/schema-util.js';
-import {Range, SemVer} from 'semver';
 import {z} from 'zod';
 import {
   PkgManagerSpecSchema,
   type PkgManagerSpec,
 } from '../pkg-manager/pkg-manager-spec';
-
-export const SemVerSchema = instanceofSchema(SemVer);
-
-export const SemVerRangeSchema = instanceofSchema(Range);
 
 /**
  * Options passed to a {@link PkgManagerFactory}
@@ -89,23 +85,25 @@ export const PkgManagerDefSchema = z.object({
   bin: NonEmptyStringSchema,
 
   /**
-   * Either a SemVer range or a function which returns `true` if its parameter
-   * is within the allowed range.
+   * Returns `true` if this `PackageManager` can handle the given version.
+   *
+   * @param versionOrRangeOrTag - The value to check
+   * @returns Normalized version if accepted, `undefined` otherwise
    */
-  accepts: z.union([
-    /**
-     * Returns `true` if this `PackageManager` can handle the given version.
-     *
-     * @param semver The version to check.
-     * @returns `true` if the package manager can handle the version, `false`
-     *   otherwise.
-     */
-    z.function(
-      z.tuple([SemVerSchema] as [semver: typeof SemVerSchema]),
-      z.boolean(),
-    ),
-    z.union([NonEmptyStringSchema, SemVerRangeSchema]),
-  ]),
+  accepts: z.function(
+    z.tuple([NonEmptyStringSchema] as [
+      versionOrRangeOrTag: typeof NonEmptyStringSchema,
+    ]),
+    z.union([SemVerSchema, NonEmptyStringSchema]).optional(),
+  ),
+
+  supportedVersionRange: NonEmptyStringSchema.or(SemVerRangeSchema).optional(),
+
+  /**
+   * Name of the lockfile for this package manager.
+   *
+   * Used for guessing package manager based on presence of this file
+   */
   lockfile: NonEmptyStringSchema.optional(),
 
   /**

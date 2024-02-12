@@ -1,7 +1,8 @@
-import {registerRule, safePath} from '@midnight-smoker/test-util';
+import {registerRule} from '@midnight-smoker/test-util';
 import {type Component} from 'midnight-smoker/component';
 import {PluginRegistry} from 'midnight-smoker/plugin';
 import {RuleSeverities, type SomeRule} from 'midnight-smoker/rule';
+import {normalize} from 'node:path';
 import unexpected from 'unexpected';
 import noMissingEntryPointDef from '../../../src/rules/no-missing-entry-point';
 import {applyRule} from './helpers';
@@ -22,7 +23,7 @@ describe('@midnight-smoker/plugin-default', function () {
       });
 
       describe('when the package is an ESM package', function () {
-        const fixture = safePath(
+        const fixture = normalize(
           `${__dirname}/fixture/no-missing-entry-point-esm`,
         );
 
@@ -37,7 +38,7 @@ describe('@midnight-smoker/plugin-default', function () {
 
       describe('when the package has a "main" field', function () {
         describe('when the file is missing', function () {
-          const fixture = safePath(
+          const fixture = normalize(
             `${__dirname}/fixture/no-missing-entry-point`,
           );
 
@@ -63,7 +64,7 @@ describe('@midnight-smoker/plugin-default', function () {
         });
 
         describe('when the file exists', function () {
-          const fixture = safePath(
+          const fixture = normalize(
             `${__dirname}/fixture/no-missing-entry-point-ok`,
           );
 
@@ -79,7 +80,7 @@ describe('@midnight-smoker/plugin-default', function () {
 
       describe('when the package has no "main" field', function () {
         describe('when the file is missing', function () {
-          const fixture = safePath(
+          const fixture = normalize(
             `${__dirname}/fixture/no-missing-entry-point`,
           );
 
@@ -105,7 +106,7 @@ describe('@midnight-smoker/plugin-default', function () {
         });
 
         describe('when the file exists', function () {
-          const fixture = safePath(
+          const fixture = normalize(
             `${__dirname}/fixture/no-missing-entry-point-node-resolution-ok`,
           );
 

@@ -11,3 +11,4 @@ export * from '#schema/run-script-manifest.js';
 export * from '#schema/run-script-result.js';
 export * from './pkg-manager-loader';
 export * from './pkg-manager-spec';
+export * from './pkg-manager-version';

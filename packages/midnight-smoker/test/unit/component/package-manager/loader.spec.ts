@@ -156,7 +156,7 @@ describe('midnight-smoker', function () {
 
           describe('when provided no desired package managers', function () {
             beforeEach(function () {
-              sandbox.stub(nullPmDef, 'accepts').returns(true);
+              sandbox.stub(nullPmDef, 'accepts').returns('1.0.0');
               sandbox.replaceGetter(nullPmDef, 'bin', () => 'npm');
             });
 
@@ -185,7 +185,7 @@ describe('midnight-smoker', function () {
 
           describe('when provided a version outside of the accepted range', function () {
             beforeEach(function () {
-              sandbox.stub(nullPmDef, 'accepts').returns(false);
+              sandbox.stub(nullPmDef, 'accepts').returns(undefined);
             });
 
             it('should reject', async function () {

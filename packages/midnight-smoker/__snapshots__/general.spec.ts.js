@@ -56,11 +56,37 @@ exports['midnight-smoker [E2E] general behavior installation when installation f
 ✖ Package manager npm@<version> failed to install /<path/to/some>.tgz in dir <cwd>: Not Found - GET https://registry.npmjs.org/4923867iajhiknfdeskjusyghikuwyhwaqheakkcjzhxfksdjfhd - Not found (ESMOKER_INSTALL)
 
 Script Context:
-undefined
+{
+  context: {
+    command: <path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> install --no-audit --no-package-lock --install-strategy=shallow --json /<path/to/some>.tgz'
+  },
+  cause: {
+    shortMessage: 'Command failed with exit code 1: <path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> install --no-audit --no-package-lock --install-strategy=shallow --json /<path/to/some>.tgz',
+    command: <path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> install --no-audit --no-package-lock --install-strategy=shallow --json /<path/to/some>.tgz',
+    escapedCommand: '"<path/to/>/bin/node" "<path/to/>/.bin/corepack" "npm@<version>" install --no-audit --no-package-lock "--install-strategy=shallow" --json "/<path/to/some>.tgz"',
+    exitCode: 1,
+    signal: undefined,
+    signalDescription: undefined,
+    stdout: '{\\n  "error": {\\n    "code": "E404",\\n    "summary": "Not Found - GET https://registry.npmjs.org/4923867iajhiknfdeskjusyghikuwyhwaqheakkcjzhxfksdjfhd - Not found",\\n    "detail": "\\n \\'4923867iajhiknfdeskjusyghikuwyhwaqheakkcjzhxfksdjfhd@1.0.0\\' is not in this registry.\\n\\nNote that you can also install from a\\ntarball, folder, http url, or git url."\\n  }\\n}',
+    stderr: 'npm ERR! code E404\\nnpm ERR! 404 Not Found - GET https://registry.npmjs.org/4923867iajhiknfdeskjusyghikuwyhwaqheakkcjzhxfksdjfhd - Not found\\nnpm ERR! 404 \\nnpm ERR! 404  \\'4923867iajhiknfdeskjusyghikuwyhwaqheakkcjzhxfksdjfhd@1.0.0\\' is not in this registry.\\nnpm ERR! 404 \\nnpm ERR! 404 Note that you can also install from a\\nnpm ERR! 404 tarball, folder, http url, or git url.\\n\\nnpm ERR! A complete log of this run can be found in: /<path/to/some>.log',
+    failed: true,
+    timedOut: false,
+    isCanceled: false,
+    killed: false
+  },
+  code: 'ESMOKER_EXEC',
+  id: 'ExecError',
+  command: <path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> install --no-audit --no-package-lock --install-strategy=shallow --json /<path/to/some>.tgz',
+  exitCode: 1,
+  all: undefined,
+  stderr: 'npm ERR! code E404\\nnpm ERR! 404 Not Found - GET https://registry.npmjs.org/4923867iajhiknfdeskjusyghikuwyhwaqheakkcjzhxfksdjfhd - Not found\\nnpm ERR! 404 \\nnpm ERR! 404  \\'4923867iajhiknfdeskjusyghikuwyhwaqheakkcjzhxfksdjfhd@1.0.0\\' is not in this registry.\\nnpm ERR! 404 \\nnpm ERR! 404 Note that you can also install from a\\nnpm ERR! 404 tarball, folder, http url, or git url.\\n\\nnpm ERR! A complete log of this run can be found in: /<path/to/some>.log',
+  stdout: '{\\n  "error": {\\n    "code": "E404",\\n    "summary": "Not Found - GET https://registry.npmjs.org/4923867iajhiknfdeskjusyghikuwyhwaqheakkcjzhxfksdjfhd - Not found",\\n    "detail": "\\n \\'4923867iajhiknfdeskjusyghikuwyhwaqheakkcjzhxfksdjfhd@1.0.0\\' is not in this registry.\\n\\nNote that you can also install from a\\ntarball, folder, http url, or git url."\\n  }\\n}',
+  failed: true
+}
 
 Stack Trace:
 InstallError: Package manager npm@<version> failed to install /<path/to/some>.tgz in dir <cwd>: Not Found - GET https://registry.npmjs.org/4923867iajhiknfdeskjusyghikuwyhwaqheakkcjzhxfksdjfhd - Not found<loc>:<line>:<col><loc>:<line>:<col><loc>:<line>:<col><loc>:<line>:<col>
-    at async Promise.all (index 0)<loc>:<line>:<col><loc>:<line>:<col><loc>:<line>:<col><loc>:<line>:<col> {
+    ... 4 lines matching cause stack trace ...<loc>:<line>:<col> {
   context: {
     pkgManager: 'npm@<version>',
     installSpecs: [
@@ -87,7 +113,95 @@ InstallError: Package manager npm@<version> failed to install /<path/to/some>.tg
         'tarball, folder, http url, or git url.'
     }
   },
-  cause: undefined,
+  cause: ExecError: Command failed with exit code 1: <path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> install --no-audit --no-package-lock --install-strategy=shallow --json /<path/to/some>.tgz
+  npm ERR! code E404
+  npm ERR! 404 Not Found - GET https://registry.npmjs.org/4923867iajhiknfdeskjusyghikuwyhwaqheakkcjzhxfksdjfhd - Not found
+  npm ERR! 404 
+  npm ERR! 404  '4923867iajhiknfdeskjusyghikuwyhwaqheakkcjzhxfksdjfhd@1.0.0' is not in this registry.
+  npm ERR! 404 
+  npm ERR! 404 Note that you can also install from a
+  npm ERR! 404 tarball, folder, http url, or git url.
+  
+  npm ERR! A complete log of this run can be found in: /<path/to/some>.log
+  {
+    "error": {
+      "code": "E404",
+      "summary": "Not Found - GET https://registry.npmjs.org/4923867iajhiknfdeskjusyghikuwyhwaqheakkcjzhxfksdjfhd - Not found",
+      "detail": "\\n '4923867iajhiknfdeskjusyghikuwyhwaqheakkcjzhxfksdjfhd@1.0.0' is not in this registry.\\n\\nNote that you can also install from a\\ntarball, folder, http url, or git url."
+    }
+  }<loc>:<line>:<col><loc>:<line>:<col><loc>:<line>:<col>
+      ... 4 lines matching cause stack trace ...<loc>:<line>:<col><loc>:<line>:<col> {
+    context: {
+      command: <path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> install --no-audit --no-package-lock --install-strategy=shallow --json /<path/to/some>.tgz'
+    },
+    cause: Error: Command failed with exit code 1: <path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> install --no-audit --no-package-lock --install-strategy=shallow --json /<path/to/some>.tgz
+    npm ERR! code E404
+    npm ERR! 404 Not Found - GET https://registry.npmjs.org/4923867iajhiknfdeskjusyghikuwyhwaqheakkcjzhxfksdjfhd - Not found
+    npm ERR! 404 
+    npm ERR! 404  '4923867iajhiknfdeskjusyghikuwyhwaqheakkcjzhxfksdjfhd@1.0.0' is not in this registry.
+    npm ERR! 404 
+    npm ERR! 404 Note that you can also install from a
+    npm ERR! 404 tarball, folder, http url, or git url.
+    
+    npm ERR! A complete log of this run can be found in: /<path/to/some>.log
+    {
+      "error": {
+        "code": "E404",
+        "summary": "Not Found - GET https://registry.npmjs.org/4923867iajhiknfdeskjusyghikuwyhwaqheakkcjzhxfksdjfhd - Not found",
+        "detail": "\\n '4923867iajhiknfdeskjusyghikuwyhwaqheakkcjzhxfksdjfhd@1.0.0' is not in this registry.\\n\\nNote that you can also install from a\\ntarball, folder, http url, or git url."
+      }
+    }<loc>:<line>:<col><loc>:<line>:<col><loc>:<line>:<col><loc>:<line>:<col><loc>:<line>:<col><loc>:<line>:<col>
+        at async Promise.all (index 0)<loc>:<line>:<col><loc>:<line>:<col><loc>:<line>:<col> {
+      shortMessage: 'Command failed with exit code 1: <path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> install --no-audit --no-package-lock --install-strategy=shallow --json /<path/to/some>.tgz',
+      command: <path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> install --no-audit --no-package-lock --install-strategy=shallow --json /<path/to/some>.tgz',
+      escapedCommand: '"<path/to/>/bin/node" "<path/to/>/.bin/corepack" "npm@<version>" install --no-audit --no-package-lock "--install-strategy=shallow" --json "/<path/to/some>.tgz"',
+      exitCode: 1,
+      signal: undefined,
+      signalDescription: undefined,
+      stdout: '{\\n' +
+        '  "error": {\\n' +
+        '    "code": "E404",\\n' +
+        '    "summary": "Not Found - GET https://registry.npmjs.org/4923867iajhiknfdeskjusyghikuwyhwaqheakkcjzhxfksdjfhd - Not found",\\n' +
+        \`    "detail": "\\\\n '4923867iajhiknfdeskjusyghikuwyhwaqheakkcjzhxfksdjfhd@1.0.0' is not in this registry.\\\\n\\\\nNote that you can also install from a\\\\ntarball, folder, http url, or git url."\\n\` +
+        '  }\\n' +
+        '}',
+      stderr: 'npm ERR! code E404\\n' +
+        'npm ERR! 404 Not Found - GET https://registry.npmjs.org/4923867iajhiknfdeskjusyghikuwyhwaqheakkcjzhxfksdjfhd - Not found\\n' +
+        'npm ERR! 404 \\n' +
+        "npm ERR! 404  '4923867iajhiknfdeskjusyghikuwyhwaqheakkcjzhxfksdjfhd@1.0.0' is not in this registry.\\n" +
+        'npm ERR! 404 \\n' +
+        'npm ERR! 404 Note that you can also install from a\\n' +
+        'npm ERR! 404 tarball, folder, http url, or git url.\\n' +
+        '\\n' +
+        'npm ERR! A complete log of this run can be found in: /<path/to/some>.log',
+      failed: true,
+      timedOut: false,
+      isCanceled: false,
+      killed: false
+    },
+    code: 'ESMOKER_EXEC',
+    id: 'ExecError',
+    command: <path/to/>/bin/node <path/to/>/.bin/corepack npm@<version> install --no-audit --no-package-lock --install-strategy=shallow --json /<path/to/some>.tgz',
+    exitCode: 1,
+    all: undefined,
+    stderr: 'npm ERR! code E404\\n' +
+      'npm ERR! 404 Not Found - GET https://registry.npmjs.org/4923867iajhiknfdeskjusyghikuwyhwaqheakkcjzhxfksdjfhd - Not found\\n' +
+      'npm ERR! 404 \\n' +
+      "npm ERR! 404  '4923867iajhiknfdeskjusyghikuwyhwaqheakkcjzhxfksdjfhd@1.0.0' is not in this registry.\\n" +
+      'npm ERR! 404 \\n' +
+      'npm ERR! 404 Note that you can also install from a\\n' +
+      'npm ERR! 404 tarball, folder, http url, or git url.\\n' +
+      '\\n' +
+      'npm ERR! A complete log of this run can be found in: /<path/to/some>.log',
+    stdout: '{\\n' +
+      '  "error": {\\n' +
+      '    "code": "E404",\\n' +
+      '    "summary": "Not Found - GET https://registry.npmjs.org/4923867iajhiknfdeskjusyghikuwyhwaqheakkcjzhxfksdjfhd - Not found",\\n' +
+      \`    "detail": "\\\\n '4923867iajhiknfdeskjusyghikuwyhwaqheakkcjzhxfksdjfhd@1.0.0' is not in this registry.\\\\n\\\\nNote that you can also install from a\\\\ntarball, folder, http url, or git url."\\n\` +
+      '  }\\n' +
+      '}',
+    failed: true
+  },
   code: 'ESMOKER_INSTALL',
   id: 'InstallError'
 }

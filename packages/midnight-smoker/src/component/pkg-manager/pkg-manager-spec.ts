@@ -9,8 +9,7 @@ import {DEFAULT_PKG_MANAGER_BIN, DEFAULT_PKG_MANAGER_VERSION} from '#constants';
 import {getSystemPkgManagerVersion} from '#util/pkg-util.js';
 import {instanceofSchema} from '#util/schema-util.js';
 import {isString} from 'lodash';
-import {type SemVer} from 'semver';
-import {normalizeVersion} from './version';
+import {parse, type SemVer} from 'semver';
 
 /**
  * Options for {@link PkgManagerSpec}.
@@ -44,7 +43,7 @@ export interface PkgManagerSpecOpts {
  *
  * Where possible, dist-tags are normalized to version numbers. When this can be
  * done, a {@link SemVer} object is created, and the {@link PkgManagerSpec} is
- * {@link PkgManagerSpec.isValid considered valid}.
+ * {@link PkgManagerSpec.hasSemVer considered valid}.
  */
 export class PkgManagerSpec {
   /**
@@ -69,12 +68,7 @@ export class PkgManagerSpec {
   public readonly version: string;
 
   /**
-   * This constructor will attempt to {@link normalizeVersion normalize} any
-   * dist-tag provided.
-   *
-   * If `pkgManager` is known and `version` is not a valid semantic version, it
-   * is treated as a dist-tag. If that dist-tag is _not_ known, then this will
-   * throw.
+   * Creates a {@link SemVer} from the version, if possible.
    *
    * @param opts - Options for the package manager specification
    */
@@ -83,17 +77,14 @@ export class PkgManagerSpec {
     version = DEFAULT_PKG_MANAGER_VERSION,
     isSystem = false,
   }: PkgManagerSpecOpts = {}) {
-    if (isString(version)) {
-      const normalized = normalizeVersion(pkgManager, version);
-      if (normalized) {
-        semvers.set(this, normalized);
-        this.version = normalized.format();
-      }
-      this.version ??= version;
+    const semver = isString(version) ? parse(version) || undefined : version;
+    if (semver) {
+      semvers.set(this, semver);
+      this.version = semver.format();
     } else {
-      semvers.set(this, version);
-      this.version = version.format();
+      this.version = version as string;
     }
+
     this.pkgManager = pkgManager;
     this.isSystem = Boolean(isSystem);
   }
@@ -101,7 +92,7 @@ export class PkgManagerSpec {
   /**
    * This returns `true` if the version is valid semantic version.
    */
-  public get isValid() {
+  public get hasSemVer() {
     return Boolean(this.semver);
   }
 
@@ -237,7 +228,7 @@ export class PkgManagerSpec {
 
   public toString() {
     if (this.isSystem) {
-      return this.isValid
+      return this.hasSemVer
         ? `${this.pkgManager}@${this.version} (system)`
         : `${this.pkgManager} (system)`;
     }

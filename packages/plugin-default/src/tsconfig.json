@@ -4,8 +4,7 @@
     "outDir": "../dist",
     "rootDir": ".",
     "paths": {
-      "midnight-smoker": ["../../midnight-smoker"],
-      "../data/git-deny-patterns.json": ["./data/git-deny-patterns.json"]
+      "midnight-smoker": ["../../midnight-smoker"]
     }
   },
   "include": ["."],

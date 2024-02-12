@@ -1,6 +1,5 @@
 import type * as PMS from '#component/pkg-manager/pkg-manager-spec.js';
-import {DEFAULT_PKG_MANAGER_BIN} from '#constants';
-import {ErrorCodes} from '#error';
+import {DEFAULT_PKG_MANAGER_BIN, DEFAULT_PKG_MANAGER_VERSION} from '#constants';
 import {type getSystemPkgManagerVersion} from '#util/pkg-util.js';
 import rewiremock from 'rewiremock/node';
 import {SemVer} from 'semver';
@@ -44,11 +43,11 @@ describe('midnight-smoker', function () {
 
         describe('constructor', function () {
           describe('when no arguments are provided', function () {
-            it('should create a valid PkgManagerSpec with defaults applied', function () {
+            it('should create a PkgManagerSpec with defaults applied', function () {
               expect(new PkgManagerSpec(), 'to satisfy', {
                 pkgManager: DEFAULT_PKG_MANAGER_BIN,
-                version: expect.it('to be a string'),
-                isValid: true,
+                version: DEFAULT_PKG_MANAGER_VERSION,
+                hasSemVer: false,
                 isSystem: false,
               });
             });
@@ -63,7 +62,7 @@ describe('midnight-smoker', function () {
                   {
                     pkgManager: 'npm',
                     version: '7.0.0',
-                    isValid: true,
+                    hasSemVer: true,
                     isSystem: false,
                   },
                 );
@@ -80,7 +79,7 @@ describe('midnight-smoker', function () {
                     {
                       pkgManager: 'npm',
                       version: '7.0.0',
-                      isValid: true,
+                      hasSemVer: true,
                       isSystem: false,
                     },
                   );
@@ -89,12 +88,15 @@ describe('midnight-smoker', function () {
             });
 
             describe('when the version is invalid', function () {
-              it('should consider it a dist-tag and throw', function () {
+              it('should consider it a dist-tag', function () {
                 expect(
-                  () => new PkgManagerSpec({pkgManager: 'npm', version: 'foo'}),
-                  'to throw',
+                  new PkgManagerSpec({pkgManager: 'npm', version: 'foo'}),
+                  'to satisfy',
                   {
-                    code: ErrorCodes.UnknownDistTagError,
+                    pkgManager: 'npm',
+                    version: 'foo',
+                    hasSemVer: false,
+                    isSystem: false,
                   },
                 );
               });
@@ -112,7 +114,7 @@ describe('midnight-smoker', function () {
               });
 
               it('should be true', function () {
-                expect(spec.isValid, 'to be true');
+                expect(spec.hasSemVer, 'to be true');
               });
             });
 
@@ -122,7 +124,7 @@ describe('midnight-smoker', function () {
               });
 
               it('should be false', function () {
-                expect(spec.isValid, 'to be false');
+                expect(spec.hasSemVer, 'to be false');
               });
             });
           });
@@ -178,8 +180,8 @@ describe('midnight-smoker', function () {
                 });
               });
 
-              describe('when provided a dist-tag normalized to a valid version', function () {
-                it('should print a string with the version and a "(system)" suffix', function () {
+              describe('when provided a dist-tag', function () {
+                it('should print a string without the version and a "(system)" suffix', function () {
                   expect(
                     String(
                       new PkgManagerSpec({
@@ -189,7 +191,7 @@ describe('midnight-smoker', function () {
                       }),
                     ),
                     'to match',
-                    /^npm@\d+\.\d+\.\d+ \(system\)$/,
+                    /^npm \(system\)$/,
                   );
                 });
               });
@@ -226,7 +228,7 @@ describe('midnight-smoker', function () {
               expect(clone, 'to satisfy', {
                 pkgManager: spec.pkgManager,
                 version: spec.version,
-                isValid: spec.isValid,
+                hasSemVer: spec.hasSemVer,
                 isSystem: spec.isSystem,
               });
             });
@@ -236,7 +238,7 @@ describe('midnight-smoker', function () {
               expect(clone, 'to satisfy', {
                 pkgManager: 'yarn',
                 version: '1.22.0',
-                isValid: true,
+                hasSemVer: true,
                 isSystem: false,
               });
             });
@@ -337,11 +339,11 @@ describe('midnight-smoker', function () {
         describe('static method', function () {
           describe('create()', function () {
             describe('when no arguments are provided', function () {
-              it('should create a valid PkgManagerSpec with defaults applied', function () {
+              it('should create a PkgManagerSpec with defaults applied', function () {
                 expect(PkgManagerSpec.create(), 'to satisfy', {
                   pkgManager: DEFAULT_PKG_MANAGER_BIN,
-                  version: expect.it('to match', /^\d+\.\d+\.\d+$/),
-                  isValid: true,
+                  version: DEFAULT_PKG_MANAGER_VERSION,
+                  hasSemVer: false,
                   isSystem: false,
                 });
               });
@@ -359,7 +361,7 @@ describe('midnight-smoker', function () {
                     {
                       pkgManager: 'npm',
                       version: '7.0.0',
-                      isValid: true,
+                      hasSemVer: true,
                       isSystem: false,
                     },
                   );
@@ -397,56 +399,76 @@ describe('midnight-smoker', function () {
                   pkgManager: 'npm',
                   version: '7.0.0',
                 });
-                const result = await PkgManagerSpec.from(spec);
-                expect(result, 'to satisfy', {...spec}).and('not to be', spec);
+                await expect(
+                  PkgManagerSpec.from(spec),
+                  'to be fulfilled with value satisfying',
+                  {...spec},
+                ).and('not to be', spec);
               });
             });
 
             describe('when the argument is a string', function () {
               it('should parse the string and create a PkgManagerSpec', async function () {
-                const result = await PkgManagerSpec.from('npm@7.0.0');
-                expect(result, 'to satisfy', {
-                  pkgManager: 'npm',
-                  version: '7.0.0',
-                });
+                await expect(
+                  PkgManagerSpec.from('npm@7.0.0'),
+                  'to be fulfilled with value satisfying',
+                  {
+                    pkgManager: 'npm',
+                    version: '7.0.0',
+                  },
+                );
               });
 
               describe('when the argument is just a name', function () {
                 it('should parse the string and create a PkgManagerSpec', async function () {
-                  const result = await PkgManagerSpec.from('pnpm');
-                  expect(result, 'to satisfy', {
-                    pkgManager: 'pnpm',
-                    version: 'latest',
-                  });
+                  await expect(
+                    PkgManagerSpec.from('pnpm'),
+                    'to be fulfilled with value satisfying',
+                    {
+                      pkgManager: 'pnpm',
+                      version: 'latest',
+                    },
+                  );
                 });
               });
 
               describe('when the second argument is true', function () {
                 it('should set the isSystem flag to true', async function () {
-                  const result = await PkgManagerSpec.from('npm@7.0.0', true);
-                  expect(result.isSystem, 'to be true');
+                  await expect(
+                    PkgManagerSpec.from('npm@7.0.0', true),
+                    'to be fulfilled with value satisfying',
+                    {isSystem: true},
+                  );
                 });
               });
             });
 
             describe('when the argument is an options object', function () {
               it('should create a PkgManagerSpec with the provided options', async function () {
-                const result = await PkgManagerSpec.from({
-                  pkgManager: 'yarn',
-                  version: '1.22.10',
-                });
-                expect(result, 'to satisfy', {
-                  pkgManager: 'yarn',
-                  version: '1.22.10',
-                });
+                await expect(
+                  PkgManagerSpec.from({
+                    pkgManager: 'yarn',
+                    version: '1.22.10',
+                  }),
+                  'to be fulfilled with value satisfying',
+                  {
+                    pkgManager: 'yarn',
+                    version: '1.22.10',
+                  },
+                );
               });
 
               it('should use default values for missing options', async function () {
-                const result = await PkgManagerSpec.from({});
-                expect(result, 'to satisfy', {
-                  pkgManager: DEFAULT_PKG_MANAGER_BIN,
-                  version: expect.it('to match', /^\d+\.\d+\.\d+$/),
-                });
+                await expect(
+                  PkgManagerSpec.from({}),
+                  'to be fulfilled with value satisfying',
+                  {
+                    pkgManager: DEFAULT_PKG_MANAGER_BIN,
+                    isSystem: false,
+                    hasSemVer: false,
+                    version: DEFAULT_PKG_MANAGER_VERSION,
+                  },
+                );
               });
 
               it('should get the system package manager version when isSystem is true', async function () {

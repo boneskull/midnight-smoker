@@ -83,6 +83,9 @@ export abstract class GenericNpmPackageManager implements PkgManager {
 
   public static readonly lockfile = 'package-lock.json';
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  public static accepts(value: string) {}
+
   /**
    * @param spec - Package manager name and version
    * @param executor - Executor instance

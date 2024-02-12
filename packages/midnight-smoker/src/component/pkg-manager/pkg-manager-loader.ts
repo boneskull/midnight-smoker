@@ -7,8 +7,8 @@
  */
 
 import {type PkgManagerDef} from '#schema/pkg-manager-def.js';
-import {curry, isFunction, isString} from 'lodash';
-import {Range} from 'semver';
+import {curry} from 'lodash';
+import {type SemVer} from 'semver';
 import {InvalidArgError} from '../../error';
 import {UnsupportedPackageManagerError} from '../../error/unsupported-pkg-manager-error';
 import {type Executor} from '../schema/executor';
@@ -76,32 +76,27 @@ export async function loadPackageManagers(
   return findPackageManagers(pkgManagerDefs, specs);
 }
 
-const matchPkgManager = curry(
-  /**
-   * Determines whether a package manager definition can serve as a package
-   * manager for the requested definition
-   *
-   * @param spec Package manager specification
-   * @param pkgManagerDef Package manager definition
-   * @returns `true` if the package manager definition can handle the package
-   */
-  (spec: PkgManagerSpec, pkgManagerDef: PkgManagerDef): boolean => {
-    if (pkgManagerDef.bin !== spec.pkgManager) {
-      return false;
-    }
-    if (isString(pkgManagerDef.accepts)) {
-      return new Range(pkgManagerDef.accepts, {includePrerelease: true}).test(
-        spec.semver!,
-      );
-    }
-    if (isFunction(pkgManagerDef.accepts)) {
-      return pkgManagerDef.accepts(spec.semver!);
-    }
+/**
+ * Determines whether a package manager definition can serve as a package
+ * manager for the requested definition
+ *
+ * @param spec Package manager specification
+ * @param pkgManagerDef Package manager definition
+ * @returns `true` if the package manager definition can handle the package
+ */
+const _matchPkgManager = (
+  spec: PkgManagerSpec,
+  pkgManagerDef: PkgManagerDef,
+): SemVer | string | undefined => {
+  if (pkgManagerDef.bin === spec.pkgManager) {
+    return pkgManagerDef.accepts(spec.version);
+  }
+};
 
-    /* c8 ignore next */
-    return false;
-  },
-);
+/**
+ * {@inheritDoc _matchPkgManager}
+ */
+const matchPkgManager = curry(_matchPkgManager);
 
 /**
  * Finds package managers based on the provided package manager modules and
@@ -138,17 +133,26 @@ export function findPackageManagers(
 
   return pkgManagerSpecs.reduce<Map<PkgManagerSpec, PkgManagerDef>>(
     (acc, spec) => {
-      const accepts = matchPkgManager(spec);
-      const pmm = pkgManagerDefs.find(accepts);
+      let def: PkgManagerDef | undefined;
+      let normalizedVersion: SemVer | string | undefined;
 
-      if (!pmm) {
+      for (const pmDef of pkgManagerDefs) {
+        const value = matchPkgManager(spec, pmDef);
+        if (value) {
+          def = pmDef;
+          normalizedVersion = value;
+          break;
+        }
+      }
+
+      if (!def) {
         throw new UnsupportedPackageManagerError(
           `No PackageManager component found that can handle "${spec}"`,
           spec.pkgManager,
           spec.version,
         );
       }
-      acc.set(spec, pmm);
+      acc.set(spec.clone({version: normalizedVersion}), def);
       return acc;
     },
     new Map(),

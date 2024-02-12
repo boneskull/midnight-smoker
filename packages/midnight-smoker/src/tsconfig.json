@@ -6,6 +6,5 @@
   "compilerOptions": {
     "outDir": "../dist"
   },
-  "include": ["."],
-  "references": [{"path": "../data/tsconfig.json"}]
+  "include": ["."]
 }

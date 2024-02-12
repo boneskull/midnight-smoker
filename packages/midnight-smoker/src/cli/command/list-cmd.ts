@@ -3,9 +3,8 @@
  *
  * @packageDocumentation
  */
-
 import Debug from 'debug';
-import {isFunction, orderBy} from 'lodash';
+import {isString, orderBy} from 'lodash';
 import path from 'node:path';
 import terminalLink from 'terminal-link';
 import {type Writable} from 'type-fest';
@@ -23,6 +22,9 @@ import {BaseCommand} from './base-cmd';
 import {type GlobalOptionTypes} from './global-opts';
 import {JsonOptions, type CommandOptionRecord} from './opts';
 
+/**
+ * Option types for the `list` command
+ */
 type ListOptionTypes = GlobalOptionTypes &
   InferredOptionTypes<Writable<typeof ListPositionals>> &
   InferredOptionTypes<Writable<typeof ListOptions>>;
@@ -56,6 +58,13 @@ export class ListCommand extends BaseCommand {
     }
   }
 
+  /**
+   * Retrieves a list of package managers and displays them in a table format.
+   * If the `json` option is provided, the list is outputted as JSON.
+   *
+   * @param opts - The options for listing package managers.
+   * @returns A promise that resolves once the list is displayed.
+   */
   private static async listPkgManagers(
     opts: ArgumentsCamelCase<ListOptionTypes>,
   ): Promise<void> {
@@ -70,9 +79,12 @@ export class ListCommand extends BaseCommand {
     const table = createTable(
       pkgManagers.map((pm) => {
         const data: string[] = [pm.id, pm.bin];
-        if (!isFunction(pm.accepts)) {
-          // eslint-disable-next-line @typescript-eslint/no-base-to-string
-          data.push(`${pm.accepts}`);
+        if (pm.supportedVersionRange) {
+          if (isString(pm.supportedVersionRange)) {
+            data.push(pm.supportedVersionRange);
+          } else {
+            data.push(pm.supportedVersionRange.raw);
+          }
         }
         return data;
       }),
@@ -82,6 +94,12 @@ export class ListCommand extends BaseCommand {
     BaseCommand.write(table);
   }
 
+  /**
+   * Lists the plugins based on the provided options.
+   *
+   * @param opts - The options for listing the plugins.
+   * @returns A promise that resolves when the plugins are listed.
+   */
   private static async listPlugins(
     opts: ArgumentsCamelCase<ListOptionTypes>,
   ): Promise<void> {
@@ -113,6 +131,12 @@ export class ListCommand extends BaseCommand {
     BaseCommand.write(table);
   }
 
+  /**
+   * Lists the available reporters.
+   *
+   * @param opts - The options for listing reporters.
+   * @returns A promise that resolves when the reporters have been listed.
+   */
   private static async listReporters(
     opts: ArgumentsCamelCase<ListOptionTypes>,
   ): Promise<void> {
@@ -138,6 +162,12 @@ export class ListCommand extends BaseCommand {
     BaseCommand.write(table);
   }
 
+  /**
+   * Lists the rules based on the provided options.
+   *
+   * @param opts - The options for listing the rules.
+   * @returns A promise that resolves once the rules are listed.
+   */
   private static async listRules(
     opts: ArgumentsCamelCase<ListOptionTypes>,
   ): Promise<void> {
@@ -193,7 +223,7 @@ const ListPositionals = {
 } as const satisfies Record<string, PositionalOptions>;
 
 /**
- * Option options for the `list` command
+ * Option for the `list` command
  */
 const ListOptions = {
   ...JsonOptions,

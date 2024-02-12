@@ -7,4 +7,3 @@ export * from './null-pkg-manager';
 export * from './null-rule-runner';
 export * from './null-script-runner';
 export * from './register';
-export * from './util';

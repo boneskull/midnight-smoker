@@ -1,5 +1,13 @@
 import {ComponentKinds, type Component} from '#component';
 import {DEFAULT_COMPONENT_ID} from '#constants';
+import {InvalidComponentError} from '#error/component-error.js';
+import {DisallowedPluginError} from '#error/disallowed-plugin-error.js';
+import {DuplicatePluginError} from '#error/duplicate-plugin-error.js';
+import {PluginConflictError} from '#error/plugin-conflict-error.js';
+import {PluginImportError} from '#error/plugin-import-error.js';
+import {PluginInitializationError} from '#error/plugin-init-error.js';
+import {PluginResolutionError} from '#error/plugin-resolution-error.js';
+import {UnresolvablePluginError} from '#error/unresolvable-plugin-error.js';
 import {
   loadPackageManagers,
   type LoadPackageManagersOpts,
@@ -27,16 +35,6 @@ import util from 'node:util';
 import {type PackageJson} from 'type-fest';
 import {z} from 'zod';
 import {fromZodError} from 'zod-validation-error';
-import {InvalidComponentError} from '../error/component-error';
-import {
-  DisallowedPluginError,
-  DuplicatePluginError,
-  PluginConflictError,
-  PluginImportError,
-  PluginInitializationError,
-  PluginResolutionError,
-  UnresolvablePluginError,
-} from '../error/internal-error';
 import {isBlessedPlugin, type BlessedPlugin} from './blessed';
 import {createPluginAPI} from './create-plugin-api';
 import {Helpers} from './helpers';
@@ -489,7 +487,7 @@ export class PluginRegistry {
 
     metadata = this.maybeUpdatePluginMetadata(metadata, plugin);
 
-    const pluginApi = createPluginAPI(this, metadata);
+    const pluginApi = createPluginAPI(() => this.plugins, metadata);
 
     try {
       await plugin.plugin(pluginApi);

@@ -11,7 +11,6 @@ import {
   type RunScriptManifest,
   type RunScriptResult,
 } from 'midnight-smoker/pkg-manager';
-import type {SemVer} from 'semver';
 import {MOCK_TMPDIR} from './constants';
 
 export const nullPmDef: PkgManagerDef = {
@@ -21,8 +20,8 @@ export const nullPmDef: PkgManagerDef = {
   async create(spec, executor, helpers, opts) {
     return new NullPm(spec, executor, opts);
   },
-  accepts(semver: SemVer): boolean {
-    return true;
+  accepts(value: string) {
+    return value;
   },
 };
 

@@ -1,7 +1,8 @@
-import {registerRule, safePath} from '@midnight-smoker/test-util';
+import {registerRule} from '@midnight-smoker/test-util';
 import {type Component} from 'midnight-smoker/component';
 import {PluginRegistry} from 'midnight-smoker/plugin';
 import {RuleSeverities, type SomeRule} from 'midnight-smoker/rule';
+import {normalize} from 'node:path';
 import unexpected from 'unexpected';
 import noBannedFilesDef from '../../../src/rules/no-banned-files';
 import {applyRule} from './helpers';
@@ -19,7 +20,7 @@ describe('@midnight-smoker/plugin-default', function () {
       });
 
       describe('when the package contains a banned file', function () {
-        const fixture = safePath(`${__dirname}/fixture/no-banned-files`);
+        const fixture = normalize(`${__dirname}/fixture/no-banned-files`);
 
         it('should return a failure for each banned file', async function () {
           await expect(
@@ -47,7 +48,7 @@ describe('@midnight-smoker/plugin-default', function () {
           allow: ['id_rsa'],
         };
 
-        const fixture = safePath(`${__dirname}/fixture/no-banned-files-cfg`);
+        const fixture = normalize(`${__dirname}/fixture/no-banned-files-cfg`);
 
         it('should allow additional files to be banned', async function () {
           await expect(

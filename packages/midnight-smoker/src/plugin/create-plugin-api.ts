@@ -14,7 +14,6 @@ import * as ScriptRunnerNS from '#script-runner';
 import * as SchemaUtils from '#util/schema-util.js';
 import Debug from 'debug';
 import {z} from 'zod';
-import * as ErrorsNS from '../error';
 import {Helpers} from './helpers';
 import {type PluginMetadata} from './metadata';
 import {
@@ -26,18 +25,18 @@ import {
   type DefineScriptRunnerFn,
   type PluginAPI,
 } from './plugin-api';
-import {type PluginRegistry} from './registry';
+import {type StaticPluginMetadata} from './static-metadata';
 
 const debug = Debug('midnight-smoker:plugin:create-plugin-api');
 
 /**
- * Creates a {@link API.PluginAPI} object for use by a specific plugin.
+ * Creates a {@link PluginAPI} object for use by a specific plugin.
  *
  * @param metadata - Plugin metadata
- * @returns A {@link API.PluginAPI} object for use by a specific plugin
+ * @returns A {@link PluginAPI} object for use by a specific plugin
  */
 export const createPluginAPI = (
-  registry: PluginRegistry,
+  getPlugins: () => StaticPluginMetadata[],
   metadata: PluginMetadata,
 ): Readonly<PluginAPI> => {
   // TODO: validate ruleDef
@@ -89,16 +88,11 @@ export const createPluginAPI = (
     return pluginApi;
   };
 
-  const getPlugins = () => {
-    return registry.plugins;
-  };
-
   const pluginApi: PluginAPI = {
     SchemaUtils,
     Helpers,
     Rule: RuleNS,
     PkgManager: PkgManagerNS,
-    Errors: ErrorsNS,
     Executor: ExecutorNS,
     RuleRunner: RuleRunnerNS,
     ScriptRunner: ScriptRunnerNS,

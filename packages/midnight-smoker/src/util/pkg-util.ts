@@ -37,37 +37,40 @@ export type ReadPackageJsonResult = readPkgUp.ReadResult;
 
 export type ReadPackageJsonNormalizedResult = readPkgUp.NormalizedReadResult;
 
-const _readPkgJson = memoize(
-  /**
-   * @param cwd Current working directory
-   * @param normalize If `true`, normalize the resulting `package.json` file
-   * @param strict If `true`, throw if unable to find a `package.json` file
-   * @returns `package.json` and path thereof
-   */
-  async (
-    cwd: string = process.cwd(),
-    normalize?: boolean,
-    strict?: boolean,
-  ) => {
-    let result: readPkgUp.ReadResult | undefined;
-    try {
-      result = await readPkgUp({cwd, normalize});
-    } catch (err) {
-      throw new UnreadablePackageJsonError(
-        `Could not read package.json from ${cwd}`,
-        cwd,
-        fromUnknownError(err),
-      );
-    }
-    if (!result && strict) {
-      throw new MissingPackageJsonError(
-        `Could not find package.json from ${cwd}`,
-        cwd,
-      );
-    }
-    return result;
-  },
-);
+/**
+ * @param cwd Current working directory
+ * @param normalize If `true`, normalize the resulting `package.json` file
+ * @param strict If `true`, throw if unable to find a `package.json` file
+ * @returns `package.json` and path thereof
+ */
+async function __readPkgJson(
+  cwd: string = process.cwd(),
+  normalize?: boolean,
+  strict?: boolean,
+) {
+  let result: readPkgUp.ReadResult | undefined;
+  try {
+    result = await readPkgUp({cwd, normalize});
+  } catch (err) {
+    throw new UnreadablePackageJsonError(
+      `Could not read package.json from ${cwd}`,
+      cwd,
+      fromUnknownError(err),
+    );
+  }
+  if (!result && strict) {
+    throw new MissingPackageJsonError(
+      `Could not find package.json from ${cwd}`,
+      cwd,
+    );
+  }
+  return result;
+}
+
+/**
+ * {@inheritDoc __readPkgJson}
+ */
+const _readPkgJson = memoize(__readPkgJson);
 
 /**
  * Reads closest `package.json` from some dir
@@ -103,27 +106,31 @@ readPackageJson.resetCache = () => {
   _readPkgJson.cache = new Map();
 };
 
-const _readPkgJsonSync = memoize(
-  (cwd: string = process.cwd(), normalize?: boolean, strict?: boolean) => {
-    let result: readPkgUp.ReadResult | undefined;
-    try {
-      result = readPkgUp.sync({cwd, normalize});
-    } catch (err) {
-      throw new UnreadablePackageJsonError(
-        `Could not read package.json from ${cwd}`,
-        cwd,
-        fromUnknownError(err),
-      );
-    }
-    if (!result && strict) {
-      throw new MissingPackageJsonError(
-        `Could not find package.json from ${cwd}`,
-        cwd,
-      );
-    }
-    return result;
-  },
-);
+function __readPkgJsonSync(
+  cwd: string = process.cwd(),
+  normalize?: boolean,
+  strict?: boolean,
+) {
+  let result: readPkgUp.ReadResult | undefined;
+  try {
+    result = readPkgUp.sync({cwd, normalize});
+  } catch (err) {
+    throw new UnreadablePackageJsonError(
+      `Could not read package.json from ${cwd}`,
+      cwd,
+      fromUnknownError(err),
+    );
+  }
+  if (!result && strict) {
+    throw new MissingPackageJsonError(
+      `Could not find package.json from ${cwd}`,
+      cwd,
+    );
+  }
+  return result;
+}
+
+const _readPkgJsonSync = memoize(__readPkgJsonSync);
 
 /**
  * Reads closest `package.json` from some dir (synchronously)

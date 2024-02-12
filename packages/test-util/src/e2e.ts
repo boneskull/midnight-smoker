@@ -124,7 +124,7 @@ export function fixupOutput(str: string, stripPmVersions = true) {
 
   if (stripPmVersions) {
     result = result.replace(
-      /(npm|yarn|pnpm|midnight-smoker)@\d+\.\d+\.\d+/g,
+      /(npm|yarn|pnpm|midnight-smoker)@(?:(?:\d+\.\d+\.\d+)|latest)/g,
       '$1@<version>',
     );
   }

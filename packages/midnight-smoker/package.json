@@ -158,7 +158,7 @@
     "smoke:ts": "ts-node -D ./src/cli.ts --version",
     "test": "run-s test:unit test:smoke",
     "test:ci": "run-s test:unit test:smoke test:e2e",
-    "test:e2e": "mocha -p --timeout 20s --slow 10s \"test/e2e/**/*.spec.ts\"",
+    "test:e2e": "mocha --timeout 20s --slow 10s \"test/e2e/**/*.spec.ts\"",
     "test:smoke": "node ./bin/smoker.js run smoke:ts smoke:js --add ts-node --add @tsconfig/node16",
     "test:snapshots-only": "npm run test:e2e -- --fgrep \"[snapshot]\"",
     "test:unit": "mocha \"test/unit/**/*.spec.ts\"",

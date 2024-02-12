@@ -151,7 +151,7 @@ describe('midnight-smoker', function () {
         describe('when the "linger" option is true and a temp dir was created', function () {
           beforeEach(async function () {
             await fs.promises.mkdir(os.tmpdir(), {recursive: true});
-            smoker = await Smoker.createWithCapabilities({
+            smoker = await Smoker.create({
               script: 'foo',
               linger: true,
             });

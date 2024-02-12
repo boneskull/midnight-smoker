@@ -5,7 +5,7 @@ import {
 } from 'midnight-smoker/pkg-manager';
 import {Helpers} from 'midnight-smoker/plugin';
 import rewiremock from 'rewiremock/node';
-import {Range} from 'semver';
+import {type Range} from 'semver';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
@@ -68,7 +68,7 @@ describe('@midnight-smoker/plugin-default', function () {
           let range: Range;
 
           beforeEach(function () {
-            range = new Range(Npm9.accepts);
+            range = Npm9.supportedVersionRange;
           });
 
           it('should return false for versions < 9.0.0', function () {

@@ -6,7 +6,6 @@ import type * as Rule from '#rule';
 import type * as RuleRunner from '#rule-runner';
 import type * as ScriptRunner from '#script-runner';
 import type {z} from 'zod';
-import type * as Errors from '../error';
 import type * as SchemaUtils from '../util/schema-util';
 import type * as Helpers from './helpers';
 import type {PluginMetadata} from './metadata';
@@ -62,11 +61,6 @@ export type DefineReporterFn = (reporter: Reporter.ReporterDef) => PluginAPI;
  * @todo Implement support for `Listener`s
  */
 export interface PluginAPI {
-  /**
-   * Collection of `Error` classes useful to plugin implementors.
-   */
-  Errors: typeof Errors;
-
   /**
    * Types related to `Executor`s.
    */

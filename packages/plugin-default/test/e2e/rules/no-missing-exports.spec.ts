@@ -1,7 +1,8 @@
-import {registerRule, safePath} from '@midnight-smoker/test-util';
+import {registerRule} from '@midnight-smoker/test-util';
 import {type Component} from 'midnight-smoker/component';
 import {PluginRegistry} from 'midnight-smoker/plugin';
 import {type SomeRule} from 'midnight-smoker/rule';
+import {normalize} from 'node:path';
 import unexpected from 'unexpected';
 import noMissingExportsDef from '../../../src/rules/no-missing-exports';
 import {applyRule} from './helpers';
@@ -21,7 +22,7 @@ describe('@midnight-smoker/plugin-default', function () {
       });
 
       describe('when the package contains no "exports" field', function () {
-        const fixture = safePath(
+        const fixture = normalize(
           `${__dirname}/fixture/no-missing-exports-no-exports`,
         );
 
@@ -36,7 +37,7 @@ describe('@midnight-smoker/plugin-default', function () {
 
       describe('when the package contains a string "exports" field', function () {
         describe('when the file is missing', function () {
-          const fixture = safePath(
+          const fixture = normalize(
             `${__dirname}/fixture/no-missing-exports-main-export`,
           );
 
@@ -55,7 +56,7 @@ describe('@midnight-smoker/plugin-default', function () {
         });
 
         describe('when the file is present', function () {
-          const fixture = safePath(
+          const fixture = normalize(
             `${__dirname}/fixture/no-missing-exports-main-export-ok`,
           );
 
@@ -71,7 +72,7 @@ describe('@midnight-smoker/plugin-default', function () {
 
       describe('when the package contains subpath "exports" field', function () {
         describe('when a file is missing', function () {
-          const fixture = safePath(
+          const fixture = normalize(
             `${__dirname}/fixture/no-missing-exports-subpath`,
           );
 
@@ -91,7 +92,7 @@ describe('@midnight-smoker/plugin-default', function () {
         });
 
         describe('when no files are missing', function () {
-          const fixture = safePath(
+          const fixture = normalize(
             `${__dirname}/fixture/no-missing-exports-subpath-ok`,
           );
 
@@ -105,7 +106,7 @@ describe('@midnight-smoker/plugin-default', function () {
         });
 
         describe('when a glob pattern is present', function () {
-          const fixture = safePath(
+          const fixture = normalize(
             `${__dirname}/fixture/no-missing-exports-glob`,
           );
 
@@ -125,7 +126,7 @@ describe('@midnight-smoker/plugin-default', function () {
           });
 
           describe('when at least one file matches the glob pattern', function () {
-            const fixture = safePath(
+            const fixture = normalize(
               `${__dirname}/fixture/no-missing-exports-glob-ok`,
             );
 
@@ -139,7 +140,7 @@ describe('@midnight-smoker/plugin-default', function () {
           });
 
           describe('when glob patterns are disallowed', function () {
-            const fixture = safePath(
+            const fixture = normalize(
               `${__dirname}/fixture/no-missing-exports-no-glob`,
             );
 
@@ -160,7 +161,7 @@ describe('@midnight-smoker/plugin-default', function () {
 
       describe('when the package contains conditional "exports" field', function () {
         describe('when a file is missing', function () {
-          const fixture = safePath(
+          const fixture = normalize(
             `${__dirname}/fixture/no-missing-exports-conditional`,
           );
 
@@ -180,7 +181,7 @@ describe('@midnight-smoker/plugin-default', function () {
         });
 
         describe('when the value is an array', function () {
-          const fixture = safePath(
+          const fixture = normalize(
             `${__dirname}/fixture/no-missing-exports-conditional-array`,
           );
 
@@ -199,7 +200,7 @@ describe('@midnight-smoker/plugin-default', function () {
         });
 
         describe('when no files are missing', function () {
-          const fixture = safePath(
+          const fixture = normalize(
             `${__dirname}/fixture/no-missing-exports-conditional-ok`,
           );
 
@@ -212,7 +213,7 @@ describe('@midnight-smoker/plugin-default', function () {
           });
 
           describe('when a "require" export is present', function () {
-            const fixture = safePath(
+            const fixture = normalize(
               `${__dirname}/fixture/no-missing-exports-require`,
             );
 
@@ -234,7 +235,7 @@ describe('@midnight-smoker/plugin-default', function () {
           });
 
           describe('when an "import" export is present', function () {
-            const fixture = safePath(
+            const fixture = normalize(
               `${__dirname}/fixture/no-missing-exports-import`,
             );
             describe('when the file is not ESM', function () {
@@ -255,7 +256,7 @@ describe('@midnight-smoker/plugin-default', function () {
           });
 
           describe('when an "types" export is present', function () {
-            const fixture = safePath(
+            const fixture = normalize(
               `${__dirname}/fixture/no-missing-exports-types`,
             );
 
@@ -278,7 +279,7 @@ describe('@midnight-smoker/plugin-default', function () {
 
           describe('when a "default" export is present', function () {
             describe('when it does not appear last in the "exports" obejct', function () {
-              const fixture = safePath(
+              const fixture = normalize(
                 `${__dirname}/fixture/no-missing-exports-default`,
               );
 
@@ -297,7 +298,7 @@ describe('@midnight-smoker/plugin-default', function () {
             });
 
             describe('when it appears last in the "exports" object', function () {
-              const fixture = safePath(
+              const fixture = normalize(
                 `${__dirname}/fixture/no-missing-exports-default-ok`,
               );
               it('should not return a failure', async function () {
@@ -310,7 +311,7 @@ describe('@midnight-smoker/plugin-default', function () {
             });
 
             describe('when the "order" option is disabled', function () {
-              const fixture = safePath(
+              const fixture = normalize(
                 `${__dirname}/fixture/no-missing-exports-default`,
               );
 
@@ -328,7 +329,7 @@ describe('@midnight-smoker/plugin-default', function () {
 
       describe('when the package contains an array "exports" field', function () {
         describe('when a file is missing', function () {
-          const fixture = safePath(
+          const fixture = normalize(
             `${__dirname}/fixture/no-missing-exports-array`,
           );
 

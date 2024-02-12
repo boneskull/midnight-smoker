@@ -1,7 +1,8 @@
-import {registerRule, safePath} from '@midnight-smoker/test-util';
+import {registerRule} from '@midnight-smoker/test-util';
 import {type Component} from 'midnight-smoker/component';
 import {PluginRegistry} from 'midnight-smoker/plugin';
 import {RuleSeverities, type SomeRule} from 'midnight-smoker/rule';
+import {normalize} from 'node:path';
 import unexpected from 'unexpected';
 import noMissingPkgFilesDef from '../../../src/rules/no-missing-pkg-files';
 import {applyRule} from './helpers';
@@ -23,7 +24,7 @@ describe('@midnight-smoker/plugin-default', function () {
       describe('when run without options', function () {
         describe('when the "bin" field is an object', function () {
           describe('when the file is missing', function () {
-            const fixture = safePath(
+            const fixture = normalize(
               `${__dirname}/fixture/no-missing-pkg-files`,
             );
 
@@ -49,7 +50,7 @@ describe('@midnight-smoker/plugin-default', function () {
           });
 
           describe('when the file is present', function () {
-            const fixture = safePath(
+            const fixture = normalize(
               `${__dirname}/fixture/no-missing-pkg-files-ok`,
             );
 
@@ -64,7 +65,7 @@ describe('@midnight-smoker/plugin-default', function () {
         });
 
         describe('when the "bin" field is a string', function () {
-          const fixture = safePath(
+          const fixture = normalize(
             `${__dirname}/fixture/no-missing-pkg-files-string-bin`,
           );
 
@@ -90,7 +91,7 @@ describe('@midnight-smoker/plugin-default', function () {
         });
 
         describe('when the "types" field is a string', function () {
-          const fixture = safePath(
+          const fixture = normalize(
             `${__dirname}/fixture/no-missing-pkg-files-types`,
           );
 
@@ -116,7 +117,7 @@ describe('@midnight-smoker/plugin-default', function () {
         });
 
         describe('when the "browser" field is a string', function () {
-          const fixture = safePath(
+          const fixture = normalize(
             `${__dirname}/fixture/no-missing-pkg-files-browser`,
           );
 
@@ -145,7 +146,7 @@ describe('@midnight-smoker/plugin-default', function () {
       describe('when run with options', function () {
         describe('when "bin" is set to false', function () {
           describe('when the file is missing', function () {
-            const fixture = safePath(
+            const fixture = normalize(
               `${__dirname}/fixture/no-missing-pkg-files`,
             );
 

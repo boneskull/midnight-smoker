@@ -23,6 +23,12 @@
       "types": "./dist/index.d.ts",
       "typedoc": "./src/index.ts",
       "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json",
+    "./data": {
+      "types": "./dist/package-manager/data.d.ts",
+      "typedoc": "./src/package-manager/data.ts",
+      "default": "./dist/package-manager/data.js"
     }
   },
   "types": "./dist/index.d.ts",
@@ -44,6 +50,7 @@
     "testing"
   ],
   "scripts": {
+    "prepare": "ts-node ./scripts/update-pm-versions.ts",
     "test": "run-p test:unit",
     "test:e2e": "mocha \"test/e2e/**/*.spec.ts\" -p --timeout 5s --slow 2500",
     "test:smoke": "smoker",

@@ -2,6 +2,7 @@ import Debug from 'debug';
 import {ExecError, InstallError, PackError} from 'midnight-smoker/error';
 import {type ExecResult, type Executor} from 'midnight-smoker/executor';
 import {
+  normalizeVersion,
   type InstallManifest,
   type PackOptions,
   type PkgManager,
@@ -17,6 +18,8 @@ import {
   type RunScriptResult,
 } from 'midnight-smoker/script-runner';
 import path from 'node:path';
+import {Range} from 'semver';
+import {yarnVersionData} from './data';
 
 interface WorkspaceInfo {
   location: string;
@@ -28,10 +31,10 @@ export class YarnClassic implements PkgManager {
   protected readonly debug: Debug.Debugger;
 
   public static readonly bin = 'yarn';
+  public static readonly lockfile = 'yarn.lock';
+  public static readonly supportedVersionRange = new Range('^1.0.0');
 
   public readonly name = 'yarn';
-
-  public static readonly lockfile = 'yarn.lock';
 
   constructor(
     public readonly spec: PkgManagerSpec,
@@ -43,7 +46,12 @@ export class YarnClassic implements PkgManager {
     this.debug = Debug(`midnight-smoker:pm:yarn1`);
   }
 
-  public static accepts = '^1.0.0';
+  public static accepts(value: string) {
+    const version = normalizeVersion(yarnVersionData, value);
+    if (version && YarnClassic.supportedVersionRange.test(version)) {
+      return version;
+    }
+  }
 
   public static async create(
     this: void,

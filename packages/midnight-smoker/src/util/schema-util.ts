@@ -3,7 +3,6 @@
  *
  * @packageDocumentation
  */
-
 import type {Many} from 'lodash';
 import {
   castArray as _castArray,
@@ -15,6 +14,7 @@ import {
   mapKeys,
 } from 'lodash';
 import type {EventEmitter} from 'node:events';
+import {Range, SemVer} from 'semver';
 import type {CamelCase, Class, KebabCase, PackageJson} from 'type-fest';
 import {z} from 'zod';
 
@@ -78,6 +78,12 @@ export const DefaultTrueSchema = z
 export const NonEmptyStringArraySchema = z
   .array(NonEmptyStringSchema)
   .describe('An array of non-empty strings');
+
+/**
+ * Non-empty array of non-empty strings :)
+ */
+export const NonEmptyNonEmptyStringArraySchema =
+  NonEmptyStringArraySchema.min(1);
 
 /**
  * Schema representing a non-empty string or array of non-empty strings, which
@@ -231,3 +237,7 @@ export function toDualCasedObject<T extends object>(
 export function dualCasedObjectSchema<T extends z.AnyZodObject>(schema: T) {
   return schema.extend(toDualCasedObject(schema.shape));
 }
+
+export const SemVerSchema = instanceofSchema(SemVer);
+
+export const SemVerRangeSchema = instanceofSchema(Range);

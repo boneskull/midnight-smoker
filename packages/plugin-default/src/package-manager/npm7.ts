@@ -7,6 +7,7 @@ import {
   type Executor,
 } from 'midnight-smoker/executor';
 import {
+  normalizeVersion,
   type InstallManifest,
   type PackOptions,
   type PkgManager,
@@ -16,14 +17,15 @@ import {
 } from 'midnight-smoker/pkg-manager';
 import {type PluginHelpers} from 'midnight-smoker/plugin';
 import path from 'node:path';
+import {Range} from 'semver';
+import {npmVersionData} from './data';
 import {GenericNpmPackageManager, type NpmPackItem} from './npm';
 
 export class Npm7 extends GenericNpmPackageManager implements PkgManager {
   protected debug: Debug.Debugger;
 
   public static readonly bin = 'npm';
-
-  public static accepts = '^7.0.0 || ^8.0.0';
+  public static readonly supportedVersionRange = new Range('^7.0.0 || ^8.0.0');
 
   public constructor(
     spec: PkgManagerSpec,
@@ -33,6 +35,13 @@ export class Npm7 extends GenericNpmPackageManager implements PkgManager {
   ) {
     super(spec, executor, tmpdir, opts);
     this.debug = Debug(`midnight-smoker:pm:npm7`);
+  }
+
+  public static accepts(value: string) {
+    const version = normalizeVersion(npmVersionData, value);
+    if (version && Npm7.supportedVersionRange.test(version)) {
+      return version;
+    }
   }
 
   public static async create(

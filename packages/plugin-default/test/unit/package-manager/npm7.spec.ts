@@ -11,13 +11,13 @@ import {
 } from 'midnight-smoker/pkg-manager';
 import {Helpers} from 'midnight-smoker/plugin';
 import rewiremock from 'rewiremock/node';
-import {Range} from 'semver';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
 import {type NpmPackItem} from '../../../src/package-manager/npm';
 import type * as NPM7 from '../../../src/package-manager/npm7';
 
+import {type Range} from 'semver';
 import type {ConsoleMock, DebugMock} from '../../mocks';
 import {mockConsole, mockDebug} from '../../mocks';
 
@@ -93,7 +93,7 @@ describe('@midnight-smoker/plugin-default', function () {
           let range: Range;
 
           beforeEach(function () {
-            range = new Range(Npm7.accepts);
+            range = Npm7.supportedVersionRange;
           });
 
           it('should return false for versions < 7.0.0', function () {

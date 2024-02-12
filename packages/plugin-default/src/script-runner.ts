@@ -7,7 +7,7 @@
 import Debug from 'debug';
 import {isError} from 'lodash';
 import {type PluginAPI} from 'midnight-smoker/plugin';
-import type * as SR from 'midnight-smoker/script-runner';
+import * as SR from 'midnight-smoker/script-runner';
 
 const debug = Debug('midnight-smoker:plugin-default:script-runner');
 
@@ -32,7 +32,7 @@ export function loadScriptRunner(api: PluginAPI) {
     {signal},
   ): Promise<SR.RunScriptResult> => {
     if (signal?.aborted) {
-      throw new api.Errors.ScriptBailed();
+      throw new SR.ScriptBailed();
     }
 
     const {script, pkgName} = runManifest;
@@ -50,11 +50,11 @@ export function loadScriptRunner(api: PluginAPI) {
         signal,
       });
     } catch (err) {
-      if (err instanceof api.ScriptRunner.ScriptBailed) {
+      if (err instanceof SR.ScriptBailed) {
         throw err;
       }
       if (isError(err)) {
-        throw new api.ScriptRunner.PackageManagerError(
+        throw new SR.PackageManagerError(
           `Package manager "${pkgManager.spec}" failed to run script "${script}": ${err.message}`,
           pkgManager.spec,
           err,
@@ -65,7 +65,7 @@ export function loadScriptRunner(api: PluginAPI) {
 
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (signal?.aborted) {
-      throw new api.ScriptRunner.ScriptBailed();
+      throw new SR.ScriptBailed();
     }
 
     if (result.error) {
