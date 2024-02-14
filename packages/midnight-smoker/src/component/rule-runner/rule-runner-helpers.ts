@@ -5,9 +5,9 @@ import {
   type RuleConfig,
   type RuleOk,
   type RuleSeverity,
+  type SomeRule,
   type StaticRuleContext,
 } from '#rule';
-import type {SomeRule} from '#schema/rule';
 import type {
   BaseNormalizedRuleOptions,
   BaseNormalizedRuleOptionsRecord,
@@ -27,7 +27,6 @@ import {readPackageJson} from '#util/pkg-util';
  * @param ruleConfig - Specific rule configuration (`severity`, `opts`)
  * @returns A new {@link RuleContext}
  */
-
 export async function createRuleContext<
   Cfg extends BaseNormalizedRuleOptions = BaseNormalizedRuleOptions,
 >(
@@ -40,6 +39,15 @@ export async function createRuleContext<
   return RuleContext.create(rule, staticCtx);
 }
 
+/**
+ * Retrieves the configuration for a specific rule.
+ *
+ * @template Name - The name of the rule.
+ * @template Schema - The schema type of the rule, if any.
+ * @param rule - The rule component.
+ * @param config - The base normalized rule options record.
+ * @returns The readonly configuration for the rule.
+ */
 export function getConfigForRule<
   const Name extends string,
   Schema extends RuleDefSchemaValue | void = void,
@@ -48,14 +56,15 @@ export function getConfigForRule<
   config: BaseNormalizedRuleOptionsRecord,
 ): Readonly<RuleConfig<Schema>> {
   return Object.freeze({...config[rule.id]}) as Readonly<RuleConfig<Schema>>;
-} /**
+}
+
+/**
  * Creates a {@link StaticRuleContext}; used by {@link createRuleContext}
  *
  * @param installPath - Path to package which will be provided to Rule
  * @param severity - Rule Severity
  * @returns
  */
-
 export async function createStaticRuleContext(
   installPath: string,
   severity: RuleSeverity,
@@ -74,6 +83,13 @@ export async function createStaticRuleContext(
   };
 }
 
+/**
+ * Creates a RuleOk result object.
+ *
+ * @param rule - The rule object.
+ * @param context - The context object.
+ * @returns The RuleOk result.
+ */
 export function createRuleOkResult(
   rule: SomeRule,
   context: Readonly<RuleContext>,
