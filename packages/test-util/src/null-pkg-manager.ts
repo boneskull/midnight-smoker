@@ -23,6 +23,7 @@ export const nullPmDef: PkgManagerDef = {
   accepts(value: string) {
     return value;
   },
+  lockfile: 'nullpm.lock',
 };
 
 export class NullPm implements PkgManager {
