@@ -1,4 +1,4 @@
-import type * as E from '#error/exec-error.js';
+import type * as E from '#error/exec-error';
 import {type ExecaError} from 'execa';
 import {pick} from 'lodash';
 import rewiremock from 'rewiremock/node';

@@ -3,9 +3,10 @@
  *
  * @packageDocumentation
  */
-import type {PkgManagerDef} from '#schema/pkg-manager-def.js';
-import {getSystemPkgManagerVersion, readPackageJson} from '#util/pkg-util.js';
+import type {PkgManagerDef} from '#schema/pkg-manager-def';
+import {getSystemPkgManagerVersion, readPackageJson} from '#util/pkg-util';
 import {globIterate} from 'glob';
+import path from 'node:path';
 import {PkgManagerSpec} from './pkg-manager-spec';
 
 /**
@@ -23,15 +24,17 @@ async function getPkgManagerFromLockfiles(
   cwd = process.cwd(),
 ): Promise<string | undefined> {
   // each PkgManagerDef is responsible for setting its lockfile
-  const lockfileMap = Object.fromEntries(
+  const lockfileMap = new Map(
     pkgManagerDefs
       .filter((def) => Boolean(def.lockfile))
-      .map((def) => [def.lockfile!, def.bin]),
+      .map((def) => [path.join(cwd, def.lockfile!), def.bin]),
   );
 
-  for await (const match of globIterate(Object.keys(lockfileMap), {cwd})) {
-    if (match in lockfileMap) {
-      return lockfileMap[match];
+  const patterns = [...lockfileMap.keys()];
+
+  for await (const match of globIterate(patterns, {cwd, absolute: false})) {
+    if (lockfileMap.has(match)) {
+      return lockfileMap.get(match)!;
     }
   }
 }
@@ -48,7 +51,7 @@ async function getPkgManagerFromLockfiles(
 async function getPkgManagerFromPackageJson(
   cwd = process.cwd(),
 ): Promise<Readonly<PkgManagerSpec> | undefined> {
-  const result = await readPackageJson({cwd});
+  const result = await readPackageJson({cwd}); //?
 
   const pkgManager = result?.packageJson.packageManager;
 

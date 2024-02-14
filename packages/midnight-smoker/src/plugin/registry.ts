@@ -1,33 +1,30 @@
 import {ComponentKinds, type Component} from '#component';
 import {DEFAULT_COMPONENT_ID} from '#constants';
-import {InvalidComponentError} from '#error/component-error.js';
-import {DisallowedPluginError} from '#error/disallowed-plugin-error.js';
-import {DuplicatePluginError} from '#error/duplicate-plugin-error.js';
-import {PluginConflictError} from '#error/plugin-conflict-error.js';
-import {PluginImportError} from '#error/plugin-import-error.js';
-import {PluginInitializationError} from '#error/plugin-init-error.js';
-import {PluginResolutionError} from '#error/plugin-resolution-error.js';
-import {UnresolvablePluginError} from '#error/unresolvable-plugin-error.js';
+import {InvalidComponentError} from '#error/component-error';
+import {DisallowedPluginError} from '#error/disallowed-plugin-error';
+import {DuplicatePluginError} from '#error/duplicate-plugin-error';
+import {PluginConflictError} from '#error/plugin-conflict-error';
+import {PluginImportError} from '#error/plugin-import-error';
+import {PluginInitializationError} from '#error/plugin-init-error';
+import {PluginResolutionError} from '#error/plugin-resolution-error';
+import {UnresolvablePluginError} from '#error/unresolvable-plugin-error';
 import {
   loadPackageManagers,
   type LoadPackageManagersOpts,
-} from '#pkg-manager/pkg-manager-loader.js';
-import {type PkgManagerSpec} from '#pkg-manager/pkg-manager-spec.js';
-import {type Executor} from '#schema/executor.js';
-import {
-  type PkgManagerDef,
-  type PkgManagerOpts,
-} from '#schema/pkg-manager-def.js';
-import {type PkgManager} from '#schema/pkg-manager.js';
-import {type ReporterDef} from '#schema/reporter-def.js';
-import {BaseRuleOptionsSchema} from '#schema/rule-options.js';
-import {type RuleRunner} from '#schema/rule-runner.js';
-import {type SomeRule} from '#schema/rule.js';
-import {type ScriptRunner} from '#schema/script-runner.js';
-import {isErrnoException} from '#util/error-util.js';
-import {justImport, resolveFrom} from '#util/loader-util.js';
-import {readPackageJson} from '#util/pkg-util.js';
-import * as SchemaUtils from '#util/schema-util.js';
+} from '#pkg-manager/pkg-manager-loader';
+import {type PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
+import {type Executor} from '#schema/executor';
+import {type PkgManager} from '#schema/pkg-manager';
+import {type PkgManagerDef, type PkgManagerOpts} from '#schema/pkg-manager-def';
+import {type ReporterDef} from '#schema/reporter-def';
+import {type SomeRule} from '#schema/rule';
+import {BaseRuleOptionsSchema} from '#schema/rule-options';
+import {type RuleRunner} from '#schema/rule-runner';
+import {type ScriptRunner} from '#schema/script-runner';
+import {isErrnoException} from '#util/error-util';
+import {justImport, resolveFrom} from '#util/loader-util';
+import {readPackageJson} from '#util/pkg-util';
+import * as SchemaUtils from '#util/schema-util';
 import Debug from 'debug';
 import {isEmpty, isError, isString} from 'lodash';
 import {dirname} from 'node:path';

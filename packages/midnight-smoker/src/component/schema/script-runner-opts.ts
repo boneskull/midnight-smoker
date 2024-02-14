@@ -1,4 +1,4 @@
-import {AbortSignalSchema} from '#util/schema-util.js';
+import {AbortSignalSchema} from '#util/schema-util';
 import {z} from 'zod';
 
 export const ScriptRunnerOptsSchema = z

@@ -1,15 +1,15 @@
 import {DEFAULT_EXECUTOR_ID, SYSTEM_EXECUTOR_ID} from '#constants';
-import {type InstallEvents} from '#event/install-events.js';
-import {type PackEvents} from '#event/pack-events.js';
-import {type ScriptRunnerEvents} from '#event/script-runner-events.js';
-import {createStrictEmitter} from '#event/strict-emitter.js';
-import {type PluginRegistry} from '#plugin/registry.js';
-import {type PkgManagerInstallManifest} from '#schema/install-manifest.js';
-import {type InstallResult} from '#schema/install-result.js';
-import {type PackOptions} from '#schema/pack-options.js';
-import {type PkgManagerOpts} from '#schema/pkg-manager-def.js';
-import {type PkgManager} from '#schema/pkg-manager.js';
-import {type RunScriptResult} from '#schema/run-script-result.js';
+import {type InstallEvents} from '#event/install-events';
+import {type PackEvents} from '#event/pack-events';
+import {type ScriptRunnerEvents} from '#event/script-runner-events';
+import {createStrictEmitter} from '#event/strict-emitter';
+import {type PluginRegistry} from '#plugin/registry';
+import {type PkgManagerInstallManifest} from '#schema/install-manifest';
+import {type InstallResult} from '#schema/install-result';
+import {type PackOptions} from '#schema/pack-options';
+import {type PkgManager} from '#schema/pkg-manager';
+import {type PkgManagerOpts} from '#schema/pkg-manager-def';
+import {type RunScriptResult} from '#schema/run-script-result';
 
 export abstract class PkgManagerController extends createStrictEmitter<PkgManagerEvents>() {
   protected readonly defaultExecutorId: string;

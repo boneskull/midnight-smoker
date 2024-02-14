@@ -1,4 +1,4 @@
-import {instanceofSchema} from '#util/schema-util.js';
+import {instanceofSchema} from '#util/schema-util';
 import {z} from 'zod';
 
 /**

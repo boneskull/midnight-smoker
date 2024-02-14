@@ -6,17 +6,19 @@
  * @module midnight-smoker/error
  */
 
+export * from '#schema/script-error';
 export * from './base-error';
 export * from './codes';
-export * from './common-error';
 export * from './component-error';
 export * from './create-dir-error';
 export * from './disallowed-plugin-error';
 export * from './duplicate-plugin-error';
 export * from './exec-error';
 export * from './install-error';
+export * from './invalid-arg-error';
 export * from './invalid-plugin-error';
 export * from './missing-pkg-json-error';
+export * from './not-implemented-error';
 export * from './pack-error';
 export * from './pkg-manager-error';
 export * from './plugin-conflict-error';
@@ -27,9 +29,9 @@ export * from './reporter-error';
 export * from './rule-error';
 export * from './run-script-error';
 export * from './script-bailed';
-export type {ScriptError} from './script-error';
 export * from './script-failed-error';
 export * from './smoker-error';
+export * from './smoker-reference-error';
 export * from './unknown-dist-tag-error';
 export * from './unknown-script-error';
 export * from './unknown-version-error';
@@ -37,4 +39,3 @@ export * from './unknown-version-range-error';
 export * from './unreadable-pkg-json-error';
 export * from './unresolvable-plugin-error';
 export * from './unsupported-pkg-manager-error';
-// TODO ExecaError

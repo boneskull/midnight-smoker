@@ -1,7 +1,7 @@
-import {BaseNormalizedRuleOptionsRecordSchema} from '#schema/rule-options.js';
-import {RunRulesManifestSchema} from '#schema/rule-runner-manifest.js';
-import {RuleRunnerNotifiersSchema} from '#schema/rule-runner-notifier.js';
-import {RunRulesResultSchema} from '#schema/rule-runner-result.js';
+import {BaseNormalizedRuleOptionsRecordSchema} from '#schema/rule-options';
+import {RunRulesManifestSchema} from '#schema/rule-runner-manifest';
+import {RuleRunnerNotifiersSchema} from '#schema/rule-runner-notifier';
+import {RunRulesResultSchema} from '#schema/rule-runner-result';
 import {z} from 'zod';
 import {RuleComponentsSchema} from './rule';
 

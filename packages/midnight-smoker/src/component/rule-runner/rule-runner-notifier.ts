@@ -1,7 +1,7 @@
-import {SmokerEvent} from '#event/event-constants.js';
-import type {RuleRunnerEvents} from '#event/rule-runner-events.js';
-import type {StrictEmitter} from '#event/strict-emitter.js';
-import type {RuleRunnerNotifiers} from '#schema/rule-runner-notifier.js';
+import {SmokerEvent} from '#event/event-constants';
+import type {RuleRunnerEvents} from '#event/rule-runner-events';
+import type {StrictEmitter} from '#event/strict-emitter';
+import type {RuleRunnerNotifiers} from '#schema/rule-runner-notifier';
 import {
   RuleBeginNotifierSchema,
   RuleErrorNotifierSchema,
@@ -10,7 +10,7 @@ import {
   RunRulesBeginNotifierSchema,
   RunRulesFailedNotifierSchema,
   RunRulesOkNotifierSchema,
-} from '#schema/rule-runner-notifier.js';
+} from '#schema/rule-runner-notifier';
 import {RuleIssue} from '../rule/issue';
 
 export type RuleRunnerEmitter = StrictEmitter<RuleRunnerEvents>;

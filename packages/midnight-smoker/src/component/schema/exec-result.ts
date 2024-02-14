@@ -4,8 +4,8 @@
  * @packageDocumentation
  */
 
-import {ExecError} from '#error/exec-error.js';
-import {instanceofSchema} from '#util/schema-util.js';
+import {ExecError} from '#error/exec-error';
+import {instanceofSchema} from '#util/schema-util';
 import {z} from 'zod';
 
 /**

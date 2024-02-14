@@ -1,12 +1,12 @@
-import {SmokerEvent} from '#event/event-constants.js';
-import type {ScriptRunnerEvents} from '#event/script-runner-events.js';
-import type {StrictEmitter} from '#event/strict-emitter.js';
+import {SmokerEvent} from '#event/event-constants';
+import type {ScriptRunnerEvents} from '#event/script-runner-events';
+import type {StrictEmitter} from '#event/strict-emitter';
 import {
   ScriptBeginNotifierSchema,
   ScriptFailedNotifierSchema,
   ScriptOkNotifierSchema,
   type ScriptRunnerNotifiers,
-} from '#schema/script-runner-notifier.js';
+} from '#schema/script-runner-notifier';
 
 export type ScriptRunnerEmitter = StrictEmitter<ScriptRunnerEvents>;
 

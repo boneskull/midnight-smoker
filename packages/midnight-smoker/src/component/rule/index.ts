@@ -7,14 +7,14 @@
  */
 
 export {DEFAULT_RULE_SEVERITY, RuleSeverities} from '#constants';
-export * from '#schema/rule-def.js';
-export * from '#schema/rule-issue-static.js';
-export * from '#schema/rule-issue.js';
-export * from '#schema/rule-options.js';
-export * from '#schema/rule-result.js';
-export * from '#schema/rule-severity.js';
-export * from '#schema/rule-static.js';
-export * from '#schema/rule.js';
+export * from '#schema/rule';
+export * from '#schema/rule-def';
+export * from '#schema/rule-issue';
+export * from '#schema/rule-issue-static';
+export * from '#schema/rule-options';
+export * from '#schema/rule-result';
+export * from '#schema/rule-severity';
+export * from '#schema/rule-static';
 export * from './context';
 export * from './issue';
 export * from './rule';

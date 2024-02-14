@@ -12,7 +12,7 @@ import {
   NonEmptyNonEmptyStringArraySchema,
   NonEmptyStringSchema,
   SemVerSchema,
-} from '#util/schema-util.js';
+} from '#util/schema-util';
 import {curry} from 'lodash';
 import {maxSatisfying, parse, valid, validRange, type SemVer} from 'semver';
 import {z} from 'zod';

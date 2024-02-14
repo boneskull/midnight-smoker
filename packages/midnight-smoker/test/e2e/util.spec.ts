@@ -1,4 +1,4 @@
-import {pickPackageVersion} from '#util/pkg-util.js';
+import {pickPackageVersion} from '#util/pkg-util';
 import path from 'node:path';
 import unexpected from 'unexpected';
 const expect = unexpected.clone();

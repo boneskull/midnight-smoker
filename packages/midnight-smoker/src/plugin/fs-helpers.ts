@@ -4,8 +4,8 @@
  * @packageDocumentation
  */
 
-import {DirCreationError} from '#error/create-dir-error.js';
-import {isErrnoException} from '#util/error-util.js';
+import {DirCreationError} from '#error/create-dir-error';
+import {isErrnoException} from '#util/error-util';
 import fs from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
@@ -16,7 +16,7 @@ export {
   type ReadPackageJsonNormalizedResult,
   type ReadPackageJsonOpts,
   type ReadPackageJsonResult,
-} from '#util/pkg-util.js';
+} from '#util/pkg-util';
 
 /**
  * Creates a temp dir

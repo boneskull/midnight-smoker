@@ -1,4 +1,4 @@
-import type {ExecResult} from '#schema/exec-result.js';
+import type {ExecResult} from '#schema/exec-result';
 import {execSmoker, fixupOutput} from '@midnight-smoker/test-util';
 import path from 'node:path';
 import snapshot from 'snap-shot-it';

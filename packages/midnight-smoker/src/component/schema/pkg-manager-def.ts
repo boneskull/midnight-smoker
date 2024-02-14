@@ -1,12 +1,12 @@
 import type {PluginHelpers} from '#plugin';
-import {ExecutorSchema, type Executor} from '#schema/executor.js';
-import {PkgManagerSchema, type PkgManager} from '#schema/pkg-manager.js';
+import {ExecutorSchema, type Executor} from '#schema/executor';
+import {PkgManagerSchema, type PkgManager} from '#schema/pkg-manager';
 import {
   NonEmptyStringSchema,
   SemVerRangeSchema,
   SemVerSchema,
   customSchema,
-} from '#util/schema-util.js';
+} from '#util/schema-util';
 import {z} from 'zod';
 import {
   PkgManagerSpecSchema,

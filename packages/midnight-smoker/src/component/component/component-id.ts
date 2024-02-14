@@ -1,4 +1,4 @@
-import {isBlessedPlugin} from '#plugin/blessed.js';
+import {isBlessedPlugin} from '#plugin/blessed';
 
 /**
  * For parsing a string ID into a {@link ComponentId}

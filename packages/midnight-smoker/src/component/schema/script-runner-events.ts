@@ -1,7 +1,7 @@
-import {RunScriptManifestSchema} from '#schema/run-script-manifest.js';
-import {zRunScriptResult} from '#schema/run-script-result.js';
-import {zScriptError} from '#schema/script-error.js';
-import {NonEmptyStringSchema} from '#util/schema-util.js';
+import {RunScriptManifestSchema} from '#schema/run-script-manifest';
+import {zRunScriptResult} from '#schema/run-script-result';
+import {zScriptError} from '#schema/script-error';
+import {NonEmptyStringSchema} from '#util/schema-util';
 import {z} from 'zod';
 
 export type ScriptEventData = z.infer<typeof ScriptEventDataSchema>;

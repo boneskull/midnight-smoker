@@ -4,9 +4,9 @@
  * @packageDocumentation
  */
 
-import type {PkgManagerInstallManifest} from '#schema/install-manifest.js';
-import type {PkgManager} from '#schema/pkg-manager.js';
-import type {RunScriptResult} from '#schema/run-script-result.js';
+import type {PkgManagerInstallManifest} from '#schema/install-manifest';
+import type {PkgManager} from '#schema/pkg-manager';
+import type {RunScriptResult} from '#schema/run-script-result';
 import {type RunScriptManifestWithPkgMgr} from '..';
 import type {
   RunScriptsEndEventData,

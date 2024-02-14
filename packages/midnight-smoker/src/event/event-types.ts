@@ -1,6 +1,6 @@
-import type {ScriptRunnerEvents} from '#event/script-runner-events.js';
-import type {RunRulesResult} from '#schema/rule-runner-result.js';
-import type {RunScriptResult} from '#schema/run-script-result.js';
+import type {ScriptRunnerEvents} from '#event/script-runner-events';
+import type {RunRulesResult} from '#schema/rule-runner-result';
+import type {RunScriptResult} from '#schema/run-script-result';
 import type {SmokeFailedError} from '../error/smoker-error';
 import type {SmokerOptions} from '../options/options';
 import type {StaticPluginMetadata} from '../plugin/static-metadata';

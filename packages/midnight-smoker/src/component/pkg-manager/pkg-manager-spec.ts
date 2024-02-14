@@ -6,8 +6,8 @@
  */
 
 import {DEFAULT_PKG_MANAGER_BIN, DEFAULT_PKG_MANAGER_VERSION} from '#constants';
-import {getSystemPkgManagerVersion} from '#util/pkg-util.js';
-import {instanceofSchema} from '#util/schema-util.js';
+import {getSystemPkgManagerVersion} from '#util/pkg-util';
+import {instanceofSchema} from '#util/schema-util';
 import {isString} from 'lodash';
 import {parse, type SemVer} from 'semver';
 

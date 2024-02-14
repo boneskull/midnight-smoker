@@ -1,5 +1,5 @@
-import {type ExecError} from '#error/exec-error.js';
-import {readPackageJson} from '#util/pkg-util.js';
+import {type ExecError} from '#error/exec-error';
+import {readPackageJson} from '#util/pkg-util';
 import {execSmoker, fixupOutput} from '@midnight-smoker/test-util';
 import path from 'node:path';
 import snapshot from 'snap-shot-it';

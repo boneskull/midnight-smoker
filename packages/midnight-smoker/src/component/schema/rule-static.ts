@@ -1,5 +1,5 @@
-import {RuleSeveritySchema} from '#schema/rule-severity.js';
-import {NonEmptyStringSchema, PackageJsonSchema} from '#util/schema-util.js';
+import {RuleSeveritySchema} from '#schema/rule-severity';
+import {NonEmptyStringSchema, PackageJsonSchema} from '#util/schema-util';
 import {z} from 'zod';
 
 export const StaticRuleContextSchema = z

@@ -1,6 +1,6 @@
 import type {Component} from '#component';
-import {Rule} from '#rule/rule.js';
-import {instanceofSchema} from '#util/schema-util.js';
+import {Rule} from '#rule/rule';
+import {instanceofSchema} from '#util/schema-util';
 import {z} from 'zod';
 import {type RuleDefSchemaValue} from './rule-options';
 

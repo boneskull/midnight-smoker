@@ -2,14 +2,14 @@
  * @module midnight-smoker/script-runner
  */
 
-export * from '#error/pkg-manager-error.js';
-export * from '#error/script-error.js';
-export * from '#schema/pkg-manager.js';
-export * from '#schema/run-script-manifest.js';
-export * from '#schema/run-script-result.js';
-export * from '#schema/script-error.js';
-export * from '#schema/script-runner-events.js';
-export * from '#schema/script-runner-notifier.js';
-export * from '#schema/script-runner-opts.js';
-export * from '#schema/script-runner.js';
+export * from '#error/pkg-manager-error';
+export * from '#error/script-error';
+export * from '#schema/pkg-manager';
+export * from '#schema/run-script-manifest';
+export * from '#schema/run-script-result';
+export * from '#schema/script-error';
+export * from '#schema/script-runner';
+export * from '#schema/script-runner-events';
+export * from '#schema/script-runner-notifier';
+export * from '#schema/script-runner-opts';
 export * from './script-runner-notifier';

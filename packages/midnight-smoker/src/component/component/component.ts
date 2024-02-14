@@ -24,8 +24,8 @@
  */
 
 import {ComponentKinds, type ComponentKind} from '#constants';
-import {InvalidArgError} from '#error/common-error.js';
-import {NonEmptyStringSchema} from '#util/schema-util.js';
+import {InvalidArgError} from '#error/invalid-arg-error';
+import {NonEmptyStringSchema} from '#util/schema-util';
 import Debug from 'debug';
 import {has, isFunction, isObject} from 'lodash';
 import {z} from 'zod';

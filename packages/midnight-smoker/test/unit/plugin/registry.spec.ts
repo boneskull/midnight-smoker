@@ -1,8 +1,8 @@
 import {ComponentKinds, DEFAULT_COMPONENT_ID} from '#constants';
-import {ErrorCodes} from '#error/codes.js';
-import {PLUGIN_DEFAULT_ID} from '#plugin/blessed.js';
-import type * as PM from '#plugin/metadata.js';
-import type * as Reg from '#plugin/registry.js';
+import {ErrorCodes} from '#error/codes';
+import {PLUGIN_DEFAULT_ID} from '#plugin/blessed';
+import type * as PM from '#plugin/metadata';
+import type * as Reg from '#plugin/registry';
 import {DEFAULT_TEST_PLUGIN_NAME} from '@midnight-smoker/test-util/constants';
 import {
   registerExecutor,
@@ -51,7 +51,7 @@ describe('midnight-smoker', function () {
           () => require('../../../src/plugin/registry'),
           {
             ...mocks,
-            '#util/loader-util.js': {
+            '#util/loader-util': {
               /**
                * This thing loads and evals files via the in-memory filesystem.
                *
@@ -68,7 +68,7 @@ describe('midnight-smoker', function () {
             },
             // this is horrid, but otherwise the PluginRegistry won't have the same
             // PluginMetadata class as we use here in the test file
-            '../../../src/plugin/metadata': PMM,
+            '#plugin/metadata': PMM,
           },
         ));
 

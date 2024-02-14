@@ -1,5 +1,5 @@
-import {RuleIssueSchema} from '#schema/rule-issue.js';
-import {RuleOkSchema} from '#schema/rule-result.js';
+import {RuleIssueSchema} from '#schema/rule-issue';
+import {RuleOkSchema} from '#schema/rule-result';
 import {z} from 'zod';
 
 export const RunRulesResultSchema = z

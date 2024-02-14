@@ -1,4 +1,4 @@
-import type {ReporterDef} from '#schema/reporter-def.js';
+import type {ReporterDef} from '#schema/reporter-def';
 import {BaseSmokerError} from './base-error';
 
 /**

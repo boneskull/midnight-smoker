@@ -1,4 +1,4 @@
-import type {InstallManifest} from '#schema/install-manifest.js';
+import type {InstallManifest} from '#schema/install-manifest';
 import type {InstallError} from '../error/install-error';
 
 export interface InstallEvents {

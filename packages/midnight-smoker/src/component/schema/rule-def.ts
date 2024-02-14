@@ -1,9 +1,6 @@
-import {
-  type RuleDefSchemaValue,
-  type RuleOptions,
-} from '#schema/rule-options.js';
-import {RuleSeveritySchema} from '#schema/rule-severity.js';
-import type {StaticRule} from '#schema/rule-static.js';
+import {type RuleDefSchemaValue, type RuleOptions} from '#schema/rule-options';
+import {RuleSeveritySchema} from '#schema/rule-severity';
+import type {StaticRule} from '#schema/rule-static';
 import {z} from 'zod';
 import {type RuleContext} from '../rule/context';
 

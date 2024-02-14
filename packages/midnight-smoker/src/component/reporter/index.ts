@@ -2,5 +2,5 @@
  * @module midnight-smoker/reporter
  */
 
-export * from '#error/reporter-error.js';
-export * from '#schema/reporter-def.js';
+export * from '#error/reporter-error';
+export * from '#schema/reporter-def';

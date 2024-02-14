@@ -7,13 +7,13 @@ import {
   type RuleSeverity,
   type StaticRuleContext,
 } from '#rule';
+import type {SomeRule} from '#schema/rule';
 import type {
   BaseNormalizedRuleOptions,
   BaseNormalizedRuleOptionsRecord,
   RuleDefSchemaValue,
-} from '#schema/rule-options.js';
-import type {SomeRule} from '#schema/rule.js';
-import {readPackageJson} from '#util/pkg-util.js';
+} from '#schema/rule-options';
+import {readPackageJson} from '#util/pkg-util';
 
 /**
  * Creates a {@link RuleContext} object which will be used to execute a

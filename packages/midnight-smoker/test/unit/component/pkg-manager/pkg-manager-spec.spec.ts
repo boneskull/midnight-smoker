@@ -1,6 +1,6 @@
-import type * as PMS from '#component/pkg-manager/pkg-manager-spec.js';
 import {DEFAULT_PKG_MANAGER_BIN, DEFAULT_PKG_MANAGER_VERSION} from '#constants';
-import {type getSystemPkgManagerVersion} from '#util/pkg-util.js';
+import type * as PMS from '#pkg-manager/pkg-manager-spec';
+import {type getSystemPkgManagerVersion} from '#util/pkg-util';
 import rewiremock from 'rewiremock/node';
 import {SemVer} from 'semver';
 import {createSandbox} from 'sinon';

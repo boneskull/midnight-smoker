@@ -5,9 +5,9 @@
  */
 
 import {RuleSeverities} from '#constants';
-import {type StaticRuleIssue} from '#schema/rule-issue-static.js';
-import {type StaticRule, type StaticRuleContext} from '#schema/rule-static.js';
-import {uniqueIdFactoryFactory} from '#util/util.js';
+import {type StaticRuleIssue} from '#schema/rule-issue-static';
+import {type StaticRule, type StaticRuleContext} from '#schema/rule-static';
+import {uniqueIdFactoryFactory} from '#util/util';
 import type {RuleError} from '../../error/rule-error';
 
 /**

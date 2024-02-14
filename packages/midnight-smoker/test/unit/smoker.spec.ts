@@ -1,8 +1,8 @@
-import {InstallEvent, PackEvent, SmokerEvent} from '#event/event-constants.js';
-import type * as PR from '#plugin/registry.js';
-import {type PkgManagerInstallManifest} from '#schema/install-manifest.js';
-import {type InstallResult} from '#schema/install-result.js';
-import {type PkgManager} from '#schema/pkg-manager.js';
+import {InstallEvent, PackEvent, SmokerEvent} from '#event/event-constants';
+import type * as PR from '#plugin/registry';
+import {type PkgManagerInstallManifest} from '#schema/install-manifest';
+import {type InstallResult} from '#schema/install-result';
+import {type PkgManager} from '#schema/pkg-manager';
 import {NullPkgManagerController} from '@midnight-smoker/test-util/controller';
 import {
   createExecaMock,

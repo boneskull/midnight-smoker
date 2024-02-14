@@ -1,4 +1,4 @@
-import type * as V from '#component/pkg-manager/pkg-manager-version.js';
+import type * as V from '#component/pkg-manager/pkg-manager-version';
 import {npmVersionData} from '@midnight-smoker/plugin-default/data';
 import rewiremock from 'rewiremock/node';
 import {parse} from 'semver';

@@ -5,7 +5,7 @@ import {
   type ScriptBeginEventData,
   type ScriptFailedEventData,
   type ScriptOkEventData,
-} from '#schema/script-runner-events.js';
+} from '#schema/script-runner-events';
 
 export interface ScriptRunnerEvents {
   /**

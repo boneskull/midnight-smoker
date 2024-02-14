@@ -16,7 +16,7 @@
  */
 
 import {Smoker} from './smoker';
-export type {PkgManagerInstallManifest} from '#schema/install-manifest.js';
+export type {PkgManagerInstallManifest} from '#schema/install-manifest';
 export type * from './controller';
 export type {SmokeResults} from './event/event-types';
 export {

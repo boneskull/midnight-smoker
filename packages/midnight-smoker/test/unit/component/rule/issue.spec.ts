@@ -1,8 +1,8 @@
-import type * as I from '#component/rule/issue.js';
+import type * as I from '#component/rule/issue';
 import {RuleSeverities} from '#constants';
-import {RuleError} from '#error/rule-error.js';
-import * as IS from '#schema/rule-issue-static.js';
-import type {StaticRule, StaticRuleContext} from '#schema/rule-static.js';
+import {RuleError} from '#error/rule-error';
+import * as IS from '#schema/rule-issue-static';
+import type {StaticRule, StaticRuleContext} from '#schema/rule-static';
 import rewiremock from 'rewiremock/node';
 import unexpected from 'unexpected';
 import {createFsMocks} from '../../mocks/fs';

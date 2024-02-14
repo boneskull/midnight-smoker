@@ -1,4 +1,4 @@
-import {NonEmptyStringSchema} from '#util/schema-util.js';
+import {NonEmptyStringSchema} from '#util/schema-util';
 import {z} from 'zod';
 
 export const RunScriptManifestSchema = z.object({

@@ -1,5 +1,5 @@
-import {RuleSeveritySchema} from '#schema/rule-severity.js';
-import {EmptyObjectSchema} from '#util/schema-util.js';
+import {RuleSeveritySchema} from '#schema/rule-severity';
+import {EmptyObjectSchema} from '#util/schema-util';
 import {z} from 'zod';
 import {createRuleOptionsSchema} from '../rule/create-rule-options';
 

@@ -6,26 +6,26 @@
  * @packageDocumentation
  */
 
-import {InstallError} from '#error/install-error.js';
-import {PackError} from '#error/pack-error.js';
-import {ScriptBailed} from '#error/script-bailed.js';
-import {SmokerEvent} from '#event/event-constants.js';
+import {InstallError} from '#error/install-error';
+import {PackError} from '#error/pack-error';
+import {ScriptBailed} from '#error/script-bailed';
+import {SmokerEvent} from '#event/event-constants';
 import {
   buildInstallEventData,
   buildPackBeginEventData,
   buildPackOkEventData,
   buildRunScriptsBeginEventData,
   buildRunScriptsEndEventData,
-} from '#event/event-util.js';
+} from '#event/event-util';
 import {
   type InstallManifest,
   type PkgManagerInstallManifest,
-} from '#schema/install-manifest.js';
-import {type InstallResult} from '#schema/install-result.js';
-import {type PackOptions} from '#schema/pack-options.js';
-import {type PkgManager} from '#schema/pkg-manager.js';
-import {type RunScriptManifest} from '#schema/run-script-manifest.js';
-import {type RunScriptResult} from '#schema/run-script-result.js';
+} from '#schema/install-manifest';
+import {type InstallResult} from '#schema/install-result';
+import {type PackOptions} from '#schema/pack-options';
+import {type PkgManager} from '#schema/pkg-manager';
+import {type RunScriptManifest} from '#schema/run-script-manifest';
+import {type RunScriptResult} from '#schema/run-script-result';
 import {createScriptRunnerNotifiers} from '#script-runner';
 import Debug from 'debug';
 import {

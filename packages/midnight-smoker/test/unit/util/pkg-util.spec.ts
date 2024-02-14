@@ -1,5 +1,5 @@
 import {DEFAULT_PKG_MANAGER_VERSION} from '#constants';
-import type * as PkgUtil from '#util/pkg-util.js';
+import type * as PkgUtil from '#util/pkg-util';
 import {type IFs} from 'memfs';
 import {type Volume} from 'memfs/lib/volume';
 import type {execFile} from 'node:child_process';

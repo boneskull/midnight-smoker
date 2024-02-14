@@ -1,7 +1,7 @@
-import type {ExecResult} from '#component/schema/exec-result.js';
+import type {ExecResult} from '#component/schema/exec-result';
 import {DEFAULT_PKG_MANAGER_BIN} from '#constants';
-import {resolveFrom} from '#util/loader-util.js';
-import {readPackageJson} from '#util/pkg-util.js';
+import {resolveFrom} from '#util/loader-util';
+import {readPackageJson} from '#util/pkg-util';
 import {execSmoker, fixupOutput} from '@midnight-smoker/test-util';
 import fs from 'node:fs/promises';
 import path from 'node:path';

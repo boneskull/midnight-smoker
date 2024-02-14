@@ -1,13 +1,13 @@
 import {component} from '#component';
-import type * as PkgMgr from '#component/pkg-manager';
 import * as Errors from '#error';
-import {SmokerEvent} from '#event/event-constants.js';
-import {PluginRegistry} from '#plugin/registry.js';
-import {type RunScriptResult} from '#schema/run-script-result.js';
-import type {ScriptFailedEventData} from '#schema/script-runner-events.js';
-import {type ScriptRunnerNotifiers} from '#schema/script-runner-notifier.js';
-import {type ScriptRunnerOpts} from '#schema/script-runner-opts.js';
-import {type ScriptRunner} from '#schema/script-runner.js';
+import {SmokerEvent} from '#event/event-constants';
+import type * as PkgMgr from '#pkg-manager';
+import {PluginRegistry} from '#plugin/registry';
+import {type RunScriptResult} from '#schema/run-script-result';
+import {type ScriptRunner} from '#schema/script-runner';
+import type {ScriptFailedEventData} from '#schema/script-runner-events';
+import {type ScriptRunnerNotifiers} from '#schema/script-runner-notifier';
+import {type ScriptRunnerOpts} from '#schema/script-runner-opts';
 import {
   MOCK_TMPDIR,
   NullPm,

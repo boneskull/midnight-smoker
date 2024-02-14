@@ -1,19 +1,19 @@
-import {ExecResultSchema} from '#schema/exec-result.js';
-import {InstallManifestSchema} from '#schema/install-manifest.js';
-import {PackOptionsSchema} from '#schema/pack-options.js';
+import {ExecResultSchema} from '#schema/exec-result';
+import {InstallManifestSchema} from '#schema/install-manifest';
+import {PackOptionsSchema} from '#schema/pack-options';
 import {
   RunScriptManifestSchema,
   type RunScriptManifest,
-} from '#schema/run-script-manifest.js';
+} from '#schema/run-script-manifest';
 import {
   zRunScriptResult,
   type RunScriptResult,
-} from '#schema/run-script-result.js';
+} from '#schema/run-script-result';
 import {
   AbortSignalSchema,
   NonEmptyStringSchema,
   customSchema,
-} from '#util/schema-util.js';
+} from '#util/schema-util';
 import {z} from 'zod';
 import {
   PkgManagerSpecSchema,

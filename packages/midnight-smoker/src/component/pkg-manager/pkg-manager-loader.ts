@@ -6,12 +6,12 @@
  * @packageDocumentation
  */
 
-import {type PkgManagerDef} from '#schema/pkg-manager-def.js';
+import {UnsupportedPackageManagerError} from '#error/unsupported-pkg-manager-error';
+import {type Executor} from '#schema/executor';
+import {type PkgManagerDef} from '#schema/pkg-manager-def';
 import {curry} from 'lodash';
 import {type SemVer} from 'semver';
 import {InvalidArgError} from '../../error';
-import {UnsupportedPackageManagerError} from '../../error/unsupported-pkg-manager-error';
-import {type Executor} from '../schema/executor';
 import {guessPackageManager} from './pkg-manager-guesser';
 import {PkgManagerSpec} from './pkg-manager-spec';
 

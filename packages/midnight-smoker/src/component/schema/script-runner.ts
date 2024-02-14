@@ -1,7 +1,7 @@
-import {PkgManagerSchema} from '#schema/pkg-manager.js';
-import {zRunScriptResult} from '#schema/run-script-result.js';
-import {ScriptRunnerNotifiersSchema} from '#schema/script-runner-notifier.js';
-import {ScriptRunnerOptsSchema} from '#schema/script-runner-opts.js';
+import {PkgManagerSchema} from '#schema/pkg-manager';
+import {zRunScriptResult} from '#schema/run-script-result';
+import {ScriptRunnerNotifiersSchema} from '#schema/script-runner-notifier';
+import {ScriptRunnerOptsSchema} from '#schema/script-runner-opts';
 import {z} from 'zod';
 import {RunScriptManifestSchema} from './run-script-manifest';
 

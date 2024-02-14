@@ -6,6 +6,6 @@
  */
 
 export {ComponentKinds, type ComponentKind} from '#constants';
-export * from '#error/component-error.js';
+export * from '#error/component-error';
 export * from './component';
 export * from './component-id';

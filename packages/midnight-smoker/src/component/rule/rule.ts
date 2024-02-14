@@ -5,14 +5,11 @@ import {
   type Owner,
 } from '#component';
 import {RuleSeverities} from '#constants';
-import {type RuleCheckFn, type RuleDef} from '#schema/rule-def.js';
-import {
-  type RuleDefSchemaValue,
-  type RuleOptions,
-} from '#schema/rule-options.js';
-import {RuleSeveritySchema, type RuleSeverity} from '#schema/rule-severity.js';
-import type {StaticRule} from '#schema/rule-static.js';
-import {EmptyObjectSchema} from '#util/schema-util.js';
+import {type RuleCheckFn, type RuleDef} from '#schema/rule-def';
+import {type RuleDefSchemaValue, type RuleOptions} from '#schema/rule-options';
+import {RuleSeveritySchema, type RuleSeverity} from '#schema/rule-severity';
+import type {StaticRule} from '#schema/rule-static';
+import {EmptyObjectSchema} from '#util/schema-util';
 import Debug from 'debug';
 import {
   createRuleOptionsSchema,

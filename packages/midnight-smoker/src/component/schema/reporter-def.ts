@@ -4,15 +4,15 @@
  *
  * @packageDocumentation
  */
-import {type SmokerEvents} from '#event/event-types.js';
-import {type StrictEmitter} from '#event/strict-emitter.js';
+import {type SmokerEvents} from '#event/event-types';
+import {type StrictEmitter} from '#event/strict-emitter';
 import {
   DefaultFalseSchema,
   EventEmitterSchema,
   NonEmptyStringSchema,
   PackageJsonSchema,
   customSchema,
-} from '#util/schema-util.js';
+} from '#util/schema-util';
 import {z} from 'zod';
 import {zBaseSmokerOptions, type SmokerOptions} from '../../options/options';
 

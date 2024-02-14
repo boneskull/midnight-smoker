@@ -7,12 +7,12 @@
  * @packageDocumentation
  */
 
-import {ExecResultSchema, type ExecResult} from '#schema/exec-result.js';
+import {ExecResultSchema, type ExecResult} from '#schema/exec-result';
 import {
   AbortSignalSchema,
   NonEmptyStringArraySchema,
   customSchema,
-} from '#util/schema-util.js';
+} from '#util/schema-util';
 import type execa from 'execa';
 import type {SpawnOptions} from 'node:child_process';
 import type {SimpleMerge} from 'type-fest/source/merge';

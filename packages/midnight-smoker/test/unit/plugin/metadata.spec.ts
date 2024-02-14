@@ -1,5 +1,5 @@
-import {ErrorCodes} from '#error/codes.js';
-import type * as PM from '#plugin/metadata.js';
+import {ErrorCodes} from '#error/codes';
+import type * as PM from '#plugin/metadata';
 import path from 'node:path';
 import rewiremock from 'rewiremock/node';
 import type {PackageJson} from 'type-fest';

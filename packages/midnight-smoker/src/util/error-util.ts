@@ -1,5 +1,5 @@
 import {type SmokerError} from '#error';
-import {ExecaErrorSchema} from '#schema/execa-error.js';
+import {ExecaErrorSchema} from '#schema/execa-error';
 import {type ExecaError} from 'execa';
 import {isError} from 'lodash';
 import {type Class} from 'type-fest';

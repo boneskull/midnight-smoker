@@ -1,4 +1,4 @@
-import type * as E from '#component/executor';
+import type * as E from '#executor';
 import rewiremock from 'rewiremock/node';
 import unexpected from 'unexpected';
 import {createFsMocks} from '../../mocks/fs';

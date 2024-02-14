@@ -1,7 +1,7 @@
-import type * as PMLoader from '#component/pkg-manager/pkg-manager-loader.js';
-import type * as PMS from '#component/pkg-manager/pkg-manager-spec.js';
+import type * as PMLoader from '#component/pkg-manager/pkg-manager-loader';
+import type * as PMS from '#component/pkg-manager/pkg-manager-spec';
 import {ErrorCodes} from '#error';
-import {type PkgManagerDef} from '#schema/pkg-manager-def.js';
+import {type PkgManagerDef} from '#schema/pkg-manager-def';
 import {nullPmDef} from '@midnight-smoker/test-util';
 import rewiremock from 'rewiremock/node';
 import {createSandbox} from 'sinon';

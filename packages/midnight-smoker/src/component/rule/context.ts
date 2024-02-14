@@ -1,7 +1,7 @@
 import {type Component} from '#component';
-import {RuleError} from '#error/rule-error.js';
-import {type StaticRule, type StaticRuleContext} from '#schema/rule-static.js';
-import {serialize} from '#util/util.js';
+import {RuleError} from '#error/rule-error';
+import {type StaticRule, type StaticRuleContext} from '#schema/rule-static';
+import {serialize} from '#util/util';
 import {type PackageJson} from 'type-fest';
 import {RuleIssue} from './issue';
 

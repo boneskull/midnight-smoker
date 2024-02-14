@@ -6,7 +6,7 @@ import {
   type RunRulesBeginEventData,
   type RunRulesFailedEventData,
   type RunRulesOkEventData,
-} from '#schema/rule-runner-events.js';
+} from '#schema/rule-runner-events';
 
 export interface RuleRunnerEvents {
   /**

@@ -1,15 +1,15 @@
-import {StaticRuleIssueSchema} from '#schema/rule-issue-static.js';
+import {StaticRuleIssueSchema} from '#schema/rule-issue-static';
 import {
   BaseNormalizedRuleOptionsRecordSchema,
   BaseNormalizedRuleOptionsSchema,
-} from '#schema/rule-options.js';
-import {RuleOkSchema} from '#schema/rule-result.js';
+} from '#schema/rule-options';
+import {RuleOkSchema} from '#schema/rule-result';
 import {
   NonEmptyStringSchema,
   NonNegativeIntSchema,
   instanceofSchema,
   serializeObject,
-} from '#util/schema-util.js';
+} from '#util/schema-util';
 import {z} from 'zod';
 import {RuleError} from '../../error/rule-error';
 

@@ -4,14 +4,15 @@
  * @packageDocumentation
  * @see {@link PluginMetadata}
  */
-import type {PkgManagerDef} from '#schema/pkg-manager-def.js';
-import type {ReporterDef} from '#schema/reporter-def.js';
-import {type RuleDef} from '#schema/rule-def.js';
-import {type RuleDefSchemaValue} from '#schema/rule-options.js';
-import type {RuleRunner} from '#schema/rule-runner.js';
-import {type SomeRule} from '#schema/rule.js';
-import type {ScriptRunner} from '#schema/script-runner.js';
-import {readPackageJson} from '#util/pkg-util.js';
+import {InvalidArgError} from '#error/invalid-arg-error';
+import type {PkgManagerDef} from '#schema/pkg-manager-def';
+import type {ReporterDef} from '#schema/reporter-def';
+import {type SomeRule} from '#schema/rule';
+import {type RuleDef} from '#schema/rule-def';
+import {type RuleDefSchemaValue} from '#schema/rule-options';
+import type {RuleRunner} from '#schema/rule-runner';
+import type {ScriptRunner} from '#schema/script-runner';
+import {readPackageJson} from '#util/pkg-util';
 import Debug from 'debug';
 import {isString} from 'lodash';
 import path from 'node:path';
@@ -27,7 +28,6 @@ import {
 import {Rule} from '../component/rule/rule';
 import type {Executor} from '../component/schema/executor';
 import {isZodError} from '../error/base-error';
-import {InvalidArgError} from '../error/common-error';
 import {NonEmptyStringSchema, PackageJsonSchema} from '../util/schema-util';
 import {BLESSED_PLUGINS, type BlessedPlugin} from './blessed';
 import type {StaticPluginMetadata} from './static-metadata';

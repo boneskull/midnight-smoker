@@ -1,7 +1,7 @@
 import {
   ScriptEventDataSchema,
   ScriptFailedEventDataSchema,
-} from '#schema/script-runner-events.js';
+} from '#schema/script-runner-events';
 import {z} from 'zod';
 
 export const ScriptBeginNotifierSchema = z

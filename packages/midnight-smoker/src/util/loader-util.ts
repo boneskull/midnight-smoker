@@ -1,4 +1,4 @@
-import {isErrnoException} from '#util/error-util.js';
+import {isErrnoException} from '#util/error-util';
 import {isError, isObject} from 'lodash';
 import fs from 'node:fs/promises';
 import {Module} from 'node:module';

@@ -1,9 +1,3 @@
-/**
- * Some "common" errors tossed around throughout the codebase.
- *
- * @packageDocumentation
- */
-
 import {
   fromZodError,
   type ValidationError,
@@ -20,6 +14,7 @@ import {BaseSmokerError, isZodError} from './base-error';
  *
  * @group Errors
  */
+
 export class InvalidArgError extends BaseSmokerError<
   {
     argName?: string;
@@ -41,25 +36,4 @@ export class InvalidArgError extends BaseSmokerError<
     }
     super(message, {argName, position}, err);
   }
-}
-
-/**
- * Thrown when some stub code gets hit.
- *
- * In a perfect world, this should never be used. But this is not a perfect
- * world because I am so, so tired.
- *
- * @group Errors
- */
-export class NotImplementedError extends BaseSmokerError {
-  public readonly id = 'NotImplementedError';
-}
-
-/**
- * Like a {@link ReferenceError}, but with an error code.
- *
- * @group Errors
- */
-export class SmokerReferenceError extends BaseSmokerError {
-  public readonly id = 'SmokerReferenceError';
 }

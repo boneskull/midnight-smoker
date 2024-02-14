@@ -1,6 +1,6 @@
 import {RuleSeverities} from '#constants';
-import type * as PR from '#plugin/registry.js';
-import type {SomeRule} from '#schema/rule.js';
+import type * as PR from '#plugin/registry';
+import type {SomeRule} from '#schema/rule';
 import {
   DEFAULT_TEST_PLUGIN_NAME,
   DEFAULT_TEST_RULE_NAME,

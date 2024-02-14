@@ -1,6 +1,6 @@
 import {DEFAULT_RULE_SEVERITY} from '#constants';
-import {type RuleDefSchemaValue} from '#schema/rule-options.js';
-import {RuleSeveritySchema, type RuleSeverity} from '#schema/rule-severity.js';
+import {type RuleDefSchemaValue} from '#schema/rule-options';
+import {RuleSeveritySchema, type RuleSeverity} from '#schema/rule-severity';
 import {dualCasedObjectSchema} from '#util';
 import {isEmpty, memoize} from 'lodash';
 import {z} from 'zod';
