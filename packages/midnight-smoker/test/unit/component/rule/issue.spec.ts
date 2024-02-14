@@ -1,6 +1,6 @@
-import type * as I from '#component/rule/issue';
 import {RuleSeverities} from '#constants';
 import {RuleError} from '#error/rule-error';
+import type * as I from '#rule/issue';
 import * as IS from '#schema/rule-issue-static';
 import type {StaticRule, StaticRuleContext} from '#schema/rule-static';
 import rewiremock from 'rewiremock/node';

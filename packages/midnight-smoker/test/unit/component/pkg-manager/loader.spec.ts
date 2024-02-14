@@ -1,6 +1,6 @@
-import type * as PMLoader from '#component/pkg-manager/pkg-manager-loader';
-import type * as PMS from '#component/pkg-manager/pkg-manager-spec';
 import {ErrorCodes} from '#error';
+import type * as PMLoader from '#pkg-manager/pkg-manager-loader';
+import type * as PMS from '#pkg-manager/pkg-manager-spec';
 import {type PkgManagerDef} from '#schema/pkg-manager-def';
 import {nullPmDef} from '@midnight-smoker/test-util';
 import rewiremock from 'rewiremock/node';

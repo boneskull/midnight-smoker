@@ -2,7 +2,6 @@
   "compilerOptions": {
     "paths": {
       "#component": ["../src/component/component/index.js"],
-      "#component/*": ["../src/component/*.js"],
       "#constants": ["../src/constants.js"],
       "#error": ["../src/error/index.js"],
       "#error/*": ["../src/error/*.js"],

@@ -2,7 +2,7 @@ import rewiremock from 'rewiremock/node';
 import unexpected from 'unexpected';
 
 import {type Component} from '#component';
-import type * as Ctx from '#component/rule/context';
+import type * as Ctx from '#rule/context';
 import {type SomeRule} from '#schema/rule';
 import {type StaticRuleContext} from '#schema/rule-static';
 import {createFsMocks} from '../../mocks/fs';

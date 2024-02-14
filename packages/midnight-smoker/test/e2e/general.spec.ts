@@ -1,5 +1,5 @@
-import type {ExecResult} from '#component/schema/exec-result';
 import {DEFAULT_PKG_MANAGER_BIN} from '#constants';
+import type {ExecResult} from '#schema/exec-result';
 import {resolveFrom} from '#util/loader-util';
 import {readPackageJson} from '#util/pkg-util';
 import {execSmoker, fixupOutput} from '@midnight-smoker/test-util';
