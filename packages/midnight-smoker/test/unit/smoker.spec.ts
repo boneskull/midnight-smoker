@@ -73,7 +73,7 @@ describe('midnight-smoker', function () {
     rmStub = sandbox.stub(fs.promises, 'rm');
 
     // don't stub out debug statements if running in wallaby
-    if (process.env.WALLABY_PROJECT_DIR) {
+    if (process.env.WALLABY) {
       delete mocks.debug;
     }
 

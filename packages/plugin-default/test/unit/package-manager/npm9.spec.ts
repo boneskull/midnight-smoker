@@ -41,7 +41,7 @@ describe('@midnight-smoker/plugin-default', function () {
     };
 
     // don't stub out debug statements if running in wallaby
-    if (process.env.WALLABY_PROJECT_DIR) {
+    if (process.env.WALLABY) {
       delete mocks.debug;
     }
 
