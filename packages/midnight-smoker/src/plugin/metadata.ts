@@ -305,11 +305,9 @@ export class PluginMetadata implements StaticPluginMetadata {
         });
       }
       metadata = new PluginMetadata(optsEntryPtOrMetadata, idOrOpts);
-    } else if (optsEntryPtOrMetadata instanceof PluginMetadata) {
+    } else {
       const opts = isString(idOrOpts) ? {id: idOrOpts} : idOrOpts ?? {};
       metadata = new PluginMetadata({...optsEntryPtOrMetadata, ...opts});
-    } else {
-      metadata = new PluginMetadata(optsEntryPtOrMetadata);
     }
 
     return Object.freeze(metadata);
