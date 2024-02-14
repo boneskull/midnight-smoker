@@ -30,7 +30,7 @@ describe('midnight-smoker', function () {
               require('../../../../src/component/pkg-manager/pkg-manager-spec'),
             {
               ...mocks,
-              '#util/pkg-util.js': {
+              '#util/pkg-util': {
                 getSystemPkgManagerVersion: getSystemPkgManagerVersionStub,
               },
             },
