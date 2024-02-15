@@ -2,6 +2,7 @@ import {
   type Plugin,
   type PluginAPI,
   type PluginFactory,
+  type PluginMetadata,
   type PluginRegistry,
 } from 'midnight-smoker/plugin';
 import {
@@ -48,7 +49,7 @@ export type RegisterPluginOpts =
 export async function registerPlugin(
   registry: PluginRegistry,
   opts: RegisterPluginOpts = {},
-): Promise<PluginRegistry> {
+): Promise<Readonly<PluginMetadata>> {
   const {
     name = DEFAULT_TEST_PLUGIN_NAME,
     description = DEFAULT_TEST_PLUGIN_DESCRIPTION,
@@ -62,6 +63,5 @@ export async function registerPlugin(
         ? {plugin: opts.factory, name, description, version}
         : {plugin: () => {}, name, description, version};
 
-  await registry.registerPlugin(name, pluginObject);
-  return registry;
+  return registry.registerPlugin(name, pluginObject);
 }

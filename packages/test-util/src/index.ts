@@ -1,5 +1,5 @@
+export * from './cli';
 export * from './constants';
-export * from './e2e';
 export * from './execa';
 export * from './null-controller';
 export * from './null-executor';
@@ -7,3 +7,4 @@ export * from './null-pkg-manager';
 export * from './null-rule-runner';
 export * from './null-script-runner';
 export * from './register';
+export * from './snapshot';

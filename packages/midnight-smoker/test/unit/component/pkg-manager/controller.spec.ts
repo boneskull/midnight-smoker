@@ -9,8 +9,8 @@ import type {ScriptFailedEventData} from '#schema/script-runner-events';
 import {type ScriptRunnerNotifiers} from '#schema/script-runner-notifier';
 import {type ScriptRunnerOpts} from '#schema/script-runner-opts';
 import {
-  MOCK_TMPDIR,
   NullPm,
+  TEST_TMPDIR,
   nullScriptRunner,
 } from '@midnight-smoker/test-util';
 import path from 'node:path';
@@ -124,14 +124,14 @@ describe('midnight-smoker', function () {
                       isAdditional: false,
                       spec: expect.it('to be a string'),
                       pkgName: expect.it('to be a string'),
-                      cwd: MOCK_TMPDIR,
+                      cwd: TEST_TMPDIR,
                     },
                     {
                       pkgManager: nullPm2,
                       isAdditional: false,
                       spec: expect.it('to be a string'),
                       pkgName: expect.it('to be a string'),
-                      cwd: MOCK_TMPDIR,
+                      cwd: TEST_TMPDIR,
                     },
                   ],
                 );
@@ -195,7 +195,7 @@ describe('midnight-smoker', function () {
               let err: Errors.PackError;
 
               beforeEach(function () {
-                err = new Errors.PackError('oh no', nullPm1.spec, MOCK_TMPDIR);
+                err = new Errors.PackError('oh no', nullPm1.spec, TEST_TMPDIR);
                 sandbox.stub(nullPm1, 'pack').rejects(err);
               });
 
@@ -234,9 +234,9 @@ describe('midnight-smoker', function () {
                       isAdditional: false,
                       spec: 'foo@1.0.0',
                       pkgName: 'foo',
-                      cwd: MOCK_TMPDIR,
+                      cwd: TEST_TMPDIR,
                       installPath: path.join(
-                        MOCK_TMPDIR,
+                        TEST_TMPDIR,
                         'node_modules',
                         'foo',
                       ),
@@ -246,9 +246,9 @@ describe('midnight-smoker', function () {
                       isAdditional: false,
                       spec: 'bar@1.0.0',
                       pkgName: 'bar',
-                      cwd: MOCK_TMPDIR,
+                      cwd: TEST_TMPDIR,
                       installPath: path.join(
-                        MOCK_TMPDIR,
+                        TEST_TMPDIR,
                         'node_modules',
                         'bar',
                       ),
@@ -325,7 +325,7 @@ describe('midnight-smoker', function () {
                     failed: true,
                   },
                   error: new Errors.ScriptFailedError('oh no'),
-                  cwd: MOCK_TMPDIR,
+                  cwd: TEST_TMPDIR,
                 };
 
                 const scriptRunner = component({

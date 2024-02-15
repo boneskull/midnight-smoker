@@ -11,7 +11,7 @@ import {
   type RunScriptManifest,
   type RunScriptResult,
 } from 'midnight-smoker/pkg-manager';
-import {MOCK_TMPDIR} from './constants';
+import {TEST_TMPDIR} from './constants';
 
 export const nullPmDef: PkgManagerDef = {
   get bin() {
@@ -54,14 +54,14 @@ export class NullPm implements PkgManager {
   async pack(opts: PackOptions) {
     return [
       {
-        spec: `${MOCK_TMPDIR}/bar.tgz`,
+        spec: `${TEST_TMPDIR}/bar.tgz`,
         pkgName: 'bar',
-        cwd: MOCK_TMPDIR,
+        cwd: TEST_TMPDIR,
       },
     ];
   }
 
-  public readonly tmpdir = MOCK_TMPDIR;
+  public readonly tmpdir = TEST_TMPDIR;
 
   public readonly path = '/usr/bin/nullpm';
 

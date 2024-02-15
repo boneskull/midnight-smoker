@@ -18,6 +18,9 @@
     "npm": ">=8.6.0"
   },
   "main": "./dist/index.js",
+  "imports": {
+    "#constants": "./dist/constants.js"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
