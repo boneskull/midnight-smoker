@@ -1,0 +1,9 @@
+{
+  "extends": "@tsconfig/node-lts/tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "declarationMap": true,
+    "declaration": true,
+    "sourceMap": true
+  }
+}
