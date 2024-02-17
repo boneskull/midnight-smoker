@@ -22,7 +22,7 @@ import {fromZodError} from 'zod-validation-error';
 import {
   ComponentKinds,
   ComponentNameError,
-  component,
+  createComponent,
   type Component,
 } from '../component/component';
 import {Rule} from '../component/rule/rule';
@@ -379,7 +379,7 @@ export class PluginMetadata implements StaticPluginMetadata {
     }
     this.pkgManagerDefMap.set(
       name,
-      component({
+      createComponent({
         name,
         value,
         owner: this,
@@ -398,7 +398,12 @@ export class PluginMetadata implements StaticPluginMetadata {
     }
     this.scriptRunnerMap.set(
       name,
-      component({name, value, owner: this, kind: ComponentKinds.ScriptRunner}),
+      createComponent({
+        name,
+        value,
+        owner: this,
+        kind: ComponentKinds.ScriptRunner,
+      }),
     );
 
     debug('Plugin %s added script runner "%s"', this, name);
@@ -414,7 +419,12 @@ export class PluginMetadata implements StaticPluginMetadata {
     }
     this.ruleRunnerMap.set(
       name,
-      component({name, value, owner: this, kind: ComponentKinds.RuleRunner}),
+      createComponent({
+        name,
+        value,
+        owner: this,
+        kind: ComponentKinds.RuleRunner,
+      }),
     );
   }
 
@@ -444,7 +454,12 @@ export class PluginMetadata implements StaticPluginMetadata {
     }
     this.executorMap.set(
       name,
-      component({name, value, owner: this, kind: ComponentKinds.Executor}),
+      createComponent({
+        name,
+        value,
+        owner: this,
+        kind: ComponentKinds.Executor,
+      }),
     );
   }
 
@@ -458,7 +473,7 @@ export class PluginMetadata implements StaticPluginMetadata {
     }
     this.reporterMap.set(
       value.name,
-      component({
+      createComponent({
         name: value.name,
         value,
         owner: this,

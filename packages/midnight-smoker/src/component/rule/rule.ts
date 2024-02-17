@@ -1,6 +1,6 @@
 import {
   ComponentKinds,
-  component,
+  createComponent,
   type Component,
   type Owner,
 } from '#component';
@@ -109,6 +109,7 @@ export class Rule<
     Schema extends RuleDefSchemaValue | void = void,
   >(this: void, ruleDef: RuleDef<Name, Schema>, owner: Owner<Id>) {
     const rule = component({
+    const rule = createComponent({
       name: ruleDef.name,
       value: new Rule(ruleDef),
       kind: Rule.componentKind,

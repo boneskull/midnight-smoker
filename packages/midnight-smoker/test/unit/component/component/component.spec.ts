@@ -1,142 +1,192 @@
-import type * as C from '#component';
+import {
+  ComponentId,
+  createComponent,
+  kComponentId,
+  type Owner,
+} from '#component';
 import {ErrorCodes} from '#error';
-import rewiremock from 'rewiremock/node';
 import unexpected from 'unexpected';
-import {createFsMocks} from '../../mocks/fs';
 
 const expect = unexpected.clone();
 
 describe('midnight-smoker', function () {
   describe('component', function () {
-    let component: typeof C.component;
-    let ComponentId: typeof C.ComponentId;
-    let kComponentId: typeof C.kComponentId;
-    beforeEach(function () {
-      const {mocks} = createFsMocks();
-      ({component, ComponentId, kComponentId} = rewiremock.proxy(
-        () => require('../../../../src/component/component'),
-        mocks,
-      ));
-    });
+    describe('create-component', function () {
+      describe('createComponent()', function () {
+        let name: string;
+        let value: Record<string, any>;
+        let owner: Owner;
 
-    describe('component()', function () {
-      let name: string;
-      let value: Record<string, any>;
-      let owner: C.Owner;
-
-      beforeEach(function () {
-        name = 'example-component';
-        value = {foo: 'bar'};
-        owner = {id: 'example-plugin'};
-      });
-
-      it('should return a proxy for the value', function () {
-        const result = component({name, value, owner, kind: 'Reporter'});
-        expect(result, 'to equal', value).and('not to be', value);
-      });
-
-      it('should return a proxy with string property id', function () {
-        const result = component({name, value, owner, kind: 'Reporter'});
-        const id = ComponentId.create(owner.id, name);
-        expect(result.id, 'to equal', id.id);
-      });
-
-      it('should return a proxy with ComponentId property Symbol(kComponentId)', function () {
-        const result = component({name, value, owner, kind: 'Reporter'});
-        const id = ComponentId.create(owner.id, name);
-        expect(result[kComponentId], 'to equal', id);
-      });
-
-      it('should return a proxy with isBlessed boolean property', function () {
-        expect(
-          component({name, value, owner, kind: 'Reporter'}),
-          'to have property',
-          'isBlessed',
-        );
-      });
-
-      describe('when the owner is not blessed', function () {
-        it('the property should be false', function () {
-          const result = component({name, value, owner, kind: 'Reporter'});
-          expect(result.isBlessed, 'to be false');
-        });
-      });
-
-      describe('when the owner is blessed', function () {
         beforeEach(function () {
-          owner = {id: '@midnight-smoker/plugin-default'};
+          name = 'example-component';
+          value = {foo: 'bar'};
+          owner = {id: 'example-plugin'};
         });
 
-        it('the property should be true', function () {
-          const result = component({name, value, owner, kind: 'Reporter'});
-          expect(result.isBlessed, 'to be true');
+        it('should return a proxy for the value', function () {
+          const result = createComponent({
+            name,
+            value,
+            owner,
+            kind: 'Reporter',
+          });
+          expect(result, 'to equal', value).and('not to be', value);
         });
-      });
 
-      describe('when the owner is invalid', function () {
-        it('should throw', function () {
+        it('should return a proxy with string property id', function () {
+          const result = createComponent({
+            name,
+            value,
+            owner,
+            kind: 'Reporter',
+          });
+          const id = ComponentId.create(owner.id, name);
+          expect(result.id, 'to equal', id.id);
+        });
+
+        it('should return a proxy with ComponentId property Symbol(kComponentId)', function () {
+          const result = createComponent({
+            name,
+            value,
+            owner,
+            kind: 'Reporter',
+          });
+          const id = ComponentId.create(owner.id, name);
+          expect(result[kComponentId], 'to equal', id);
+        });
+
+        it('should return a proxy with isBlessed boolean property', function () {
           expect(
-            () => component({name, value, owner: {} as any, kind: 'Reporter'}),
-            'to throw',
-            {
-              code: ErrorCodes.InvalidArgError,
-            },
-          );
-        });
-      });
-
-      it('should return a proxy that forwards other properties to the value', function () {
-        const result = component({name, value, owner, kind: 'Reporter'});
-        expect(result.foo, 'to equal', 'bar');
-      });
-
-      describe('when the object is not componentizable', function () {
-        it('should throw an error due to "id"', function () {
-          const value = {foo: 'bar', id: 'baz'};
-          expect(
-            () =>
-              component({name, value: value as any, owner, kind: 'Reporter'}),
-            'to throw',
-            {
-              code: ErrorCodes.InvalidArgError,
-            },
-          );
-        });
-
-        it('should throw an error due to kComponentId', function () {
-          const value = {foo: 'bar', [kComponentId]: 'baz'};
-          expect(
-            () =>
-              component({name, value: value as any, owner, kind: 'Reporter'}),
-            'to throw',
-            {
-              code: ErrorCodes.InvalidArgError,
-            },
+            createComponent({name, value, owner, kind: 'Reporter'}),
+            'to have property',
+            'isBlessed',
           );
         });
 
-        it('should throw an error due to "isBlessed"', function () {
-          const value = {foo: 'bar', isBlessed: 'baz'};
-          expect(
-            () =>
-              component({name, value: value as any, owner, kind: 'Reporter'}),
-            'to throw',
-            {
-              code: ErrorCodes.InvalidArgError,
-            },
-          );
+        describe('when the owner is not blessed', function () {
+          it('the property should be false', function () {
+            const result = createComponent({
+              name,
+              value,
+              owner,
+              kind: 'Reporter',
+            });
+            expect(result.isBlessed, 'to be false');
+          });
         });
 
-        it('should throw an error due to "kind"', function () {
-          const value = {foo: 'bar', kind: 'baz'};
-          expect(
-            () =>
-              component({name, value: value as any, owner, kind: 'Reporter'}),
-            'to throw',
-            {
-              code: ErrorCodes.InvalidArgError,
-            },
-          );
+        describe('when the owner is blessed', function () {
+          beforeEach(function () {
+            owner = {id: '@midnight-smoker/plugin-default'};
+          });
+
+          it('the property should be true', function () {
+            const result = createComponent({
+              name,
+              value,
+              owner,
+              kind: 'Reporter',
+            });
+            expect(result.isBlessed, 'to be true');
+          });
+        });
+
+        describe('when the owner is invalid', function () {
+          it('should throw', function () {
+            expect(
+              () =>
+                createComponent({
+                  name,
+                  value,
+                  owner: {} as any,
+                  kind: 'Reporter',
+                }),
+              'to throw',
+              {
+                code: ErrorCodes.InvalidArgError,
+              },
+            );
+          });
+        });
+
+        it('should return a proxy that forwards other properties to the value', function () {
+          const result = createComponent({
+            name,
+            value,
+            owner,
+            kind: 'Reporter',
+          });
+          expect(result.foo, 'to equal', 'bar');
+        });
+
+        describe('when the object is not componentizable', function () {
+          it('should throw an error due to "id"', function () {
+            const value = {foo: 'bar', id: 'baz'};
+            expect(
+              () =>
+                createComponent({
+                  name,
+                  value: value as any,
+                  owner,
+                  kind: 'Reporter',
+                }),
+              'to throw',
+              {
+                code: ErrorCodes.InvalidArgError,
+              },
+            );
+          });
+
+          it('should throw an error due to kComponentId', function () {
+            const value = {foo: 'bar', [kComponentId]: 'baz'};
+            expect(
+              () =>
+                createComponent({
+                  name,
+                  value: value as any,
+                  owner,
+                  kind: 'Reporter',
+                }),
+              'to throw',
+              {
+                code: ErrorCodes.InvalidArgError,
+              },
+            );
+          });
+
+          it('should throw an error due to "isBlessed"', function () {
+            const value = {foo: 'bar', isBlessed: 'baz'};
+            expect(
+              () =>
+                createComponent({
+                  name,
+                  value: value as any,
+                  owner,
+                  kind: 'Reporter',
+                }),
+              'to throw',
+              {
+                code: ErrorCodes.InvalidArgError,
+              },
+            );
+          });
+
+          it('should throw an error due to "kind"', function () {
+            const value = {foo: 'bar', kind: 'baz'};
+            expect(
+              () =>
+                createComponent({
+                  name,
+                  value: value as any,
+                  owner,
+                  kind: 'Reporter',
+                }),
+              'to throw',
+              {
+                code: ErrorCodes.InvalidArgError,
+              },
+            );
+          });
         });
       });
     });

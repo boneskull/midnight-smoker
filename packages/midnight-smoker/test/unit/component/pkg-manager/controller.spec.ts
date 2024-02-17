@@ -1,4 +1,4 @@
-import {component} from '#component';
+import {createComponent} from '#component';
 import * as Errors from '#error';
 import {SmokerEvent} from '#event/event-constants';
 import type * as PkgMgr from '#pkg-manager';
@@ -218,7 +218,7 @@ describe('midnight-smoker', function () {
 
             beforeEach(function () {
               registry.getScriptRunner.returns(
-                component({
+                createComponent({
                   name: 'default',
                   value: nullScriptRunner,
                   owner: {id: 'test-controller'},
@@ -328,7 +328,7 @@ describe('midnight-smoker', function () {
                   cwd: TEST_TMPDIR,
                 };
 
-                const scriptRunner = component({
+                const scriptRunner = createComponent({
                   name: 'default',
                   value: brokenScriptRunner,
                   kind: 'ScriptRunner',
@@ -368,7 +368,7 @@ describe('midnight-smoker', function () {
 
               describe('when the "bail" flag is true', function () {
                 beforeEach(function () {
-                  const scriptRunner = component({
+                  const scriptRunner = createComponent({
                     name: 'default',
                     value: brokenScriptRunner,
                     kind: 'ScriptRunner',
@@ -429,7 +429,7 @@ describe('midnight-smoker', function () {
                   );
                   brokenScriptRunner = sandbox.stub().rejects(err);
                   registry.getScriptRunner.returns(
-                    component({
+                    createComponent({
                       name: 'default',
                       value: brokenScriptRunner,
                       kind: 'ScriptRunner',
@@ -492,7 +492,7 @@ describe('midnight-smoker', function () {
                   nullPm1.spec,
                   new Error('execa error'),
                 );
-                const scriptRunner = component({
+                const scriptRunner = createComponent({
                   name: 'default',
                   value: sandbox.stub().rejects(err),
                   owner: {id: 'test-controller'},

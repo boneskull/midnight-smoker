@@ -9,3 +9,4 @@ export {ComponentKinds, type ComponentKind} from '#constants';
 export * from '#error/component-error';
 export * from './component';
 export * from './component-id';
+export * from './create-component';
