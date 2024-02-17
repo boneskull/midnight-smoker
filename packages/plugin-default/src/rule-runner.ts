@@ -168,13 +168,10 @@ export class SmokerRuleRunner<T extends BaseNormalizedRuleOptionsRecord> {
    * @returns Results of a single check
    * @internal
    */
-  public static async runRule<
-    const Name extends string,
-    Schema extends RuleDefSchemaValue | void = void,
-  >(
+  public static async runRule<Schema extends RuleDefSchemaValue | void = void>(
     this: void,
     context: Readonly<RuleContext>,
-    rule: Rule<Name, Schema>,
+    rule: Rule<Schema>,
     config: RuleConfig<Schema>,
   ): Promise<void> {
     const {name: ruleName} = rule;

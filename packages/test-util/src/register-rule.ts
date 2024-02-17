@@ -20,9 +20,8 @@ import {
 } from './constants';
 
 export function isPartialRuleDef<
-  const Name extends string,
   Schema extends RuleDefSchemaValue | void = void,
->(value: any): value is Partial<RuleDef<Name, Schema>> {
+>(value: any): value is Partial<RuleDef<Schema>> {
   return RuleDefSchema.partial().safeParse(value).success;
 }
 

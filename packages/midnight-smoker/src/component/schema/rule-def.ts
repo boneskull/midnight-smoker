@@ -1,6 +1,5 @@
 import {type RuleDefSchemaValue, type RuleOptions} from '#schema/rule-options';
-import {RuleSeveritySchema} from '#schema/rule-severity';
-import type {StaticRule} from '#schema/rule-static';
+import {StaticRuleDefSchema, type StaticRuleDef} from '#schema/rule-static';
 import {z} from 'zod';
 import {type RuleContext} from '../rule/context';
 
@@ -10,11 +9,9 @@ import {type RuleContext} from '../rule/context';
  * @public
  */
 
-export interface RuleDef<
-  Name extends string,
-  Schema extends RuleDefSchemaValue | void = void,
-> extends StaticRule {
-  name: Name;
+export interface RuleDef<Schema extends RuleDefSchemaValue | void = void>
+  extends StaticRuleDef {
+  name: string;
 
   /**
    * The function which actually performs the check.
@@ -52,13 +49,6 @@ export const RuleCheckFnSchema = z
   .args(z.any(), z.any())
   .returns(z.any());
 
-export const StaticRuleDefSchema = z.object({
-  name: z.string().min(1),
-  description: z.string().min(1),
-  defaultSeverity: RuleSeveritySchema.optional(),
-  url: z.string().url().optional(),
-});
-
 export const RuleDefSchema = StaticRuleDefSchema.extend({
   schema: RuleDefSchemaValueSchema.optional(),
   check: RuleCheckFnSchema,
@@ -66,4 +56,4 @@ export const RuleDefSchema = StaticRuleDefSchema.extend({
  * Some {@link RuleDef}
  */
 
-export type SomeRuleDef = RuleDef<string, RuleDefSchemaValue | void>;
+export type SomeRuleDef = RuleDef<RuleDefSchemaValue | void>;

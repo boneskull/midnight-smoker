@@ -1,14 +1,14 @@
 import {z} from 'zod';
 import {instanceofSchema, NonEmptyStringSchema} from '../../util/schema-util';
 import {RuleSeveritySchema} from './rule-severity';
-import {StaticRuleContextSchema, StaticRuleSchema} from './rule-static';
+import {StaticRuleContextSchema, StaticRuleDefSchema} from './rule-static';
 
 /**
  * Schema for a {@link StaticRuleIssue}, which is a {@link RuleIssue} in a
  * serializable format
  */
 export const StaticRuleIssueSchema = z.object({
-  rule: StaticRuleSchema,
+  rule: StaticRuleDefSchema,
   context: StaticRuleContextSchema,
   message: NonEmptyStringSchema.describe(
     'The human-=readable message for this issue',

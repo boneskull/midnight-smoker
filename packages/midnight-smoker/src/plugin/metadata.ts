@@ -428,10 +428,9 @@ export class PluginMetadata implements StaticPluginMetadata {
     );
   }
 
-  public addRule<
-    const Name extends string,
-    Schema extends RuleDefSchemaValue | void = void,
-  >(ruleDef: RuleDef<Name, Schema>): void {
+  public addRule<Schema extends RuleDefSchemaValue | void = void>(
+    ruleDef: RuleDef<Schema>,
+  ): void {
     const {name} = ruleDef;
     const rule = Rule.create(ruleDef, this);
     if (this.ruleMap.has(name)) {

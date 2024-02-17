@@ -2,7 +2,7 @@ import {RuleSeverities} from '#constants';
 import {RuleError} from '#error/rule-error';
 import type * as I from '#rule/issue';
 import * as IS from '#schema/rule-issue-static';
-import type {StaticRule, StaticRuleContext} from '#schema/rule-static';
+import type {StaticRuleContext, StaticRuleDef} from '#schema/rule-static';
 import rewiremock from 'rewiremock/node';
 import unexpected from 'unexpected';
 import {createFsMocks} from '../../mocks/fs';
@@ -22,8 +22,8 @@ describe('midnight-smoker', function () {
         ));
       });
       describe('RuleIssue', function () {
-        let params: I.RuleIssueParams<StaticRuleContext, StaticRule>;
-        const exampleStaticRule: StaticRule = {
+        let params: I.RuleIssueParams<StaticRuleContext, StaticRuleDef>;
+        const exampleStaticRule: StaticRuleDef = {
           name: 'example-rule',
           description: 'This is an example rule',
           defaultSeverity: 'error',

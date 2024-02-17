@@ -1,6 +1,6 @@
 import {type Component} from '#component';
 import {RuleError} from '#error/rule-error';
-import {type StaticRule, type StaticRuleContext} from '#schema/rule-static';
+import {type StaticRuleContext, type StaticRuleDef} from '#schema/rule-static';
 import {serialize} from '#util/util';
 import {type PackageJson} from 'type-fest';
 import {RuleIssue} from './issue';
@@ -32,7 +32,7 @@ export class RuleContext implements StaticRuleContext {
    */
   readonly #issues: RuleIssue[] = [];
   protected constructor(
-    private readonly rule: Component<StaticRule>,
+    private readonly rule: Component<StaticRuleDef>,
     staticCtx: StaticRuleContext,
   ) {
     this.staticCtx = Object.freeze({...staticCtx});
@@ -87,7 +87,7 @@ export class RuleContext implements StaticRuleContext {
    * Creates a {@link RuleContext}.
    */
   public static create(
-    rule: Component<StaticRule>,
+    rule: Component<StaticRuleDef>,
     staticCtx: StaticRuleContext,
   ): Readonly<RuleContext> {
     return Object.freeze(new RuleContext(rule, serialize(staticCtx)));

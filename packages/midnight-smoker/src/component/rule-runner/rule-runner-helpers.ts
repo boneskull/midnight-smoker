@@ -49,10 +49,9 @@ export async function createRuleContext<
  * @returns The readonly configuration for the rule.
  */
 export function getConfigForRule<
-  const Name extends string,
   Schema extends RuleDefSchemaValue | void = void,
 >(
-  rule: Component<Rule<Name, Schema>>,
+  rule: Component<Rule<Schema>>,
   config: BaseNormalizedRuleOptionsRecord,
 ): Readonly<RuleConfig<Schema>> {
   return Object.freeze({...config[rule.id]}) as Readonly<RuleConfig<Schema>>;

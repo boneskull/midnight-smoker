@@ -7,7 +7,7 @@ import {type RuleDefSchemaValue} from './rule-options';
 /**
  * Used for storing collections of {@link Rule} objects.
  */
-export type SomeRule = Rule<string, RuleDefSchemaValue | void>;
+export type SomeRule = Rule<RuleDefSchemaValue | void>;
 export const SomeRuleSchema = instanceofSchema(Rule);
 
 export const RuleComponentsSchema = z.array(

@@ -15,10 +15,9 @@ import type {StaticPluginMetadata} from './static-metadata';
  * Defines a new {@link Rule} component
  */
 export type DefineRuleFn = <
-  Name extends string,
   Schema extends Rule.RuleDefSchemaValue | void = void,
 >(
-  ruleDef: Rule.RuleDef<Name, Schema>,
+  ruleDef: Rule.RuleDef<Schema>,
 ) => PluginAPI;
 
 /**

@@ -6,7 +6,7 @@
 
 import {RuleSeverities} from '#constants';
 import {type StaticRuleIssue} from '#schema/rule-issue-static';
-import {type StaticRule, type StaticRuleContext} from '#schema/rule-static';
+import {type StaticRuleContext, type StaticRuleDef} from '#schema/rule-static';
 import {uniqueIdFactoryFactory} from '#util/util';
 import type {RuleError} from '../../error/rule-error';
 
@@ -17,7 +17,7 @@ import type {RuleError} from '../../error/rule-error';
  */
 export interface RuleIssueParams<
   Ctx extends StaticRuleContext,
-  RuleDef extends StaticRule,
+  RuleDef extends StaticRuleDef,
 > {
   /**
    * The {@link StaticRuleContext} for this issue, for public consumption.
@@ -85,7 +85,7 @@ export class RuleIssue implements StaticRuleIssue {
   /**
    * {@inheritDoc RuleIssueParams.rule}
    */
-  public readonly rule: StaticRule;
+  public readonly rule: StaticRuleDef;
 
   public constructor({
     rule,
@@ -93,7 +93,7 @@ export class RuleIssue implements StaticRuleIssue {
     message,
     data,
     error,
-  }: RuleIssueParams<StaticRuleContext, StaticRule>) {
+  }: RuleIssueParams<StaticRuleContext, StaticRuleDef>) {
     this.rule = rule;
     this.context = context;
     this.message = message;
@@ -126,10 +126,12 @@ export class RuleIssue implements StaticRuleIssue {
    */
   public static create<
     Ctx extends StaticRuleContext,
-    RuleDef extends StaticRule,
+    RuleDef extends StaticRuleDef,
   >(params: RuleIssueParams<Ctx, RuleDef>): Readonly<RuleIssue> {
     return Object.freeze(
-      new RuleIssue(params as RuleIssueParams<StaticRuleContext, StaticRule>),
+      new RuleIssue(
+        params as RuleIssueParams<StaticRuleContext, StaticRuleDef>,
+      ),
     );
   }
 

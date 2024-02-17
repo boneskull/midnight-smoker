@@ -23,7 +23,7 @@ export type StaticRuleContext = z.infer<typeof StaticRuleContextSchema>;
 /**
  * The bits of a {@link RuleDef} suitable for passing the API edge
  */
-export const StaticRuleSchema = z
+export const StaticRuleDefSchema = z
   .object({
     defaultSeverity: RuleSeveritySchema.optional(),
     description: NonEmptyStringSchema,
@@ -35,4 +35,4 @@ export const StaticRuleSchema = z
 /**
  * Representation of a rule suitable for serialization into JSON.
  */
-export type StaticRule = z.infer<typeof StaticRuleSchema>;
+export type StaticRuleDef = z.infer<typeof StaticRuleDefSchema>;

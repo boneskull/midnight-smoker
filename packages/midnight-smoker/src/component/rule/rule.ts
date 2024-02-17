@@ -8,7 +8,7 @@ import {RuleSeverities} from '#constants';
 import {type RuleCheckFn, type RuleDef} from '#schema/rule-def';
 import {type RuleDefSchemaValue, type RuleOptions} from '#schema/rule-options';
 import {RuleSeveritySchema, type RuleSeverity} from '#schema/rule-severity';
-import type {StaticRule} from '#schema/rule-static';
+import type {StaticRuleDef} from '#schema/rule-static';
 import {EmptyObjectSchema} from '#util/schema-util';
 import Debug from 'debug';
 import {
@@ -22,17 +22,15 @@ const debug = Debug('midnight-smoker:rule');
  * Represents a _Rule_, which performs a logical grouping of checks upon an
  * installed (from tarball) package.
  */
-export class Rule<
-  const Name extends string,
-  Schema extends RuleDefSchemaValue | void = void,
-> implements RuleDef<Name, Schema>
+export class Rule<Schema extends RuleDefSchemaValue | void = void>
+  implements RuleDef<Schema>
 {
   /**
    * The name for this rule.
    *
    * @todo Enforce uniqueness
    */
-  public readonly name: Name;
+  public readonly name: string;
 
   /**
    * The description for this rule
@@ -56,7 +54,7 @@ export class Rule<
 
   public readonly url?: string;
 
-  public constructor(def: RuleDef<Name, Schema>) {
+  public constructor(def: RuleDef<Schema>) {
     this.name = def.name;
     this.description = def.description;
     this.defaultSeverity = def.defaultSeverity
@@ -90,7 +88,7 @@ export class Rule<
   /**
    * Returns this `Rule` in a format suitable for serialization.
    */
-  public toJSON(): StaticRule {
+  public toJSON(): StaticRuleDef {
     return {
       defaultSeverity: this.defaultSeverity,
       name: this.name,
@@ -99,16 +97,14 @@ export class Rule<
     };
   }
 
-  public toString(this: Component<Rule<Name, Schema>>) {
+  public toString(this: Component<Rule<Schema>>) {
     return this.id;
   }
 
   public static create<
-    const Name extends string,
     const Id extends string = string,
     Schema extends RuleDefSchemaValue | void = void,
-  >(this: void, ruleDef: RuleDef<Name, Schema>, owner: Owner<Id>) {
-    const rule = component({
+  >(this: void, ruleDef: RuleDef<Schema>, owner: Owner<Id>) {
     const rule = createComponent({
       name: ruleDef.name,
       value: new Rule(ruleDef),

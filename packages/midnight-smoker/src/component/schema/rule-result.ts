@@ -1,8 +1,8 @@
 import {z} from 'zod';
-import {StaticRuleContextSchema, StaticRuleSchema} from './rule-static';
+import {StaticRuleContextSchema, StaticRuleDefSchema} from './rule-static';
 
 export const RuleOkSchema = z.object({
-  rule: StaticRuleSchema,
+  rule: StaticRuleDefSchema,
   context: StaticRuleContextSchema,
 });
 

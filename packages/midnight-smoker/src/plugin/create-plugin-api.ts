@@ -41,10 +41,9 @@ export const createPluginAPI = (
 ): Readonly<PluginAPI> => {
   // TODO: validate ruleDef
   const defineRule: DefineRuleFn = <
-    const Name extends string,
     Schema extends RuleDefSchemaValue | void = void,
   >(
-    ruleDef: RuleDef<Name, Schema>,
+    ruleDef: RuleDef<Schema>,
   ) => {
     metadata.addRule(ruleDef);
     debug('Rule with name %s defined by plugin %s', ruleDef.name, metadata.id);
