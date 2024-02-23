@@ -1,4 +1,3 @@
-import {type Component} from 'midnight-smoker/component';
 import {
   type Plugin,
   type PluginFactory,
@@ -39,7 +38,7 @@ export async function registerRule(
   registry: PluginRegistry,
   factoryOrRuleDef: PluginFactory | Partial<SomeRuleDef>,
   pluginName = DEFAULT_TEST_PLUGIN_NAME,
-): Promise<Component<SomeRule>> {
+): Promise<SomeRule> {
   const blessedMetadata = await registry.getBlessedMetadata();
   let phonyMetadata: PluginMetadata | undefined;
   if (isBlessedPlugin(pluginName)) {

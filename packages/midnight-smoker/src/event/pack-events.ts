@@ -1,7 +1,10 @@
-import type {PackError} from '../error/pack-error';
-import type {InstallEventData} from './install-events';
+import {
+  type PackBeginEventData,
+  type PackFailedEventData,
+  type PackOkEventData,
+} from '#schema/pack-event';
 
-export interface PackEvents {
+export type PackEvents = {
   /**
    * Emitted whenever a package is about to be packed into a tarball.
    *
@@ -17,7 +20,7 @@ export interface PackEvents {
    *
    * @event
    */
-  PackFailed: PackError;
+  PackFailed: PackFailedEventData;
 
   /**
    * Emitted whenever a package is packed successfully into a tarball.
@@ -25,12 +28,4 @@ export interface PackEvents {
    * @event
    */
   PackOk: PackOkEventData;
-}
-export interface PackBeginEventData {
-  /**
-   * List of unique package manager specifiers, each of which corresponding to a
-   * package manager which will perform a "pack" operation.
-   */
-  packageManagers: string[];
-}
-export type PackOkEventData = InstallEventData;
+};

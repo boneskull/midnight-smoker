@@ -1,7 +1,6 @@
 import rewiremock from 'rewiremock/node';
 import unexpected from 'unexpected';
 
-import {type Component} from '#component';
 import type * as Ctx from '#rule/context';
 import {type SomeRule} from '#schema/rule';
 import {type StaticRuleContext} from '#schema/rule-static';
@@ -29,7 +28,7 @@ describe('midnight-smoker', function () {
           description: 'This is an example rule',
           defaultSeverity: 'error',
           url: 'https://example.com/rules/example-rule',
-        } as Component<SomeRule>;
+        } as SomeRule;
         const staticCtx: StaticRuleContext = {
           pkgJson: {
             name: 'example-package',

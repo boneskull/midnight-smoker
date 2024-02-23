@@ -1,5 +1,5 @@
 import {InstallEvent, PackEvent, SmokerEvent} from '#event/event-constants';
-import type * as PR from '#plugin/registry';
+import type * as PR from '#plugin/plugin-registry';
 import {type PkgManagerInstallManifest} from '#schema/install-manifest';
 import {type InstallResult} from '#schema/install-result';
 import {type PkgManager} from '#schema/pkg-manager';
@@ -79,7 +79,7 @@ describe('midnight-smoker', function () {
 
     pkgManagerMap.set(MOCK_PM_ID, nullPm);
     ({PluginRegistry} = rewiremock.proxy(
-      () => require('../../src/plugin/registry'),
+      () => require('../../src/plugin/plugin-registry'),
       fsMocks,
     ));
     ({Smoker} = rewiremock.proxy(() => require('../../src/smoker'), mocks));
@@ -326,7 +326,6 @@ describe('midnight-smoker', function () {
 
       describe('smoke()', function () {
         beforeEach(async function () {
-          sandbox.stub(smoker, 'loadListeners').resolves();
           sandbox.stub(smoker, 'runScripts').resolves([]);
           sandbox.stub(smoker, 'runChecks').resolves({passed: [], issues: []});
           sandbox.stub(smoker, 'pack').resolves([]);

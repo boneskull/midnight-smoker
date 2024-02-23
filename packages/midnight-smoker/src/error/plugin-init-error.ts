@@ -1,5 +1,5 @@
-import type {PluginMetadata} from '../plugin/metadata';
 import type {Plugin} from '../plugin/plugin';
+import type {PluginMetadata} from '../plugin/plugin-metadata';
 import {BaseSmokerError} from './base-error';
 
 /**
@@ -10,18 +10,22 @@ import {BaseSmokerError} from './base-error';
  * @internal
  */
 
-export class PluginInitializationError extends BaseSmokerError<
+export class PluginInitError extends BaseSmokerError<
   {
-    metadata: PluginMetadata;
+    metadata: Readonly<PluginMetadata>;
     plugin: Plugin;
   },
   Error
 > {
-  public readonly id = 'PluginInitializationError';
+  public readonly id = 'PluginInitError';
 
-  constructor(error: Error, metadata: PluginMetadata, plugin: Plugin) {
+  constructor(
+    error: Error,
+    metadata: Readonly<PluginMetadata>,
+    plugin: Plugin,
+  ) {
     super(
-      `Plugin ${metadata} failed to initialize`,
+      `Plugin ${metadata} failed to initialize: ${error.message}`,
       {
         metadata,
         plugin,

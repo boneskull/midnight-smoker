@@ -1,11 +1,10 @@
-import {ComponentKinds, type Component} from '#component';
-import {DEFAULT_COMPONENT_ID} from '#constants';
-import {InvalidComponentError} from '#error/component-error';
+import {ComponentKinds, DEFAULT_COMPONENT_ID} from '#constants';
 import {DisallowedPluginError} from '#error/disallowed-plugin-error';
 import {DuplicatePluginError} from '#error/duplicate-plugin-error';
+import {InvalidComponentError} from '#error/invalid-component-error';
 import {PluginConflictError} from '#error/plugin-conflict-error';
 import {PluginImportError} from '#error/plugin-import-error';
-import {PluginInitializationError} from '#error/plugin-init-error';
+import {PluginInitError} from '#error/plugin-init-error';
 import {PluginResolutionError} from '#error/plugin-resolution-error';
 import {UnresolvablePluginError} from '#error/unresolvable-plugin-error';
 import {
@@ -32,16 +31,17 @@ import util from 'node:util';
 import {type PackageJson} from 'type-fest';
 import {z} from 'zod';
 import {fromZodError} from 'zod-validation-error';
+import {ComponentRegistry} from '../component';
 import {isBlessedPlugin, type BlessedPlugin} from './blessed';
 import {createPluginAPI} from './create-plugin-api';
 import {Helpers} from './helpers';
-import {PluginMetadata, initBlessedMetadata} from './metadata';
 import {zPlugin, type Plugin} from './plugin';
+import {PluginMetadata, initBlessedMetadata} from './plugin-metadata';
 import {type StaticPluginMetadata} from './static-metadata';
 
 const debug = Debug('midnight-smoker:plugin-registry');
 
-export type RuleFilter = (rule: Component<SomeRule>) => boolean;
+export type RuleFilter = (rule: SomeRule) => boolean;
 
 /**
  * Static metadata about a {@link PluginRegistry}
@@ -58,22 +58,24 @@ export interface StaticPluginRegistry {
 }
 
 export class PluginRegistry {
-  private pluginMap: Map<string, PluginMetadata>;
+  private pluginMap: Map<string, Readonly<PluginMetadata>>;
   private seenRawPlugins: Map<unknown, string>;
 
-  private ruleMap: Map<string, Component<SomeRule>[]>;
+  private ruleMap: Map<string, SomeRule[]>;
 
-  private scriptRunnerMap: Map<string, Component<ScriptRunner>>;
+  private scriptRunnerMap: Map<string, ScriptRunner>;
 
-  private ruleRunnerMap: Map<string, Component<RuleRunner>>;
+  private ruleRunnerMap: Map<string, RuleRunner>;
 
-  private executorMap: Map<string, Component<Executor>>;
+  private executorMap: Map<string, Executor>;
 
-  private reporterDefMap: Map<string, Component<ReporterDef>>;
+  private reporterDefMap: Map<string, ReporterDef>;
 
-  private pkgManagerDefMap: Map<string, Component<PkgManagerDef>>;
+  private pkgManagerDefMap: Map<string, PkgManagerDef>;
 
   private blessedMetadata?: Readonly<Record<BlessedPlugin, PluginMetadata>>;
+
+  public readonly componentRegistry: ComponentRegistry;
 
   #isClosed = false;
 
@@ -86,6 +88,15 @@ export class PluginRegistry {
     this.pkgManagerDefMap = new Map();
     this.reporterDefMap = new Map();
     this.seenRawPlugins = new Map();
+    this.componentRegistry = ComponentRegistry.create();
+  }
+
+  public getComponentId(def: object) {
+    return this.componentRegistry.getId(def);
+  }
+
+  public getComponent(def: object) {
+    return this.componentRegistry.getComponent(def);
   }
 
   public static create() {
@@ -100,7 +111,7 @@ export class PluginRegistry {
     if (this.blessedMetadata) {
       return this.blessedMetadata;
     }
-    this.blessedMetadata = await initBlessedMetadata();
+    this.blessedMetadata = await initBlessedMetadata(this.componentRegistry);
     return this.blessedMetadata;
   }
 
@@ -121,6 +132,7 @@ export class PluginRegistry {
     this.pluginMap.clear();
     this.reporterDefMap.clear();
     this.seenRawPlugins.clear();
+    this.componentRegistry.clear();
     this.#isClosed = false;
   }
 
@@ -337,7 +349,7 @@ export class PluginRegistry {
         description: plugin.description ?? metadata.description,
         version: plugin.version ?? metadata.version,
       };
-      return PluginMetadata.create(metadata, updates);
+      return PluginMetadata.create(this.componentRegistry, metadata, updates);
     }
     return metadata;
   }
@@ -369,7 +381,7 @@ export class PluginRegistry {
    * @returns `true` if `metadata.id` is already a key in {@link pluginMap};
    *   `false` otherwise
    */
-  private isMetadataRegistered(metadata: PluginMetadata) {
+  private isMetadataRegistered(metadata: Readonly<PluginMetadata>) {
     return this.pluginMap.has(metadata.id);
   }
 
@@ -384,7 +396,7 @@ export class PluginRegistry {
   public async registerPlugin(
     entryPoint: string,
     name?: string,
-  ): Promise<PluginMetadata>;
+  ): Promise<Readonly<PluginMetadata>>;
 
   /**
    * Registers a plugin from metadata; this is the usual flow.
@@ -393,9 +405,9 @@ export class PluginRegistry {
    * @param plugin - Already-loaded, normalized plugin object
    */
   public async registerPlugin(
-    metadata: PluginMetadata,
+    metadata: Readonly<PluginMetadata>,
     plugin?: Plugin,
-  ): Promise<PluginMetadata>;
+  ): Promise<Readonly<PluginMetadata>>;
 
   /**
    * Registers a plugin from a name and a plugin object; this is used by the
@@ -407,18 +419,18 @@ export class PluginRegistry {
   public async registerPlugin(
     name: string,
     plugin: Plugin,
-  ): Promise<PluginMetadata>;
+  ): Promise<Readonly<PluginMetadata>>;
 
   public async registerPlugin(
-    metadataOrName: PluginMetadata | string,
+    metadataOrName: Readonly<PluginMetadata> | string,
     nameOrPlugin?: string | Plugin,
-  ): Promise<PluginMetadata> {
+  ): Promise<Readonly<PluginMetadata>> {
     if (this.isClosed) {
       throw new DisallowedPluginError();
     }
 
     let plugin: Plugin | undefined;
-    let metadata: PluginMetadata;
+    let metadata: Readonly<PluginMetadata>;
 
     if (isString(metadataOrName)) {
       // in this case, we have a "transient" plugin, which is something that we
@@ -437,11 +449,12 @@ export class PluginRegistry {
           pkg.version = plugin.version;
         }
         metadata = PluginMetadata.createTransient(
+          this.componentRegistry,
           metadataOrName,
           isEmpty(pkg) ? undefined : pkg,
         );
       } else {
-        metadata = PluginMetadata.create({
+        metadata = PluginMetadata.create(this.componentRegistry, {
           entryPoint: metadataOrName,
           id: nameOrPlugin ?? metadataOrName,
         });
@@ -490,9 +503,7 @@ export class PluginRegistry {
       await plugin.plugin(pluginApi);
     } catch (err) {
       debug(err);
-      throw isError(err)
-        ? new PluginInitializationError(err, metadata, plugin)
-        : err;
+      throw isError(err) ? new PluginInitError(err, metadata, plugin) : err;
     }
 
     this.pluginMap.set(metadata.id, metadata);
@@ -500,26 +511,39 @@ export class PluginRegistry {
     this.ruleMap.set(metadata.id, [...metadata.ruleMap.values()]);
 
     for (const component of metadata.scriptRunnerMap.values()) {
-      this.scriptRunnerMap.set(`${component.id}`, component);
+      this.scriptRunnerMap.set(
+        this.componentRegistry.getId(component),
+        component,
+      );
     }
 
     for (const component of metadata.ruleRunnerMap.values()) {
-      this.ruleRunnerMap.set(`${component.id}`, component);
+      this.ruleRunnerMap.set(
+        this.componentRegistry.getId(component),
+        component,
+      );
     }
 
     for (const component of metadata.executorMap.values()) {
-      this.executorMap.set(`${component.id}`, component);
+      this.executorMap.set(this.componentRegistry.getId(component), component);
     }
 
     for (const component of metadata.pkgManagerDefMap.values()) {
-      this.pkgManagerDefMap.set(`${component.id}`, component);
+      this.pkgManagerDefMap.set(
+        this.componentRegistry.getId(component),
+        component,
+      );
     }
 
     for (const component of metadata.reporterMap.values()) {
-      this.reporterDefMap.set(`${component.id}`, component);
+      this.reporterDefMap.set(
+        this.componentRegistry.getId(component),
+        component,
+      );
     }
 
     debug('Loaded plugin %s successfully: %O', metadata, metadata);
+
     return metadata;
   }
 
@@ -537,7 +561,7 @@ export class PluginRegistry {
   private async resolvePlugin(
     pluginSpecifier: string,
     cwd = process.cwd(),
-  ): Promise<PluginMetadata> {
+  ): Promise<Readonly<PluginMetadata>> {
     let entryPoint: string | undefined;
 
     const tryResolve = (from: string) => {
@@ -580,7 +604,7 @@ export class PluginRegistry {
       return blessedMetadata[pluginSpecifier];
     }
 
-    return PluginMetadata.create({
+    return PluginMetadata.create(this.componentRegistry, {
       id: packageJson.name,
       requestedAs: pluginSpecifier,
       entryPoint,

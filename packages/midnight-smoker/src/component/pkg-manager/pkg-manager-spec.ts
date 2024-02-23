@@ -6,6 +6,7 @@
  */
 
 import {DEFAULT_PKG_MANAGER_BIN, DEFAULT_PKG_MANAGER_VERSION} from '#constants';
+import {type StaticPkgManagerSpec} from '#schema/pkg-manager-spec';
 import {getSystemPkgManagerVersion} from '#util/pkg-util';
 import {instanceofSchema} from '#util/schema-util';
 import {isString} from 'lodash';
@@ -222,7 +223,7 @@ export class PkgManagerSpec {
    *
    * @returns A JSON representation of this {@link PkgManagerSpec}
    */
-  public toJSON() {
+  public toJSON(): StaticPkgManagerSpec {
     return {...this};
   }
 

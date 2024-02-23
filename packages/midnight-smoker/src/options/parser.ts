@@ -2,9 +2,9 @@ import Debug from 'debug';
 import {z} from 'zod';
 import {fromZodError} from 'zod-validation-error';
 import {isZodError} from '../error/base-error';
-import type {PluginRegistry} from '../plugin/registry';
+import type {PluginRegistry} from '../plugin/plugin-registry';
 import {
-  zBaseSmokerOptions,
+  BaseSmokerOptionsSchema,
   type RawSmokerOptions,
   type SmokerOptions,
 } from './options';
@@ -49,9 +49,8 @@ export class OptionParser {
 
   static buildSmokerOptions(registry: PluginRegistry) {
     const zRuleOptions = registry.buildRuleOptions();
-    return zBaseSmokerOptions
-      .setKey('rules', zRuleOptions)
-      .transform((cfg, ctx) => {
+    return BaseSmokerOptionsSchema.setKey('rules', zRuleOptions).transform(
+      (cfg, ctx) => {
         // these may be expressible in Zod, but seems painful
         if (cfg.all) {
           if (cfg.workspace.length) {
@@ -75,7 +74,8 @@ export class OptionParser {
         }
 
         return cfg;
-      });
+      },
+    );
   }
 
   static create(pluginRegistry: PluginRegistry) {

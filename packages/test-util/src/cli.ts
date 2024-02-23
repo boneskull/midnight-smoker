@@ -71,7 +71,8 @@ export async function execSmoker(args: string[], opts: ExecSmokerOpts = {}) {
   if (json) {
     args = [...new Set(args).add('--json')];
   }
-  debug(`executing: ${CLI_PATH} ${args.join(' ')}`);
+  debug(`Executing: ${CLI_PATH} ${args.join(' ')}`);
+  debug(`CWD: ${opts.cwd}`);
   let result: Executor.ExecResult;
   try {
     result = await execa(CLI_PATH, args, {

@@ -132,7 +132,7 @@ const smokerOptionsShape = {
  * CLI, config file, or API.
  */
 
-export const zBaseSmokerOptions = z
+export const BaseSmokerOptionsSchema = z
   .object(smokerOptionsShape)
   // .extend(
   //   mapKeys(smokerOptionsShape, (_, key) => kebabCase(key)) as CamelCasedObject<
@@ -148,9 +148,9 @@ export const zBaseSmokerOptions = z
 /**
  * Options for `Smoker` as provided by a user
  */
-export type RawSmokerOptions = z.input<typeof zBaseSmokerOptions>;
+export type RawSmokerOptions = z.input<typeof BaseSmokerOptionsSchema>;
 
 /**
  * Normalized options for `Smoker`.
  */
-export type SmokerOptions = z.infer<typeof zBaseSmokerOptions>;
+export type SmokerOptions = z.infer<typeof BaseSmokerOptionsSchema>;

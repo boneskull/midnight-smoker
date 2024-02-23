@@ -1,13 +1,13 @@
 import {
-  ScriptEventDataSchema,
+  ScriptEventBaseDataSchema,
   ScriptFailedEventDataSchema,
-} from '#schema/script-runner-events';
+} from '#schema/script-runner-event';
 import {z} from 'zod';
 
 export const ScriptBeginNotifierSchema = z
   .function(
-    z.tuple([ScriptEventDataSchema] as [
-      eventData: typeof ScriptEventDataSchema,
+    z.tuple([ScriptEventBaseDataSchema] as [
+      eventData: typeof ScriptEventBaseDataSchema,
     ]),
     z.void(),
   )
@@ -17,8 +17,8 @@ export const ScriptBeginNotifierSchema = z
 
 export const ScriptOkNotifierSchema = z
   .function(
-    z.tuple([ScriptEventDataSchema] as [
-      eventData: typeof ScriptEventDataSchema,
+    z.tuple([ScriptEventBaseDataSchema] as [
+      eventData: typeof ScriptEventBaseDataSchema,
     ]),
     z.void(),
   )

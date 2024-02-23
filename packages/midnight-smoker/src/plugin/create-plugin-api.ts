@@ -15,7 +15,6 @@ import * as SchemaUtils from '#util/schema-util';
 import Debug from 'debug';
 import {z} from 'zod';
 import {Helpers} from './helpers';
-import {type PluginMetadata} from './metadata';
 import {
   type DefineExecutorFn,
   type DefinePackageManagerFn,
@@ -25,6 +24,7 @@ import {
   type DefineScriptRunnerFn,
   type PluginAPI,
 } from './plugin-api';
+import {type PluginMetadata} from './plugin-metadata';
 import {type StaticPluginMetadata} from './static-metadata';
 
 const debug = Debug('midnight-smoker:plugin:create-plugin-api');
@@ -37,7 +37,7 @@ const debug = Debug('midnight-smoker:plugin:create-plugin-api');
  */
 export const createPluginAPI = (
   getPlugins: () => StaticPluginMetadata[],
-  metadata: PluginMetadata,
+  metadata: Readonly<PluginMetadata>,
 ): Readonly<PluginAPI> => {
   // TODO: validate ruleDef
   const defineRule: DefineRuleFn = <

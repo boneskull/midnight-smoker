@@ -96,20 +96,21 @@ module.exports = {
         // too many false positives
         '@typescript-eslint/no-unnecessary-condition': 'off',
 
-        // node's util.inspect() seems to be either a) unstable or b) nondeterministic
+        // node's util.inspect() seems to be either nondeterministic across platforms,
+        // which makes it difficult to take snapshots of its output
         '@typescript-eslint/no-restricted-imports': [
-          'error',
+          'warn',
           {
             paths: [
               {
                 name: 'util',
                 importNames: ['inspect'],
-                message: 'Please use stringify-object package instead',
+                message: 'Use stringify-object package if possible',
               },
               {
                 name: 'node:util',
                 importNames: ['inspect'],
-                message: 'Please use stringify-object package instead',
+                message: 'Use stringify-object package if possible',
               },
             ],
           },

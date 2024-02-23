@@ -4,17 +4,16 @@
  * @packageDocumentation
  */
 
+import {type InstallEventBaseData} from '#schema/install-event';
 import type {PkgManagerInstallManifest} from '#schema/install-manifest';
+import {type PackBeginEventData} from '#schema/pack-event';
 import type {PkgManager} from '#schema/pkg-manager';
 import type {RunScriptResult} from '#schema/run-script-result';
-import {type RunScriptManifestWithPkgMgr} from '..';
 import type {
   RunScriptsEndEventData,
   RunScriptsEventData,
-} from '../component/schema/script-runner-events';
-
-import type {InstallEventData} from './install-events';
-import type {PackBeginEventData} from './pack-events';
+} from '#schema/script-runner-event';
+import {type RunScriptManifestWithPkgMgr} from '..';
 
 /**
  * Builds the event data for the `PackBegin` event.
@@ -27,7 +26,9 @@ export function buildPackBeginEventData(
   pkgManagers: readonly PkgManager[],
 ): PackBeginEventData {
   return {
-    packageManagers: pkgManagers.map((pkgManager) => `${pkgManager.spec}`),
+    // XXX fix
+    uniquePkgs: [],
+    pkgManagers: pkgManagers.map((pkgManager) => pkgManager.spec.toJSON()),
   };
 }
 
@@ -94,7 +95,7 @@ export function buildRunScriptsBeginEventData(
 export function buildInstallEventData(
   installManifests: PkgManagerInstallManifest[],
   pkgManagers: readonly PkgManager[],
-): InstallEventData {
+): InstallEventBaseData {
   // could use _.partition here!
   const uniquePkgs = [
     ...new Set(
@@ -113,15 +114,10 @@ export function buildInstallEventData(
   ];
 
   const pkgManagerSpecs = pkgManagers.map(({spec}) => spec);
-  const pkgManagerSpecPairs = pkgManagerSpecs.map(
-    (spec) =>
-      [spec.pkgManager, spec.version] as [name: string, version: string],
-  );
 
   return {
     uniquePkgs,
-    pkgManagerSpecs: pkgManagerSpecs.map((spec) => `${spec}`),
-    pkgManagers: pkgManagerSpecPairs,
+    pkgManagers: pkgManagerSpecs.map((spec) => spec.toJSON()),
     additionalDeps,
     manifests: installManifests,
     total: pkgManagers.length * installManifests.length,

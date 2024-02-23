@@ -1,5 +1,5 @@
 import {PkgManagerSchema} from '#schema/pkg-manager';
-import {zRunScriptResult} from '#schema/run-script-result';
+import {RunScriptResultSchema} from '#schema/run-script-result';
 import {ScriptRunnerNotifiersSchema} from '#schema/script-runner-notifier';
 import {ScriptRunnerOptsSchema} from '#schema/script-runner-opts';
 import {z} from 'zod';
@@ -17,6 +17,6 @@ export const ScriptRunnerSchema = z.function(
     pkgManager: typeof PkgManagerSchema,
     opts: typeof ScriptRunnerOptsSchema,
   ]),
-  z.promise(zRunScriptResult),
+  z.promise(RunScriptResultSchema),
 );
 export type ScriptRunner = z.infer<typeof ScriptRunnerSchema>;

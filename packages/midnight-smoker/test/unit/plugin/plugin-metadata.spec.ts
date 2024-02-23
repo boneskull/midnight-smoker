@@ -1,10 +1,13 @@
+import {ComponentCollisionError} from '#error';
 import {ErrorCodes} from '#error/codes';
-import type * as PM from '#plugin/metadata';
 import path from 'node:path';
 import rewiremock from 'rewiremock/node';
+import {createSandbox, type SinonStubbedInstance} from 'sinon';
 import type {PackageJson} from 'type-fest';
 import unexpected from 'unexpected';
 import {isValidationError} from 'zod-validation-error';
+import type * as PM from '../../../dist/plugin/plugin-metadata';
+import {ComponentRegistry} from '../../../src/component';
 import {createFsMocks} from '../mocks/fs';
 
 const expect = unexpected.clone();
@@ -22,21 +25,26 @@ describe('midnight-smoker', function () {
     describe('PluginMetadata', function () {
       let TRANSIENT: typeof PM.TRANSIENT;
       let PluginMetadata: typeof PM.PluginMetadata;
+      let componentRegistry: ComponentRegistry &
+        SinonStubbedInstance<ComponentRegistry>;
+      let sandbox: sinon.SinonSandbox;
 
       beforeEach(function () {
         const {mocks} = createFsMocks();
-
+        sandbox = createSandbox();
         ({PluginMetadata, TRANSIENT} = rewiremock.proxy(
-          () => require('../../../src/plugin/metadata'),
+          () => require('../../../src/plugin/plugin-metadata'),
           mocks,
         ));
+
+        componentRegistry = sandbox.createStubInstance(ComponentRegistry);
       });
 
       describe('instance method', function () {
-        let metadata: PM.PluginMetadata;
+        let metadata: Readonly<PM.PluginMetadata>;
 
         beforeEach(function () {
-          metadata = PluginMetadata.create(TEST_OPTS);
+          metadata = PluginMetadata.create(componentRegistry, TEST_OPTS);
         });
 
         describe('toJSON()', function () {
@@ -58,7 +66,7 @@ describe('midnight-smoker', function () {
 
           describe('when the "pkgJson" prop has no "version" prop', function () {
             it('should return a description of the plugin without the version', function () {
-              const metadata = PluginMetadata.create({
+              const metadata = PluginMetadata.create(componentRegistry, {
                 entryPoint: TEST_ENTRYPOINT,
                 pkgJson: {name: 'snuckles'},
               });
@@ -68,15 +76,27 @@ describe('midnight-smoker', function () {
         });
 
         describe('addScriptRunner()', function () {
-          describe('when attempting to add a script runner with the same name as an existing script runner', function () {
+          describe('when the component registry throws', function () {
+            beforeEach(function () {
+              componentRegistry.registerComponent
+                .onSecondCall()
+                .throws(
+                  new ComponentCollisionError(
+                    'foo',
+                    'plugin name',
+                    'component name',
+                  ),
+                );
+            });
+
             it('should throw', function () {
               expect(
                 () => {
                   metadata.addScriptRunner('foo', {} as any);
                   metadata.addScriptRunner('foo', {} as any);
                 },
-                'to throw',
-                /already exists in/,
+                'to throw a',
+                ComponentCollisionError,
               );
             });
           });
@@ -99,7 +119,10 @@ describe('midnight-smoker', function () {
           describe('when called with an entryPoint', function () {
             describe('when the entry point is an absolute path', function () {
               it('should return a PluginMetadata instance with the id as a relative path', function () {
-                const metadata = PluginMetadata.create(TEST_ENTRYPOINT);
+                const metadata = PluginMetadata.create(
+                  componentRegistry,
+                  TEST_ENTRYPOINT,
+                );
                 expect(metadata, 'to be a', PluginMetadata).and('to satisfy', {
                   id: TEST_ID,
                 });
@@ -108,6 +131,7 @@ describe('midnight-smoker', function () {
               describe('when called with an id', function () {
                 it('should return a PluginMetadata instance with the provided id', function () {
                   const metadata = PluginMetadata.create(
+                    componentRegistry,
                     TEST_ENTRYPOINT,
                     'pentryOint.js',
                   );
@@ -124,7 +148,8 @@ describe('midnight-smoker', function () {
             describe('when the entry point is a relative path', function () {
               it('should throw', function () {
                 expect(
-                  () => PluginMetadata.create('entryPoint.js'),
+                  () =>
+                    PluginMetadata.create(componentRegistry, 'entryPoint.js'),
                   'to throw',
                   expect.it(
                     'when passed as parameter to',
@@ -138,7 +163,7 @@ describe('midnight-smoker', function () {
 
           describe('when called with a valid PluginMetadataOpts object', function () {
             it('should return a PluginMetadata instance', function () {
-              const metadata = PluginMetadata.create({
+              const metadata = PluginMetadata.create(componentRegistry, {
                 entryPoint: TEST_ENTRYPOINT,
                 id: 'something-else',
                 requestedAs: 'something',
@@ -152,7 +177,10 @@ describe('midnight-smoker', function () {
                 it('should return a PluginInstance with the package name as its id', function () {
                   // eslint-disable-next-line @typescript-eslint/no-unused-vars
                   const {entryPoint, pkgJson, ...rest} = TEST_OPTS;
-                  const metadata = PluginMetadata.create({entryPoint, pkgJson});
+                  const metadata = PluginMetadata.create(componentRegistry, {
+                    entryPoint,
+                    pkgJson,
+                  });
                   expect(metadata, 'to be a', PluginMetadata).and(
                     'to satisfy',
                     {
@@ -165,7 +193,7 @@ describe('midnight-smoker', function () {
               describe('when the "pkgJson" prop is not a reasonable PackageJson object', function () {
                 it('should return a PluginInstance containing a relative path to "entryPoint" as its id', function () {
                   const {entryPoint} = TEST_OPTS;
-                  const metadata = PluginMetadata.create({
+                  const metadata = PluginMetadata.create(componentRegistry, {
                     entryPoint,
                     pkgJson: {},
                   });
@@ -185,7 +213,7 @@ describe('midnight-smoker', function () {
               expect(
                 () =>
                   // @ts-expect-error - bad type
-                  PluginMetadata.create({
+                  PluginMetadata.create(componentRegistry, {
                     entryPoint: TEST_ENTRYPOINT,
                     pkgJson: [], // <-- no
                   }),
@@ -215,7 +243,10 @@ describe('midnight-smoker', function () {
 
           describe('when provided a plugin name argument', function () {
             it('should return a PluginMetadata instance with a special entry point', function () {
-              const metadata = PluginMetadata.createTransient('snuckles');
+              const metadata = PluginMetadata.createTransient(
+                componentRegistry,
+                'snuckles',
+              );
               expect(metadata, 'to be a', PluginMetadata).and('to satisfy', {
                 entryPoint: TRANSIENT,
               });

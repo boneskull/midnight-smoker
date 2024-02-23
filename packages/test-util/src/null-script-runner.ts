@@ -17,6 +17,8 @@ export const nullScriptRunner: SR.ScriptRunner = async (
   notifiers.scriptBegin({
     script,
     pkgName,
+    current: 0,
+    total: 0,
   });
 
   await Promise.resolve();
@@ -39,6 +41,8 @@ export const nullScriptRunner: SR.ScriptRunner = async (
   notifiers.scriptOk({
     pkgName,
     script,
+    current: 0,
+    total: 0,
   });
 
   return result;

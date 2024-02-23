@@ -1,5 +1,5 @@
 import {RuleSeverities} from '#constants';
-import type * as PR from '#plugin/registry';
+import type * as PR from '#plugin/plugin-registry';
 import type {SomeRule} from '#schema/rule';
 import {
   DEFAULT_TEST_PLUGIN_NAME,
@@ -32,11 +32,11 @@ describe('midnight-smoker', function () {
         const {fs, mocks} = createFsMocks();
 
         const PMM = rewiremock.proxy(
-          () => require('../../src/plugin/metadata'),
+          () => require('../../src/plugin/plugin-metadata'),
           mocks,
         );
         const Registry = rewiremock.proxy(
-          () => require('../../src/plugin/registry'),
+          () => require('../../src/plugin/plugin-registry'),
           {
             ...mocks,
             '../../src/util/loader-util': {
@@ -56,7 +56,7 @@ describe('midnight-smoker', function () {
             },
             // this is horrid, but otherwise the PluginRegistry won't have the same
             // PluginMetadata class as we use here in the test file
-            '../../src/plugin/metadata': PMM,
+            '../../src/plugin/plugin-metadata': PMM,
           },
         );
 
@@ -64,7 +64,7 @@ describe('midnight-smoker', function () {
           () => require('../../src/options/parser'),
           {
             ...mocks,
-            '../../src/plugin/registry': Registry,
+            '../../src/plugin/plugin-registry': Registry,
           },
         ));
 

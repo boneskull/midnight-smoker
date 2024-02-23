@@ -5,14 +5,14 @@ import {BaseSmokerError} from './base-error';
  * @group Errors
  */
 
-export class ReporterError extends BaseSmokerError<
+export class ReporterError<Ctx = unknown> extends BaseSmokerError<
   {
-    reporter: ReporterDef;
+    reporter: ReporterDef<Ctx>;
   },
   Error
 > {
   public readonly id = 'ReporterError';
-  constructor(error: Error, reporter: ReporterDef) {
+  constructor(error: Error, reporter: ReporterDef<Ctx>) {
     super(
       `Reporter ${reporter.name} threw while initializing: ${error.message}`,
       {reporter},

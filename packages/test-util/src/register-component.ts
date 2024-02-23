@@ -4,7 +4,10 @@
  * @packageDocumentation
  */
 
-import {DEFAULT_COMPONENT_ID} from 'midnight-smoker/constants';
+import {
+  DEFAULT_COMPONENT_ID,
+  type ComponentKind,
+} from 'midnight-smoker/constants';
 import {type Executor} from 'midnight-smoker/executor';
 import {type PkgManagerDef} from 'midnight-smoker/pkg-manager';
 import {
@@ -22,19 +25,10 @@ export interface RegisterComponentOpts {
   api?: Partial<PluginAPI>;
 }
 
-type ComponentTypes = {
-  RuleRunner: RuleRunner;
-  ScriptRunner: ScriptRunner;
-  Executor: Executor;
-  PackageManager: PkgManagerDef;
-};
-
-type ComponentType = keyof ComponentTypes;
-
-export async function registerComponent<T extends ComponentType>(
+export async function registerComponent(
   registry: PluginRegistry,
-  type: T,
-  component: ComponentTypes[T],
+  kind: ComponentKind,
+  def: object,
   {
     name = DEFAULT_COMPONENT_ID,
     pluginName = DEFAULT_TEST_PLUGIN_NAME,
@@ -44,21 +38,21 @@ export async function registerComponent<T extends ComponentType>(
   const plugin: Plugin = {
     plugin: (api) => {
       api = {...api, ...apiOverrides};
-      switch (type) {
+      switch (kind) {
         case 'RuleRunner':
-          api.defineRuleRunner(component as RuleRunner, name);
+          api.defineRuleRunner(def as RuleRunner, name);
           break;
         case 'ScriptRunner':
-          api.defineScriptRunner(component as ScriptRunner, name);
+          api.defineScriptRunner(def as ScriptRunner, name);
           break;
         case 'Executor':
-          api.defineExecutor(component as Executor, name);
+          api.defineExecutor(def as Executor, name);
           break;
-        case 'PackageManager':
-          api.definePackageManager(component as PkgManagerDef, name);
+        case 'PkgManagerDef':
+          api.definePackageManager(def as PkgManagerDef, name);
           break;
         default:
-          throw new Error(`Unknown component type: ${type}`);
+          throw new Error(`Unknown component type: ${kind}`);
       }
     },
   };
@@ -95,5 +89,5 @@ export async function registerPackageManager(
   component: PkgManagerDef,
   options: RegisterComponentOpts = {},
 ): Promise<PluginRegistry> {
-  return registerComponent(registry, 'PackageManager', component, options);
+  return registerComponent(registry, 'PkgManagerDef', component, options);
 }

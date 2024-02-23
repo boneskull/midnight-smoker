@@ -1,14 +1,9 @@
-import {
-  ComponentKinds,
-  createComponent,
-  type Component,
-  type Owner,
-} from '#component';
 import {RuleSeverities} from '#constants';
+import {type PluginMetadata} from '#plugin/plugin-metadata';
 import {type RuleCheckFn, type RuleDef} from '#schema/rule-def';
 import {type RuleDefSchemaValue, type RuleOptions} from '#schema/rule-options';
 import {RuleSeveritySchema, type RuleSeverity} from '#schema/rule-severity';
-import type {StaticRuleDef} from '#schema/rule-static';
+import type {StaticRule} from '#schema/rule-static';
 import {EmptyObjectSchema} from '#util/schema-util';
 import Debug from 'debug';
 import {
@@ -54,7 +49,10 @@ export class Rule<Schema extends RuleDefSchemaValue | void = void>
 
   public readonly url?: string;
 
-  public constructor(def: RuleDef<Schema>) {
+  public constructor(
+    def: RuleDef<Schema>,
+    public readonly plugin: PluginMetadata,
+  ) {
     this.name = def.name;
     this.description = def.description;
     this.defaultSeverity = def.defaultSeverity
@@ -64,8 +62,6 @@ export class Rule<Schema extends RuleDefSchemaValue | void = void>
     this.schema = def.schema;
     this.url = def.url;
   }
-
-  public static readonly componentKind = ComponentKinds.Rule;
 
   public get defaultOptions() {
     return this.schema ? getDefaultRuleOptions(this.schema) : undefined;
@@ -88,30 +84,31 @@ export class Rule<Schema extends RuleDefSchemaValue | void = void>
   /**
    * Returns this `Rule` in a format suitable for serialization.
    */
-  public toJSON(): StaticRuleDef {
+  public toJSON(): StaticRule {
     return {
       defaultSeverity: this.defaultSeverity,
       name: this.name,
       description: this.description,
       url: this.url,
+      id: this.id,
     };
   }
 
-  public toString(this: Component<Rule<Schema>>) {
+  public get id(): string {
+    return this.plugin.getComponentId(this);
+  }
+
+  public toString(): string {
     return this.id;
   }
 
-  public static create<
-    const Id extends string = string,
-    Schema extends RuleDefSchemaValue | void = void,
-  >(this: void, ruleDef: RuleDef<Schema>, owner: Owner<Id>) {
-    const rule = createComponent({
-      name: ruleDef.name,
-      value: new Rule(ruleDef),
-      kind: Rule.componentKind,
-      owner,
-    });
-    debug('Created Rule with ID %s', rule.id);
+  public static create<Schema extends RuleDefSchemaValue | void = void>(
+    this: void,
+    ruleDef: RuleDef<Schema>,
+    plugin: PluginMetadata,
+  ) {
+    const rule = new Rule(ruleDef, plugin);
+    debug('Instantiated Rule %s from plugin %s', rule.name, plugin.id);
     return rule;
   }
 }

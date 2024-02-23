@@ -1,9 +1,9 @@
+import {SomeRulesSchema} from '#schema/rule';
 import {BaseNormalizedRuleOptionsRecordSchema} from '#schema/rule-options';
 import {RunRulesManifestSchema} from '#schema/rule-runner-manifest';
 import {RuleRunnerNotifiersSchema} from '#schema/rule-runner-notifier';
 import {RunRulesResultSchema} from '#schema/rule-runner-result';
 import {z} from 'zod';
-import {RuleComponentsSchema} from './rule';
 
 /**
  * @todo A RuleRunner should not need to return anything, since it operates
@@ -19,12 +19,12 @@ export type RuleRunner = z.infer<typeof RuleRunnerSchema>;
 export const RuleRunnerSchema = z.function(
   z.tuple([
     RuleRunnerNotifiersSchema,
-    RuleComponentsSchema,
+    SomeRulesSchema,
     BaseNormalizedRuleOptionsRecordSchema,
     RunRulesManifestSchema,
   ] as [
     notifiers: typeof RuleRunnerNotifiersSchema,
-    rules: typeof RuleComponentsSchema,
+    rules: typeof SomeRulesSchema,
     ruleConfig: typeof BaseNormalizedRuleOptionsRecordSchema,
     runRulesManifest: typeof RunRulesManifestSchema,
   ]),

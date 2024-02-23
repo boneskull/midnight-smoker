@@ -1,4 +1,3 @@
-import {type Component} from '#component';
 import {PluginRegistry} from '#plugin';
 import {type StaticRuleContext} from '#rule';
 import type * as RR from '#rule-runner';
@@ -27,7 +26,7 @@ describe('midnight-smoker', function () {
         let getConfigForRule: typeof RR.getConfigForRule;
         let createRuleOkResult: typeof RR.createRuleOkResult;
         let fs: FsMocks['fs'];
-        let rule: Component<SomeRule>;
+        let rule: SomeRule;
         let installPath: string;
         let ruleConfig: BaseNormalizedRuleOptions;
         let registry: PluginRegistry;

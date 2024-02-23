@@ -6,7 +6,7 @@ import {
   RunRulesBeginEventDataSchema,
   RunRulesFailedEventDataSchema,
   RunRulesOkEventDataSchema,
-} from '#schema/rule-runner-events';
+} from '#schema/rule-runner-event';
 import {z} from 'zod';
 
 export const RunRulesBeginNotifierSchema = z

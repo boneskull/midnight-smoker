@@ -1,5 +1,4 @@
 import {registerRule} from '@midnight-smoker/test-util';
-import {type Component} from 'midnight-smoker/component';
 import {PluginRegistry} from 'midnight-smoker/plugin';
 import {RuleSeverities, type SomeRule} from 'midnight-smoker/rule';
 import {normalize} from 'node:path';
@@ -10,7 +9,7 @@ import {applyRule} from './helpers';
 const expect = unexpected.clone();
 
 describe('@midnight-smoker/plugin-default', function () {
-  let noMissingEntryPoint: Component<SomeRule>;
+  let noMissingEntryPoint: SomeRule;
 
   describe('rule', function () {
     describe('no-missing-entry-point', function () {

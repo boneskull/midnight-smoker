@@ -111,9 +111,9 @@ export const SmokerEvent = {
   ...RuleEvent,
 
   /**
-   * {@inheritDoc SmokerEvents.End}
+   * {@inheritDoc SmokerEvents.BeforeExit}
    */
-  End: 'End',
+  BeforeExit: 'BeforeExit',
 
   /**
    * {@inheritDoc SmokerEvents.Lingered}

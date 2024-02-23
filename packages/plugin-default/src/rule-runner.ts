@@ -13,7 +13,6 @@
  */
 
 import Debug from 'debug';
-import {type Component} from 'midnight-smoker/component';
 import {type PluginAPI} from 'midnight-smoker/plugin';
 import {
   type BaseNormalizedRuleOptionsRecord,
@@ -41,14 +40,14 @@ const debug = Debug('midnight-smoker:plugin-default:rule-runner');
 export class SmokerRuleRunner<T extends BaseNormalizedRuleOptionsRecord> {
   protected constructor(
     protected readonly notifiers: RuleRunnerNotifiers,
-    protected readonly rules: Component<SomeRule>[],
+    protected readonly rules: SomeRule[],
     protected readonly rulesConfig: T,
   ) {}
 
   public static create(
     this: void,
     notifiers: RuleRunnerNotifiers,
-    rules: Component<SomeRule>[],
+    rules: SomeRule[],
     ruleConfig: BaseNormalizedRuleOptionsRecord,
   ) {
     return new SmokerRuleRunner(notifiers, rules, ruleConfig);
@@ -103,7 +102,7 @@ export class SmokerRuleRunner<T extends BaseNormalizedRuleOptionsRecord> {
             // also consider combining multiple errors per rule into an AggregateError
             for (const issue of issues) {
               if (issue.error) {
-                this.notifiers.ruleError(issue.error);
+                this.notifiers.ruleError({error: issue.error});
               }
             }
 

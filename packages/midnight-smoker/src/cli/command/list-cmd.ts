@@ -3,6 +3,7 @@
  *
  * @packageDocumentation
  */
+import {isBlessedPlugin} from '#plugin/blessed';
 import Debug from 'debug';
 import {isString, orderBy} from 'lodash';
 import path from 'node:path';
@@ -14,8 +15,6 @@ import type {
   InferredOptionTypes,
   PositionalOptions,
 } from 'yargs';
-import {kComponentId} from '../../component/component';
-import {isBlessedPlugin} from '../../plugin/blessed';
 import {Smoker} from '../../smoker';
 import {createTable} from '../cli-util';
 import {BaseCommand} from './base-cmd';
@@ -68,7 +67,8 @@ export class ListCommand extends BaseCommand {
   private static async listPkgManagers(
     opts: ArgumentsCamelCase<ListOptionTypes>,
   ): Promise<void> {
-    const pkgManagers = await Smoker.getPkgManagerDefs(opts);
+    const smoker = await Smoker.create(opts);
+    const pkgManagers = smoker.getPkgManagerDefs();
     debug('Found %d pkg manager modules', pkgManagers.length);
 
     if (opts.json) {
@@ -78,7 +78,8 @@ export class ListCommand extends BaseCommand {
 
     const table = createTable(
       pkgManagers.map((pm) => {
-        const data: string[] = [pm.id, pm.bin];
+        const id = smoker.getComponentId(pm);
+        const data: string[] = [id, pm.bin];
         if (pm.supportedVersionRange) {
           if (isString(pm.supportedVersionRange)) {
             data.push(pm.supportedVersionRange);
@@ -140,7 +141,8 @@ export class ListCommand extends BaseCommand {
   private static async listReporters(
     opts: ArgumentsCamelCase<ListOptionTypes>,
   ): Promise<void> {
-    const reporters = await Smoker.getReporters(opts);
+    const smoker = await Smoker.create(opts);
+    const reporters = smoker.getReporters();
     debug('Found %d reporters', reporters.length);
 
     if (opts.json) {
@@ -149,13 +151,13 @@ export class ListCommand extends BaseCommand {
     }
 
     const table = createTable(
-      reporters.map((reporter) => [
-        reporter.name,
-        reporter.description,
-        isBlessedPlugin(reporter[kComponentId].pluginName)
+      reporters.map((reporter) => {
+        const component = smoker.getComponent(reporter);
+        const pluginName = component.isBlessed
           ? '(built-in)'
-          : reporter[kComponentId].pluginName,
-      ]),
+          : component.pluginName;
+        return [reporter.name, reporter.description, pluginName];
+      }),
       ['Name', 'Description', 'Plugin'],
     );
 
@@ -171,7 +173,8 @@ export class ListCommand extends BaseCommand {
   private static async listRules(
     opts: ArgumentsCamelCase<ListOptionTypes>,
   ): Promise<void> {
-    const rules = await Smoker.getRules(opts);
+    const smoker = await Smoker.create(opts);
+    const rules = smoker.getRules();
 
     const headers =
       terminalLink.isSupported && !opts.json
@@ -190,12 +193,14 @@ export class ListCommand extends BaseCommand {
         terminalLink.isSupported && rule.url
           ? terminalLink(rule.id, rule.url)
           : rule.id;
+      const component = smoker.getComponent(rule);
+      const pluginName = component.isBlessed
+        ? '(built-in)'
+        : component.pluginName;
       const row: (undefined | string)[] = [
         ruleName,
         rule.description,
-        isBlessedPlugin(rule[kComponentId].pluginName)
-          ? '(built-in)'
-          : rule[kComponentId].pluginName,
+        pluginName,
       ];
       if (!terminalLink.isSupported) {
         row.push(rule.url);

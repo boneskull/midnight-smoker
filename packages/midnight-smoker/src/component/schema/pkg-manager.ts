@@ -6,7 +6,7 @@ import {
   type RunScriptManifest,
 } from '#schema/run-script-manifest';
 import {
-  zRunScriptResult,
+  RunScriptResultSchema,
   type RunScriptResult,
 } from '#schema/run-script-result';
 import {
@@ -60,7 +60,7 @@ export const PkgManagerRunScriptFnSchema = customSchema<PkgManagerRunScriptFn>(
         manifest: typeof RunScriptManifestSchema,
         opts: typeof PkgManagerRunScriptFnOptsSchema,
       ]),
-      z.promise(zRunScriptResult),
+      z.promise(RunScriptResultSchema),
     )
     .describe(
       'Runs one or more scripts against packages installed from tarballs',

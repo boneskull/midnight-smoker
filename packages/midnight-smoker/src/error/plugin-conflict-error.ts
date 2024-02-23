@@ -1,4 +1,4 @@
-import type {PluginMetadata} from '../plugin/metadata';
+import type {PluginMetadata} from '../plugin/plugin-metadata';
 import {BaseSmokerError} from './base-error';
 
 /**
@@ -10,12 +10,15 @@ import {BaseSmokerError} from './base-error';
 
 export class PluginConflictError extends BaseSmokerError<{
   pluginId: string;
-  existing: PluginMetadata;
-  incoming: PluginMetadata;
+  existing: Readonly<PluginMetadata>;
+  incoming: Readonly<PluginMetadata>;
 }> {
   public readonly id = 'PluginConflictError';
 
-  constructor(existing: PluginMetadata, incoming: PluginMetadata) {
+  constructor(
+    existing: Readonly<PluginMetadata>,
+    incoming: Readonly<PluginMetadata>,
+  ) {
     super(
       `Plugin ${existing.id} from ${incoming.entryPoint} conflicts with ${existing.entryPoint}`,
       {pluginId: existing.id, existing, incoming},

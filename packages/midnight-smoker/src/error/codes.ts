@@ -10,7 +10,7 @@
  */
 export const ErrorCodes = {
   CleanupError: 'ESMOKER_CLEANUP',
-  ComponentNameError: 'ESMOKER_COMPONENTNAME',
+  ComponentCollisionError: 'ESMOKER_COMPONENTIDCOLLISION',
   DirCreationError: 'ESMOKER_DIRCREATION',
   DisallowedPluginError: 'ESMOKER_DISALLOWEDPLUGIN',
   DuplicatePluginError: 'ESMOKER_DUPLICATEPLUGIN',
@@ -27,7 +27,7 @@ export const ErrorCodes = {
   PackParseError: 'ESMOKER_PACKPARSE',
   PluginConflictError: 'ESMOKER_PLUGINCONFLICT',
   PluginImportError: 'ESMOKER_PLUGINIMPORT',
-  PluginInitializationError: 'ESMOKER_PLUGININIT',
+  PluginInitError: 'ESMOKER_PLUGININIT',
   PluginResolutionError: 'ESMOKER_PLUGINRESOLUTION',
   ReporterError: 'ESMOKER_REPORTER',
   RuleError: 'ESMOKER_RULEERROR',

@@ -5,15 +5,21 @@
  */
 
 import jsonStringify from 'json-stable-stringify';
+import {type SmokeResults} from 'midnight-smoker';
 import * as Errors from 'midnight-smoker/error';
-import * as Event from 'midnight-smoker/event';
 import type * as Reporter from 'midnight-smoker/reporter';
 
-export const JSONReporter: Reporter.ReporterDef = {
+export type JSONReporterContext = {
+  stats: SmokerStats;
+  lingering?: string[];
+  output?: SmokerJsonOutput;
+};
+
+export const JSONReporter: Reporter.ReporterDef<JSONReporterContext> = {
   name: 'json',
   description: 'JSON reporter (for machines)',
-  reporter: ({emitter, console}) => {
-    const stats: SmokerStats = {
+  setup(ctx) {
+    ctx.stats = {
       totalPackages: null,
       totalPackageManagers: null,
       totalScripts: null,
@@ -23,82 +29,66 @@ export const JSONReporter: Reporter.ReporterDef = {
       failedChecks: null,
       passedChecks: null,
     };
-    const {SmokerEvent} = Event;
-
-    /**
-     * List of "lingering" temp directories, if any
-     */
-    let lingering: string[] | undefined;
-
-    /**
-     * Final output
-     */
-    let output: SmokerJsonOutput;
-
-    emitter
-      .once(
-        SmokerEvent.InstallBegin,
-        ({uniquePkgs, pkgManagerSpecs: packageManagers}) => {
-          stats.totalPackages = uniquePkgs.length;
-          stats.totalPackageManagers = packageManagers.length;
-        },
-      )
-      .once(SmokerEvent.RunScriptsBegin, ({total}) => {
-        stats.totalScripts = total;
-      })
-      .once(SmokerEvent.RunScriptsFailed, ({failed, passed}) => {
-        stats.failedScripts = failed;
-        stats.passedScripts = passed;
-      })
-      .once(SmokerEvent.RunScriptsOk, ({passed}) => {
-        stats.passedScripts = passed;
-        stats.failedScripts = 0;
-      })
-      .once(SmokerEvent.RunRulesBegin, ({total}) => {
-        stats.totalChecks = total;
-      })
-      .once(SmokerEvent.RunRulesFailed, ({failed, passed}) => {
-        stats.failedChecks = failed.length;
-        stats.passedChecks = passed.length;
-      })
-      .once(SmokerEvent.RunRulesOk, ({passed}) => {
-        stats.passedChecks = passed.length;
-        stats.failedChecks = 0;
-      })
-      .once(SmokerEvent.Lingered, (dirs) => {
-        lingering = dirs;
-      })
-      .once(SmokerEvent.SmokeOk, (results) => {
-        output = {
-          results,
-          lingering,
-          stats,
-        };
-      })
-      .once(SmokerEvent.SmokeFailed, (error) => {
-        output = {
-          error,
-          lingering,
-          stats,
-        };
-      })
-      .once(SmokerEvent.UnknownError, (error) => {
-        output = {
-          error,
-          lingering,
-          stats,
-        };
-      })
-      .once(SmokerEvent.End, () => {
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        if (!output) {
-          process.exitCode = 1;
-          throw new Errors.SmokerReferenceError(
-            'JSON listener has nothing to output! This is a bug.',
-          );
-        }
-        console.log(jsonStringify(output, {space: 2}));
-      });
+  },
+  onInstallBegin(ctx, {uniquePkgs, pkgManagers}) {
+    ctx.stats.totalPackages = uniquePkgs.length;
+    ctx.stats.totalPackageManagers = pkgManagers.length;
+  },
+  onRunScriptsBegin(ctx, {total}) {
+    ctx.stats.totalScripts = total;
+  },
+  onRunScriptsFailed(ctx, {failed, passed}) {
+    ctx.stats.failedScripts = failed;
+    ctx.stats.passedScripts = passed;
+  },
+  onRunScriptsOk(ctx, {passed}) {
+    ctx.stats.passedScripts = passed;
+    ctx.stats.failedScripts = 0;
+  },
+  onRunRulesBegin(ctx, {total}) {
+    ctx.stats.totalChecks = total;
+  },
+  onRunRulesFailed(ctx, {failed, passed}) {
+    ctx.stats.failedChecks = failed.length;
+    ctx.stats.passedChecks = passed.length;
+  },
+  onRunRulesOk(ctx, {passed}) {
+    ctx.stats.passedChecks = passed.length;
+    ctx.stats.failedChecks = 0;
+  },
+  onLingered(ctx, {directories: dirs}) {
+    ctx.lingering = dirs;
+  },
+  onSmokeOk(ctx, results) {
+    ctx.output = {
+      results,
+      stats: ctx.stats,
+      lingering: ctx.lingering,
+    };
+  },
+  onSmokeFailed(ctx, {error}) {
+    ctx.output = {
+      error,
+      stats: ctx.stats,
+      lingering: ctx.lingering,
+    };
+  },
+  onUnknownError(ctx, {error}) {
+    ctx.output = {
+      error: `${error}`,
+      stats: ctx.stats,
+      lingering: ctx.lingering,
+    };
+  },
+  onBeforeExit(ctx) {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (!ctx.output) {
+      process.exitCode = 1;
+      throw new Errors.SmokerReferenceError(
+        'JSON listener has nothing to output! This is a bug.',
+      );
+    }
+    console.log(jsonStringify(ctx.output, {space: 2}));
   },
 };
 
@@ -108,7 +98,7 @@ export interface SmokerJsonResults {
 }
 
 export interface SmokerJsonSuccess extends SmokerJsonResults {
-  results: Event.SmokeResults;
+  results: SmokeResults;
 }
 
 export interface SmokerJsonFailure extends SmokerJsonResults {

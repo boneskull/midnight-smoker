@@ -9,7 +9,7 @@ import {zScriptError} from './script-error';
  * The contents of this object describe whether the script failed (and how) or
  * not.
  */
-export const zRunScriptResult = z
+export const RunScriptResultSchema = z
   .object({
     /**
      * The directory in which the script ran.
@@ -49,10 +49,12 @@ export const zRunScriptResult = z
      */
     skipped: z.boolean().optional().describe('Whether the script was skipped'),
   })
-  .describe('The result of running a single custom script'); /**
+  .describe('The result of running a single custom script');
+
+/**
  * {@inheritDoc zRunScriptResult}
  *
  * @see {@link zRunScriptResult}
  */
 
-export type RunScriptResult = z.infer<typeof zRunScriptResult>;
+export type RunScriptResult = z.infer<typeof RunScriptResultSchema>;

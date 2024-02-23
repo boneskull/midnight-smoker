@@ -1,7 +1,10 @@
-import type {InstallManifest} from '#schema/install-manifest';
-import type {InstallError} from '../error/install-error';
+import {
+  type InstallBeginEventData,
+  type InstallFailedEventData,
+  type InstallOkEventData,
+} from '#schema/install-event';
 
-export interface InstallEvents {
+export type InstallEvents = {
   /**
    * Emitted whenever a package is about to be installed (from a tarball) into
    * its temp directory.
@@ -10,7 +13,7 @@ export interface InstallEvents {
    *
    * @event
    */
-  InstallBegin: InstallEventData;
+  InstallBegin: InstallBeginEventData;
 
   /**
    * Emitted when a package fails to install.
@@ -20,7 +23,7 @@ export interface InstallEvents {
    *
    * @event
    */
-  InstallFailed: InstallError;
+  InstallFailed: InstallFailedEventData;
 
   /**
    * Emitted when a package is installed successfully from a tarball.
@@ -28,48 +31,8 @@ export interface InstallEvents {
    * @event
    */
   InstallOk: InstallOkEventData;
-} /**
+}; /**
  * Data emitted by various {@link SmokerEvent events}.
  *
  * @see {@link SmokerEvents}
  */
-
-export interface InstallEventData {
-  /**
-   * List of unique package names which either will be or have been installed
-   * (depending on context).
-   */
-  uniquePkgs: string[];
-
-  /**
-   * List of unique package manager specifiers, each of which corresponding to a
-   * package manager which will (or did) execute the current operation.
-   */
-  pkgManagerSpecs: string[];
-
-  /**
-   * List of unique package managers, corresponding to specifiers
-   */
-  pkgManagers: [name: string, version: string][];
-
-  /**
-   * A list of objects describing what packages to install where, and what
-   * additional deps to install (if any).
-   */
-  manifests: InstallManifest[];
-
-  /**
-   * A unique list of additional dependencies to install (if any), flatted from
-   * {@link manifests}
-   */
-  additionalDeps: string[];
-
-  /**
-   * Total number of packages to install
-   */
-  total: number;
-}
-
-export interface InstallOkEventData extends InstallEventData {
-  current: number;
-}

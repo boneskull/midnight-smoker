@@ -50,13 +50,13 @@ export type PkgManagerDefExecutorPair = [PkgManagerDef, Executor];
  * @returns A Promise that resolves to a Map of specs to package manager
  *   instances.
  * @internal
- * @todo Note that `PkgManagerDef` is actually
- *   `Component<PkgManagerDef>`...except in the tests.
+ * @todo Note that `PkgManagerDef` is actually `PkgManagerDef`...except in the
+ *   tests.
  *
  * @todo We should probably check _all_ requested package managers and collect
  *   the ones that we can't handle--instead of just throwing on the first one
  *
- * @todo `PackageManager` should be `Component<PackageManager>` for
+ * @todo `PackageManager` should be `PackageManager` for
  *   identification/debugging purposes. May enable future capabilities. Not sure
  *   how involved that will be.
  */

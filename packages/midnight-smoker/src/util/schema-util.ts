@@ -241,3 +241,5 @@ export function dualCasedObjectSchema<T extends z.AnyZodObject>(schema: T) {
 export const SemVerSchema = instanceofSchema(SemVer);
 
 export const SemVerRangeSchema = instanceofSchema(Range);
+
+export const VoidOrPromiseVoidSchema = z.void().or(z.promise(z.void()));

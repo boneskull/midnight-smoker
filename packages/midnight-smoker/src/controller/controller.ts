@@ -3,7 +3,7 @@ import {type InstallEvents} from '#event/install-events';
 import {type PackEvents} from '#event/pack-events';
 import {type ScriptRunnerEvents} from '#event/script-runner-events';
 import {createStrictEmitter} from '#event/strict-emitter';
-import {type PluginRegistry} from '#plugin/registry';
+import {type PluginRegistry} from '#plugin/plugin-registry';
 import {type PkgManagerInstallManifest} from '#schema/install-manifest';
 import {type InstallResult} from '#schema/install-result';
 import {type PackOptions} from '#schema/pack-options';

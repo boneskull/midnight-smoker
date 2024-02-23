@@ -7,14 +7,12 @@
  */
 
 /* eslint-disable no-labels */
-import {type Component} from '#component';
 import {RuleSeverities} from '#constants';
 import {
   CleanupError,
   InstallError,
   InvalidArgError,
   PackError,
-  ReporterError,
   SmokeFailedError,
   fromUnknownError,
   type RuleError,
@@ -26,34 +24,36 @@ import {
   RunScriptEvent,
   SmokerEvent,
   createStrictEmitter,
-  type SmokeResults,
   type SmokerEvents,
   type StrictEmitter,
 } from '#event';
 import {Blessed, PluginRegistry, type StaticPluginMetadata} from '#plugin';
+import {ReporterController} from '#reporter/reporter-controller';
 import {createRuleRunnerNotifiers} from '#rule-runner';
 import type {PkgManagerInstallManifest} from '#schema/install-manifest';
 import type {InstallResult} from '#schema/install-result';
-import {type PkgManagerDef} from '#schema/pkg-manager-def';
 import {type ReporterDef} from '#schema/reporter-def';
 import {type SomeRule} from '#schema/rule';
 import {type RunRulesManifest} from '#schema/rule-runner-manifest';
 import {type RunRulesResult} from '#schema/rule-runner-result';
 import type {RunScriptResult} from '#schema/run-script-result';
+import {type SmokeResults} from '#schema/smoker-event';
 import {isErrnoException} from '#util/error-util';
-import {readSmokerPkgJson} from '#util/pkg-util';
 import {castArray} from '#util/schema-util';
 import Debug from 'debug';
-import {isFunction} from 'lodash';
-import {Console} from 'node:console';
 import fs from 'node:fs/promises';
 import type {PkgManagerController} from './controller/controller';
 import {SmokerPkgManagerController} from './controller/smoker-controller';
 import type {RawSmokerOptions, SmokerOptions} from './options/options';
 import {OptionParser} from './options/parser';
 
-const debug = Debug('midnight-smoker:smoker');
-
+type SetupResult =
+  | {
+      error: PackError | InstallError;
+    }
+  | {
+      installResults: InstallResult[];
+    };
 export type SmokerEmitter = StrictEmitter<SmokerEvents>;
 
 /**
@@ -64,17 +64,9 @@ export type SmokerEmitter = StrictEmitter<SmokerEvents>;
  * {@link Smoker} instance.
  */
 export interface SmokerCapabilities {
-  registry?: PluginRegistry;
   pkgManagerController?: PkgManagerController;
+  registry?: PluginRegistry;
 }
-
-type SetupResult =
-  | {
-      error: PackError | InstallError;
-    }
-  | {
-      installResults: InstallResult[];
-    };
 
 /**
  * The main class.
@@ -96,9 +88,11 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
   private readonly bail: boolean;
 
   /**
-   * Whether or not to run checks
+   * Async or sync tasks to run before exit.
+   *
+   * These are run immediately after the `BeforeExit` event is emitted.
    */
-  private readonly shouldLint: boolean;
+  private readonly exitTasks: (() => void | Promise<void>)[];
 
   /**
    * Whether to include the workspace root
@@ -111,23 +105,29 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
   private readonly linger: boolean;
 
   /**
+   * @internal
+   */
+  private readonly pkgManagerController: PkgManagerController;
+
+  /**
    * Mapping of plugin identifiers (names) to plugin "instances", which can
    * contain a collection of rules and other stuff (in the future)
    */
   private readonly pluginRegistry: PluginRegistry;
+  private readonly reporterController: ReporterController;
+  private readonly reporters: Set<string>;
+  private readonly ruleRunnerId: string;
+  private readonly scriptRunnerId: string;
 
   /**
-   * @internal
+   * Whether or not to run checks
    */
-  private readonly pkgManagerController: PkgManagerController;
-  private readonly reporters: Set<string>;
+  private readonly shouldLint: boolean;
 
   /**
    * List of specific workspaces to run against
    */
   private readonly workspaces: string[];
-
-  private reporterDelegate?: Readonly<SmokerEmitter>;
 
   /**
    * Used for emitting {@link SmokerEvent.SmokeOk} or
@@ -139,10 +139,6 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
    * List of scripts to run in each workspace
    */
   public readonly scripts: string[];
-
-  private readonly ruleRunnerId: string;
-
-  private readonly scriptRunnerId: string;
 
   private constructor(
     opts: SmokerOptions,
@@ -194,6 +190,13 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
         defaultExecutorId: opts.executor,
       });
 
+    this.exitTasks = [];
+    this.reporterController = new ReporterController(
+      this,
+      this.getEnabledReporters(),
+      this.opts,
+    );
+
     debug(`Smoker instantiated with registry: ${this.pluginRegistry}`);
   }
 
@@ -225,6 +228,14 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
     return new Smoker(options, pluginRegistry, pmController);
   }
 
+  public static async getPlugins(
+    this: void,
+    opts?: RawSmokerOptions,
+  ): Promise<StaticPluginMetadata[]> {
+    const smoker = await Smoker.create(opts);
+    return smoker.pluginRegistry.plugins;
+  }
+
   /**
    * Initializes a {@link Smoker} instance and returns a list of reporters.
    *
@@ -234,17 +245,9 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
   public static async getReporters(
     this: void,
     opts?: RawSmokerOptions,
-  ): Promise<Component<ReporterDef>[]> {
+  ): Promise<ReporterDef[]> {
     const smoker = await Smoker.create(opts);
     return smoker.getReporters();
-  }
-
-  public static async getPlugins(
-    this: void,
-    opts?: RawSmokerOptions,
-  ): Promise<StaticPluginMetadata[]> {
-    const smoker = await Smoker.create(opts);
-    return smoker.pluginRegistry.plugins;
   }
 
   /**
@@ -256,7 +259,7 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
   public static async getRules(
     this: void,
     opts?: RawSmokerOptions,
-  ): Promise<Component<SomeRule>[]> {
+  ): Promise<SomeRule[]> {
     const smoker = await Smoker.create(opts);
     return smoker.getRules();
   }
@@ -272,18 +275,6 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
   ): Promise<SmokeResults | undefined> {
     const smoker = await Smoker.create(opts);
     return smoker.smoke();
-  }
-
-  public getPkgManagerDefs() {
-    return this.pluginRegistry.pkgManagerDefs;
-  }
-
-  public static async getPkgManagerDefs(
-    this: void,
-    opts: RawSmokerOptions = {},
-  ): Promise<Component<PkgManagerDef>[]> {
-    const smoker = await Smoker.create(opts);
-    return smoker.getPkgManagerDefs();
   }
 
   /**
@@ -323,47 +314,28 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
       const lingered = pkgManagers.map((pm) => pm.tmpdir);
       debug('Leaving %d temp dirs on disk: %O', lingered.length, lingered);
       await Promise.resolve();
-      this.emit(
-        SmokerEvent.Lingered,
-        pkgManagers.map((pm) => pm.tmpdir),
-      );
+      this.emit(SmokerEvent.Lingered, {
+        directories: pkgManagers.map((pm) => pm.tmpdir),
+      });
     }
   }
 
-  /**
-   * Creates a listener delegate for this instance.
-   *
-   * This is used to give `Listener` functions something they can listen for
-   * events on but not screw with anything else. Kind of a half-measure until
-   * `Listeners` become components in their own right.
-   *
-   * This doesn't lock down the instance that much. Maybe we should just return
-   * an object of `{once, on}` bound to `Smoker`.
-   *
-   * @returns {SmokerEmitter} The created listener delegate.
-   * @internal
-   */
-  public createReporterDelegate(): Readonly<SmokerEmitter> {
-    const delegate: SmokerEmitter =
-      new (class extends createStrictEmitter<SmokerEvents>() {})();
-    const emit = delegate.emit.bind(delegate);
-    for (const event of Object.values(SmokerEvent)) {
-      this.on(event, (...args) => {
-        emit(event, ...args);
-      });
-    }
-    delegate.emit = new Proxy(delegate.emit, {
-      apply() {},
-    });
-    return delegate;
+  public getComponent(def: object) {
+    return this.pluginRegistry.getComponent(def);
+  }
+
+  public getComponentId(def: object) {
+    return this.pluginRegistry.getComponentId(def);
   }
 
   public getEnabledReporters() {
-    return this.pluginRegistry.reporters.filter(
-      (reporter) =>
-        this.reporters.has(reporter.id) ||
-        (reporter.when ? reporter.when(this.opts) : false),
+    return this.pluginRegistry.reporters.filter((reporter) =>
+      this.reporters.has(this.getComponentId(reporter)),
     );
+  }
+
+  public getPkgManagerDefs() {
+    return this.pluginRegistry.pkgManagerDefs;
   }
 
   public getReporters() {
@@ -407,50 +379,29 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
     }
   }
 
-  public async loadListeners(): Promise<void> {
-    if (this.reporterDelegate) {
-      return;
+  public async lint(): Promise<SmokeResults | undefined> {
+    try {
+      const setupResult = await this.preRun();
+
+      let ruleResults: RunRulesResult | undefined;
+      const runScriptResults: RunScriptResult[] = [];
+
+      if ('installResults' in setupResult) {
+        const {installResults} = setupResult;
+        ruleResults = await this.runChecks(installResults);
+      }
+
+      return await this.postRun(setupResult, ruleResults, runScriptResults);
+    } catch (err) {
+      this.emit(SmokerEvent.UnknownError, {error: fromUnknownError(err)});
+    } finally {
+      this.emit(SmokerEvent.BeforeExit, {});
+      await Promise.all(this.exitTasks.map((task) => task()));
     }
-    const {opts} = this;
-    const reporterDefs = this.getEnabledReporters();
-    const emitter = (this.reporterDelegate = this.createReporterDelegate());
+  }
 
-    const pkgJson = await readSmokerPkgJson();
-    await Promise.all([
-      reporterDefs.map(async (def) => {
-        let stdout: NodeJS.WritableStream = process.stdout;
-        let stderr: NodeJS.WritableStream = process.stderr;
-        if (def.stdout) {
-          if (isFunction(def.stdout)) {
-            stdout = await def.stdout();
-          } else {
-            stdout = def.stdout;
-          }
-        }
-        if (def.stderr) {
-          if (isFunction(def.stderr)) {
-            stderr = await def.stderr();
-          } else {
-            stderr = def.stderr;
-          }
-        }
-
-        const console = new Console({stdout, stderr});
-
-        try {
-          await def.reporter({
-            emitter,
-            opts,
-            pkgJson,
-            console,
-            stdout,
-            stderr,
-          });
-        } catch (err) {
-          throw new ReporterError(fromUnknownError(err), def);
-        }
-      }),
-    ]);
+  public onBeforeExit(listener: () => void | Promise<void>) {
+    this.exitTasks.push(listener);
   }
 
   /**
@@ -554,118 +505,6 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
     }
   }
 
-  private async preRun(): Promise<SetupResult> {
-    await this.loadListeners();
-
-    this.emit(SmokerEvent.SmokeBegin, {
-      plugins: this.pluginRegistry.plugins,
-      opts: this.opts,
-    });
-
-    let pkgManagerInstallManifests: PkgManagerInstallManifest[] | undefined;
-    let installResults: InstallResult[];
-
-    // PACK
-    try {
-      pkgManagerInstallManifests = await this.pack();
-    } catch (err) {
-      if (!(err instanceof PackError)) {
-        throw err;
-      }
-      return {error: err};
-    }
-
-    // INSTALL
-    try {
-      installResults = await this.install(pkgManagerInstallManifests);
-    } catch (err) {
-      if (!(err instanceof InstallError)) {
-        throw err;
-      }
-      return {error: err};
-    }
-    return {installResults};
-  }
-
-  public async lint(): Promise<SmokeResults | undefined> {
-    try {
-      const setupResult = await this.preRun();
-
-      let ruleResults: RunRulesResult | undefined;
-      const runScriptResults: RunScriptResult[] = [];
-
-      if ('installResults' in setupResult) {
-        const {installResults} = setupResult;
-        ruleResults = await this.runChecks(installResults);
-      }
-
-      return await this.postRun(setupResult, ruleResults, runScriptResults);
-    } catch (err) {
-      this.emit(SmokerEvent.UnknownError, fromUnknownError(err));
-    } finally {
-      this.emit(SmokerEvent.End);
-      this.unloadListeners();
-    }
-  }
-
-  private async postRun(
-    setupResult: SetupResult,
-    ruleResults?: RunRulesResult,
-    runScriptResults: RunScriptResult[] = [],
-  ) {
-    // END
-    const smokeResults: SmokeResults = {
-      scripts: runScriptResults,
-      checks: ruleResults,
-      opts: this.opts,
-    };
-
-    const aggregateErrors = () => {
-      const runScriptErrors = runScriptResults.reduce<ScriptError[]>(
-        (acc, result) => (result.error ? [...acc, result.error] : acc),
-        [],
-      );
-
-      const ruleErrors = castArray(ruleResults?.issues).reduce<RuleError[]>(
-        (acc, issue) => {
-          return issue.severity === RuleSeverities.Error
-            ? [...acc, issue.error as RuleError]
-            : acc;
-        },
-        [],
-      );
-
-      const errors: Array<InstallError | PackError | ScriptError | RuleError> =
-        [];
-      if ('error' in setupResult) {
-        errors.push(setupResult.error);
-      }
-      errors.push(...runScriptErrors, ...ruleErrors);
-      return errors;
-    };
-
-    // this triggers the "Lingered" event which must happen before
-    // the final "SmokeOK" or "SmokeFailed" event, or there could be a race condition.
-    try {
-      await this.cleanup();
-    } catch {
-      // TODO: handle
-    }
-
-    const errors = aggregateErrors();
-
-    if (errors.length) {
-      this.emit(
-        SmokerEvent.SmokeFailed,
-        new SmokeFailedError('🤮 Maurice!', errors, {results: smokeResults}),
-      );
-    } else {
-      this.emit(SmokerEvent.SmokeOk, smokeResults);
-    }
-
-    return smokeResults;
-  }
-
   /**
    * Pack, install, run checks (optionally), and run scripts (optionally)
    *
@@ -693,15 +532,10 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
 
       return await this.postRun(setupResult, ruleResults, runScriptResults);
     } catch (err) {
-      this.emit(SmokerEvent.UnknownError, fromUnknownError(err));
+      this.emit(SmokerEvent.UnknownError, {error: fromUnknownError(err)});
     } finally {
-      this.emit(SmokerEvent.End);
-      this.unloadListeners();
+      this.emit(SmokerEvent.BeforeExit, {});
     }
-  }
-
-  public unloadListeners(): void {
-    this.reporterDelegate?.removeAllListeners();
   }
 
   /**
@@ -748,4 +582,101 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
       options: OptionParser.create(registry).parse(opts),
     };
   }
+
+  private async postRun(
+    setupResult: SetupResult,
+    ruleResults?: RunRulesResult,
+    runScriptResults: RunScriptResult[] = [],
+  ) {
+    // END
+    const smokeResults: SmokeResults = {
+      scripts: runScriptResults,
+      lint: ruleResults,
+      plugins: this.pluginRegistry.plugins,
+      opts: this.opts,
+    };
+
+    const aggregateErrors = () => {
+      const runScriptErrors = runScriptResults.reduce<ScriptError[]>(
+        (acc, result) => (result.error ? [...acc, result.error] : acc),
+        [],
+      );
+
+      const ruleErrors = castArray(ruleResults?.issues).reduce<RuleError[]>(
+        (acc, issue) => {
+          return issue.severity === RuleSeverities.Error
+            ? [...acc, issue.error as RuleError]
+            : acc;
+        },
+        [],
+      );
+
+      const errors: Array<InstallError | PackError | ScriptError | RuleError> =
+        [];
+      if ('error' in setupResult) {
+        errors.push(setupResult.error);
+      }
+      errors.push(...runScriptErrors, ...ruleErrors);
+      return errors;
+    };
+
+    // this triggers the "Lingered" event which must happen before
+    // the final "SmokeOK" or "SmokeFailed" event, or there could be a race condition.
+    try {
+      await this.cleanup();
+    } catch {
+      // TODO: handle
+    }
+
+    const errors = aggregateErrors();
+
+    if (errors.length) {
+      this.emit(SmokerEvent.SmokeFailed, {
+        plugins: this.pluginRegistry.plugins,
+        opts: this.opts,
+        error: new SmokeFailedError('🤮 Maurice!', errors, {
+          results: smokeResults,
+        }),
+      });
+    } else {
+      this.emit(SmokerEvent.SmokeOk, smokeResults);
+    }
+
+    return smokeResults;
+  }
+
+  private async preRun(): Promise<SetupResult> {
+    await this.reporterController.init();
+
+    this.emit(SmokerEvent.SmokeBegin, {
+      plugins: this.pluginRegistry.plugins,
+      opts: this.opts,
+    });
+
+    let pkgManagerInstallManifests: PkgManagerInstallManifest[] | undefined;
+    let installResults: InstallResult[];
+
+    // PACK
+    try {
+      pkgManagerInstallManifests = await this.pack();
+    } catch (err) {
+      if (!(err instanceof PackError)) {
+        throw err;
+      }
+      return {error: err};
+    }
+
+    // INSTALL
+    try {
+      installResults = await this.install(pkgManagerInstallManifests);
+    } catch (err) {
+      if (!(err instanceof InstallError)) {
+        throw err;
+      }
+      return {error: err};
+    }
+    return {installResults};
+  }
 }
+
+const debug = Debug('midnight-smoker:smoker');

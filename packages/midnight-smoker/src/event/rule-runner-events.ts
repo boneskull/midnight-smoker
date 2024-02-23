@@ -6,9 +6,9 @@ import {
   type RunRulesBeginEventData,
   type RunRulesFailedEventData,
   type RunRulesOkEventData,
-} from '#schema/rule-runner-events';
+} from '#schema/rule-runner-event';
 
-export interface RuleRunnerEvents {
+export type RuleRunnerEvents = {
   /**
    * Emitted when a rule begins execution.
    *
@@ -45,14 +45,14 @@ export interface RuleRunnerEvents {
    *
    * @event
    */
-  RunRulesFailed: Readonly<RunRulesFailedEventData>;
+  RunRulesFailed: RunRulesFailedEventData;
 
   /**
    * Emitted once when _no_ rules have raised {@link RuleIssue RuleIssues}.
    *
    * @event
    */
-  RunRulesOk: Readonly<RunRulesOkEventData>;
+  RunRulesOk: RunRulesOkEventData;
 
   /**
    * Emitted when a rule throws an exception or rejects a `Promise`.
@@ -66,4 +66,4 @@ export interface RuleRunnerEvents {
    * @event
    */
   RuleError: RuleErrorEventData;
-}
+};

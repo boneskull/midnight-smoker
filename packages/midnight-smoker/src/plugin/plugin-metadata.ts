@@ -4,7 +4,14 @@
  * @packageDocumentation
  * @see {@link PluginMetadata}
  */
+import {type ComponentRegistry} from '#component';
+import {ComponentKinds} from '#constants';
+import {isZodError} from '#error/base-error';
 import {InvalidArgError} from '#error/invalid-arg-error';
+import {BLESSED_PLUGINS, type BlessedPlugin} from '#plugin/blessed';
+import type {StaticPluginMetadata} from '#plugin/static-metadata';
+import {Rule} from '#rule/rule';
+import type {Executor} from '#schema/executor';
 import type {PkgManagerDef} from '#schema/pkg-manager-def';
 import type {ReporterDef} from '#schema/reporter-def';
 import {type SomeRule} from '#schema/rule';
@@ -13,24 +20,13 @@ import {type RuleDefSchemaValue} from '#schema/rule-options';
 import type {RuleRunner} from '#schema/rule-runner';
 import type {ScriptRunner} from '#schema/script-runner';
 import {readPackageJson} from '#util/pkg-util';
+import {NonEmptyStringSchema, PackageJsonSchema} from '#util/schema-util';
 import Debug from 'debug';
 import {isString} from 'lodash';
 import path from 'node:path';
 import type {LiteralUnion, PackageJson} from 'type-fest';
 import {z} from 'zod';
 import {fromZodError} from 'zod-validation-error';
-import {
-  ComponentKinds,
-  ComponentNameError,
-  createComponent,
-  type Component,
-} from '../component/component';
-import {Rule} from '../component/rule/rule';
-import type {Executor} from '../component/schema/executor';
-import {isZodError} from '../error/base-error';
-import {NonEmptyStringSchema, PackageJsonSchema} from '../util/schema-util';
-import {BLESSED_PLUGINS, type BlessedPlugin} from './blessed';
-import type {StaticPluginMetadata} from './static-metadata';
 
 const debug = Debug('midnight-smoker:plugin:metadata');
 
@@ -146,7 +142,7 @@ export class PluginMetadata implements StaticPluginMetadata {
    *
    * @group Component Map
    */
-  public readonly ruleMap: Map<string, Component<SomeRule>>;
+  public readonly ruleMap: Map<string, SomeRule>;
 
   /**
    * A map of package manager names to {@link PackageManager} objects contained
@@ -154,7 +150,7 @@ export class PluginMetadata implements StaticPluginMetadata {
    *
    * @group Component Map
    */
-  public readonly pkgManagerDefMap: Map<string, Component<PkgManagerDef>>;
+  public readonly pkgManagerDefMap: Map<string, PkgManagerDef>;
 
   /**
    * A map of script runner names to {@link ScriptRunner} objects contained in
@@ -163,7 +159,7 @@ export class PluginMetadata implements StaticPluginMetadata {
    * @group Component Map
    */
 
-  public readonly scriptRunnerMap: Map<string, Component<ScriptRunner>>;
+  public readonly scriptRunnerMap: Map<string, ScriptRunner>;
 
   /**
    * A map of rule runner names to {@link RuleRunner} objects contained in the
@@ -171,7 +167,7 @@ export class PluginMetadata implements StaticPluginMetadata {
    *
    * @group Component Map
    */
-  public readonly ruleRunnerMap: Map<string, Component<RuleRunner>>;
+  public readonly ruleRunnerMap: Map<string, RuleRunner>;
 
   /**
    * A map of executor names to {@link SomeExecutor} objects contained in the
@@ -179,7 +175,7 @@ export class PluginMetadata implements StaticPluginMetadata {
    *
    * @group Component Map
    */
-  public readonly executorMap: Map<string, Component<Executor>>;
+  public readonly executorMap: Map<string, Executor>;
 
   /**
    * A map of reporter names to {@link ReporterDef} objects contained in the
@@ -187,7 +183,7 @@ export class PluginMetadata implements StaticPluginMetadata {
    *
    * @group Component Map
    */
-  public readonly reporterMap: Map<string, Component<ReporterDef>>;
+  public readonly reporterMap: Map<string, ReporterDef>;
 
   /**
    * Plugin description. May be derived from {@link pkgJson} or provided in
@@ -201,19 +197,27 @@ export class PluginMetadata implements StaticPluginMetadata {
    */
   public readonly version?: string;
 
+  protected componentRegistry: ComponentRegistry;
+
   /**
    * {@inheritDoc create:(0)}
    */
-  protected constructor(entryPoint: string, id?: string);
+  protected constructor(
+    registry: ComponentRegistry,
+    entryPoint: string,
+    id?: string,
+  );
 
   /**
    * {@inheritDoc create:(1)}
    */
-  protected constructor(opts: PluginMetadataOpts);
+  protected constructor(registry: ComponentRegistry, opts: PluginMetadataOpts);
   protected constructor(
+    registry: ComponentRegistry,
     optsOrEntryPoint: PluginMetadataOpts | string,
     id?: string,
   ) {
+    this.componentRegistry = registry;
     try {
       const opts = isString(optsOrEntryPoint)
         ? zPluginMetadataOpts.parse({
@@ -254,6 +258,7 @@ export class PluginMetadata implements StaticPluginMetadata {
    * @internal
    */
   public static create(
+    registry: ComponentRegistry,
     entryPoint: string,
     id?: string,
   ): Readonly<PluginMetadata>;
@@ -266,7 +271,10 @@ export class PluginMetadata implements StaticPluginMetadata {
    * @returns - A new {@link PluginMetadata} instance
    * @internal
    */
-  public static create(opts: PluginMetadataOpts): Readonly<PluginMetadata>;
+  public static create(
+    registry: ComponentRegistry,
+    opts: PluginMetadataOpts,
+  ): Readonly<PluginMetadata>;
 
   /**
    * Creates a new {@link PluginMetadata} from an existing {@link PluginMetadata}
@@ -279,11 +287,13 @@ export class PluginMetadata implements StaticPluginMetadata {
    * @returns - A new {@link PluginMetadata} instance based on `metadata`
    */
   public static create(
-    metadata: PluginMetadata,
+    registry: ComponentRegistry,
+    metadata: Readonly<PluginMetadata>,
     opts: Partial<PluginMetadataOpts> | string,
   ): Readonly<PluginMetadata>;
 
   public static create(
+    registry: ComponentRegistry,
     optsEntryPtOrMetadata:
       | PluginMetadataOpts
       | string
@@ -304,10 +314,13 @@ export class PluginMetadata implements StaticPluginMetadata {
           argName: 'id',
         });
       }
-      metadata = new PluginMetadata(optsEntryPtOrMetadata, idOrOpts);
+      metadata = new PluginMetadata(registry, optsEntryPtOrMetadata, idOrOpts);
     } else {
       const opts = isString(idOrOpts) ? {id: idOrOpts} : idOrOpts ?? {};
-      metadata = new PluginMetadata({...optsEntryPtOrMetadata, ...opts});
+      metadata = new PluginMetadata(registry, {
+        ...optsEntryPtOrMetadata,
+        ...opts,
+      });
     }
 
     return Object.freeze(metadata);
@@ -327,20 +340,25 @@ export class PluginMetadata implements StaticPluginMetadata {
    * @internal
    */
   public static createTransient(
+    registry: ComponentRegistry,
     name: string,
     pkg?: PackageJson,
-  ): PluginMetadata {
+  ): Readonly<PluginMetadata> {
     if (!name) {
       throw new InvalidArgError(
         'name is required when creating a transient PluginMetadata instance',
         {argName: 'name'},
       );
     }
-    return PluginMetadata.create({
+    return PluginMetadata.create(registry, {
       id: name,
       entryPoint: PluginMetadata.Transient,
       pkgJson: pkg,
     });
+  }
+
+  public getComponentId(def: object): string {
+    return this.componentRegistry.getId(def);
   }
 
   /**
@@ -370,62 +388,40 @@ export class PluginMetadata implements StaticPluginMetadata {
    * @internal
    */
   public addPkgManagerDef(name: string, value: PkgManagerDef): void {
-    if (this.pkgManagerDefMap.has(name)) {
-      throw new ComponentNameError(
-        `Package manager with name "${name}" already exists in plugin ${this}`,
-        this.id,
-        name,
-      );
-    }
-    this.pkgManagerDefMap.set(
+    this.componentRegistry.registerComponent(
+      ComponentKinds.PkgManagerDef,
+      this.id,
       name,
-      createComponent({
-        name,
-        value,
-        owner: this,
-        kind: ComponentKinds.PkgManagerDef,
-      }),
+      value,
     );
+
+    this.pkgManagerDefMap.set(name, value);
+
+    debug('Plugin %s added pkg manager "%s"', this, name);
   }
 
   public addScriptRunner(name: string, value: ScriptRunner): void {
-    if (this.scriptRunnerMap.has(name)) {
-      throw new ComponentNameError(
-        `Script runner with name "${name}" already exists in plugin ${this}`,
-        this.id,
-        name,
-      );
-    }
-    this.scriptRunnerMap.set(
+    this.componentRegistry.registerComponent(
+      ComponentKinds.ScriptRunner,
+      this.id,
       name,
-      createComponent({
-        name,
-        value,
-        owner: this,
-        kind: ComponentKinds.ScriptRunner,
-      }),
+      value,
     );
+
+    this.scriptRunnerMap.set(name, value);
 
     debug('Plugin %s added script runner "%s"', this, name);
   }
 
   public addRuleRunner(name: string, value: RuleRunner): void {
-    if (this.ruleRunnerMap.has(name)) {
-      throw new ComponentNameError(
-        `Rule runner with name "${name}" already exists in plugin ${this}`,
-        this.id,
-        name,
-      );
-    }
-    this.ruleRunnerMap.set(
+    this.componentRegistry.registerComponent(
+      ComponentKinds.RuleRunner,
+      this.id,
       name,
-      createComponent({
-        name,
-        value,
-        owner: this,
-        kind: ComponentKinds.RuleRunner,
-      }),
+      value,
     );
+
+    this.ruleRunnerMap.set(name, value);
   }
 
   public addRule<Schema extends RuleDefSchemaValue | void = void>(
@@ -433,52 +429,37 @@ export class PluginMetadata implements StaticPluginMetadata {
   ): void {
     const {name} = ruleDef;
     const rule = Rule.create(ruleDef, this);
-    if (this.ruleMap.has(name)) {
-      throw new ComponentNameError(
-        `Rule with name "${name}" already exists in plugin ${this}`,
-        this.id,
-        name,
-      );
-    }
+
+    this.componentRegistry.registerComponent(
+      ComponentKinds.Rule,
+      this.id,
+      name,
+      rule,
+    );
+
     this.ruleMap.set(name, rule);
   }
 
   public addExecutor(name: string, value: Executor): void {
-    if (this.executorMap.has(name)) {
-      throw new ComponentNameError(
-        `Executor with name "${name}" already exists in plugin ${this}`,
-        this.id,
-        name,
-      );
-    }
-    this.executorMap.set(
+    this.componentRegistry.registerComponent(
+      ComponentKinds.Executor,
+      this.id,
       name,
-      createComponent({
-        name,
-        value,
-        owner: this,
-        kind: ComponentKinds.Executor,
-      }),
+      value,
     );
+
+    this.executorMap.set(name, value);
   }
 
   public addReporter(value: ReporterDef): void {
-    if (this.reporterMap.has(value.name)) {
-      throw new ComponentNameError(
-        `Reporter with name "${value.name}" already exists in plugin ${this}`,
-        this.id,
-        value.name,
-      );
-    }
-    this.reporterMap.set(
+    this.componentRegistry.registerComponent(
+      ComponentKinds.Reporter,
+      this.id,
       value.name,
-      createComponent({
-        name: value.name,
-        value,
-        owner: this,
-        kind: ComponentKinds.Reporter,
-      }),
+      value,
     );
+
+    this.reporterMap.set(value.name, value);
   }
 }
 
@@ -499,7 +480,7 @@ export type {LiteralUnion};
  *   `PluginRegistry` instance gets the same one. That isn't the same as "this
  *   should only run once"--it should run once per `PluginRegistry` instance.
  */
-export async function initBlessedMetadata() {
+export async function initBlessedMetadata(registry: ComponentRegistry) {
   const entries = await Promise.all(
     BLESSED_PLUGINS.map(async (id) => {
       const {packageJson: pkgJson} = await readPackageJson({
@@ -508,7 +489,7 @@ export async function initBlessedMetadata() {
       });
       return [
         id,
-        PluginMetadata.create({
+        PluginMetadata.create(registry, {
           id,
           requestedAs: id,
           entryPoint: require.resolve(id),

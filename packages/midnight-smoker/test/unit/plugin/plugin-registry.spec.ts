@@ -1,8 +1,7 @@
 import {ComponentKinds, DEFAULT_COMPONENT_ID} from '#constants';
 import {ErrorCodes} from '#error/codes';
 import {PLUGIN_DEFAULT_ID} from '#plugin/blessed';
-import type * as PM from '#plugin/metadata';
-import type * as Reg from '#plugin/registry';
+import type * as Reg from '#plugin/plugin-registry';
 import {DEFAULT_TEST_PLUGIN_NAME} from '@midnight-smoker/test-util/constants';
 import {
   registerExecutor,
@@ -16,6 +15,8 @@ import rewiremock from 'rewiremock/node';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import {ZodError} from 'zod';
+import type * as PM from '../../../dist/plugin/plugin-metadata';
+import {ComponentRegistry} from '../../../src/component';
 import {createFsMocks, type FsMocks} from '../mocks';
 
 const expect = unexpected.clone();
@@ -35,20 +36,22 @@ describe('midnight-smoker', function () {
     describe('PluginRegistry', function () {
       let PluginRegistry: typeof Reg.PluginRegistry;
       let PluginMetadata: typeof PM.PluginMetadata;
-
+      let componentRegistry: ComponentRegistry;
       let fs: IFs;
 
       beforeEach(async function () {
         let mocks: FsMocks;
         ({mocks, fs} = createFsMocks());
 
+        componentRegistry = sandbox.createStubInstance(ComponentRegistry);
+
         const PMM = rewiremock.proxy(
-          () => require('../../../src/plugin/metadata'),
+          () => require('../../../src/plugin/plugin-metadata'),
           mocks,
         );
 
         ({PluginRegistry} = rewiremock.proxy(
-          () => require('../../../src/plugin/registry'),
+          () => require('../../../src/plugin/plugin-registry'),
           {
             ...mocks,
             '#util/loader-util': {
@@ -68,7 +71,7 @@ describe('midnight-smoker', function () {
             },
             // this is horrid, but otherwise the PluginRegistry won't have the same
             // PluginMetadata class as we use here in the test file
-            '#plugin/metadata': PMM,
+            // '#plugin/plugin-metadata': PMM,
           },
         ));
 
@@ -232,7 +235,7 @@ describe('midnight-smoker', function () {
               await expect(
                 registry.registerPlugin('test-plugin', pluginObject),
                 'to be rejected with error satisfying',
-                {code: ErrorCodes.PluginInitializationError, cause: err},
+                {code: ErrorCodes.PluginInitError, cause: err},
               );
             });
           });
@@ -261,9 +264,13 @@ describe('midnight-smoker', function () {
 
           describe('when a plugin object has a description differing from its metadata', function () {
             it('should store the new description', async function () {
-              const oldMetadata = PluginMetadata.createTransient('foo', {
-                description: 'old description',
-              });
+              const oldMetadata = PluginMetadata.createTransient(
+                componentRegistry,
+                'foo',
+                {
+                  description: 'old description',
+                },
+              );
 
               const pluginObject = {plugin: () => {}, description: 'something'};
               await registry.registerPlugin(oldMetadata, pluginObject);

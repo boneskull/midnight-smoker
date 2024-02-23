@@ -142,7 +142,11 @@ export class SmokerPkgManagerController extends PkgManagerController {
             return {rawResult, installManifests};
           } catch (err) {
             if (err instanceof InstallError) {
-              this.emit(SmokerEvent.InstallFailed, err);
+              this.emit(SmokerEvent.InstallFailed, {
+                ...eventData,
+                current,
+                error: err,
+              });
             }
             throw err;
           }
@@ -165,7 +169,8 @@ export class SmokerPkgManagerController extends PkgManagerController {
   ): Promise<PkgManagerInstallManifest[]> {
     const pkgManagers = await this.getPkgManagers();
 
-    this.emit(SmokerEvent.PackBegin, buildPackBeginEventData(pkgManagers));
+    const eventData = buildPackBeginEventData(pkgManagers);
+    this.emit(SmokerEvent.PackBegin, eventData);
 
     /**
      * A {@link PkgManager} returns simplified information about a `pack()`
@@ -198,7 +203,7 @@ export class SmokerPkgManagerController extends PkgManagerController {
           );
         } catch (err) {
           if (err instanceof PackError) {
-            this.emit(SmokerEvent.PackFailed, err);
+            this.emit(SmokerEvent.PackFailed, {...eventData, error: err});
           }
           throw err;
         }

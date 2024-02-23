@@ -8,7 +8,7 @@ import type * as ScriptRunner from '#script-runner';
 import type {z} from 'zod';
 import type * as SchemaUtils from '../util/schema-util';
 import type * as Helpers from './helpers';
-import type {PluginMetadata} from './metadata';
+import type {PluginMetadata} from './plugin-metadata';
 import type {StaticPluginMetadata} from './static-metadata';
 
 /**
@@ -52,7 +52,9 @@ export type DefineExecutorFn = (
   name?: string,
 ) => PluginAPI;
 
-export type DefineReporterFn = (reporter: Reporter.ReporterDef) => PluginAPI;
+export type DefineReporterFn<Ctx = any> = (
+  reporter: Reporter.ReporterDef<Ctx>,
+) => PluginAPI;
 
 /**
  * The public plugin API which is provided to each plugin's entry function.
@@ -160,7 +162,7 @@ export interface PluginAPI {
    * The component maps within the metadata will be updated as the `define*`
    * functions are called.
    */
-  metadata: PluginMetadata;
+  metadata: Readonly<PluginMetadata>;
 
   /**
    * It's Zod.

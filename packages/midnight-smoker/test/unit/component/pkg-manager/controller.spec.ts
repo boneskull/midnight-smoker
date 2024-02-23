@@ -1,11 +1,9 @@
-import {createComponent} from '#component';
 import * as Errors from '#error';
 import {SmokerEvent} from '#event/event-constants';
 import type * as PkgMgr from '#pkg-manager';
-import {PluginRegistry} from '#plugin/registry';
+import {PluginRegistry} from '#plugin/plugin-registry';
 import {type RunScriptResult} from '#schema/run-script-result';
 import {type ScriptRunner} from '#schema/script-runner';
-import type {ScriptFailedEventData} from '#schema/script-runner-events';
 import {type ScriptRunnerNotifiers} from '#schema/script-runner-notifier';
 import {type ScriptRunnerOpts} from '#schema/script-runner-opts';
 import {
@@ -19,6 +17,7 @@ import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedEE from 'unexpected-eventemitter';
 import unexpectedSinon from 'unexpected-sinon';
+import type {ScriptFailedEventData} from '../../../../dist/component/schema/script-runner-event';
 import type * as Controller from '../../../../src/controller';
 import {createFsMocks} from '../../mocks/fs';
 
@@ -205,7 +204,7 @@ describe('midnight-smoker', function () {
                   'to emit from',
                   controller,
                   SmokerEvent.PackFailed,
-                  err,
+                  {error: err},
                 );
               });
             });
@@ -217,14 +216,7 @@ describe('midnight-smoker', function () {
             let installResults: PkgMgr.InstallResult[];
 
             beforeEach(function () {
-              registry.getScriptRunner.returns(
-                createComponent({
-                  name: 'default',
-                  value: nullScriptRunner,
-                  owner: {id: 'test-controller'},
-                  kind: 'ScriptRunner',
-                }),
-              );
+              registry.getScriptRunner.returns(nullScriptRunner);
               installResults = [
                 {
                   rawResult: {} as any,
@@ -328,16 +320,7 @@ describe('midnight-smoker', function () {
                   cwd: TEST_TMPDIR,
                 };
 
-                const scriptRunner = createComponent({
-                  name: 'default',
-                  value: brokenScriptRunner,
-                  kind: 'ScriptRunner',
-                  owner: {
-                    id: 'test-controller',
-                  },
-                });
-
-                registry.getScriptRunner.returns(scriptRunner);
+                registry.getScriptRunner.returns(brokenScriptRunner);
               });
 
               it('should emit RunScriptFailed', async function () {
@@ -368,13 +351,7 @@ describe('midnight-smoker', function () {
 
               describe('when the "bail" flag is true', function () {
                 beforeEach(function () {
-                  const scriptRunner = createComponent({
-                    name: 'default',
-                    value: brokenScriptRunner,
-                    kind: 'ScriptRunner',
-                    owner: {id: 'test-controller'},
-                  });
-                  registry.getScriptRunner.returns(scriptRunner);
+                  registry.getScriptRunner.returns(brokenScriptRunner);
                 });
 
                 it('should only execute the first script', async function () {
@@ -428,16 +405,7 @@ describe('midnight-smoker', function () {
                     new Error('execa error'),
                   );
                   brokenScriptRunner = sandbox.stub().rejects(err);
-                  registry.getScriptRunner.returns(
-                    createComponent({
-                      name: 'default',
-                      value: brokenScriptRunner,
-                      kind: 'ScriptRunner',
-                      owner: {
-                        id: 'test-controller',
-                      },
-                    }),
-                  );
+                  registry.getScriptRunner.returns(brokenScriptRunner);
                 });
 
                 it('should only execute the first script', async function () {
@@ -492,13 +460,8 @@ describe('midnight-smoker', function () {
                   nullPm1.spec,
                   new Error('execa error'),
                 );
-                const scriptRunner = createComponent({
-                  name: 'default',
-                  value: sandbox.stub().rejects(err),
-                  owner: {id: 'test-controller'},
-                  kind: 'ScriptRunner',
-                });
-                registry.getScriptRunner.returns(scriptRunner);
+                const brokenScriptRunner = sandbox.stub().rejects(err);
+                registry.getScriptRunner.returns(brokenScriptRunner);
               });
 
               it('should reject', async function () {

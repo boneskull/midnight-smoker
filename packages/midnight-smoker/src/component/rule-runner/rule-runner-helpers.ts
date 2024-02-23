@@ -1,4 +1,3 @@
-import {type Component} from '#component';
 import {
   RuleContext,
   type Rule,
@@ -30,7 +29,7 @@ import {readPackageJson} from '#util/pkg-util';
 export async function createRuleContext<
   Cfg extends BaseNormalizedRuleOptions = BaseNormalizedRuleOptions,
 >(
-  rule: Component<SomeRule>,
+  rule: SomeRule,
   installPath: string,
   ruleConfig: Cfg,
 ): Promise<Readonly<RuleContext>> {
@@ -51,7 +50,7 @@ export async function createRuleContext<
 export function getConfigForRule<
   Schema extends RuleDefSchemaValue | void = void,
 >(
-  rule: Component<Rule<Schema>>,
+  rule: Rule<Schema>,
   config: BaseNormalizedRuleOptionsRecord,
 ): Readonly<RuleConfig<Schema>> {
   return Object.freeze({...config[rule.id]}) as Readonly<RuleConfig<Schema>>;

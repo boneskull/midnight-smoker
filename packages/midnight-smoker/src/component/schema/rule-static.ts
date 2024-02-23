@@ -36,3 +36,9 @@ export const StaticRuleDefSchema = z
  * Representation of a rule suitable for serialization into JSON.
  */
 export type StaticRuleDef = z.infer<typeof StaticRuleDefSchema>;
+
+export const StaticRuleSchema = StaticRuleDefSchema.extend({
+  id: NonEmptyStringSchema,
+});
+
+export type StaticRule = z.infer<typeof StaticRuleSchema>;

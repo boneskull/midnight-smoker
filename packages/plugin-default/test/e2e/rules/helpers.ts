@@ -1,5 +1,3 @@
-import {type Component} from 'midnight-smoker/component';
-
 import {
   type RuleIssue,
   type RuleOptions,
@@ -17,7 +15,7 @@ import {SmokerRuleRunner} from '../../../src/rule-runner';
  *   merged over default options
  * @returns This will be empty if there were no issues raised
  */
-export async function applyRule<R extends Component<SomeRule>>(
+export async function applyRule<R extends SomeRule>(
   rule: R,
   installPath: string,
   opts?: RuleOptions<R['schema']>,
