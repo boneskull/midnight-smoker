@@ -97,10 +97,10 @@ describe('midnight-smoker [E2E]', function () {
           await execSmoker([], {
             cwd,
           });
-          expect.fail('should have failed');
         } catch (err) {
           result = err as ExecResult;
         }
+        expect(result, 'to be ok');
       });
 
       it('should provide a reason [snapshot]', async function () {

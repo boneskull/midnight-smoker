@@ -88,7 +88,7 @@ describe('midnight-smoker [E2E]', function () {
               error: {
                 context: {
                   results: {
-                    checks: {
+                    lint: {
                       issues: [
                         {
                           context: {

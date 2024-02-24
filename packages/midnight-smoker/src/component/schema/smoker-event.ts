@@ -48,14 +48,14 @@ export const BeforeExitEventDataSchema = z.record(z.unknown());
 /**
  * Data for the `Lingered` event
  */
-export const LingeredEventDataSchema = z.strictObject({
+export const LingeredEventDataSchema = z.object({
   directories: NonEmptyNonEmptyStringArraySchema,
 });
 
 /**
  * Data for the `SmokeBegin` event
  */
-export const SmokeBeginEventDataSchema = z.strictObject({
+export const SmokeBeginEventDataSchema = z.object({
   plugins: z.array(StaticPluginMetadataSchema),
   opts: BaseSmokerOptionsSchema,
 });
@@ -78,7 +78,7 @@ export const SmokeFailedEventDataSchema = SmokeBeginEventDataSchema.extend({
 /**
  * Data for the `UnknownError` event
  */
-export const UnknownErrorEventDataSchema = z.strictObject({error: z.unknown()});
+export const UnknownErrorEventDataSchema = z.object({error: z.unknown()});
 
 export type SmokerEventData = {
   [SmokerEvent.BeforeExit]: BeforeExitEventData;

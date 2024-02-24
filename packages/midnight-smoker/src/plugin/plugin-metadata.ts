@@ -183,7 +183,7 @@ export class PluginMetadata implements StaticPluginMetadata {
    *
    * @group Component Map
    */
-  public readonly reporterMap: Map<string, ReporterDef>;
+  public readonly reporterDefMap: Map<string, ReporterDef>;
 
   /**
    * Plugin description. May be derived from {@link pkgJson} or provided in
@@ -240,7 +240,7 @@ export class PluginMetadata implements StaticPluginMetadata {
       this.scriptRunnerMap = new Map();
       this.ruleRunnerMap = new Map();
       this.executorMap = new Map();
-      this.reporterMap = new Map();
+      this.reporterDefMap = new Map();
       this.version = this.version ?? this.pkgJson?.version;
     } catch (err) {
       // TODO: throw SmokerError
@@ -377,9 +377,9 @@ export class PluginMetadata implements StaticPluginMetadata {
    * Returns a string representation of this metadata
    */
   public toString(): string {
-    return `${this.id}${this.version ? `@${this.version}` : ''} (${
-      this.entryPoint
-    })`;
+    return `[PluginMetadata] ${this.id}${
+      this.version ? `@${this.version}` : ''
+    } (${this.entryPoint})`;
   }
 
   /**
@@ -425,10 +425,10 @@ export class PluginMetadata implements StaticPluginMetadata {
   }
 
   public addRule<Schema extends RuleDefSchemaValue | void = void>(
-    ruleDef: RuleDef<Schema>,
+    def: RuleDef<Schema>,
   ): void {
-    const {name} = ruleDef;
-    const rule = Rule.create(ruleDef, this);
+    const {name} = def;
+    const rule = Rule.create(def, this);
 
     this.componentRegistry.registerComponent(
       ComponentKinds.Rule,
@@ -453,13 +453,13 @@ export class PluginMetadata implements StaticPluginMetadata {
 
   public addReporter(value: ReporterDef): void {
     this.componentRegistry.registerComponent(
-      ComponentKinds.Reporter,
+      ComponentKinds.ReporterDef,
       this.id,
       value.name,
       value,
     );
 
-    this.reporterMap.set(value.name, value);
+    this.reporterDefMap.set(value.name, value);
   }
 }
 

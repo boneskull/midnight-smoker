@@ -1,3 +1,5 @@
+import {ReporterError} from '#error/reporter-error';
+import {type PluginMetadata} from '#plugin';
 import {
   type EventData,
   type EventKind,
@@ -5,8 +7,11 @@ import {
   type ReporterDef,
   type ReporterListener,
 } from '#schema/reporter-def';
+import Debug from 'debug';
 import {isFunction} from 'lodash';
-import {ReporterError} from '..';
+import {MaterializedComponent} from '../component/base-component';
+
+const debug = Debug('midnight-smoker:reporter');
 
 const REPORTER_DEFAULTS = {
   stderr: process.stderr,
@@ -15,25 +20,36 @@ const REPORTER_DEFAULTS = {
   when: () => false,
 } as const;
 
-export class Reporter<Ctx = unknown> {
+export class Reporter<Ctx = unknown> extends MaterializedComponent<
+  ReporterDef<Ctx>
+> {
   public ctx: ReporterContext<Ctx>;
-  public readonly def: ReporterDef<Ctx>;
-  constructor(def: ReporterDef<Ctx>, ctx: ReporterContext<Ctx>) {
-    this.def = {...REPORTER_DEFAULTS, ...def};
+  constructor(
+    def: ReporterDef<Ctx>,
+    ctx: ReporterContext<Ctx>,
+    plugin: Readonly<PluginMetadata>,
+  ) {
+    Object.assign(def, {...REPORTER_DEFAULTS, ...def});
+    super(def, plugin);
     this.ctx = ctx;
   }
 
   public async invokeListener<T extends EventKind>(data: EventData<T>) {
     await Promise.resolve();
-    const listener = this.def[`on${data.event}`] as
+    const listenerName = `on${data.event}` as const;
+    const listener = this.def[listenerName] as
       | ReporterListener<T, Ctx>
       | undefined;
     if (listener) {
       try {
+        debug('%s - invoking listener for %s', this, data.event);
         await listener(this.ctx, data);
+        debug('%s - listener %s invoked', this, listenerName);
       } catch (err) {
         throw new ReporterError(err as Error, this.def);
       }
+    } else {
+      debug('%s - no listener for %s', this, data.event);
     }
   }
 
@@ -62,7 +78,14 @@ export class Reporter<Ctx = unknown> {
   public static create<Ctx = unknown>(
     def: ReporterDef<Ctx>,
     ctx: ReporterContext<Ctx>,
+    plugin: Readonly<PluginMetadata>,
   ): Reporter<Ctx> {
-    return new Reporter(def, ctx);
+    return new Reporter(def, ctx, plugin);
+  }
+
+  public toString() {
+    return `[Reporter] ${this.def.name}`;
   }
 }
+
+export type SomeReporter = Reporter<any>;

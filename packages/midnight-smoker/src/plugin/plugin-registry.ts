@@ -535,14 +535,14 @@ export class PluginRegistry {
       );
     }
 
-    for (const component of metadata.reporterMap.values()) {
+    for (const component of metadata.reporterDefMap.values()) {
       this.reporterDefMap.set(
         this.componentRegistry.getId(component),
         component,
       );
     }
 
-    debug('Loaded plugin %s successfully: %O', metadata, metadata);
+    debug('Loaded plugin successfully: %s', metadata);
 
     return metadata;
   }
@@ -612,8 +612,8 @@ export class PluginRegistry {
     });
   }
 
-  public get plugins(): StaticPluginMetadata[] {
-    return [...this.pluginMap.values()].map((metadata) => metadata.toJSON());
+  public get plugins(): Readonly<PluginMetadata>[] {
+    return [...this.pluginMap.values()];
   }
 
   /**

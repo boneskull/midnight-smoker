@@ -60,7 +60,7 @@ export const ComponentKinds = {
   ScriptRunner: 'ScriptRunner',
   PkgManagerDef: 'PkgManagerDef',
   Executor: 'Executor',
-  Reporter: 'Reporter',
+  ReporterDef: 'ReporterDef',
 } as const;
 
 /**

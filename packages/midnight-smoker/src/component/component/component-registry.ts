@@ -43,7 +43,9 @@ export class ComponentRegistry {
   public getComponent(def: object): Component {
     if (!this.componentMap.has(def)) {
       // eslint-disable-next-line @typescript-eslint/no-base-to-string
-      throw new ReferenceError(`No such component for definition: ${def}`);
+      throw new ReferenceError(
+        `No such component for definition: ${inspect(def, {depth: 1})}`,
+      );
     }
     return this.componentMap.get(def)!;
   }

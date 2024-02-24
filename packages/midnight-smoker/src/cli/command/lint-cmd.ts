@@ -20,7 +20,7 @@ export class LintCommand extends BaseCommand<CommonOptionTypes> {
     opts: ArgumentsCamelCase<CommonOptionTypes>,
   ): Promise<void> {
     const smoker = await Smoker.create(opts);
-    debug('Final options: %O', smoker.opts);
+    debug('Running lint...');
     await smoker.lint();
   }
 

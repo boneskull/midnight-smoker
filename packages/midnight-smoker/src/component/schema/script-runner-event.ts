@@ -20,7 +20,7 @@ export type RunScriptsOkEventData = RunScriptsEndEventData;
 
 export type RunScriptsFailedEventData = RunScriptsEndEventData;
 
-export const RunScriptsEventDataSchema = z.strictObject({
+export const RunScriptsEventDataSchema = z.object({
   manifest: z
     .record(z.array(RunScriptManifestSchema))
     .describe(
@@ -42,7 +42,7 @@ export const RunScriptsEndEventDataSchema = RunScriptsEventDataSchema.extend({
   ),
 });
 
-export const ScriptEventBaseDataSchema = z.strictObject({
+export const ScriptEventBaseDataSchema = z.object({
   script: NonEmptyStringSchema.describe('Name of the script to run'),
   pkgName: NonEmptyStringSchema.describe(
     'Package name in which the script will run',

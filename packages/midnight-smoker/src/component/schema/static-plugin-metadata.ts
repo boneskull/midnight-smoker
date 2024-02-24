@@ -4,7 +4,7 @@ import {z} from 'zod';
 /**
  * Subset of plugin metadata exposed to other plugins, reporters, etc.
  */
-export const StaticPluginMetadataSchema = z.strictObject({
+export const StaticPluginMetadataSchema = z.object({
   /**
    * The full identifier of the plugin. Either custom name or package name.
    */

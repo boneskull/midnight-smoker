@@ -28,7 +28,10 @@ import {
   type StrictEmitter,
 } from '#event';
 import {Blessed, PluginRegistry, type StaticPluginMetadata} from '#plugin';
-import {ReporterController} from '#reporter/reporter-controller';
+import {
+  ReporterController,
+  type PluginReporterDef,
+} from '#reporter/reporter-controller';
 import {createRuleRunnerNotifiers} from '#rule-runner';
 import type {PkgManagerInstallManifest} from '#schema/install-manifest';
 import type {InstallResult} from '#schema/install-result';
@@ -41,6 +44,7 @@ import {type SmokeResults} from '#schema/smoker-event';
 import {isErrnoException} from '#util/error-util';
 import {castArray} from '#util/schema-util';
 import Debug from 'debug';
+import {isFunction} from 'lodash';
 import fs from 'node:fs/promises';
 import type {PkgManagerController} from './controller/controller';
 import {SmokerPkgManagerController} from './controller/smoker-controller';
@@ -328,9 +332,17 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
     return this.pluginRegistry.getComponentId(def);
   }
 
-  public getEnabledReporters() {
-    return this.pluginRegistry.reporters.filter((reporter) =>
-      this.reporters.has(this.getComponentId(reporter)),
+  public getEnabledReporters(): PluginReporterDef[] {
+    return this.pluginRegistry.plugins.flatMap((plugin) =>
+      [...plugin.reporterDefMap.values()]
+        .filter(
+          (def) =>
+            this.reporters.has(this.getComponentId(def)) ||
+            (isFunction(def.when) && def.when(this.opts)),
+        )
+        .map(
+          (def) => [plugin, def] as [plugin: typeof plugin, def: typeof def],
+        ),
     );
   }
 
@@ -647,11 +659,13 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
 
   private async preRun(): Promise<SetupResult> {
     await this.reporterController.init();
+    debug('Reporters initialized');
 
     this.emit(SmokerEvent.SmokeBegin, {
       plugins: this.pluginRegistry.plugins,
       opts: this.opts,
     });
+    debug('Emitted %s', SmokerEvent.SmokeBegin);
 
     let pkgManagerInstallManifests: PkgManagerInstallManifest[] | undefined;
     let installResults: InstallResult[];

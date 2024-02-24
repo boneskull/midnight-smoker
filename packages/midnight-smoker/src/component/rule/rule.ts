@@ -6,6 +6,7 @@ import {RuleSeveritySchema, type RuleSeverity} from '#schema/rule-severity';
 import type {StaticRule} from '#schema/rule-static';
 import {EmptyObjectSchema} from '#util/schema-util';
 import Debug from 'debug';
+import {MaterializedComponent} from '../component/base-component';
 import {
   createRuleOptionsSchema,
   getDefaultRuleOptions,
@@ -18,6 +19,7 @@ const debug = Debug('midnight-smoker:rule');
  * installed (from tarball) package.
  */
 export class Rule<Schema extends RuleDefSchemaValue | void = void>
+  extends MaterializedComponent<RuleDef<Schema>>
   implements RuleDef<Schema>
 {
   /**
@@ -49,10 +51,8 @@ export class Rule<Schema extends RuleDefSchemaValue | void = void>
 
   public readonly url?: string;
 
-  public constructor(
-    def: RuleDef<Schema>,
-    public readonly plugin: PluginMetadata,
-  ) {
+  public constructor(def: RuleDef<Schema>, plugin: PluginMetadata) {
+    super(def, plugin);
     this.name = def.name;
     this.description = def.description;
     this.defaultSeverity = def.defaultSeverity
@@ -92,10 +92,6 @@ export class Rule<Schema extends RuleDefSchemaValue | void = void>
       url: this.url,
       id: this.id,
     };
-  }
-
-  public get id(): string {
-    return this.plugin.getComponentId(this);
   }
 
   public toString(): string {

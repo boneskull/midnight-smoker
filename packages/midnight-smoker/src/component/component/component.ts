@@ -1,8 +1,8 @@
 import {type ComponentKind} from '#constants';
 import {isBlessedPlugin} from '#plugin/blessed';
-import Debug from 'debug';
+// import Debug from 'debug';
 
-const debug = Debug('midnight-smoker:component');
+// const debug = Debug('midnight-smoker:component');
 
 export interface Component {
   readonly id: string;
@@ -24,7 +24,7 @@ export class ComponentData implements Component {
 
     public readonly id: string,
   ) {
-    debug('Created "%s" component with ID %s', kind, this.id);
+    // debug('Created "%s" component with ID %s', kind, this.id);
   }
 
   /**

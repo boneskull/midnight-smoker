@@ -31,7 +31,7 @@ export type RunRulesFailedEventData = z.infer<
 export type RunRulesOkEventData = z.infer<typeof RunRulesOkEventDataSchema>;
 
 export type RuleErrorEventData = z.infer<typeof RuleErrorEventDataSchema>;
-export const RunRulesBeginEventDataSchema = z.strictObject({
+export const RunRulesBeginEventDataSchema = z.object({
   config: BaseNormalizedRuleOptionsRecordSchema.describe(
     'The entire rule configuration, as defined by the user and default values',
   ),
@@ -39,7 +39,7 @@ export const RunRulesBeginEventDataSchema = z.strictObject({
 });
 
 export const RuleEventDataSchema = z
-  .strictObject({
+  .object({
     rule: NonEmptyStringSchema.describe('ID of the rule to run'),
     config: BaseNormalizedRuleOptionsSchema.describe(
       'Specific rule configuration',
@@ -76,7 +76,7 @@ export const RunRulesFailedEventDataSchema = RunRulesOkEventDataSchema.setKey(
   z.array(StaticRuleIssueSchema).describe('List of issues raised by all rules'),
 );
 
-export const RuleErrorEventDataSchema = z.strictObject({
+export const RuleErrorEventDataSchema = z.object({
   error: instanceofSchema(RuleError),
 });
 

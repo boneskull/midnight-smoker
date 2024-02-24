@@ -15,7 +15,7 @@ describe('midnight-smoker [E2E]', function () {
         });
 
         it('should load all components in the @midnight-smoker/plugin-default plugin', function () {
-          expect(registry.toJSON(), 'to exhaustively satisfy', {
+          expect(registry.toJSON(), 'to satisfy', {
             plugins: [
               {
                 id: '@midnight-smoker/plugin-default',

@@ -41,7 +41,7 @@ export class RunScriptCommand extends BaseCommand<RunScriptOptionTypes> {
   ): Promise<void> {
     try {
       const smoker = await Smoker.create(opts);
-      debug('Final options: %O', smoker.opts);
+      debug('Running scripts...');
       await smoker.smoke();
     } catch (err) {
       // TODO: generally the exit reporter should ha ndle this, but what if it doesn't exist yet?
