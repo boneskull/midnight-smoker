@@ -2,19 +2,6 @@ import {DEFAULT_COMPONENT_ID} from '#constants';
 import * as EventNS from '#event';
 import * as ExecutorNS from '#executor';
 import * as PkgManagerNS from '#pkg-manager';
-import * as RuleNS from '#rule';
-import * as RuleRunnerNS from '#rule-runner';
-import {ExecutorSchema} from '#schema/executor';
-import {ReporterDefSchema} from '#schema/reporter-def';
-import {type RuleDef} from '#schema/rule-def';
-import {type RuleDefSchemaValue} from '#schema/rule-options';
-import {RuleRunnerSchema} from '#schema/rule-runner';
-import {ScriptRunnerSchema} from '#schema/script-runner';
-import * as ScriptRunnerNS from '#script-runner';
-import * as SchemaUtils from '#util/schema-util';
-import Debug from 'debug';
-import {z} from 'zod';
-import {Helpers} from './helpers';
 import {
   type DefineExecutorFn,
   type DefinePackageManagerFn,
@@ -23,11 +10,22 @@ import {
   type DefineRuleRunnerFn,
   type DefineScriptRunnerFn,
   type PluginAPI,
-} from './plugin-api';
-import {type PluginMetadata} from './plugin-metadata';
-import {type StaticPluginMetadata} from './static-metadata';
-
-const debug = Debug('midnight-smoker:plugin:create-plugin-api');
+} from '#plugin/plugin-api';
+import {type PluginMetadata} from '#plugin/plugin-metadata';
+import {type StaticPluginMetadata} from '#plugin/static-metadata';
+import * as RuleNS from '#rule';
+import * as RuleRunnerNS from '#rule-runner';
+import {ExecutorSchema} from '#schema/executor';
+import {PkgManagerDefSchema} from '#schema/pkg-manager-def';
+import {ReporterDefSchema} from '#schema/reporter-def';
+import {RuleDefSchema, type RuleDef} from '#schema/rule-def';
+import {type RuleDefSchemaValue} from '#schema/rule-options';
+import {RuleRunnerSchema} from '#schema/rule-runner';
+import {ScriptRunnerSchema} from '#schema/script-runner';
+import * as ScriptRunnerNS from '#script-runner';
+import * as SchemaUtils from '#util/schema-util';
+import {z} from 'zod';
+import {Helpers} from './helpers';
 
 /**
  * Creates a {@link PluginAPI} object for use by a specific plugin.
@@ -39,14 +37,12 @@ export const createPluginAPI = (
   getPlugins: () => StaticPluginMetadata[],
   metadata: Readonly<PluginMetadata>,
 ): Readonly<PluginAPI> => {
-  // TODO: validate ruleDef
   const defineRule: DefineRuleFn = <
     Schema extends RuleDefSchemaValue | void = void,
   >(
     ruleDef: RuleDef<Schema>,
   ) => {
-    metadata.addRule(ruleDef);
-    debug('Rule with name %s defined by plugin %s', ruleDef.name, metadata.id);
+    metadata.addRuleDef(RuleDefSchema.parse(ruleDef));
     return pluginApi;
   };
 
@@ -54,7 +50,7 @@ export const createPluginAPI = (
     pkgManagerDef,
     name = DEFAULT_COMPONENT_ID,
   ) => {
-    metadata.addPkgManagerDef(name, pkgManagerDef);
+    metadata.addPkgManagerDef(name, PkgManagerDefSchema.parse(pkgManagerDef));
     return pluginApi;
   };
 
@@ -83,7 +79,7 @@ export const createPluginAPI = (
   };
 
   const defineReporter: DefineReporterFn = (reporterDef) => {
-    metadata.addReporter(ReporterDefSchema.parse(reporterDef));
+    metadata.addReporterDef(ReporterDefSchema.parse(reporterDef));
     return pluginApi;
   };
 

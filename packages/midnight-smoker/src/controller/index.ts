@@ -6,5 +6,6 @@
  * @module midnight-smoker/controller
  */
 
-export * from './controller';
-export * from './smoker-controller';
+export * from './lint-controller';
+export * from './pkg-manager-controller';
+export * from './reporter-controller';

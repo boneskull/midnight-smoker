@@ -27,11 +27,9 @@ import {
   type SmokerEvents,
   type StrictEmitter,
 } from '#event';
+import type {RawSmokerOptions, SmokerOptions} from '#options/options';
+import {OptionParser} from '#options/parser';
 import {Blessed, PluginRegistry, type StaticPluginMetadata} from '#plugin';
-import {
-  ReporterController,
-  type PluginReporterDef,
-} from '#reporter/reporter-controller';
 import {createRuleRunnerNotifiers} from '#rule-runner';
 import type {PkgManagerInstallManifest} from '#schema/install-manifest';
 import type {InstallResult} from '#schema/install-result';
@@ -46,10 +44,11 @@ import {castArray} from '#util/schema-util';
 import Debug from 'debug';
 import {isFunction} from 'lodash';
 import fs from 'node:fs/promises';
-import type {PkgManagerController} from './controller/controller';
-import {SmokerPkgManagerController} from './controller/smoker-controller';
-import type {RawSmokerOptions, SmokerOptions} from './options/options';
-import {OptionParser} from './options/parser';
+import {
+  PkgManagerController,
+  ReporterController,
+  type PluginReporterDef,
+} from './controller';
 
 type SetupResult =
   | {
@@ -188,7 +187,7 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
     this.pluginRegistry = pluginRegistry;
     this.pkgManagerController =
       pmController ??
-      new SmokerPkgManagerController(pluginRegistry, opts.pkgManager, {
+      new PkgManagerController(pluginRegistry, opts.pkgManager, {
         verbose: opts.verbose,
         loose: opts.loose,
         defaultExecutorId: opts.executor,
@@ -439,6 +438,14 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
     }
   }
 
+  public getEnabledRules(): SomeRule[] {
+    return this.pluginRegistry
+      .getRules()
+      .filter(
+        (rule) => this.opts.rules[rule.id].severity !== RuleSeverities.Off,
+      );
+  }
+
   /**
    * Runs automated checks against the installed packages
    *
@@ -448,9 +455,7 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
   public async runChecks(
     installResults: InstallResult[],
   ): Promise<RunRulesResult> {
-    const rules = this.pluginRegistry.getRules(
-      (rule) => this.opts.rules[rule.id].severity !== RuleSeverities.Off,
-    );
+    const rules = this.getEnabledRules();
 
     debug('Running enabled rules: %s', rules.map((rule) => rule.id).join(', '));
 
@@ -665,7 +670,8 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
       plugins: this.pluginRegistry.plugins,
       opts: this.opts,
     });
-    debug('Emitted %s', SmokerEvent.SmokeBegin);
+
+    debug('Beginning packing phase');
 
     let pkgManagerInstallManifests: PkgManagerInstallManifest[] | undefined;
     let installResults: InstallResult[];
@@ -679,6 +685,8 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
       }
       return {error: err};
     }
+
+    debug('Beginning installation phase');
 
     // INSTALL
     try {

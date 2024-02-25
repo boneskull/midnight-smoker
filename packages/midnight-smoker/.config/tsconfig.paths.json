@@ -1,8 +1,12 @@
 {
   "compilerOptions": {
     "paths": {
+      "@midnight-smoker/plugin-default": ["../../plugin-default"],
+      "@midnight-smoker/test-util": ["../../test-util"],
       "#component": ["../src/component/component/index.js"],
       "#constants": ["../src/constants.js"],
+      "#controller": ["../src/controller/index.js"],
+      "#controller/*": ["../src/controller/*.js"],
       "#error": ["../src/error/index.js"],
       "#error/*": ["../src/error/*.js"],
       "#event": ["../src/event/index.js"],
@@ -16,14 +20,14 @@
       "#plugin/*": ["../src/plugin/*.js"],
       "#reporter": ["../src/component/reporter/index.js"],
       "#reporter/*": ["../src/component/reporter/*.js"],
-      "#rule": ["../src/component/rule/index.js"],
       "#rule-runner": ["../src/component/rule-runner/index.js"],
+      "#rule": ["../src/component/rule/index.js"],
       "#rule/*": ["../src/component/rule/*.js"],
+      "#schema": ["../src/component/schema/index.js"],
       "#schema/*": ["../src/component/schema/*.js"],
       "#script-runner": ["../src/component/script-runner/index.js"],
-      "#util/*": ["../src/util/*.js"],
-      "@midnight-smoker/test-util": ["../../test-util"],
-      "@midnight-smoker/plugin-default": ["../../plugin-default"]
+      "#util": ["../src/util/index.js"],
+      "#util/*": ["../src/util/*.js"]
     }
   }
 }

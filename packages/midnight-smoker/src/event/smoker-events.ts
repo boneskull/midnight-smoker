@@ -9,10 +9,7 @@ import {
   type SmokeOkEventData,
   type UnknownErrorEventData,
 } from '#schema/smoker-event';
-import {type TaggedUnion} from 'type-fest';
 import {type ScriptRunnerEvents} from './script-runner-events';
-
-export type SmokerEventUnion = TaggedUnion<'event', SmokerEvents>;
 
 /**
  * Describes the data emitted by each event.

@@ -32,7 +32,7 @@ describe('midnight-smoker', function () {
         let PkgManagerSpec: typeof PkgMgr.PkgManagerSpec;
         let sandbox: sinon.SinonSandbox;
         let registry: sinon.SinonStubbedInstance<PluginRegistry>;
-        let PkgManagerController: typeof Controller.SmokerPkgManagerController;
+        let PkgManagerController: typeof Controller.PkgManagerController;
         let nullPm: NullPm;
 
         beforeEach(function () {
@@ -44,11 +44,10 @@ describe('midnight-smoker', function () {
               require('../../../../src/component/pkg-manager/pkg-manager-spec'),
             mocks,
           ));
-          ({SmokerPkgManagerController: PkgManagerController} =
-            rewiremock.proxy(
-              () => require('../../../../src/controller'),
-              mocks,
-            ));
+          ({PkgManagerController} = rewiremock.proxy(
+            () => require('../../../../src/controller'),
+            mocks,
+          ));
           nullPm = new NullPm();
         });
 

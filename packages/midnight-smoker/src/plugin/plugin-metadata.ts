@@ -15,7 +15,7 @@ import type {Executor} from '#schema/executor';
 import type {PkgManagerDef} from '#schema/pkg-manager-def';
 import type {ReporterDef} from '#schema/reporter-def';
 import {type SomeRule} from '#schema/rule';
-import {type RuleDef} from '#schema/rule-def';
+import {type RuleDef, type SomeRuleDef} from '#schema/rule-def';
 import {type RuleDefSchemaValue} from '#schema/rule-options';
 import type {RuleRunner} from '#schema/rule-runner';
 import type {ScriptRunner} from '#schema/script-runner';
@@ -144,6 +144,8 @@ export class PluginMetadata implements StaticPluginMetadata {
    */
   public readonly ruleMap: Map<string, SomeRule>;
 
+  public readonly ruleDefMap: Map<string, SomeRuleDef>;
+
   /**
    * A map of package manager names to {@link PackageManager} objects contained
    * in the plugin
@@ -241,6 +243,7 @@ export class PluginMetadata implements StaticPluginMetadata {
       this.ruleRunnerMap = new Map();
       this.executorMap = new Map();
       this.reporterDefMap = new Map();
+      this.ruleDefMap = new Map();
       this.version = this.version ?? this.pkgJson?.version;
     } catch (err) {
       // TODO: throw SmokerError
@@ -440,6 +443,21 @@ export class PluginMetadata implements StaticPluginMetadata {
     this.ruleMap.set(name, rule);
   }
 
+  public addRuleDef<Schema extends RuleDefSchemaValue | void = void>(
+    def: RuleDef<Schema>,
+  ): void {
+    const {name} = def;
+
+    this.componentRegistry.registerComponent(
+      ComponentKinds.Rule,
+      this.id,
+      name,
+      def,
+    );
+
+    this.ruleDefMap.set(name, def);
+  }
+
   public addExecutor(name: string, value: Executor): void {
     this.componentRegistry.registerComponent(
       ComponentKinds.Executor,
@@ -451,7 +469,7 @@ export class PluginMetadata implements StaticPluginMetadata {
     this.executorMap.set(name, value);
   }
 
-  public addReporter(value: ReporterDef): void {
+  public addReporterDef(value: ReporterDef): void {
     this.componentRegistry.registerComponent(
       ComponentKinds.ReporterDef,
       this.id,

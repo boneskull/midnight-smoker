@@ -1,15 +1,14 @@
+import {ReifiedComponent} from '#component';
 import {ReporterError} from '#error/reporter-error';
 import {type PluginMetadata} from '#plugin';
 import {
-  type EventData,
-  type EventKind,
   type ReporterContext,
   type ReporterDef,
   type ReporterListener,
 } from '#schema/reporter-def';
+import {type EventData, type EventKind} from '#schema/smoker-event';
 import Debug from 'debug';
 import {isFunction} from 'lodash';
-import {MaterializedComponent} from '../component/base-component';
 
 const debug = Debug('midnight-smoker:reporter');
 
@@ -20,7 +19,7 @@ const REPORTER_DEFAULTS = {
   when: () => false,
 } as const;
 
-export class Reporter<Ctx = unknown> extends MaterializedComponent<
+export class Reporter<Ctx = unknown> extends ReifiedComponent<
   ReporterDef<Ctx>
 > {
   public ctx: ReporterContext<Ctx>;

@@ -1,3 +1,7 @@
+import {
+  PkgManagerSpecSchema,
+  type PkgManagerSpec,
+} from '#pkg-manager/pkg-manager-spec';
 import type {PluginHelpers} from '#plugin';
 import {ExecutorSchema, type Executor} from '#schema/executor';
 import {PkgManagerSchema, type PkgManager} from '#schema/pkg-manager';
@@ -8,10 +12,6 @@ import {
   customSchema,
 } from '#util/schema-util';
 import {z} from 'zod';
-import {
-  PkgManagerSpecSchema,
-  type PkgManagerSpec,
-} from '../pkg-manager/pkg-manager-spec';
 
 /**
  * Options passed to a {@link PkgManagerFactory}

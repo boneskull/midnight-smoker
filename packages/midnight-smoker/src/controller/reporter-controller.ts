@@ -6,19 +6,18 @@ import {type SmokerOptions} from '#options';
 import {type PluginMetadata} from '#plugin';
 import {
   ReporterListenerEventMap,
-  type EventData,
-  type EventKind,
   type ReporterContext,
   type ReporterDef,
   type ReporterListeners,
 } from '#schema/reporter-def';
+import {type EventData, type EventKind} from '#schema/smoker-event';
 import {readSmokerPkgJson} from '#util/pkg-util';
 import Debug from 'debug';
 import {isFunction, pickBy} from 'lodash';
 import {Console} from 'node:console';
 import {type PackageJson} from 'type-fest';
-import {type Smoker} from '../../smoker';
-import {Reporter, type SomeReporter} from './reporter';
+import {Reporter, type SomeReporter} from '../component/reporter/reporter';
+import {type Smoker} from '../smoker';
 
 const debug = Debug('midnight-smoker:reporter:controller');
 
@@ -155,7 +154,7 @@ export class ReporterController {
             debug('%s - error in listener %s', reporter, event, err);
             // XXX: I don't like this
             this.smoker.emit(SmokerEvent.UnknownError, {
-              error: err,
+              error: fromUnknownError(err),
             });
           });
       };

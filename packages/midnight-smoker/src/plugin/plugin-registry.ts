@@ -136,10 +136,8 @@ export class PluginRegistry {
     this.#isClosed = false;
   }
 
-  // TODO: get rid of this filter
-  public getRules(filter?: RuleFilter) {
-    const rules = [...this.ruleMap.values()].flat();
-    return filter ? rules.filter(filter) : rules;
+  public getRules() {
+    return [...this.ruleMap.values()].flat();
   }
 
   public getScriptRunner(componentId = DEFAULT_COMPONENT_ID) {

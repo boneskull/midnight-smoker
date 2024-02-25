@@ -276,6 +276,9 @@ export const ReporterDefSchema = customSchema<ReporterDef>(
      */
     when: ReporterWhenCallbackSchema.optional(),
 
+    /**
+     * Setup function; called before `Smoker` emits any events
+     */
     setup: z
       .function(
         z.tuple([ReporterContextSchema] as [
@@ -285,6 +288,9 @@ export const ReporterDefSchema = customSchema<ReporterDef>(
       )
       .optional(),
 
+    /**
+     * Teardown function; called just before `Smoker` exits
+     */
     teardown: z
       .function(
         z.tuple([ReporterContextSchema] as [

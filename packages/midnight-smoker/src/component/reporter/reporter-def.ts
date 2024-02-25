@@ -1,12 +1,13 @@
 import {SmokerEvent} from '#event';
 import {type SmokerOptions} from '#options';
-import {type InstallEventData} from '#schema/install-event';
-import {type PackEventData} from '#schema/pack-event';
-import {type RuleEventData} from '#schema/rule-runner-event';
-import {type ScriptEventData} from '#schema/script-runner-event';
-import {type SmokerEventData} from '#schema/smoker-event';
+import {type EventData, type EventKind} from '#schema/smoker-event';
 import {type PackageJson} from 'type-fest';
 
+/**
+ * The type of a stream, as in a {@link ReporterDef}.
+ *
+ * @todo Evaluate if the methods are necessary
+ */
 export type ReporterStream =
   | NodeJS.WritableStream
   | (() => NodeJS.WritableStream)
@@ -22,25 +23,21 @@ export type ReporterStream =
  */
 export type ReporterWhenCallback = (opts: Readonly<SmokerOptions>) => boolean;
 
-export type ReporterContext<Ctx> = {
+/**
+ * The reporter context is like a `this`, but it's passed as an argument.
+ *
+ * The context has some base properties that are always available, and the
+ * implementor can define extra properties as desired.
+ *
+ * Functions in a {@link ReporterDef} have no context.
+ */
+export type ReporterContext<Ctx = unknown> = {
   console: Console;
   opts: SmokerOptions;
   pkgJson: PackageJson;
   stdout: NodeJS.WritableStream;
   stderr: NodeJS.WritableStream;
 } & Ctx;
-
-export type EventData<T extends EventKind = EventKind> = {
-  [K in T]: {event: K} & AllEventData[K];
-}[T];
-
-export type AllEventData = SmokerEventData &
-  InstallEventData &
-  PackEventData &
-  ScriptEventData &
-  RuleEventData;
-
-export type EventKind = keyof AllEventData;
 
 export type ReporterListener<Evt extends EventKind, Ctx = unknown> = (
   this: void,
@@ -56,6 +53,10 @@ export type ReporterTeardownFn<Ctx = unknown> = (
   ctx: ReporterContext<Ctx>,
 ) => void | Promise<void>;
 
+/**
+ * All of the functions which a reporter can implement which map to events
+ * raised by `midnight-smoker`.
+ */
 export interface ReporterListeners<Ctx = unknown> {
   onPackBegin: ReporterListener<typeof SmokerEvent.PackBegin, Ctx>;
   onPackFailed: ReporterListener<typeof SmokerEvent.PackFailed, Ctx>;
@@ -91,18 +92,65 @@ export interface ReporterListeners<Ctx = unknown> {
   onUnknownError: ReporterListener<typeof SmokerEvent.UnknownError, Ctx>;
 }
 
+/**
+ * A reporter definition, as provided by a plugin author.
+ */
 export interface ReporterDef<Ctx = unknown>
   extends Partial<ReporterListeners<Ctx>> {
+  /**
+   * Reporter description.
+   *
+   * Required
+   */
   description: string;
+
+  /**
+   * If `true`, this reporter will be hidden from the list of reporters.
+   */
   isHidden?: boolean;
+
+  /**
+   * Reporter name.
+   *
+   * Required
+   */
   name: string;
+
+  /**
+   * Custom `stderr` stream or callback to provide one.
+   */
   stderr?: ReporterStream;
+
+  /**
+   * Custom `stdout` stream or callback to provide one.
+   */
   stdout?: ReporterStream;
+
+  /**
+   * Before instantiation of `Smoker`, this callback will be executed with a
+   * `SmokerOptions` object. If this returns `true`, the reporter will be used.
+   * If it returns `false`, it will not be used.
+   *
+   * Use this to automatically enable or disable itself based on options passed
+   * to `Smoker`. **Do not use this to strip users of agency.**
+   */
   when?: ReporterWhenCallback;
+
+  /**
+   * Setup function; called before `Smoker` emits any events
+   */
   setup?: ReporterSetupFn<Ctx>;
+
+  /**
+   * Teardown function; called just before `Smoker` exits
+   */
   teardown?: ReporterTeardownFn<Ctx>;
 }
 
+/**
+ * Mapping of {@link ReporterListener} props to their corresponding
+ * {@link SmokerEvent events}.
+ */
 export const ReporterListenerEventMap = {
   onPackBegin: SmokerEvent.PackBegin,
   onPackFailed: SmokerEvent.PackFailed,
@@ -129,6 +177,6 @@ export const ReporterListenerEventMap = {
   onSmokeFailed: SmokerEvent.SmokeFailed,
   onSmokeOk: SmokerEvent.SmokeOk,
   onUnknownError: SmokerEvent.UnknownError,
-} as const;
+} as const satisfies Record<keyof ReporterListeners, EventKind>;
 
 export type ReporterListenerName = keyof typeof ReporterListenerEventMap;

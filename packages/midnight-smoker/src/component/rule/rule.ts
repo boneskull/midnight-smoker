@@ -1,3 +1,4 @@
+import {ReifiedComponent} from '#component';
 import {RuleSeverities} from '#constants';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
 import {type RuleCheckFn, type RuleDef} from '#schema/rule-def';
@@ -6,7 +7,6 @@ import {RuleSeveritySchema, type RuleSeverity} from '#schema/rule-severity';
 import type {StaticRule} from '#schema/rule-static';
 import {EmptyObjectSchema} from '#util/schema-util';
 import Debug from 'debug';
-import {MaterializedComponent} from '../component/base-component';
 import {
   createRuleOptionsSchema,
   getDefaultRuleOptions,
@@ -19,7 +19,7 @@ const debug = Debug('midnight-smoker:rule');
  * installed (from tarball) package.
  */
 export class Rule<Schema extends RuleDefSchemaValue | void = void>
-  extends MaterializedComponent<RuleDef<Schema>>
+  extends ReifiedComponent<RuleDef<Schema>>
   implements RuleDef<Schema>
 {
   /**
@@ -51,7 +51,7 @@ export class Rule<Schema extends RuleDefSchemaValue | void = void>
 
   public readonly url?: string;
 
-  public constructor(def: RuleDef<Schema>, plugin: PluginMetadata) {
+  public constructor(def: RuleDef<Schema>, plugin: Readonly<PluginMetadata>) {
     super(def, plugin);
     this.name = def.name;
     this.description = def.description;
@@ -101,7 +101,7 @@ export class Rule<Schema extends RuleDefSchemaValue | void = void>
   public static create<Schema extends RuleDefSchemaValue | void = void>(
     this: void,
     ruleDef: RuleDef<Schema>,
-    plugin: PluginMetadata,
+    plugin: Readonly<PluginMetadata>,
   ) {
     const rule = new Rule(ruleDef, plugin);
     debug('Instantiated Rule %s from plugin %s', rule.name, plugin.id);

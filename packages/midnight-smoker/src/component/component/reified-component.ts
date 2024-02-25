@@ -1,6 +1,11 @@
 import {type PluginMetadata} from '#plugin';
 
-export abstract class MaterializedComponent<T extends object> {
+/**
+ * A component which is created from a definition.
+ *
+ * @template T - The definition type
+ */
+export abstract class ReifiedComponent<T extends object> {
   #plugin: Readonly<PluginMetadata>;
 
   #def: T;

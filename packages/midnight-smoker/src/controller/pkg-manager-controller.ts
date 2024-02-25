@@ -1,14 +1,21 @@
 /**
- * Provides {@link SmokerPkgManagerController}, which is sort of a controller for
+ * Provides {@link PkgManagerController}, which is sort of a controller for
  * {@link PkgManager}s.
  *
  * @internal
  * @packageDocumentation
  */
 
+import {DEFAULT_EXECUTOR_ID, SYSTEM_EXECUTOR_ID} from '#constants';
 import {InstallError} from '#error/install-error';
 import {PackError} from '#error/pack-error';
 import {ScriptBailed} from '#error/script-bailed';
+import {
+  createStrictEmitter,
+  type InstallEvents,
+  type PackEvents,
+  type ScriptRunnerEvents,
+} from '#event';
 import {SmokerEvent} from '#event/event-constants';
 import {
   buildInstallEventData,
@@ -17,6 +24,7 @@ import {
   buildRunScriptsBeginEventData,
   buildRunScriptsEndEventData,
 } from '#event/event-util';
+import {type PluginRegistry} from '#plugin/plugin-registry';
 import {
   type InstallManifest,
   type PkgManagerInstallManifest,
@@ -24,16 +32,45 @@ import {
 import {type InstallResult} from '#schema/install-result';
 import {type PackOptions} from '#schema/pack-options';
 import {type PkgManager} from '#schema/pkg-manager';
+import {type PkgManagerOpts} from '#schema/pkg-manager-def';
 import {type RunScriptManifest} from '#schema/run-script-manifest';
 import {type RunScriptResult} from '#schema/run-script-result';
 import {createScriptRunnerNotifiers} from '#script-runner';
 import Debug from 'debug';
-import {
-  PkgManagerController,
-  type PkgManagerControllerRunScriptsOpts,
-} from './controller';
 
 const debug = Debug('midnight-smoker:pkg-manager:controller');
+
+/**
+ * All events emitted by the {@link PkgManagerController} class.
+ */
+
+export type PkgManagerEvents = InstallEvents & ScriptRunnerEvents & PackEvents;
+
+/**
+ * Options for the {@link PkgManagerController} class.
+ */
+
+export interface PkgManagerControllerOpts {
+  defaultExecutorId?: string;
+
+  systemExecutorId?: string;
+}
+
+/**
+ * Options for {@link PkgManagerController.runScripts}
+ */
+
+export interface PkgManagerControllerRunScriptsOpts {
+  /**
+   * If `true`, halt execution of scripts on the first failure.
+   */
+  bail?: boolean;
+
+  /**
+   * The ID of the script runner to use.
+   */
+  scriptRunnerId?: string;
+}
 
 /**
  * Provides an interface to components interacting with `PkgManager`s.
@@ -45,8 +82,21 @@ const debug = Debug('midnight-smoker:pkg-manager:controller');
  *
  * @internal
  */
-export class SmokerPkgManagerController extends PkgManagerController {
+export class PkgManagerController extends createStrictEmitter<PkgManagerEvents>() {
   private pkgManagers?: readonly PkgManager[];
+  protected readonly defaultExecutorId: string;
+
+  protected readonly systemExecutorId: string;
+
+  public constructor(
+    protected readonly pluginRegistry: PluginRegistry,
+    protected readonly desiredPkgManagers: string | readonly string[],
+    protected readonly opts: PkgManagerControllerOpts & PkgManagerOpts = {},
+  ) {
+    super();
+    this.defaultExecutorId = opts.defaultExecutorId ?? DEFAULT_EXECUTOR_ID;
+    this.systemExecutorId = opts.systemExecutorId ?? SYSTEM_EXECUTOR_ID;
+  }
 
   /**
    * Retrieves the package managers. If the package managers have already been
