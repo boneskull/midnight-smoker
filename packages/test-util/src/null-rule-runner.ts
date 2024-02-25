@@ -140,14 +140,17 @@ export async function runRuleRunner(
     (opts.emitter ?? new EventEmitter()) as StrictEmitter<RuleRunnerEvents>,
   );
 
-  const filter: RuleFilter = opts.filter
-    ? opts.filter
-    : opts.rules
-      ? (rule) => Boolean(opts.rules?.includes(rule.name))
-      : () => true;
   return ruleRunner(
     notifiers,
-    registry.getRules(filter),
+    registry
+      .getRules()
+      .filter(
+        opts.filter
+          ? opts.filter
+          : opts.rules
+            ? (rule) => Boolean(opts.rules?.includes(rule.name))
+            : () => true,
+      ),
     opts.config ?? registry.mergeRuleDefaults(),
     manifest,
   );
