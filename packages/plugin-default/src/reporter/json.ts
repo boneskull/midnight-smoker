@@ -6,16 +6,19 @@
 
 import jsonStringify from 'json-stable-stringify';
 import {type SmokeResults} from 'midnight-smoker';
-import * as Errors from 'midnight-smoker/error';
-import type * as Reporter from 'midnight-smoker/reporter';
+import {SmokerReferenceError} from 'midnight-smoker/error';
+import {type ReporterDef} from 'midnight-smoker/reporter';
 
-export type JSONReporterContext = {
+/**
+ * Custom context for this reporter
+ */
+type JSONReporterContext = {
   stats: SmokerStats;
   lingering?: string[];
   output?: SmokerJsonOutput;
 };
 
-export const JSONReporter: Reporter.ReporterDef<JSONReporterContext> = {
+export const JSONReporter: ReporterDef<JSONReporterContext> = {
   name: 'json',
   description: 'JSON reporter (for machines)',
   setup(ctx) {
@@ -25,9 +28,9 @@ export const JSONReporter: Reporter.ReporterDef<JSONReporterContext> = {
       totalScripts: null,
       failedScripts: null,
       passedScripts: null,
-      totalChecks: null,
-      failedChecks: null,
-      passedChecks: null,
+      totalRules: null,
+      failedRules: null,
+      passedRules: null,
     };
   },
   onInstallBegin(ctx, {uniquePkgs, pkgManagers}) {
@@ -46,15 +49,15 @@ export const JSONReporter: Reporter.ReporterDef<JSONReporterContext> = {
     ctx.stats.failedScripts = 0;
   },
   onRunRulesBegin(ctx, {total}) {
-    ctx.stats.totalChecks = total;
+    ctx.stats.totalRules = total;
   },
   onRunRulesFailed(ctx, {failed, passed}) {
-    ctx.stats.failedChecks = failed.length;
-    ctx.stats.passedChecks = passed.length;
+    ctx.stats.failedRules = failed.length;
+    ctx.stats.passedRules = passed.length;
   },
   onRunRulesOk(ctx, {passed}) {
-    ctx.stats.passedChecks = passed.length;
-    ctx.stats.failedChecks = 0;
+    ctx.stats.passedRules = passed.length;
+    ctx.stats.failedRules = 0;
   },
   onLingered(ctx, {directories: dirs}) {
     ctx.lingering = dirs;
@@ -75,7 +78,7 @@ export const JSONReporter: Reporter.ReporterDef<JSONReporterContext> = {
   },
   onUnknownError(ctx, {error}) {
     ctx.output = {
-      error: `${error}`,
+      error,
       stats: ctx.stats,
       lingering: ctx.lingering,
     };
@@ -84,7 +87,7 @@ export const JSONReporter: Reporter.ReporterDef<JSONReporterContext> = {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!ctx.output) {
       process.exitCode = 1;
-      throw new Errors.SmokerReferenceError(
+      throw new SmokerReferenceError(
         'JSON listener has nothing to output! This is a bug.',
       );
     }
@@ -92,31 +95,84 @@ export const JSONReporter: Reporter.ReporterDef<JSONReporterContext> = {
   },
 };
 
-export interface SmokerJsonResults {
+/**
+ * Common JSON output for a successful or failed run
+ */
+export interface BaseSmokerJson {
+  /**
+   * Stats gathered
+   */
   stats: SmokerStats;
+
+  /**
+   * Lingering temp directories, if any
+   */
   lingering?: string[];
 }
 
-export interface SmokerJsonSuccess extends SmokerJsonResults {
+/**
+ * JSON output for a successful run
+ */
+
+export interface SmokerJsonSuccess extends BaseSmokerJson {
   results: SmokeResults;
 }
 
-export interface SmokerJsonFailure extends SmokerJsonResults {
+/**
+ * JSON output for a failed run
+ */
+export interface SmokerJsonFailure extends BaseSmokerJson {
   error: object | string;
 }
 
+/**
+ * The shape of this reporter's JSON output
+ */
 export type SmokerJsonOutput = SmokerJsonSuccess | SmokerJsonFailure;
 
 /**
- * Stats gathered during the run
+ * Stats gathered during the run.
+ *
+ * Anything that is `null` means that the value was not applicable to the run.
  */
 export interface SmokerStats {
+  /**
+   * Total unique packages processed
+   */
   totalPackages: number | null;
+
+  /**
+   * Total count of discrete package managers
+   */
   totalPackageManagers: number | null;
+
+  /**
+   * Total count of custom scripts
+   */
   totalScripts: number | null;
+
+  /**
+   * Total count of failed custom scripts
+   */
   failedScripts: number | null;
+
+  /**
+   * Total count of passed custom scripts
+   */
   passedScripts: number | null;
-  totalChecks: number | null;
-  failedChecks: number | null;
-  passedChecks: number | null;
+
+  /**
+   * Total count of rules run
+   */
+  totalRules: number | null;
+
+  /**
+   * Total count of failed rules
+   */
+  failedRules: number | null;
+
+  /**
+   * Total count of passed rules
+   */
+  passedRules: number | null;
 }

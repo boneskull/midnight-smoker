@@ -4,8 +4,8 @@
  * @packageDocumentation
  */
 
-import type * as Reporter from 'midnight-smoker/reporter';
-import * as Rule from 'midnight-smoker/rule';
+import {type ReporterDef} from 'midnight-smoker/reporter';
+import {RuleSeverities} from 'midnight-smoker/rule';
 import {PassThrough} from 'stream';
 
 const nullStream = new PassThrough();
@@ -20,7 +20,7 @@ function nonZeroExitListener() {
  *
  * Does not output anything.
  */
-export const ExitListener: Reporter.ReporterDef = {
+export const ExitListener: ReporterDef = {
   name: 'exit',
   when: () => true,
   isHidden: true,
@@ -32,7 +32,7 @@ export const ExitListener: Reporter.ReporterDef = {
   onInstallFailed: nonZeroExitListener,
   onRuleError: nonZeroExitListener,
   onRunRuleFailed: (_, {config}) => {
-    if (config.severity === Rule.RuleSeverities.Error) {
+    if (config.severity === RuleSeverities.Error) {
       nonZeroExitListener();
     }
   },
