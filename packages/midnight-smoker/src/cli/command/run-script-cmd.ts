@@ -3,11 +3,11 @@
  *
  * @packageDocumentation
  */
+import {handleRejection} from '#cli/cli-util';
+import {Smoker} from '#smoker';
+import {castArray} from '#util/schema-util';
 import Debug from 'debug';
 import type {ArgumentsCamelCase, Argv, InferredOptionTypes} from 'yargs';
-import {Smoker} from '../../smoker';
-import {castArray} from '../../util/schema-util';
-import {handleRejection} from '../cli-util';
 import {BaseCommand} from './base-cmd';
 import {CommonOptions, enableVerboseMiddleware} from './common';
 import {type GlobalOptionTypes} from './global-opts';

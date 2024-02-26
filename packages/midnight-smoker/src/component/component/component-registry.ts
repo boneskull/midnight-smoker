@@ -1,6 +1,7 @@
 import {type ComponentKind} from '#constants';
 import {ComponentCollisionError} from '#error';
 import {isBlessedPlugin} from '#plugin/blessed';
+import {type PluginMetadata} from '#plugin/plugin-metadata';
 import {inspect} from 'util';
 import {ComponentData, type Component} from './component';
 
@@ -60,26 +61,30 @@ export class ComponentRegistry {
     return this.getComponent(def).id;
   }
 
+  public getPlugin(def: object): Readonly<PluginMetadata> {
+    return this.getComponent(def).plugin;
+  }
+
   public isRetained(kind: ComponentKind, id: string): boolean {
     return Boolean(this.componentsByKind.get(kind)?.has(id));
   }
 
   public registerComponent(
     kind: ComponentKind,
-    pluginName: string,
+    plugin: Readonly<PluginMetadata>,
     componentName: string,
     def: object,
   ): Component {
     if (!this.componentMap.has(def)) {
-      const id = this.toId(pluginName, componentName);
+      const id = this.toId(plugin.id, componentName);
       if (this.isRetained(kind, id)) {
         throw new ComponentCollisionError(
           `Component ID collision for kind ${kind}: ${id}`,
-          pluginName,
+          plugin.id,
           componentName,
         );
       }
-      const component = new ComponentData(kind, pluginName, componentName, id);
+      const component = new ComponentData(kind, plugin, componentName, id);
       this.retain(kind, id, component);
       this.componentMap.set(def, component);
       return component;

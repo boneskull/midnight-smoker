@@ -22,7 +22,10 @@
   },
   "main": "./dist/index.js",
   "imports": {
+    "#cli": "./dist/cli/index.js",
+    "#cli/*": "./dist/cli/*.js",
     "#component": "./dist/component/component/index.js",
+    "#config-file": "./dist/config-file.js",
     "#constants": "./dist/constants.js",
     "#controller": "./dist/controller/index.js",
     "#controller/*": "./dist/controller/*.js",
@@ -44,6 +47,7 @@
     "#rule/*": "./dist/component/rule/*.js",
     "#schema/*": "./dist/component/schema/*.js",
     "#script-runner": "./dist/component/script-runner/index.js",
+    "#smoker": "./dist/smoker.js",
     "#util": "./dist/util/index.js",
     "#util/*": "./dist/util/*.js"
   },

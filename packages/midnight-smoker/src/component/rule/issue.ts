@@ -5,10 +5,10 @@
  */
 
 import {RuleSeverities} from '#constants';
+import type {RuleError} from '#error/rule-error';
 import {type StaticRuleIssue} from '#schema/rule-issue-static';
 import {type StaticRuleContext, type StaticRuleDef} from '#schema/rule-static';
 import {uniqueIdFactoryFactory} from '#util/util';
-import type {RuleError} from '../../error/rule-error';
 
 /**
  * Properties for a {@link RuleIssue}.

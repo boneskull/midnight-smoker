@@ -5,9 +5,9 @@
  */
 
 import {type InstallEventBaseData} from '#schema/install-event';
-import type {PkgManagerInstallManifest} from '#schema/install-manifest';
 import {type PackBeginEventData} from '#schema/pack-event';
 import type {PkgManager} from '#schema/pkg-manager';
+import type {PkgManagerInstallManifest} from '#schema/pkg-manager-install-manifest';
 import type {RunScriptResult} from '#schema/run-script-result';
 import type {
   RunScriptsEndEventData,

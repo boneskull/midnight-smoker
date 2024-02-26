@@ -1,6 +1,6 @@
+import {NonEmptyStringSchema} from '#util/schema-util';
 import {isFunction, isObject} from 'lodash';
 import {z} from 'zod';
-import {NonEmptyStringSchema} from '../util/schema-util';
 import type {PluginAPI} from './plugin-api';
 
 /**

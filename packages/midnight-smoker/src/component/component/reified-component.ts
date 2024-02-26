@@ -19,6 +19,10 @@ export abstract class ReifiedComponent<T extends object> {
     return this.plugin.getComponentId(this);
   }
 
+  public get isBlessed(): boolean {
+    return this.plugin.isBlessed;
+  }
+
   public get pluginName(): string {
     return this.plugin.id;
   }

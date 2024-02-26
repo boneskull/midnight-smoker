@@ -1,5 +1,5 @@
+import {instanceofSchema, NonEmptyStringSchema} from '#util/schema-util';
 import {z} from 'zod';
-import {instanceofSchema, NonEmptyStringSchema} from '../../util/schema-util';
 import {RuleSeveritySchema} from './rule-severity';
 import {StaticRuleContextSchema, StaticRuleDefSchema} from './rule-static';
 

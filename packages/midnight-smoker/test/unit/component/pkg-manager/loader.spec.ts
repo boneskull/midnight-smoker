@@ -18,7 +18,7 @@ describe('midnight-smoker', function () {
         let PkgManagerSpec: typeof PMS.PkgManagerSpec;
         let sandbox: sinon.SinonSandbox;
         let loadPackageManagers: typeof PMLoader.loadPackageManagers;
-        let findPackageManagers: typeof PMLoader.findPackageManagers;
+        let findPackageManagers: typeof PMLoader.matchPkgManagers;
 
         beforeEach(function () {
           sandbox = createSandbox();

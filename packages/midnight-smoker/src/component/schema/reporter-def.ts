@@ -234,6 +234,8 @@ export const ListenerSchemas = {
 
 /**
  * Schema for a {@link ReporterDef} as defined by a plugin
+ *
+ * @todo Why custom schema here?
  */
 export const ReporterDefSchema = customSchema<ReporterDef>(
   z.object({

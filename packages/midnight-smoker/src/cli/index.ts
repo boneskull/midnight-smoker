@@ -6,13 +6,13 @@
  * @module midnight-smoker/cli
  */
 
+import {readConfigFile} from '#config-file';
+import {readSmokerPkgJson} from '#util/pkg-util';
 import Debug from 'debug';
 import {omit} from 'lodash';
 import terminalLink from 'terminal-link';
 import {hideBin} from 'yargs/helpers';
 import yargs from 'yargs/yargs';
-import {readConfigFile} from '../config-file';
-import {readSmokerPkgJson} from '../util/pkg-util';
 import {handleRejection, mergeOptions} from './cli-util';
 import {
   LintCommand,

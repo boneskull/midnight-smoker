@@ -1,12 +1,12 @@
-import {z} from 'zod';
-import {BaseRuleOptionsRecordSchema} from '../component/schema/rule-options';
-import {DEFAULT_COMPONENT_ID} from '../constants';
+import {DEFAULT_COMPONENT_ID} from '#constants';
+import {BaseRuleOptionsRecordSchema} from '#schema/rule-options';
 import {
   DefaultFalseSchema,
   DefaultTrueSchema,
   NonEmptyStringSchema,
   NonEmptyStringToArraySchema,
-} from '../util/schema-util';
+} from '#util/schema-util';
+import {z} from 'zod';
 
 /**
  * Properties of {@link SmokerOptions} in camelCase.
@@ -91,13 +91,6 @@ const smokerOptionsShape = {
   ).default(['console']),
 
   /**
-   * The RuleRunners(s) to use
-   */
-  ruleRunner: NonEmptyStringSchema.describe(
-    'Component ID of RuleRunner implementation',
-  ).default(DEFAULT_COMPONENT_ID),
-
-  /**
    * Rule config
    */
   rules: BaseRuleOptionsRecordSchema.default({}),
@@ -141,7 +134,6 @@ export const BaseSmokerOptionsSchema = z
   // )
   .setKey('include-root', smokerOptionsShape.includeRoot)
   .setKey('script-runner', smokerOptionsShape.scriptRunner)
-  .setKey('rule-runner', smokerOptionsShape.ruleRunner)
   .setKey('pkg-manager', smokerOptionsShape.pkgManager)
   .describe('midnight-smoker options schema');
 

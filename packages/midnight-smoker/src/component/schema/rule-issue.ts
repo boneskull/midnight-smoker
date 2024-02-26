@@ -1,5 +1,5 @@
+import {RuleIssue} from '#rule/issue';
 import {instanceofSchema} from '#util/schema-util';
-import {RuleIssue} from '../rule/issue';
 
 /**
  * Schema for a {@link RuleIssue}

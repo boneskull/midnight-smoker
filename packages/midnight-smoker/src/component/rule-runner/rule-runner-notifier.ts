@@ -1,6 +1,7 @@
 import {SmokerEvent} from '#event/event-constants';
 import type {RuleRunnerEvents} from '#event/rule-runner-events';
 import type {StrictEmitter} from '#event/strict-emitter';
+import {RuleIssue} from '#rule/issue';
 import type {RuleRunnerNotifiers} from '#schema/rule-runner-notifier';
 import {
   RuleBeginNotifierSchema,
@@ -11,7 +12,6 @@ import {
   RunRulesFailedNotifierSchema,
   RunRulesOkNotifierSchema,
 } from '#schema/rule-runner-notifier';
-import {RuleIssue} from '../rule/issue';
 
 export type RuleRunnerEmitter = StrictEmitter<RuleRunnerEvents>;
 

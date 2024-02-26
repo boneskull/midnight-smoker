@@ -1,4 +1,4 @@
-import type {PkgManagerSpec} from '../component/pkg-manager/pkg-manager-spec';
+import type {PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
 import {BaseSmokerError} from './base-error';
 
 /**

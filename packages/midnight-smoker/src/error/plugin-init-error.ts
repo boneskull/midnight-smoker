@@ -1,5 +1,5 @@
-import type {Plugin} from '../plugin/plugin';
-import type {PluginMetadata} from '../plugin/plugin-metadata';
+import type {Plugin} from '#plugin/plugin';
+import type {PluginMetadata} from '#plugin/plugin-metadata';
 import {BaseSmokerError} from './base-error';
 
 /**

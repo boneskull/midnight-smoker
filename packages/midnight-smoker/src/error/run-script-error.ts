@@ -1,6 +1,6 @@
+import type {PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
 import {bold, cyan, italic, magenta, yellow} from 'chalk';
 import {format} from 'node:util';
-import type {PkgManagerSpec} from '../component/pkg-manager/pkg-manager-spec';
 import {BaseSmokerError} from './base-error';
 import type {ExecError} from './exec-error';
 

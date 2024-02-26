@@ -1,3 +1,7 @@
+import {
+  PkgManagerSpecSchema,
+  type PkgManagerSpec,
+} from '#pkg-manager/pkg-manager-spec';
 import {ExecResultSchema} from '#schema/exec-result';
 import {InstallManifestSchema} from '#schema/install-manifest';
 import {PackOptionsSchema} from '#schema/pack-options';
@@ -15,10 +19,6 @@ import {
   customSchema,
 } from '#util/schema-util';
 import {z} from 'zod';
-import {
-  PkgManagerSpecSchema,
-  type PkgManagerSpec,
-} from '../pkg-manager/pkg-manager-spec';
 
 export type PkgManagerInstallFn = z.infer<typeof PkgManagerInstallFnSchema>;
 

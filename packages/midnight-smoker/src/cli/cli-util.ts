@@ -1,10 +1,10 @@
+import {BaseSmokerError} from '#error/base-error';
+import {isSerializable} from '#util/util';
 import {bold, cyan, yellow} from 'chalk';
 import Table from 'cli-table3';
 import {isError, isFunction, isObject, mergeWith} from 'lodash';
 import stringWidth from 'string-width';
 import type {MergeDeep, Primitive} from 'type-fest';
-import {BaseSmokerError} from '../error/base-error';
-import {isSerializable} from '../util/util';
 
 /**
  * Creates a table (for display in the console) with the given items and

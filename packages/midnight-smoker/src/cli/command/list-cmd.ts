@@ -3,7 +3,9 @@
  *
  * @packageDocumentation
  */
+import {createTable} from '#cli/cli-util';
 import {isBlessedPlugin} from '#plugin/blessed';
+import {Smoker} from '#smoker';
 import Debug from 'debug';
 import {isString, orderBy} from 'lodash';
 import path from 'node:path';
@@ -15,8 +17,6 @@ import type {
   InferredOptionTypes,
   PositionalOptions,
 } from 'yargs';
-import {Smoker} from '../../smoker';
-import {createTable} from '../cli-util';
 import {BaseCommand} from './base-cmd';
 import {type GlobalOptionTypes} from './global-opts';
 import {JsonOptions, type CommandOptionRecord} from './opts';
@@ -55,6 +55,7 @@ export class ListCommand extends BaseCommand {
       case 'rules':
         return ListCommand.listRules(opts);
     }
+    // TODO: throw
   }
 
   /**
@@ -67,8 +68,7 @@ export class ListCommand extends BaseCommand {
   private static async listPkgManagers(
     opts: ArgumentsCamelCase<ListOptionTypes>,
   ): Promise<void> {
-    const smoker = await Smoker.create(opts);
-    const pkgManagers = smoker.getPkgManagerDefs();
+    const pkgManagers = await Smoker.getPkgManagers(opts);
     debug('Found %d pkg manager modules', pkgManagers.length);
 
     if (opts.json) {
@@ -78,8 +78,7 @@ export class ListCommand extends BaseCommand {
 
     const table = createTable(
       pkgManagers.map((pm) => {
-        const id = smoker.getComponentId(pm);
-        const data: string[] = [id, pm.bin];
+        const data: string[] = [pm.id, pm.bin];
         if (pm.supportedVersionRange) {
           if (isString(pm.supportedVersionRange)) {
             data.push(pm.supportedVersionRange);
@@ -141,8 +140,7 @@ export class ListCommand extends BaseCommand {
   private static async listReporters(
     opts: ArgumentsCamelCase<ListOptionTypes>,
   ): Promise<void> {
-    const smoker = await Smoker.create(opts);
-    const reporters = smoker.getReporters();
+    const reporters = await Smoker.getReporters(opts);
     debug('Found %d reporters', reporters.length);
 
     if (opts.json) {
@@ -152,10 +150,9 @@ export class ListCommand extends BaseCommand {
 
     const table = createTable(
       reporters.map((reporter) => {
-        const component = smoker.getComponent(reporter);
-        const pluginName = component.isBlessed
+        const pluginName = reporter.isBlessed
           ? '(built-in)'
-          : component.pluginName;
+          : reporter.pluginName;
         return [reporter.name, reporter.description, pluginName];
       }),
       ['Name', 'Description', 'Plugin'],
@@ -173,8 +170,7 @@ export class ListCommand extends BaseCommand {
   private static async listRules(
     opts: ArgumentsCamelCase<ListOptionTypes>,
   ): Promise<void> {
-    const smoker = await Smoker.create(opts);
-    const rules = smoker.getRules();
+    const rules = await Smoker.getRules(opts);
 
     const headers =
       terminalLink.isSupported && !opts.json
@@ -193,10 +189,7 @@ export class ListCommand extends BaseCommand {
         terminalLink.isSupported && rule.url
           ? terminalLink(rule.id, rule.url)
           : rule.id;
-      const component = smoker.getComponent(rule);
-      const pluginName = component.isBlessed
-        ? '(built-in)'
-        : component.pluginName;
+      const pluginName = rule.isBlessed ? '(built-in)' : rule.pluginName;
       const row: (undefined | string)[] = [
         ruleName,
         rule.description,

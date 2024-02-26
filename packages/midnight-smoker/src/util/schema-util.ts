@@ -243,3 +243,19 @@ export const SemVerSchema = instanceofSchema(SemVer);
 export const SemVerRangeSchema = instanceofSchema(Range);
 
 export const VoidOrPromiseVoidSchema = z.void().or(z.promise(z.void()));
+
+/**
+ * Creates a schema which accepts "fancy" objects (e.g., class instances) and
+ * converts them into plain objects.
+ *
+ * Zod wants to operate on plain objects.
+ *
+ * @param schema - Any schema
+ * @returns A new schema which preprocesses the input value
+ */
+export function fancyObjectSchema<T extends z.AnyZodObject>(schema: T) {
+  return z.preprocess(
+    (value) => (isObject(value) ? {...value} : value),
+    schema,
+  );
+}

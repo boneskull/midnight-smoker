@@ -30,24 +30,34 @@ import {
 import type {RawSmokerOptions, SmokerOptions} from '#options/options';
 import {OptionParser} from '#options/parser';
 import {Blessed, PluginRegistry, type StaticPluginMetadata} from '#plugin';
-import {createRuleRunnerNotifiers} from '#rule-runner';
-import type {PkgManagerInstallManifest} from '#schema/install-manifest';
+import {type SomeReporter} from '#reporter/reporter';
 import type {InstallResult} from '#schema/install-result';
-import {type ReporterDef} from '#schema/reporter-def';
+import {type PackBeginEventData} from '#schema/pack-event';
+import {type PkgManager} from '#schema/pkg-manager';
+import type {PkgManagerInstallManifest} from '#schema/pkg-manager-install-manifest';
 import {type SomeRule} from '#schema/rule';
 import {type RunRulesManifest} from '#schema/rule-runner-manifest';
 import {type RunRulesResult} from '#schema/rule-runner-result';
 import type {RunScriptResult} from '#schema/run-script-result';
-import {type SmokeResults} from '#schema/smoker-event';
+import {
+  type LingeredEventData,
+  type SmokeBeginEventData,
+  type SmokeFailedEventData,
+  type SmokeOkEventData,
+  type SmokeResults,
+  type UnknownErrorEventData,
+} from '#schema/smoker-event';
 import {isErrnoException} from '#util/error-util';
 import {castArray} from '#util/schema-util';
 import Debug from 'debug';
 import {isFunction} from 'lodash';
 import fs from 'node:fs/promises';
 import {
+  LintController,
   PkgManagerController,
   ReporterController,
   type PluginReporterDef,
+  type PluginRuleDef,
 } from './controller';
 
 type SetupResult =
@@ -119,7 +129,6 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
   private readonly pluginRegistry: PluginRegistry;
   private readonly reporterController: ReporterController;
   private readonly reporters: Set<string>;
-  private readonly ruleRunnerId: string;
   private readonly scriptRunnerId: string;
 
   /**
@@ -157,13 +166,11 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
       bail,
       all,
       workspace,
-      ruleRunner,
       scriptRunner,
       lint,
       reporter: reporters,
     } = opts;
     this.opts = Object.freeze(opts);
-    this.ruleRunnerId = ruleRunner;
     this.scriptRunnerId = scriptRunner;
     this.scripts = script;
     this.linger = linger;
@@ -248,9 +255,9 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
   public static async getReporters(
     this: void,
     opts?: RawSmokerOptions,
-  ): Promise<ReporterDef[]> {
+  ): Promise<SomeReporter[]> {
     const smoker = await Smoker.create(opts);
-    return smoker.getReporters();
+    return smoker.getAllReporters();
   }
 
   /**
@@ -264,7 +271,15 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
     opts?: RawSmokerOptions,
   ): Promise<SomeRule[]> {
     const smoker = await Smoker.create(opts);
-    return smoker.getRules();
+    return smoker.getAllRules();
+  }
+
+  public static async getPkgManagers(
+    this: void,
+    opts?: RawSmokerOptions,
+  ): Promise<PkgManager[]> {
+    const smoker = await Smoker.create(opts);
+    return smoker.getAllPkgManagers();
   }
 
   /**
@@ -317,21 +332,15 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
       const lingered = pkgManagers.map((pm) => pm.tmpdir);
       debug('Leaving %d temp dirs on disk: %O', lingered.length, lingered);
       await Promise.resolve();
-      this.emit(SmokerEvent.Lingered, {
-        directories: pkgManagers.map((pm) => pm.tmpdir),
-      });
+      this.#evtLingered.post({directories: lingered});
     }
-  }
-
-  public getComponent(def: object) {
-    return this.pluginRegistry.getComponent(def);
   }
 
   public getComponentId(def: object) {
     return this.pluginRegistry.getComponentId(def);
   }
 
-  public getEnabledReporters(): PluginReporterDef[] {
+  private getEnabledReporters(): PluginReporterDef[] {
     return this.pluginRegistry.plugins.flatMap((plugin) =>
       [...plugin.reporterDefMap.values()]
         .filter(
@@ -345,18 +354,47 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
     );
   }
 
+  private getEnabledRules(): PluginRuleDef[] {
+    return this.pluginRegistry.plugins.flatMap((plugin) =>
+      [...plugin.ruleDefMap.values()]
+        .filter((def) => {
+          const id = this.getComponentId(def);
+          return this.opts.rules[id].severity !== RuleSeverities.Off;
+        })
+        .map(
+          (def) => [plugin, def] as [plugin: typeof plugin, def: typeof def],
+        ),
+    );
+  }
+
   public getPkgManagerDefs() {
     return this.pluginRegistry.pkgManagerDefs;
   }
 
-  public getReporters() {
-    return this.pluginRegistry.reporters.filter(
-      (reporter) => reporter.isHidden !== true,
+  private async getAllReporters() {
+    const pluginReporters = this.pluginRegistry.plugins.flatMap((plugin) =>
+      [...plugin.reporterDefMap.values()]
+        .filter((def) => def.isHidden !== true)
+        .map(
+          (def) => [plugin, def] as [plugin: typeof plugin, def: typeof def],
+        ),
     );
+
+    return ReporterController.loadReporters(pluginReporters, this.opts);
   }
 
-  public getRules() {
-    return this.pluginRegistry.getRules();
+  private getAllRules() {
+    const pluginRules = this.pluginRegistry.plugins.flatMap((plugin) =>
+      [...plugin.ruleDefMap.values()].map(
+        (def) => [plugin, def] as [plugin: typeof plugin, def: typeof def],
+      ),
+    );
+    return LintController.loadRules(pluginRules);
+  }
+
+  private async getAllPkgManagers(): Promise<PkgManager[]> {
+    const pms = await this.pkgManagerController.loadPkgManagers();
+    return [...pms.values()];
   }
 
   /**
@@ -438,14 +476,6 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
     }
   }
 
-  public getEnabledRules(): SomeRule[] {
-    return this.pluginRegistry
-      .getRules()
-      .filter(
-        (rule) => this.opts.rules[rule.id].severity !== RuleSeverities.Off,
-      );
-  }
-
   /**
    * Runs automated checks against the installed packages
    *
@@ -455,9 +485,16 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
   public async runChecks(
     installResults: InstallResult[],
   ): Promise<RunRulesResult> {
-    const rules = this.getEnabledRules();
+    const lintController = LintController.create(
+      this,
+      this.getEnabledRules(),
+      this.opts.rules,
+    );
 
-    debug('Running enabled rules: %s', rules.map((rule) => rule.id).join(', '));
+    debug(
+      'Running enabled rules: %s',
+      lintController.rules.map((rule) => rule.id).join(', '),
+    );
 
     const runRulesManifest: RunRulesManifest = installResults.flatMap(
       ({installManifests}) => {
@@ -484,14 +521,7 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
       },
     );
 
-    const ruleRunner = this.pluginRegistry.getRuleRunner(this.ruleRunnerId);
-
-    return ruleRunner(
-      createRuleRunnerNotifiers(this),
-      rules,
-      this.opts.rules,
-      runRulesManifest,
-    );
+    return lintController.lint(runRulesManifest);
   }
 
   /**

@@ -1,4 +1,4 @@
-import type {StaticRuleContext} from '../component/schema/rule-static';
+import type {StaticRuleContext} from '#schema/rule-static';
 import {BaseSmokerError} from './base-error';
 
 /**

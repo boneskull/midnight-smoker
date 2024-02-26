@@ -1,6 +1,6 @@
 import {z} from 'zod';
 import {ExecResultSchema} from './exec-result';
-import {PkgManagerInstallManifestSchema} from './install-manifest';
+import {PkgManagerInstallManifestSchema} from './pkg-manager-install-manifest';
 
 export const InstallResultSchema = z.object({
   installManifests: z.array(PkgManagerInstallManifestSchema),

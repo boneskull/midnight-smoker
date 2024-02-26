@@ -2,8 +2,8 @@ import {type SmokerEvents, type StrictEmitter} from '#event';
 import {SmokerEvent} from '#event/event-constants';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
 import {
-  Rule,
   type BaseNormalizedRuleOptionsRecord,
+  type Rule,
   type RuleConfig,
   type RuleContext,
   type RuleDefSchemaValue,
@@ -21,6 +21,7 @@ import {
   type RunRulesResult,
 } from '#rule-runner';
 import Debug from 'debug';
+import {type Controller} from './controller';
 
 const debug = Debug('midnight-smoker:controller:lint-controller');
 
@@ -29,17 +30,23 @@ export type PluginRuleDef = [
   def: SomeRuleDef,
 ];
 
-export class LintController<T extends BaseNormalizedRuleOptionsRecord> {
-  private readonly rules: SomeRule[];
+export class LintController<T extends BaseNormalizedRuleOptionsRecord>
+  implements Controller
+{
+  public rules: SomeRule[] = [];
 
   protected constructor(
     private readonly smoker: StrictEmitter<SmokerEvents>,
     protected readonly pluginRuleDefs: PluginRuleDef[],
     protected readonly rulesConfig: T,
-  ) {
-    this.rules = pluginRuleDefs.map(([plugin, def]) =>
-      Rule.create(def, plugin),
-    );
+  ) {}
+
+  public async init() {
+    this.rules = LintController.loadRules(this.pluginRuleDefs);
+  }
+
+  public static loadRules(pluginRuleDefs: PluginRuleDef[]): SomeRule[] {
+    return pluginRuleDefs.map(([plugin, def]) => plugin.addRule(def));
   }
 
   public static create<T extends BaseNormalizedRuleOptionsRecord>(

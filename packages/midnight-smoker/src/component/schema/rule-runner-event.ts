@@ -1,3 +1,4 @@
+import {RuleError} from '#error/rule-error';
 import {type RuleEvent} from '#event';
 import {StaticRuleIssueSchema} from '#schema/rule-issue-static';
 import {
@@ -12,7 +13,6 @@ import {
   serializeObject,
 } from '#util/schema-util';
 import {z} from 'zod';
-import {RuleError} from '../../error/rule-error';
 
 export type RunRulesBeginEventData = z.infer<
   typeof RunRulesBeginEventDataSchema

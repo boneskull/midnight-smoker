@@ -4,6 +4,7 @@ import {SmokerEvent} from '#event/event-constants';
 import {type SmokerEvents} from '#event/smoker-events';
 import {type SmokerOptions} from '#options';
 import {type PluginMetadata} from '#plugin';
+import {Reporter, type SomeReporter} from '#reporter/reporter';
 import {
   ReporterListenerEventMap,
   type ReporterContext,
@@ -11,35 +12,32 @@ import {
   type ReporterListeners,
 } from '#schema/reporter-def';
 import {type EventData, type EventKind} from '#schema/smoker-event';
+import {type Smoker} from '#smoker';
 import {readSmokerPkgJson} from '#util/pkg-util';
 import Debug from 'debug';
 import {isFunction, pickBy} from 'lodash';
 import {Console} from 'node:console';
 import {type PackageJson} from 'type-fest';
-import {Reporter, type SomeReporter} from '../component/reporter/reporter';
-import {type Smoker} from '../smoker';
+import {type Controller} from './controller';
 
-const debug = Debug('midnight-smoker:reporter:controller');
+export type PluginReporterDef = [
+  plugin: Readonly<PluginMetadata>,
+  def: ReporterDef<any>,
+];
+type ReporterStreams = {
+  stderr: NodeJS.WritableStream;
+  stdout: NodeJS.WritableStream;
+};
 
 /**
  * This type is compatible with `StrictEventEmitter`
  */
 type SmokerEventListener = (data: SmokerEvents[keyof SmokerEvents]) => void;
 
-type ReporterStreams = {
-  stderr: NodeJS.WritableStream;
-  stdout: NodeJS.WritableStream;
-};
-
-export type PluginReporterDef = [
-  plugin: Readonly<PluginMetadata>,
-  def: ReporterDef<any>,
-];
-
 /**
  * Handles the setup, teardown, and invocation of {@link Reporter} methods
  */
-export class ReporterController {
+export class ReporterController implements Controller {
   private readonly listeners: Map<EventKind, Set<SmokerEventListener>>;
 
   constructor(
@@ -50,6 +48,18 @@ export class ReporterController {
     this.listeners = new Map();
 
     this.smoker.onBeforeExit(() => this.destroy());
+  }
+
+  public static async loadReporters(
+    this: void,
+    pluginReporterDefs: PluginReporterDef[],
+    opts: SmokerOptions,
+  ): Promise<SomeReporter[]> {
+    return Promise.all(
+      pluginReporterDefs.map(([plugin, def]) =>
+        ReporterController.loadReporter(plugin, def, opts),
+      ),
+    );
   }
 
   public async destroy() {
@@ -76,6 +86,31 @@ export class ReporterController {
   }
 
   /**
+   * Creates a {@link ReporterContext} for the reporter
+   *
+   * @param def - The reporter definition.
+   * @param pkgJson - `midnight-smoker`'s `package.json`
+   * @returns A promise that resolves to a `ReporterContext` object.
+   */
+  private static async createReporterContext<Ctx = unknown>(
+    this: void,
+    def: ReporterDef<Ctx>,
+    opts: SmokerOptions,
+    pkgJson: PackageJson,
+  ): Promise<ReporterContext<Ctx>> {
+    const {stderr, stdout} = await ReporterController.getStreams(def);
+    const console = new Console({stdout, stderr});
+
+    return {
+      opts,
+      pkgJson,
+      console,
+      stdout,
+      stderr,
+    } as ReporterContext<Ctx>;
+  }
+
+  /**
    * Retrieves the stdout and stderr streams based on the provided
    * `ReporterDef`.
    *
@@ -88,7 +123,8 @@ export class ReporterController {
    *   properties.
    * @returns An object containing the `stdout` and `stderr` streams.
    */
-  private async getStreams<Ctx = unknown>(
+  private static async getStreams<Ctx = unknown>(
+    this: void,
     def: ReporterDef<Ctx>,
   ): Promise<ReporterStreams> {
     let stdout: NodeJS.WritableStream = process.stdout;
@@ -110,27 +146,19 @@ export class ReporterController {
     return {stdout, stderr};
   }
 
-  /**
-   * Creates a {@link ReporterContext} for the reporter
-   *
-   * @param def - The reporter definition.
-   * @param pkgJson - `midnight-smoker`'s `package.json`
-   * @returns A promise that resolves to a `ReporterContext` object.
-   */
-  private async createReporterContext<Ctx = unknown>(
+  private static async loadReporter<Ctx = unknown>(
+    plugin: Readonly<PluginMetadata>,
     def: ReporterDef<Ctx>,
-    pkgJson: PackageJson,
-  ): Promise<ReporterContext<Ctx>> {
-    const {stderr, stdout} = await this.getStreams(def);
-    const console = new Console({stdout, stderr});
-
-    return {
-      opts: this.opts,
-      pkgJson,
-      console,
-      stdout,
-      stderr,
-    } as ReporterContext<Ctx>;
+    opts: SmokerOptions,
+    pkgJson?: PackageJson,
+    ctx?: ReporterContext<Ctx>,
+  ): Promise<Reporter<Ctx>> {
+    await Promise.resolve();
+    pkgJson ??= await readSmokerPkgJson();
+    ctx ??= await ReporterController.createReporterContext(def, opts, pkgJson);
+    const reporter = Reporter.create(def, ctx, plugin);
+    debug('Loaded %s', reporter);
+    return reporter;
   }
 
   private bindListeners(reporter: SomeReporter): void {
@@ -179,8 +207,12 @@ export class ReporterController {
     def: ReporterDef<Ctx>,
     pkgJson: PackageJson,
   ): Promise<Reporter<Ctx>> {
-    const ctx = await this.createReporterContext(def, pkgJson);
-    const reporter = Reporter.create(def, ctx, plugin);
+    const reporter = await ReporterController.loadReporter(
+      plugin,
+      def,
+      this.opts,
+      pkgJson,
+    );
 
     try {
       await reporter.setup();
@@ -194,3 +226,5 @@ export class ReporterController {
     return reporter;
   }
 }
+
+const debug = Debug('midnight-smoker:reporter:controller');

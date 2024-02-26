@@ -1,5 +1,5 @@
+import {NonEmptyStringSchema, NonNegativeIntSchema} from '#util/schema-util';
 import {z} from 'zod';
-import {NonEmptyStringSchema} from '../../util/schema-util';
 
 export type PackOptions = z.infer<typeof PackOptionsSchema>;
 export const PackOptionsSchema = z
@@ -16,5 +16,8 @@ export const PackOptionsSchema = z
       .array(NonEmptyStringSchema)
       .optional()
       .describe('List of workspaces to pack'),
+    timeout: NonNegativeIntSchema.optional().describe(
+      'Timeout for packing operation (in ms)',
+    ),
   })
   .describe('Options for a Packer component');

@@ -1,5 +1,6 @@
 import {type ComponentKind} from '#constants';
 import {isBlessedPlugin} from '#plugin/blessed';
+import {type PluginMetadata} from '#plugin/plugin-metadata';
 // import Debug from 'debug';
 
 // const debug = Debug('midnight-smoker:component');
@@ -8,6 +9,8 @@ export interface Component {
   readonly id: string;
   readonly kind: ComponentKind;
   readonly pluginName: string;
+
+  readonly plugin: Readonly<PluginMetadata>;
   readonly componentName: string;
   isBlessed: boolean;
 }
@@ -19,12 +22,16 @@ export interface Component {
 export class ComponentData implements Component {
   constructor(
     public readonly kind: ComponentKind,
-    public readonly pluginName: string,
+    public readonly plugin: Readonly<PluginMetadata>,
     public readonly componentName: string,
 
     public readonly id: string,
   ) {
     // debug('Created "%s" component with ID %s', kind, this.id);
+  }
+
+  get pluginName(): string {
+    return this.plugin.id;
   }
 
   /**

@@ -1,4 +1,5 @@
 import {ReifiedComponent} from '#component';
+import {fromUnknownError} from '#error';
 import {ReporterError} from '#error/reporter-error';
 import {type PluginMetadata} from '#plugin';
 import {
@@ -33,6 +34,14 @@ export class Reporter<Ctx = unknown> extends ReifiedComponent<
     this.ctx = ctx;
   }
 
+  public get name() {
+    return this.def.name;
+  }
+
+  public get description() {
+    return this.def.description;
+  }
+
   public async invokeListener<T extends EventKind>(data: EventData<T>) {
     await Promise.resolve();
     const listenerName = `on${data.event}` as const;
@@ -58,7 +67,7 @@ export class Reporter<Ctx = unknown> extends ReifiedComponent<
       try {
         await this.def.setup(this.ctx);
       } catch (err) {
-        throw new ReporterError(err as Error, this.def);
+        throw new ReporterError(fromUnknownError(err), this.def);
       }
     }
   }
@@ -69,7 +78,7 @@ export class Reporter<Ctx = unknown> extends ReifiedComponent<
       try {
         await this.def.teardown(this.ctx);
       } catch (err) {
-        throw new ReporterError(err as Error, this.def);
+        throw new ReporterError(fromUnknownError(err), this.def);
       }
     }
   }

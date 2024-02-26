@@ -6,6 +6,8 @@
 
 import {bold} from 'chalk';
 // eslint-disable-next-line @typescript-eslint/no-restricted-imports
+import {guessPackageManager} from '#pkg-manager/pkg-manager-guesser';
+import {Smoker} from '#smoker';
 import {inspect} from 'node:util';
 import {type Writable} from 'type-fest';
 import {
@@ -14,8 +16,6 @@ import {
   type InferredOptionTypes,
   type PositionalOptions,
 } from 'yargs';
-import {guessPackageManager} from '../../component/pkg-manager/pkg-manager-guesser';
-import {Smoker} from '../../smoker';
 import {BaseCommand} from './base-cmd';
 import {type GlobalOptionTypes} from './global-opts';
 import {JsonOptions, type CommandOptionRecord} from './opts';

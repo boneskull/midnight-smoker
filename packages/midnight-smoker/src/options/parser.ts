@@ -1,8 +1,8 @@
+import {isZodError} from '#error/base-error';
+import type {PluginRegistry} from '#plugin/plugin-registry';
 import Debug from 'debug';
 import {z} from 'zod';
 import {fromZodError} from 'zod-validation-error';
-import {isZodError} from '../error/base-error';
-import type {PluginRegistry} from '../plugin/plugin-registry';
 import {
   BaseSmokerOptionsSchema,
   type RawSmokerOptions,

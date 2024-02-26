@@ -1,7 +1,7 @@
+import {createRuleOptionsSchema} from '#rule/create-rule-options';
 import {RuleSeveritySchema} from '#schema/rule-severity';
 import {EmptyObjectSchema} from '#util/schema-util';
 import {z} from 'zod';
-import {createRuleOptionsSchema} from '../rule/create-rule-options';
 
 export const BaseRuleOptionsSchema = createRuleOptionsSchema(
   EmptyObjectSchema.passthrough(),

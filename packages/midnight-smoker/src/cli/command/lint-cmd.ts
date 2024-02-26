@@ -1,6 +1,6 @@
+import {Smoker} from '#smoker';
 import Debug from 'debug';
 import type {ArgumentsCamelCase, Argv} from 'yargs';
-import {Smoker} from '../../smoker';
 import {BaseCommand} from './base-cmd';
 import {
   CommonOptions,

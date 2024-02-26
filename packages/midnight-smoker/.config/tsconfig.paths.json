@@ -3,6 +3,9 @@
     "paths": {
       "@midnight-smoker/plugin-default": ["../../plugin-default"],
       "@midnight-smoker/test-util": ["../../test-util"],
+      "#cli": ["../src/cli/index.js"],
+      "#cli/*": ["../src/cli/*.js"],
+      "#config-file": ["../src/config-file.js"],
       "#component": ["../src/component/component/index.js"],
       "#constants": ["../src/constants.js"],
       "#controller": ["../src/controller/index.js"],
@@ -26,6 +29,7 @@
       "#schema": ["../src/component/schema/index.js"],
       "#schema/*": ["../src/component/schema/*.js"],
       "#script-runner": ["../src/component/script-runner/index.js"],
+      "#smoker": ["../src/smoker.js"],
       "#util": ["../src/util/index.js"],
       "#util/*": ["../src/util/*.js"]
     }

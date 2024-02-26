@@ -11,18 +11,18 @@
  * @packageDocumentation
  */
 
+import {OptionParser} from '#options';
 import {Blessed, PluginRegistry} from '#plugin';
-import {RuleSeveritySchema} from '#schema/rule-severity.js';
+import {RuleSeveritySchema} from '#schema/rule-severity';
 import {
   DefaultFalseSchema,
   DefaultTrueSchema,
   NonEmptyStringToArraySchema,
-} from '#util/schema-util.js';
+} from '#util/schema-util';
 import {writeFile} from 'node:fs/promises';
 import {normalize} from 'node:path';
 import prettier from 'prettier';
 import {zodToJsonSchema} from 'zod-to-json-schema';
-import {OptionParser} from '../src/options';
 
 const DEST = normalize(`${__dirname}/../schema/midnight-smoker.schema.json`);
 

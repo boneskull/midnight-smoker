@@ -7,6 +7,10 @@
  * @packageDocumentation
  */
 
+import {
+  PkgManagerSpecSchema,
+  type PkgManagerSpec,
+} from '#pkg-manager/pkg-manager-spec';
 import {ExecResultSchema, type ExecResult} from '#schema/exec-result';
 import {
   AbortSignalSchema,
@@ -17,10 +21,6 @@ import type execa from 'execa';
 import type {SpawnOptions} from 'node:child_process';
 import type {SimpleMerge} from 'type-fest/source/merge';
 import {z} from 'zod';
-import {
-  PkgManagerSpecSchema,
-  type PkgManagerSpec,
-} from '../pkg-manager/pkg-manager-spec';
 
 /**
  * Options to pass along to the underlying child process spawner.

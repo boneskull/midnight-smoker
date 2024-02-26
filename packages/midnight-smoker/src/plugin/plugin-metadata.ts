@@ -364,6 +364,10 @@ export class PluginMetadata implements StaticPluginMetadata {
     return this.componentRegistry.getId(def);
   }
 
+  public get isBlessed() {
+    return BLESSED_PLUGINS.includes(this.id as BlessedPlugin);
+  }
+
   /**
    * Serializes this object to a brief {@link StaticPluginMetadata} object.
    */
@@ -429,18 +433,11 @@ export class PluginMetadata implements StaticPluginMetadata {
 
   public addRule<Schema extends RuleDefSchemaValue | void = void>(
     def: RuleDef<Schema>,
-  ): void {
+  ): Rule<Schema> {
     const {name} = def;
     const rule = Rule.create(def, this);
-
-    this.componentRegistry.registerComponent(
-      ComponentKinds.Rule,
-      this.id,
-      name,
-      rule,
-    );
-
     this.ruleMap.set(name, rule);
+    return rule;
   }
 
   public addRuleDef<Schema extends RuleDefSchemaValue | void = void>(

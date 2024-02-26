@@ -24,15 +24,19 @@ import {
   buildRunScriptsBeginEventData,
   buildRunScriptsEndEventData,
 } from '#event/event-util';
-import {type PluginRegistry} from '#plugin/plugin-registry';
 import {
-  type InstallManifest,
-  type PkgManagerInstallManifest,
-} from '#schema/install-manifest';
+  loadPackageManagers,
+  type LoadPackageManagersOpts,
+} from '#pkg-manager/pkg-manager-loader';
+import {type PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
+import {Helpers} from '#plugin/helpers';
+import {type PluginRegistry} from '#plugin/plugin-registry';
+import {type InstallManifest} from '#schema/install-manifest';
 import {type InstallResult} from '#schema/install-result';
 import {type PackOptions} from '#schema/pack-options';
 import {type PkgManager} from '#schema/pkg-manager';
 import {type PkgManagerOpts} from '#schema/pkg-manager-def';
+import {type PkgManagerInstallManifest} from '#schema/pkg-manager-install-manifest';
 import {type RunScriptManifest} from '#schema/run-script-manifest';
 import {type RunScriptResult} from '#schema/run-script-result';
 import {createScriptRunnerNotifiers} from '#script-runner';
@@ -109,9 +113,7 @@ export class PkgManagerController extends createStrictEmitter<PkgManagerEvents>(
     if (this.pkgManagers) {
       return this.pkgManagers;
     }
-    const pkgManagerMap = await this.pluginRegistry.loadPackageManagers({
-      defaultExecutorId: this.defaultExecutorId,
-      systemExecutorId: this.systemExecutorId,
+    const pkgManagerMap = await this.loadPkgManagers({
       desiredPkgManagers: [...this.desiredPkgManagers],
       verbose: this.opts.verbose,
       loose: this.opts.loose,
@@ -125,6 +127,39 @@ export class PkgManagerController extends createStrictEmitter<PkgManagerEvents>(
     );
 
     return this.pkgManagers;
+  }
+
+  public async loadPkgManagers(
+    opts: LoadPackageManagersOpts & PkgManagerOpts = {},
+  ): Promise<Map<Readonly<PkgManagerSpec>, PkgManager>> {
+    const {cwd, desiredPkgManagers, ...pmOpts} = opts;
+
+    const defaultExecutor = this.pluginRegistry.getExecutor(
+      this.defaultExecutorId,
+    );
+    const systemExecutor = this.pluginRegistry.getExecutor(
+      this.systemExecutorId,
+    );
+
+    const defsBySpec = await loadPackageManagers(
+      this.pluginRegistry.pkgManagerDefs,
+      {
+        cwd,
+        desiredPkgManagers,
+      },
+    );
+
+    return new Map(
+      await Promise.all(
+        [...defsBySpec].map(async ([spec, def]) => {
+          const executor = spec.isSystem ? systemExecutor : defaultExecutor;
+          return [spec, await def.create(spec, executor, Helpers, pmOpts)] as [
+            Readonly<PkgManagerSpec>,
+            PkgManager,
+          ];
+        }),
+      ),
+    );
   }
 
   /**

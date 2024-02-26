@@ -6,12 +6,11 @@
  * @packageDocumentation
  */
 
+import {InvalidArgError} from '#error/invalid-arg-error';
 import {UnsupportedPackageManagerError} from '#error/unsupported-pkg-manager-error';
-import {type Executor} from '#schema/executor';
 import {type PkgManagerDef} from '#schema/pkg-manager-def';
 import {curry} from 'lodash';
 import {type SemVer} from 'semver';
-import {InvalidArgError} from '../../error';
 import {guessPackageManager} from './pkg-manager-guesser';
 import {PkgManagerSpec} from './pkg-manager-spec';
 
@@ -33,8 +32,6 @@ export interface LoadPackageManagersOpts {
    */
   desiredPkgManagers?: Array<string | Readonly<PkgManagerSpec>>;
 }
-
-export type PkgManagerDefExecutorPair = [PkgManagerDef, Executor];
 
 /**
  * Makes {@link PkgManager PackageManagers} out of
@@ -65,15 +62,27 @@ export async function loadPackageManagers(
   opts: LoadPackageManagersOpts = {},
 ): Promise<Map<Readonly<PkgManagerSpec>, PkgManagerDef>> {
   const {cwd = process.cwd(), desiredPkgManagers = []} = opts;
-  const specs: Readonly<PkgManagerSpec>[] = !desiredPkgManagers.length
-    ? [await guessPackageManager(pkgManagerDefs, cwd)]
+  const specs = await getPkgManagerSpecs(
+    pkgManagerDefs,
+    desiredPkgManagers,
+    cwd,
+  );
+
+  return matchPkgManagers(pkgManagerDefs, specs);
+}
+
+export async function getPkgManagerSpecs(
+  defs: PkgManagerDef[],
+  desiredPkgManagers: Array<string | Readonly<PkgManagerSpec>> = [],
+  cwd = process.cwd(),
+): Promise<Readonly<PkgManagerSpec>[]> {
+  return !desiredPkgManagers.length
+    ? [await guessPackageManager(defs, cwd)]
     : await Promise.all(
         desiredPkgManagers.map((desiredSpec) =>
           PkgManagerSpec.from(desiredSpec),
         ),
       );
-
-  return findPackageManagers(pkgManagerDefs, specs);
 }
 
 /**
@@ -114,7 +123,7 @@ const matchPkgManager = curry(_matchPkgManager);
  * @todo Remove hardcoded package manager names; replace with whatever
  *   {@link normalizeVersion} has access to
  */
-export function findPackageManagers(
+export function matchPkgManagers(
   pkgManagerDefs: PkgManagerDef[],
   pkgManagerSpecs: Readonly<PkgManagerSpec>[],
 ): Map<PkgManagerSpec, PkgManagerDef> {

@@ -1,5 +1,5 @@
+import {NonEmptyStringSchema} from '#util/schema-util';
 import {z} from 'zod';
-import {NonEmptyStringSchema} from '../../util/schema-util';
 import {ExecErrorSchema, ExecResultSchema} from './exec-result';
 import {zScriptError} from './script-error';
 

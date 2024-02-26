@@ -1,6 +1,6 @@
+import type {ExecError} from '#error/exec-error';
+import {type PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
 import {red} from 'chalk';
-import type {ExecError} from '../component/executor';
-import {type PkgManagerSpec} from '../component/pkg-manager/pkg-manager-spec';
 import {BaseSmokerError} from './base-error';
 
 /**
