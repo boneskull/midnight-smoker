@@ -2,11 +2,11 @@ import {SmokeFailedError} from '#error/smoker-error';
 import {type SmokerEvent} from '#event/event-constants';
 import {BaseSmokerOptionsSchema} from '#options/options';
 import {type InstallEventData} from '#schema/install-event';
+import {type RuleEventData} from '#schema/lint-event';
+import {LintResultSchema} from '#schema/lint-result';
 import {type PackEventData} from '#schema/pack-event';
-import {type RuleEventData} from '#schema/rule-runner-event';
-import {RunRulesResultSchema} from '#schema/rule-runner-result';
 import {RunScriptResultSchema} from '#schema/run-script-result';
-import {type ScriptEventData} from '#schema/script-runner-event';
+import {type ScriptEventData} from '#schema/script-event';
 import {StaticPluginMetadataSchema} from '#schema/static-plugin-metadata';
 import {
   NonEmptyNonEmptyStringArraySchema,
@@ -69,7 +69,7 @@ export const SmokeBeginEventDataSchema = z.object({
  */
 export const SmokeOkEventDataSchema = SmokeBeginEventDataSchema.extend({
   scripts: z.array(RunScriptResultSchema).optional(),
-  lint: RunRulesResultSchema.optional(),
+  lint: LintResultSchema.optional(),
 });
 
 /**

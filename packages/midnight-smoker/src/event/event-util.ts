@@ -4,16 +4,16 @@
  * @packageDocumentation
  */
 
+import {type PkgManager, type SomePkgManager} from '#pkg-manager/pkg-manager';
 import {type InstallEventBaseData} from '#schema/install-event';
 import {type PackBeginEventData} from '#schema/pack-event';
-import type {PkgManager} from '#schema/pkg-manager';
-import type {PkgManagerInstallManifest} from '#schema/pkg-manager-install-manifest';
+import {type RunScriptManifest} from '#schema/run-script-manifest';
 import type {RunScriptResult} from '#schema/run-script-result';
 import type {
   RunScriptsEndEventData,
   RunScriptsEventData,
-} from '#schema/script-runner-event';
-import {type RunScriptManifestWithPkgMgr} from '..';
+} from '#schema/script-event';
+import {filter, map, uniq} from 'lodash';
 
 /**
  * Builds the event data for the `PackBegin` event.
@@ -23,7 +23,7 @@ import {type RunScriptManifestWithPkgMgr} from '..';
  * @internal
  */
 export function buildPackBeginEventData(
-  pkgManagers: readonly PkgManager[],
+  pkgManagers: SomePkgManager[],
 ): PackBeginEventData {
   return {
     // XXX fix
@@ -58,69 +58,46 @@ export function buildRunScriptsEndEventData(
  * @internal
  */
 export function buildRunScriptsBeginEventData(
-  runScriptManifests: RunScriptManifestWithPkgMgr[],
+  runScriptManifestsByPkgManager: Map<PkgManager, RunScriptManifest[]>,
 ): RunScriptsEventData {
-  const totalScripts = runScriptManifests.length;
+  let total = 0;
+  const manifest: RunScriptsEventData['manifest'] = Object.fromEntries(
+    [...runScriptManifestsByPkgManager].map(([{spec}, runScriptManifests]) => {
+      total += runScriptManifests.length;
+      return [`${spec}`, runScriptManifests];
+    }),
+  );
 
-  const pkgRunManifestForEmit: RunScriptsEventData['manifest'] =
-    runScriptManifests.reduce<RunScriptsEventData['manifest']>(
-      (acc, {pkgManager, ...manifest}) => {
-        const spec = `${pkgManager.spec}`;
-        if (spec in acc) {
-          acc[spec].push(manifest);
-        } else {
-          acc[spec] = [manifest];
-        }
-        return acc;
-      },
-      {},
-    );
-
-  return {manifest: pkgRunManifestForEmit, total: totalScripts};
+  return {manifest: manifest, total: total};
 }
 
 /**
  * It's a fair amount of work to mash the data into a format more suitable for
  * display.
  *
- * This is used by the events {@link SmokerEvent.InstallBegin InstallBegin},
- * {@link SmokerEvent.InstallOk InstallOk}, and
- * {@link SmokerEvent.PackOk PackOk}.
- *
- * @param installManifests What to install and with what package manager. Will
- *   include additional depsz
+ * @param pkgManagerInstallManifests What to install and with what package
+ *   manager. Will include additional depsz
  * @returns Something to be emitted
  * @internal
  */
 export function buildInstallEventData(
-  installManifests: PkgManagerInstallManifest[],
-  pkgManagers: readonly PkgManager[],
+  pkgManagers: SomePkgManager[],
 ): InstallEventBaseData {
-  // could use _.partition here!
-  const uniquePkgs = [
-    ...new Set(
-      installManifests
-        .filter(({isAdditional}) => !isAdditional)
-        .map(({spec}) => spec),
-    ),
-  ];
-
-  const additionalDeps = [
-    ...new Set(
-      installManifests
-        .filter(({isAdditional}) => isAdditional)
-        .map(({spec}) => spec),
-    ),
-  ];
-
-  const pkgManagerSpecs = pkgManagers.map(({spec}) => spec);
+  const manifests = pkgManagers.flatMap(
+    ({installManifests}) => installManifests,
+  );
+  const specs = pkgManagers.map(({spec}) => spec.toJSON());
+  const additionalDeps = uniq(
+    map(filter(manifests, {isAdditional: true}), 'pkgName'),
+  );
+  const uniquePkgs = uniq(manifests.flatMap(({pkgName}) => pkgName));
 
   return {
     uniquePkgs,
-    pkgManagers: pkgManagerSpecs.map((spec) => spec.toJSON()),
+    pkgManagers: specs,
     additionalDeps,
-    manifests: installManifests,
-    total: pkgManagers.length * installManifests.length,
+    manifests,
+    total: pkgManagers.length * manifests.length,
   };
 }
 

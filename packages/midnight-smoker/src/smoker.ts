@@ -10,48 +10,36 @@
 import {RuleSeverities} from '#constants';
 import {
   CleanupError,
-  InstallError,
   InvalidArgError,
-  PackError,
   SmokeFailedError,
   fromUnknownError,
+  type InstallError,
+  type PackError,
+  type PackParseError,
   type RuleError,
   type ScriptError,
 } from '#error';
 import {
-  InstallEvent,
-  PackEvent,
-  RunScriptEvent,
   SmokerEvent,
-  createStrictEmitter,
+  type SmokerEventBus,
   type SmokerEvents,
   type StrictEmitter,
 } from '#event';
+import {EventBus} from '#event/bus';
 import type {RawSmokerOptions, SmokerOptions} from '#options/options';
 import {OptionParser} from '#options/parser';
 import {Blessed, PluginRegistry, type StaticPluginMetadata} from '#plugin';
 import {type SomeReporter} from '#reporter/reporter';
-import type {InstallResult} from '#schema/install-result';
-import {type PackBeginEventData} from '#schema/pack-event';
-import {type PkgManager} from '#schema/pkg-manager';
-import type {PkgManagerInstallManifest} from '#schema/pkg-manager-install-manifest';
+import {type LintResult} from '#schema/lint-result';
 import {type SomeRule} from '#schema/rule';
-import {type RunRulesManifest} from '#schema/rule-runner-manifest';
-import {type RunRulesResult} from '#schema/rule-runner-result';
 import type {RunScriptResult} from '#schema/run-script-result';
-import {
-  type LingeredEventData,
-  type SmokeBeginEventData,
-  type SmokeFailedEventData,
-  type SmokeOkEventData,
-  type SmokeResults,
-  type UnknownErrorEventData,
-} from '#schema/smoker-event';
+import {type SmokeResults} from '#schema/smoker-event';
 import {isErrnoException} from '#util/error-util';
 import {castArray} from '#util/schema-util';
 import Debug from 'debug';
 import {isFunction} from 'lodash';
 import fs from 'node:fs/promises';
+import {type PkgManager, type SomePkgManager} from './component';
 import {
   LintController,
   PkgManagerController,
@@ -62,11 +50,9 @@ import {
 
 type SetupResult =
   | {
-      error: PackError | InstallError;
+      error: Error;
     }
-  | {
-      installResults: InstallResult[];
-    };
+  | undefined;
 export type SmokerEmitter = StrictEmitter<SmokerEvents>;
 
 /**
@@ -78,13 +64,14 @@ export type SmokerEmitter = StrictEmitter<SmokerEvents>;
  */
 export interface SmokerCapabilities {
   pkgManagerController?: PkgManagerController;
-  registry?: PluginRegistry;
+  pluginRegistry?: PluginRegistry;
+  reporterController?: ReporterController;
 }
 
 /**
  * The main class.
  */
-export class Smoker extends createStrictEmitter<SmokerEvents>() {
+export class Smoker {
   /**
    * List of extra dependencies to install
    */
@@ -99,13 +86,6 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
    * Whether to bail on the first script failure
    */
   private readonly bail: boolean;
-
-  /**
-   * Async or sync tasks to run before exit.
-   *
-   * These are run immediately after the `BeforeExit` event is emitted.
-   */
-  private readonly exitTasks: (() => void | Promise<void>)[];
 
   /**
    * Whether to include the workspace root
@@ -129,7 +109,6 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
   private readonly pluginRegistry: PluginRegistry;
   private readonly reporterController: ReporterController;
   private readonly reporters: Set<string>;
-  private readonly scriptRunnerId: string;
 
   /**
    * Whether or not to run checks
@@ -152,12 +131,18 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
    */
   public readonly scripts: string[];
 
+  private readonly eventBus: SmokerEventBus;
+
+  private readOnly = false;
+
   private constructor(
     opts: SmokerOptions,
-    pluginRegistry = PluginRegistry.create(),
-    pmController?: PkgManagerController,
+    {
+      pluginRegistry = PluginRegistry.create(),
+      pkgManagerController,
+      reporterController,
+    }: SmokerCapabilities = {},
   ) {
-    super();
     const {
       script,
       linger,
@@ -166,12 +151,10 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
       bail,
       all,
       workspace,
-      scriptRunner,
       lint,
-      reporter: reporters,
+      reporter,
     } = opts;
     this.opts = Object.freeze(opts);
-    this.scriptRunnerId = scriptRunner;
     this.scripts = script;
     this.linger = linger;
     this.includeWorkspaceRoot = includeRoot;
@@ -180,7 +163,7 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
     this.allWorkspaces = all;
     this.workspaces = workspace;
     this.shouldLint = lint;
-    this.reporters = new Set(reporters);
+    this.reporters = new Set(reporter);
 
     /**
      * Normally, the CLI will intercept this before we get here
@@ -190,24 +173,32 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
         'Option "workspace" is mutually exclusive with "all" and/or "includeRoot"',
       );
     }
+    this.eventBus = EventBus.create();
 
     this.pluginRegistry = pluginRegistry;
+
     this.pkgManagerController =
-      pmController ??
-      new PkgManagerController(pluginRegistry, opts.pkgManager, {
+      pkgManagerController ??
+      new PkgManagerController(pluginRegistry, this.eventBus, opts.pkgManager, {
         verbose: opts.verbose,
         loose: opts.loose,
         defaultExecutorId: opts.executor,
       });
 
-    this.exitTasks = [];
-    this.reporterController = new ReporterController(
-      this,
-      this.getEnabledReporters(),
-      this.opts,
-    );
+    this.reporterController =
+      reporterController ??
+      new ReporterController(
+        this.eventBus,
+        this.getEnabledReportersByPlugin(),
+        this.opts,
+      );
 
     debug(`Smoker instantiated with registry: ${this.pluginRegistry}`);
+  }
+
+  [Symbol.dispose]() {
+    this.reporterController[Symbol.dispose]();
+    this.eventBus[Symbol.dispose]();
   }
 
   /**
@@ -215,7 +206,7 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
    */
   public static async create(this: void, opts?: RawSmokerOptions) {
     const {pluginRegistry, options} = await Smoker.bootstrap(opts);
-    return new Smoker(options, pluginRegistry);
+    return new Smoker(options, {pluginRegistry});
   }
 
   /**
@@ -233,9 +224,11 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
     opts?: RawSmokerOptions,
     caps: SmokerCapabilities = {},
   ) {
-    const {registry, pkgManagerController: pmController} = caps;
-    const {pluginRegistry, options} = await Smoker.bootstrap(opts, registry);
-    return new Smoker(options, pluginRegistry, pmController);
+    const {pluginRegistry, options} = await Smoker.bootstrap(
+      opts,
+      caps.pluginRegistry,
+    );
+    return new Smoker(options, {...caps, pluginRegistry});
   }
 
   public static async getPlugins(
@@ -306,7 +299,7 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
    *   implementation.
    */
   public async cleanup(): Promise<void> {
-    const pkgManagers = await this.pkgManagerController.getPkgManagers();
+    const pkgManagers = this.pkgManagerController.pkgManagers;
     if (!this.linger) {
       await Promise.all(
         pkgManagers.map(async (pm) => {
@@ -331,8 +324,7 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
     } else if (pkgManagers.length) {
       const lingered = pkgManagers.map((pm) => pm.tmpdir);
       debug('Leaving %d temp dirs on disk: %O', lingered.length, lingered);
-      await Promise.resolve();
-      this.#evtLingered.post({directories: lingered});
+      await this.eventBus.emit(SmokerEvent.Lingered, {directories: lingered});
     }
   }
 
@@ -340,7 +332,7 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
     return this.pluginRegistry.getComponentId(def);
   }
 
-  private getEnabledReporters(): PluginReporterDef[] {
+  private getEnabledReportersByPlugin(): PluginReporterDef[] {
     return this.pluginRegistry.plugins.flatMap((plugin) =>
       [...plugin.reporterDefMap.values()]
         .filter(
@@ -392,88 +384,49 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
     return LintController.loadRules(pluginRules);
   }
 
-  private async getAllPkgManagers(): Promise<PkgManager[]> {
-    const pms = await this.pkgManagerController.loadPkgManagers();
-    return [...pms.values()];
+  private async getAllPkgManagers(): Promise<SomePkgManager[]> {
+    await this.pkgManagerController.init();
+    return this.pkgManagerController.pkgManagers;
   }
 
   /**
    * Installs from tarball in a temp dir
    */
-  public async install(
-    installManifests: PkgManagerInstallManifest[],
-  ): Promise<InstallResult[]> {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (!installManifests?.length) {
-      throw new InvalidArgError('Non-empty "manifests" arg is required', {
-        argName: 'manifests',
-      });
-    }
-
-    for (const evt of Object.values(InstallEvent)) {
-      this.pkgManagerController.addListener(evt, (...args) => {
-        this.emit(evt, ...args);
-      });
-    }
-
-    try {
-      return await this.pkgManagerController.install(
-        installManifests,
-        this.add,
-      );
-    } finally {
-      for (const evt of Object.values(InstallEvent)) {
-        this.pkgManagerController.removeAllListeners(evt);
-      }
-    }
+  public async install(): Promise<void> {
+    await this.pkgManagerController.install(this.add);
   }
 
   public async lint(): Promise<SmokeResults | undefined> {
     try {
-      const setupResult = await this.preRun();
-
-      let ruleResults: RunRulesResult | undefined;
-      const runScriptResults: RunScriptResult[] = [];
-
-      if ('installResults' in setupResult) {
-        const {installResults} = setupResult;
-        ruleResults = await this.runChecks(installResults);
-      }
-
-      return await this.postRun(setupResult, ruleResults, runScriptResults);
+      await this.preRun();
     } catch (err) {
-      this.emit(SmokerEvent.UnknownError, {error: fromUnknownError(err)});
-    } finally {
-      this.emit(SmokerEvent.BeforeExit, {});
-      await Promise.all(this.exitTasks.map((task) => task()));
+      return await this.postRun({error: err as Error});
     }
-  }
 
-  public onBeforeExit(listener: () => void | Promise<void>) {
-    this.exitTasks.push(listener);
+    try {
+      let ruleResults: LintResult | undefined;
+      const runScriptResults: RunScriptResult[] = [];
+      await this.runChecks();
+
+      return await this.postRun(undefined, ruleResults, runScriptResults);
+    } catch (err) {
+      await this.eventBus.emit(SmokerEvent.UnknownError, {
+        error: fromUnknownError(err),
+      });
+    } finally {
+      await this.eventBus.emit(SmokerEvent.BeforeExit, {});
+    }
   }
 
   /**
    * For each package manager, creates a tarball for one or more packages
    */
-  public async pack(): Promise<PkgManagerInstallManifest[]> {
-    for (const evt of Object.values(PackEvent)) {
-      this.pkgManagerController.addListener(evt, (...args) => {
-        this.emit(evt, ...args);
-      });
-    }
-
-    try {
-      return await this.pkgManagerController.pack({
-        allWorkspaces: this.allWorkspaces,
-        workspaces: this.workspaces,
-        includeWorkspaceRoot: this.includeWorkspaceRoot,
-      });
-    } finally {
-      for (const evt of Object.values(PackEvent)) {
-        this.pkgManagerController.removeAllListeners(evt);
-      }
-    }
+  public async pack(): Promise<void> {
+    await this.pkgManagerController.pack({
+      allWorkspaces: this.allWorkspaces,
+      workspaces: this.workspaces,
+      includeWorkspaceRoot: this.includeWorkspaceRoot,
+    });
   }
 
   /**
@@ -482,11 +435,10 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
    * @param installResults - The result of {@link Smoker.install}
    * @returns Result of running all enabled rules on all installed packages
    */
-  public async runChecks(
-    installResults: InstallResult[],
-  ): Promise<RunRulesResult> {
+  public async runChecks(): Promise<LintResult> {
     const lintController = LintController.create(
-      this,
+      this.eventBus,
+      this.pkgManagerController.pkgManagers,
       this.getEnabledRules(),
       this.opts.rules,
     );
@@ -496,60 +448,16 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
       lintController.rules.map((rule) => rule.id).join(', '),
     );
 
-    const runRulesManifest: RunRulesManifest = installResults.flatMap(
-      ({installManifests}) => {
-        // we don't need to inspect the same package twice, so we pick the first
-        // installPath for each pkgName encountered. we also want to ignore
-        // "additional dependencies".
-
-        // TODO: this can be simplified
-        const uniquePkgNameMap = installManifests.reduce<
-          Map<string, {pkgName: string; installPath: string}>
-        >((acc, {isAdditional, spec, installPath, pkgName}) => {
-          if (!isAdditional && !acc.has(pkgName)) {
-            // c8 ignore next
-            if (!installPath) {
-              throw new TypeError(
-                `Expected an installPath for ${pkgName} (${spec})`,
-              );
-            }
-            acc.set(pkgName, {pkgName, installPath});
-          }
-          return acc;
-        }, new Map());
-        return [...uniquePkgNameMap.values()];
-      },
-    );
-
-    return lintController.lint(runRulesManifest);
+    return lintController.lint();
   }
 
   /**
    * Runs the script for each package in `packItems`
    */
-  public async runScripts(
-    installResults: InstallResult[],
-  ): Promise<RunScriptResult[]> {
-    for (const evt of Object.values(RunScriptEvent)) {
-      this.pkgManagerController.on(evt, (...args) => {
-        this.emit(evt, ...args);
-      });
-    }
-
-    try {
-      return await this.pkgManagerController.runScripts(
-        this.scripts,
-        installResults,
-        {
-          bail: this.bail,
-          scriptRunnerId: this.scriptRunnerId,
-        },
-      );
-    } finally {
-      for (const evt of Object.values(RunScriptEvent)) {
-        this.pkgManagerController.removeAllListeners(evt);
-      }
-    }
+  public async runScripts(): Promise<RunScriptResult[]> {
+    return this.pkgManagerController.runScripts(this.scripts, {
+      bail: this.bail,
+    });
   }
 
   /**
@@ -559,29 +467,28 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
    */
   public async smoke(): Promise<SmokeResults | undefined> {
     try {
-      const setupResult = await this.preRun();
+      await this.preRun();
 
-      let ruleResults: RunRulesResult | undefined;
+      let ruleResults: LintResult | undefined;
       let runScriptResults: RunScriptResult[] = [];
 
-      if ('installResults' in setupResult) {
-        const {installResults} = setupResult;
-        // RUN CHECKS
-        if (this.shouldLint) {
-          ruleResults = await this.runChecks(installResults);
-        }
-
-        // RUN SCRIPTS
-        if (this.scripts.length) {
-          runScriptResults = await this.runScripts(installResults);
-        }
+      // RUN CHECKS
+      if (this.shouldLint) {
+        ruleResults = await this.runChecks();
       }
 
-      return await this.postRun(setupResult, ruleResults, runScriptResults);
+      // RUN SCRIPTS
+      if (this.scripts.length) {
+        runScriptResults = await this.runScripts();
+      }
+
+      return await this.postRun(undefined, ruleResults, runScriptResults);
     } catch (err) {
-      this.emit(SmokerEvent.UnknownError, {error: fromUnknownError(err)});
+      await this.eventBus.emit(SmokerEvent.UnknownError, {
+        error: fromUnknownError(err),
+      });
     } finally {
-      this.emit(SmokerEvent.BeforeExit, {});
+      await this.eventBus.emit(SmokerEvent.BeforeExit, {});
     }
   }
 
@@ -630,9 +537,16 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
     };
   }
 
+  /**
+   * @param setupResult
+   * @param ruleResults
+   * @param runScriptResults
+   * @returns
+   * @todo Fix this, I hate this
+   */
   private async postRun(
     setupResult: SetupResult,
-    ruleResults?: RunRulesResult,
+    ruleResults?: LintResult,
     runScriptResults: RunScriptResult[] = [],
   ) {
     // END
@@ -658,10 +572,13 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
         [],
       );
 
-      const errors: Array<InstallError | PackError | ScriptError | RuleError> =
-        [];
-      if ('error' in setupResult) {
-        errors.push(setupResult.error);
+      const errors: Array<
+        InstallError | PackError | PackParseError | ScriptError | RuleError
+      > = [];
+      if (setupResult) {
+        errors.push(
+          setupResult.error as InstallError | PackError | PackParseError,
+        );
       }
       errors.push(...runScriptErrors, ...ruleErrors);
       return errors;
@@ -678,7 +595,7 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
     const errors = aggregateErrors();
 
     if (errors.length) {
-      this.emit(SmokerEvent.SmokeFailed, {
+      await this.eventBus.emit(SmokerEvent.SmokeFailed, {
         plugins: this.pluginRegistry.plugins,
         opts: this.opts,
         error: new SmokeFailedError('🤮 Maurice!', errors, {
@@ -686,48 +603,35 @@ export class Smoker extends createStrictEmitter<SmokerEvents>() {
         }),
       });
     } else {
-      this.emit(SmokerEvent.SmokeOk, smokeResults);
+      await this.eventBus.emit(SmokerEvent.SmokeOk, smokeResults);
     }
 
     return smokeResults;
   }
 
-  private async preRun(): Promise<SetupResult> {
-    await this.reporterController.init();
-    debug('Reporters initialized');
+  private async preRun(): Promise<void> {
+    await Promise.all([
+      this.reporterController.init().then(() => {
+        debug('Reporters initialized');
+      }),
+      this.pkgManagerController.init().then(() => {
+        debug('Package managers initialized');
+      }),
+    ]);
 
-    this.emit(SmokerEvent.SmokeBegin, {
+    await this.eventBus.emit(SmokerEvent.SmokeBegin, {
       plugins: this.pluginRegistry.plugins,
       opts: this.opts,
     });
 
     debug('Beginning packing phase');
 
-    let pkgManagerInstallManifests: PkgManagerInstallManifest[] | undefined;
-    let installResults: InstallResult[];
-
     // PACK
-    try {
-      pkgManagerInstallManifests = await this.pack();
-    } catch (err) {
-      if (!(err instanceof PackError)) {
-        throw err;
-      }
-      return {error: err};
-    }
-
+    await this.pack();
     debug('Beginning installation phase');
 
     // INSTALL
-    try {
-      installResults = await this.install(pkgManagerInstallManifests);
-    } catch (err) {
-      if (!(err instanceof InstallError)) {
-        throw err;
-      }
-      return {error: err};
-    }
-    return {installResults};
+    await this.install();
   }
 }
 

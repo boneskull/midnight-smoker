@@ -1,7 +1,6 @@
-import {NonEmptyStringSchema} from '#util/schema-util';
 import {z} from 'zod';
-import {ExecErrorSchema, ExecResultSchema} from './exec-result';
-import {zScriptError} from './script-error';
+import {ExecResultSchema} from './exec-result';
+import {ScriptErrorSchema} from './script-error';
 
 /**
  * Describes the result of running a custom script.
@@ -12,42 +11,18 @@ import {zScriptError} from './script-error';
 export const RunScriptResultSchema = z
   .object({
     /**
-     * The directory in which the script ran.
-     */
-    cwd: NonEmptyStringSchema.optional().describe(
-      'Directory in which the script ran',
-    ),
-
-    /**
      * The error if the script failed.
      */
-    error: zScriptError
-      .optional()
-      .describe('Error if abnormal failure (not a script failure)'),
-
-    /**
-     * The name of the package in which the script ran.
-     */
-    pkgName: NonEmptyStringSchema.describe(
-      'Name of the package in which the script ran',
+    error: ScriptErrorSchema.optional().describe(
+      'Error if abnormal failure (not a script failure)',
     ),
 
     /**
      * The raw result of running the script.
      */
-    rawResult: z
-      .union([ExecResultSchema, ExecErrorSchema])
-      .describe('Raw result of running the script'),
-
-    /**
-     * The name of the script that ran.
-     */
-    script: NonEmptyStringSchema.describe('Name of script'),
-
-    /**
-     * Whether the script was skipped.
-     */
-    skipped: z.boolean().optional().describe('Whether the script was skipped'),
+    rawResult: ExecResultSchema.optional().describe(
+      'Raw result of running the script',
+    ),
   })
   .describe('The result of running a single custom script');
 

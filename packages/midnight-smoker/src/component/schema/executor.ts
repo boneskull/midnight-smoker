@@ -7,11 +7,9 @@
  * @packageDocumentation
  */
 
-import {
-  PkgManagerSpecSchema,
-  type PkgManagerSpec,
-} from '#pkg-manager/pkg-manager-spec';
+import {type PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
 import {ExecResultSchema, type ExecResult} from '#schema/exec-result';
+import {PkgManagerSpecSchema} from '#schema/pkg-manager-spec';
 import {
   AbortSignalSchema,
   NonEmptyStringArraySchema,

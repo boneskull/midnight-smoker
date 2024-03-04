@@ -4,7 +4,7 @@
  * @packageDocumentation
  */
 
-import {isFunction, isObject} from 'lodash';
+import {once as _once, isFunction, isObject} from 'lodash';
 import type {Opaque} from 'type-fest';
 
 /**
@@ -73,4 +73,18 @@ export function serialize<T>(value: T) {
     return value.toJSON();
   }
   return value;
+}
+
+export function once<This, Args extends any[], TReturn>(
+  target: (this: This, ...args: Args) => TReturn,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  context: ClassMethodDecoratorContext<
+    This,
+    (this: This, ...args: Args) => TReturn
+  >,
+) {
+  const onceTarget = _once(target);
+  return function (this: This, ...args: Args): TReturn {
+    return onceTarget.call(this, ...args);
+  };
 }

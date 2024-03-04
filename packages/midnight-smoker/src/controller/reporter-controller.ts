@@ -1,7 +1,7 @@
 import {fromUnknownError} from '#error/base-error';
 import {ReporterError} from '#error/reporter-error';
+import {type EventBus, type EventContext} from '#event/bus';
 import {SmokerEvent} from '#event/event-constants';
-import {type SmokerEvents} from '#event/smoker-events';
 import {type SmokerOptions} from '#options';
 import {type PluginMetadata} from '#plugin';
 import {Reporter, type SomeReporter} from '#reporter/reporter';
@@ -11,9 +11,10 @@ import {
   type ReporterDef,
   type ReporterListeners,
 } from '#schema/reporter-def';
-import {type EventData, type EventKind} from '#schema/smoker-event';
-import {type Smoker} from '#smoker';
+import {type AllEventData, type EventData} from '#schema/smoker-event';
+import {once} from '#util';
 import {readSmokerPkgJson} from '#util/pkg-util';
+import {type AsyncHandler} from 'async-mitt';
 import Debug from 'debug';
 import {isFunction, pickBy} from 'lodash';
 import {Console} from 'node:console';
@@ -24,30 +25,24 @@ export type PluginReporterDef = [
   plugin: Readonly<PluginMetadata>,
   def: ReporterDef<any>,
 ];
+
 type ReporterStreams = {
   stderr: NodeJS.WritableStream;
   stdout: NodeJS.WritableStream;
 };
 
 /**
- * This type is compatible with `StrictEventEmitter`
- */
-type SmokerEventListener = (data: SmokerEvents[keyof SmokerEvents]) => void;
-
-/**
  * Handles the setup, teardown, and invocation of {@link Reporter} methods
  */
 export class ReporterController implements Controller {
-  private readonly listeners: Map<EventKind, Set<SmokerEventListener>>;
+  private readonly eventCtx: EventContext<AllEventData, AllEventData>;
 
   constructor(
-    private readonly smoker: Smoker,
+    private readonly eventBus: EventBus<AllEventData, AllEventData>,
     private readonly pluginReporterDefs: PluginReporterDef[],
     private readonly opts: Readonly<SmokerOptions>,
   ) {
-    this.listeners = new Map();
-
-    this.smoker.onBeforeExit(() => this.destroy());
+    this.eventCtx = eventBus.context();
   }
 
   public static async loadReporters(
@@ -62,19 +57,15 @@ export class ReporterController implements Controller {
     );
   }
 
-  public async destroy() {
-    for (const [event, listeners] of this.listeners) {
-      for (const listener of listeners) {
-        this.smoker.off(event, listener);
-      }
-    }
-    this.listeners.clear();
+  [Symbol.dispose]() {
+    this.eventCtx.done();
   }
 
   /**
    * Instantiates {@link Reporter Reporters} from all the
    * {@link ReporterDef ReporterDefs}
    */
+  @once
   public async init() {
     const pkgJson = await readSmokerPkgJson();
     await Promise.all(
@@ -174,31 +165,30 @@ export class ReporterController implements Controller {
           methodName as keyof typeof ReporterListenerEventMap
         ];
 
-      const listener: SmokerEventListener = (data) => {
+      const listener: AsyncHandler<AllEventData[typeof event]> = async (
+        data,
+      ) => {
         debug('%s - saw event %s', reporter, event);
-        reporter
-          .invokeListener({...data, event} as EventData<typeof event>)
-          .catch((err: ReporterError) => {
-            debug('%s - error in listener %s', reporter, event, err);
-            // XXX: I don't like this
-            this.smoker.emit(SmokerEvent.UnknownError, {
-              error: fromUnknownError(err),
-            });
+        try {
+          await reporter.invokeListener({...data, event} as EventData<
+            typeof event
+          >);
+        } catch (err) {
+          debug('%s - error in listener %s', reporter, event, err);
+          // XXX: I don't like this
+          await this.eventBus.emit(SmokerEvent.UnknownError, {
+            error: fromUnknownError(err),
           });
+        }
       };
 
-      // XXX: StrictEventEmitter isn't strict enough; this allows any defined
-      // event data to be emitted on any event
-      this.smoker.on(event, listener);
-
-      const listenersForEvent = this.listeners.get(event) ?? new Set();
-      listenersForEvent.add(listener);
-      this.listeners.set(event, listenersForEvent);
+      this.eventCtx.on(event, listener);
     }
     debug('%s - bound listener(s) %s', reporter, listenerNames.join(', '));
 
-    this.smoker.onBeforeExit(async () => {
+    this.eventCtx.on(SmokerEvent.BeforeExit, async () => {
       await reporter.teardown();
+      debug('%s - teardown complete', reporter);
     });
   }
 

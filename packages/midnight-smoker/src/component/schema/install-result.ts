@@ -1,9 +1,9 @@
 import {z} from 'zod';
-import {ExecResultSchema} from './exec-result';
-import {PkgManagerInstallManifestSchema} from './pkg-manager-install-manifest';
+import {ExecResultSchema} from '#schema/exec-result';
+import { InstallManifestsSchema } from '#schema/install-manifest';
 
 export const InstallResultSchema = z.object({
-  installManifests: z.array(PkgManagerInstallManifestSchema),
+  installManifests: InstallManifestsSchema,
   rawResult: ExecResultSchema,
 });
 export type InstallResult = z.infer<typeof InstallResultSchema>;

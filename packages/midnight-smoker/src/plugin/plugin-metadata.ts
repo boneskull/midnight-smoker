@@ -8,6 +8,10 @@ import {type ComponentRegistry} from '#component';
 import {ComponentKinds} from '#constants';
 import {isZodError} from '#error/base-error';
 import {InvalidArgError} from '#error/invalid-arg-error';
+import {
+  loadPackageManagers,
+  type LoadPackageManagersOpts,
+} from '#pkg-manager/pkg-manager-loader';
 import {BLESSED_PLUGINS, type BlessedPlugin} from '#plugin/blessed';
 import type {StaticPluginMetadata} from '#plugin/static-metadata';
 import {Rule} from '#rule/rule';
@@ -17,8 +21,6 @@ import type {ReporterDef} from '#schema/reporter-def';
 import {type SomeRule} from '#schema/rule';
 import {type RuleDef, type SomeRuleDef} from '#schema/rule-def';
 import {type RuleDefSchemaValue} from '#schema/rule-options';
-import type {RuleRunner} from '#schema/rule-runner';
-import type {ScriptRunner} from '#schema/script-runner';
 import {readPackageJson} from '#util/pkg-util';
 import {NonEmptyStringSchema, PackageJsonSchema} from '#util/schema-util';
 import Debug from 'debug';
@@ -155,23 +157,6 @@ export class PluginMetadata implements StaticPluginMetadata {
   public readonly pkgManagerDefMap: Map<string, PkgManagerDef>;
 
   /**
-   * A map of script runner names to {@link ScriptRunner} objects contained in
-   * the plugin
-   *
-   * @group Component Map
-   */
-
-  public readonly scriptRunnerMap: Map<string, ScriptRunner>;
-
-  /**
-   * A map of rule runner names to {@link RuleRunner} objects contained in the
-   * plugin
-   *
-   * @group Component Map
-   */
-  public readonly ruleRunnerMap: Map<string, RuleRunner>;
-
-  /**
    * A map of executor names to {@link SomeExecutor} objects contained in the
    * plugin
    *
@@ -239,8 +224,6 @@ export class PluginMetadata implements StaticPluginMetadata {
       // component maps
       this.ruleMap = new Map();
       this.pkgManagerDefMap = new Map();
-      this.scriptRunnerMap = new Map();
-      this.ruleRunnerMap = new Map();
       this.executorMap = new Map();
       this.reporterDefMap = new Map();
       this.ruleDefMap = new Map();
@@ -397,7 +380,7 @@ export class PluginMetadata implements StaticPluginMetadata {
   public addPkgManagerDef(name: string, value: PkgManagerDef): void {
     this.componentRegistry.registerComponent(
       ComponentKinds.PkgManagerDef,
-      this.id,
+      this,
       name,
       value,
     );
@@ -405,30 +388,6 @@ export class PluginMetadata implements StaticPluginMetadata {
     this.pkgManagerDefMap.set(name, value);
 
     debug('Plugin %s added pkg manager "%s"', this, name);
-  }
-
-  public addScriptRunner(name: string, value: ScriptRunner): void {
-    this.componentRegistry.registerComponent(
-      ComponentKinds.ScriptRunner,
-      this.id,
-      name,
-      value,
-    );
-
-    this.scriptRunnerMap.set(name, value);
-
-    debug('Plugin %s added script runner "%s"', this, name);
-  }
-
-  public addRuleRunner(name: string, value: RuleRunner): void {
-    this.componentRegistry.registerComponent(
-      ComponentKinds.RuleRunner,
-      this.id,
-      name,
-      value,
-    );
-
-    this.ruleRunnerMap.set(name, value);
   }
 
   public addRule<Schema extends RuleDefSchemaValue | void = void>(
@@ -447,7 +406,7 @@ export class PluginMetadata implements StaticPluginMetadata {
 
     this.componentRegistry.registerComponent(
       ComponentKinds.Rule,
-      this.id,
+      this,
       name,
       def,
     );
@@ -458,7 +417,7 @@ export class PluginMetadata implements StaticPluginMetadata {
   public addExecutor(name: string, value: Executor): void {
     this.componentRegistry.registerComponent(
       ComponentKinds.Executor,
-      this.id,
+      this,
       name,
       value,
     );
@@ -469,12 +428,17 @@ export class PluginMetadata implements StaticPluginMetadata {
   public addReporterDef(value: ReporterDef): void {
     this.componentRegistry.registerComponent(
       ComponentKinds.ReporterDef,
-      this.id,
+      this,
       value.name,
       value,
     );
 
     this.reporterDefMap.set(value.name, value);
+  }
+
+  public async loadPkgManagers(opts: LoadPackageManagersOpts) {
+    const pkgManagerDefs = [...this.pkgManagerDefMap.values()];
+    return loadPackageManagers(pkgManagerDefs, opts);
   }
 }
 

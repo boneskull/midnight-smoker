@@ -57,8 +57,6 @@ export const DEFAULT_RULE_SEVERITY = RuleSeverities.Error;
 export const ComponentKinds = {
   Rule: 'Rule',
   RuleDef: 'RuleDef',
-  RuleRunner: 'RuleRunner',
-  ScriptRunner: 'ScriptRunner',
   PkgManagerDef: 'PkgManagerDef',
   Executor: 'Executor',
   ReporterDef: 'ReporterDef',

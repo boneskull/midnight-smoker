@@ -2,78 +2,77 @@
  * Provides {@link PkgManagerController}, which is sort of a controller for
  * {@link PkgManager}s.
  *
- * @internal
  * @packageDocumentation
  */
-
 import {DEFAULT_EXECUTOR_ID, SYSTEM_EXECUTOR_ID} from '#constants';
-import {InstallError} from '#error/install-error';
-import {PackError} from '#error/pack-error';
-import {ScriptBailed} from '#error/script-bailed';
 import {
-  createStrictEmitter,
-  type InstallEvents,
-  type PackEvents,
-  type ScriptRunnerEvents,
-} from '#event';
-import {SmokerEvent} from '#event/event-constants';
+  InstallError,
+  PackError,
+  PackParseError,
+  PackageManagerError,
+  ScriptBailed,
+} from '#error';
 import {
+  SmokerEvent,
   buildInstallEventData,
   buildPackBeginEventData,
   buildPackOkEventData,
   buildRunScriptsBeginEventData,
   buildRunScriptsEndEventData,
-} from '#event/event-util';
+  type InstallEvents,
+  type PackEvents,
+  type ScriptEvents,
+  type SmokerEventBus,
+} from '#event';
 import {
-  loadPackageManagers,
-  type LoadPackageManagersOpts,
-} from '#pkg-manager/pkg-manager-loader';
-import {type PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
-import {Helpers} from '#plugin/helpers';
-import {type PluginRegistry} from '#plugin/plugin-registry';
-import {type InstallManifest} from '#schema/install-manifest';
-import {type InstallResult} from '#schema/install-result';
-import {type PackOptions} from '#schema/pack-options';
-import {type PkgManager} from '#schema/pkg-manager';
-import {type PkgManagerOpts} from '#schema/pkg-manager-def';
-import {type PkgManagerInstallManifest} from '#schema/pkg-manager-install-manifest';
-import {type RunScriptManifest} from '#schema/run-script-manifest';
-import {type RunScriptResult} from '#schema/run-script-result';
-import {createScriptRunnerNotifiers} from '#script-runner';
+  PkgManager,
+  type PkgManagerSpec,
+  type SomePkgManager,
+} from '#pkg-manager';
+import {createTempDir, type PluginMetadata, type PluginRegistry} from '#plugin';
+import {
+  type Executor,
+  type PackOptions,
+  type PkgManagerContext,
+  type PkgManagerDef,
+  type PkgManagerOpts,
+  type RunScriptManifest,
+  type RunScriptResult,
+} from '#schema';
+import {once} from '#util';
 import Debug from 'debug';
-
-const debug = Debug('midnight-smoker:pkg-manager:controller');
+import {isError} from 'lodash';
+import {type Controller} from './controller';
 
 /**
  * All events emitted by the {@link PkgManagerController} class.
  */
-
-export type PkgManagerEvents = InstallEvents & ScriptRunnerEvents & PackEvents;
+export type PkgManagerEvents = InstallEvents & ScriptEvents & PackEvents;
+export type PluginPkgManagerDef = [
+  plugin: Readonly<PluginMetadata>,
+  def: PkgManagerDef,
+];
+export type RunScriptManifestWithPkgMgr = RunScriptManifest & {
+  pkgManager: PkgManager;
+};
 
 /**
  * Options for the {@link PkgManagerController} class.
  */
-
 export interface PkgManagerControllerOpts {
+  cwd?: string;
   defaultExecutorId?: string;
-
   systemExecutorId?: string;
 }
 
 /**
  * Options for {@link PkgManagerController.runScripts}
  */
-
 export interface PkgManagerControllerRunScriptsOpts {
   /**
    * If `true`, halt execution of scripts on the first failure.
    */
   bail?: boolean;
-
-  /**
-   * The ID of the script runner to use.
-   */
-  scriptRunnerId?: string;
 }
 
 /**
@@ -86,80 +85,66 @@ export interface PkgManagerControllerRunScriptsOpts {
  *
  * @internal
  */
-export class PkgManagerController extends createStrictEmitter<PkgManagerEvents>() {
-  private pkgManagers?: readonly PkgManager[];
-  protected readonly defaultExecutorId: string;
+export class PkgManagerController implements Controller {
+  #pkgManagers: SomePkgManager[] = [];
 
-  protected readonly systemExecutorId: string;
+  public readonly cwd: string;
+  public readonly defaultExecutor: Executor;
+  public readonly pkgManagerOpts: PkgManagerOpts;
+  public readonly systemExecutor: Executor;
 
   public constructor(
     protected readonly pluginRegistry: PluginRegistry,
-    protected readonly desiredPkgManagers: string | readonly string[],
-    protected readonly opts: PkgManagerControllerOpts & PkgManagerOpts = {},
+    protected readonly eventBus: SmokerEventBus,
+    protected readonly desiredPkgManagers: string[],
+    opts: PkgManagerControllerOpts & PkgManagerOpts = {},
   ) {
-    super();
-    this.defaultExecutorId = opts.defaultExecutorId ?? DEFAULT_EXECUTOR_ID;
-    this.systemExecutorId = opts.systemExecutorId ?? SYSTEM_EXECUTOR_ID;
+    const {
+      defaultExecutorId = DEFAULT_EXECUTOR_ID,
+      systemExecutorId = SYSTEM_EXECUTOR_ID,
+      cwd = process.cwd(),
+      ...pkgManagerOpts
+    } = opts;
+    this.defaultExecutor = this.pluginRegistry.getExecutor(defaultExecutorId);
+    this.systemExecutor = this.pluginRegistry.getExecutor(systemExecutorId);
+    this.cwd = cwd;
+    this.pkgManagerOpts = pkgManagerOpts;
   }
-
-  /**
-   * Retrieves the package managers. If the package managers have already been
-   * loaded, returns the cached result. Otherwise, loads the package managers
-   * from the plugin registry.
-   *
-   * @returns An array of package managers.
-   */
-  public async getPkgManagers(): Promise<readonly PkgManager[]> {
-    if (this.pkgManagers) {
-      return this.pkgManagers;
+  public get pkgManagers() {
+    if (!this.#pkgManagers.length) {
+      debug('Warning: pkgManagers accessed before initialization!');
     }
-    const pkgManagerMap = await this.loadPkgManagers({
-      desiredPkgManagers: [...this.desiredPkgManagers],
-      verbose: this.opts.verbose,
-      loose: this.opts.loose,
-    });
-
-    this.pkgManagers = Object.freeze([...pkgManagerMap.values()]);
-    debug(
-      'Loaded package manager(s): %s for specs %s',
-      [...pkgManagerMap.keys()].sort().join(', '),
-      [...this.desiredPkgManagers].sort().join(', '),
-    );
-
-    return this.pkgManagers;
+    return this.#pkgManagers;
   }
 
-  public async loadPkgManagers(
-    opts: LoadPackageManagersOpts & PkgManagerOpts = {},
-  ): Promise<Map<Readonly<PkgManagerSpec>, PkgManager>> {
-    const {cwd, desiredPkgManagers, ...pmOpts} = opts;
+  public async createPkgManagerContext(
+    spec: PkgManagerSpec,
+    opts: PkgManagerOpts = {},
+  ): Promise<PkgManagerContext> {
+    return {
+      spec,
+      tmpdir: await createTempDir(),
+      executor: this.executorForSpec(spec),
+      ...opts,
+    };
+  }
 
-    const defaultExecutor = this.pluginRegistry.getExecutor(
-      this.defaultExecutorId,
+  public async destroy() {
+    await Promise.all(
+      this.#pkgManagers.map((pkgManager) => pkgManager.teardown()),
     );
-    const systemExecutor = this.pluginRegistry.getExecutor(
-      this.systemExecutorId,
-    );
+  }
 
-    const defsBySpec = await loadPackageManagers(
-      this.pluginRegistry.pkgManagerDefs,
-      {
-        cwd,
-        desiredPkgManagers,
-      },
-    );
-
-    return new Map(
-      await Promise.all(
-        [...defsBySpec].map(async ([spec, def]) => {
-          const executor = spec.isSystem ? systemExecutor : defaultExecutor;
-          return [spec, await def.create(spec, executor, Helpers, pmOpts)] as [
-            Readonly<PkgManagerSpec>,
-            PkgManager,
-          ];
-        }),
-      ),
-    );
+  @once
+  public async init() {
+    const pkgManagers: SomePkgManager[] = [];
+    for await (const pkgManager of this.initPkgManagers(
+      this.pluginRegistry.plugins,
+    )) {
+      pkgManagers.push(pkgManager);
+    }
+    this.#pkgManagers = pkgManagers;
+    debug('Initialized %d pkg managers', pkgManagers.length);
   }
 
   /**
@@ -174,69 +159,41 @@ export class PkgManagerController extends createStrictEmitter<PkgManagerEvents>(
    * @internal
    * @todo AbortController
    */
-  public async install(
-    installManifests: PkgManagerInstallManifest[],
-    additionalDeps: string[] = [],
-  ): Promise<InstallResult[]> {
-    // we could either do this or extract the `pkgManager` prop from each
-    // `installManifest`, make unique, and use that.
-    const pkgManagers = await this.getPkgManagers();
+  public async install(additionalDeps: string[] = []): Promise<void> {
+    const pkgManagers = this.pkgManagers;
 
-    // each PM will need to install additional deps.
-    const additionalDepInstallManifests = pkgManagers.flatMap((pkgManager) =>
-      additionalDeps.map((spec) => ({
-        cwd: pkgManager.tmpdir,
-        spec,
-        pkgManager,
-        isAdditional: true,
-        pkgName: spec,
-      })),
-    );
+    for (const additionalDep of additionalDeps) {
+      for (const pkgManager of pkgManagers) {
+        pkgManager.addAdditionalDep(additionalDep);
+      }
+    }
 
-    installManifests = [...installManifests, ...additionalDepInstallManifests];
-
-    const eventData = buildInstallEventData(installManifests, pkgManagers);
+    const eventData = buildInstallEventData(pkgManagers);
 
     // this increments by the number of install manifests for each PM
     let current = 0;
 
-    this.emit(SmokerEvent.InstallBegin, eventData);
+    await this.eventBus.emit(SmokerEvent.InstallBegin, eventData);
 
-    // TODO: this suggests to me that `InstallResult` is not the most efficient data structure for our purposes.
-    const manifestsByPkgManager = installManifests.reduce<
-      Map<PkgManager, PkgManagerInstallManifest[]>
-    >((acc, installManifest) => {
-      const {pkgManager} = installManifest;
-      const manifests = acc.get(pkgManager) ?? [];
-      acc.set(pkgManager, [...manifests, installManifest]);
-      return acc;
-    }, new Map());
-
-    // TODO: this should be using an AbortController to halt the install if one fails
-    // TODO: should this be done in serial?
-    return Promise.all(
-      [...manifestsByPkgManager].map<Promise<InstallResult>>(
-        async ([pkgManager, installManifests]) => {
-          try {
-            // PMs receive multiple install manifests at once, since they can install multiple packages at once.
-            const rawResult = await pkgManager.install(installManifests);
-            this.emit(SmokerEvent.InstallOk, {
+    await Promise.all(
+      pkgManagers.map(async (pkgManager) => {
+        try {
+          await pkgManager.install();
+        } catch (err) {
+          if (err instanceof InstallError) {
+            await this.eventBus.emit(SmokerEvent.InstallFailed, {
               ...eventData,
-              current: (current += installManifests.length),
+              current,
+              error: err,
             });
-            return {rawResult, installManifests};
-          } catch (err) {
-            if (err instanceof InstallError) {
-              this.emit(SmokerEvent.InstallFailed, {
-                ...eventData,
-                current,
-                error: err,
-              });
-            }
-            throw err;
           }
-        },
-      ),
+          throw err;
+        }
+        await this.eventBus.emit(SmokerEvent.InstallOk, {
+          ...eventData,
+          current: (current += pkgManager.installManifests.length),
+        });
+      }),
     );
   }
 
@@ -249,65 +206,77 @@ export class PkgManagerController extends createStrictEmitter<PkgManagerEvents>(
    *   objects.
    * @internal
    */
-  public async pack(
-    opts: PackOptions = {},
-  ): Promise<PkgManagerInstallManifest[]> {
-    const pkgManagers = await this.getPkgManagers();
+  public async pack(opts: PackOptions = {}): Promise<void> {
+    const pkgManagers = this.pkgManagers;
 
     const eventData = buildPackBeginEventData(pkgManagers);
-    this.emit(SmokerEvent.PackBegin, eventData);
 
-    /**
-     * A {@link PkgManager} returns simplified information about a `pack()`
-     * operation, but we must associate each {@link InstallManifest} with a
-     * `PackageManager` instance, so we can ensure the same instance which
-     * packed the tarball then {@link install installs} it.
-     *
-     * These will _all_ have `isAdditional: false` because we do not pack
-     * "additional dependencies".
-     *
-     * @param pkgManager Package Manager instance
-     * @param manifest Result of calling its `pack()` method
-     * @returns A {@link PkgManagerInstallManifest}
-     */
-    const toControllerInstallManifest = (
-      pkgManager: PkgManager,
-      manifest: InstallManifest,
-    ): PkgManagerInstallManifest => ({
-      ...manifest,
-      pkgManager,
-      isAdditional: false,
-    });
+    await this.eventBus.emit(SmokerEvent.PackBegin, eventData);
 
-    const installManifests = await Promise.all(
+    await Promise.all(
       pkgManagers.map(async (pkgManager) => {
         try {
-          const manifests = await pkgManager.pack(opts);
-          return manifests.map((manifest) =>
-            toControllerInstallManifest(pkgManager, manifest),
-          );
+          await pkgManager.setup().then(() => pkgManager.pack(opts));
         } catch (err) {
-          if (err instanceof PackError) {
-            this.emit(SmokerEvent.PackFailed, {...eventData, error: err});
+          if (err instanceof PackError || err instanceof PackParseError) {
+            await this.eventBus.emit(SmokerEvent.PackFailed, {
+              ...eventData,
+              error: err,
+            });
           }
           throw err;
         }
       }),
-    ).then((result) => result.flat());
-
-    this.emit(
-      SmokerEvent.PackOk,
-      buildPackOkEventData(installManifests, pkgManagers),
     );
 
-    return installManifests;
+    await this.eventBus.emit(
+      SmokerEvent.PackOk,
+      buildPackOkEventData(pkgManagers),
+    );
+  }
+
+  public async runScript(
+    pkgManager: PkgManager,
+    runManifest: RunScriptManifest,
+    signal: AbortSignal,
+  ) {
+    if (signal?.aborted) {
+      throw new ScriptBailed();
+    }
+
+    let result: RunScriptResult;
+    const {script, pkgName} = runManifest;
+
+    try {
+      debug('Running script "%s" in package %s', script, pkgName);
+      result = await pkgManager.runScript(runManifest, signal);
+    } catch (err) {
+      if (err instanceof ScriptBailed) {
+        throw err;
+      }
+      if (isError(err)) {
+        throw new PackageManagerError(
+          `Package manager "${pkgManager.spec}" failed to run script "${script}": ${err.message}`,
+          pkgManager.spec,
+          err,
+        );
+      }
+      throw err;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (signal?.aborted) {
+      throw new ScriptBailed();
+    }
+
+    return result;
   }
 
   /**
    * Runs the specified scripts for each package & package manager in the
    * provided {@link InstallResult} array.
    *
-   * Handles emitting all events in {@link ScriptRunnerEvents}.
+   * Handles emitting all events in {@link ScriptEvents}.
    *
    * @param scripts - An array of scripts to run.
    * @param installResults - An array of install results.
@@ -317,74 +286,120 @@ export class PkgManagerController extends createStrictEmitter<PkgManagerEvents>(
    */
   public async runScripts(
     scripts: string[],
-    installResults: InstallResult[],
     opts: PkgManagerControllerRunScriptsOpts,
   ): Promise<RunScriptResult[]> {
     const ac = new AbortController();
-    const scriptRunner = this.pluginRegistry.getScriptRunner();
 
-    const runManifests: RunScriptManifestWithPkgMgr[] = installResults.flatMap(
-      ({installManifests}) =>
-        scripts.flatMap((script) =>
-          installManifests
-            .filter((installManifest) => installManifest.installPath)
-            .map(({pkgManager, pkgName, installPath: cwd}) => ({
-              pkgName,
-              script,
-              cwd: cwd!,
-              pkgManager,
-            })),
-        ),
+    let total = 0;
+    let current = 0;
+    const runManifestsByPkgManager = new Map<PkgManager, RunScriptManifest[]>(
+      this.pkgManagers.map((pkgManager) => {
+        const {pkgInstallManifests} = pkgManager;
+        const runManifests: RunScriptManifest[] = pkgInstallManifests.flatMap(
+          ({installPath: cwd, pkgName}) =>
+            scripts.map((script) => ({script, cwd, pkgName})),
+        );
+        total += runManifests.length;
+        return [pkgManager, runManifests] as [
+          SomePkgManager,
+          RunScriptManifest[],
+        ];
+      }),
     );
 
-    const beginEvtData = buildRunScriptsBeginEventData(runManifests);
-    const notifiers = createScriptRunnerNotifiers(this, beginEvtData.total);
+    const beginEvtData = buildRunScriptsBeginEventData(
+      runManifestsByPkgManager,
+    );
 
     const runScriptFailedListener = () => {
       if (opts.bail) {
         ac.abort();
       }
     };
-    this.once(SmokerEvent.RunScriptFailed, runScriptFailedListener);
+    this.eventBus.onSync(SmokerEvent.RunScriptFailed, runScriptFailedListener);
 
-    await Promise.resolve();
-    this.emit(SmokerEvent.RunScriptsBegin, beginEvtData);
+    await this.eventBus.emit(SmokerEvent.RunScriptsBegin, beginEvtData);
+
     const results: RunScriptResult[] = [];
 
     try {
-      for (const {pkgManager, ...runManifest} of runManifests) {
-        try {
-          results.push(
-            await scriptRunner(notifiers, runManifest, pkgManager, {
-              signal: ac.signal,
-            }),
-          );
-        } catch (err) {
-          if (err instanceof ScriptBailed) {
-            break;
+      for (const [pkgManager, runScriptManifests] of runManifestsByPkgManager) {
+        for (const runScriptManifest of runScriptManifests) {
+          const eventData = {...runScriptManifest, total, current: current++};
+          const {script, pkgName} = runScriptManifest;
+
+          await this.eventBus.emit(SmokerEvent.RunScriptBegin, eventData);
+          let result: RunScriptResult;
+          try {
+            result = await this.runScript(
+              pkgManager,
+              runScriptManifest,
+              ac.signal,
+            );
+          } catch (err) {
+            if (err instanceof ScriptBailed) {
+              break;
+            }
+            if (opts.bail) {
+              ac.abort();
+            }
+            throw err;
           }
-          if (opts.bail) {
-            ac.abort();
+          if (result.error) {
+            debug(
+              'Script "%s" failed in package "%s": %O',
+              script,
+              pkgName,
+              result,
+            );
+            await this.eventBus.emit(SmokerEvent.RunScriptFailed, {
+              ...eventData,
+              error: result.error,
+            });
+          } else {
+            await this.eventBus.emit(SmokerEvent.RunScriptOk, {
+              ...eventData,
+              rawResult: result.rawResult,
+            });
           }
-          throw err;
+          results.push(result);
         }
       }
 
       const endEvtData = buildRunScriptsEndEventData(beginEvtData, results);
       if (endEvtData.failed > 0) {
-        this.emit(SmokerEvent.RunScriptsFailed, endEvtData);
+        await this.eventBus.emit(SmokerEvent.RunScriptsFailed, endEvtData);
       } else {
-        this.emit(SmokerEvent.RunScriptsOk, endEvtData);
+        await this.eventBus.emit(SmokerEvent.RunScriptsOk, endEvtData);
       }
 
       ac.abort();
       return results;
     } finally {
-      this.off(SmokerEvent.RunScriptFailed, runScriptFailedListener);
+      this.eventBus.offSync(
+        SmokerEvent.RunScriptFailed,
+        runScriptFailedListener,
+      );
+    }
+  }
+
+  private executorForSpec(spec: PkgManagerSpec) {
+    return spec.isSystem ? this.defaultExecutor : this.systemExecutor;
+  }
+
+  private async *initPkgManagers(plugins: Readonly<PluginMetadata>[]) {
+    const {cwd, desiredPkgManagers, pkgManagerOpts} = this;
+    for (const plugin of plugins) {
+      const pkgManagerDefSpecs = await plugin.loadPkgManagers({
+        cwd,
+        desiredPkgManagers,
+      });
+      for (const {spec, def} of pkgManagerDefSpecs) {
+        const ctx = await this.createPkgManagerContext(spec, pkgManagerOpts);
+        yield PkgManager.create(def, ctx, plugin);
+      }
     }
   }
 }
 
-export type RunScriptManifestWithPkgMgr = RunScriptManifest & {
-  pkgManager: PkgManager;
-};
+const debug = Debug('midnight-smoker:pkg-manager:controller');

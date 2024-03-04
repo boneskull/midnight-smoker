@@ -1,6 +1,7 @@
 import type {InstallEvents} from '#event/install-events';
+import {type LintEvents} from '#event/lint-events';
 import type {PackEvents} from '#event/pack-events';
-import type {RuleRunnerEvents} from '#event/rule-runner-events';
+import {type ScriptEvents} from '#event/script-events';
 import {
   type BeforeExitEventData,
   type LingeredEventData,
@@ -9,15 +10,15 @@ import {
   type SmokeOkEventData,
   type UnknownErrorEventData,
 } from '#schema/smoker-event';
-import {type ScriptRunnerEvents} from './script-runner-events';
+import {type EventBus} from './bus';
 
 /**
  * Describes the data emitted by each event.
  */
 export type SmokerEvents = InstallEvents &
   PackEvents &
-  RuleRunnerEvents &
-  ScriptRunnerEvents & {
+  LintEvents &
+  ScriptEvents & {
     /**
      * Emitted after all other events have been emitted, and just before exit.
      *
@@ -73,3 +74,5 @@ export type SmokerEvents = InstallEvents &
 // };
 
 // export type SmokerEmitter = Readonly<StrictEmitter<SmokerEvents>>;
+
+export type SmokerEventBus = EventBus<SmokerEvents, SmokerEvents>;

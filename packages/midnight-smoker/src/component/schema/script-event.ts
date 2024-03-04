@@ -1,7 +1,6 @@
 import {RunScriptManifestSchema} from '#schema/run-script-manifest';
 import {RunScriptResultSchema} from '#schema/run-script-result';
-import {zScriptError} from '#schema/script-error';
-import {NonEmptyStringSchema, NonNegativeIntSchema} from '#util/schema-util';
+import {NonNegativeIntSchema} from '#util/schema-util';
 import {z} from 'zod';
 
 export type ScriptEventBaseData = z.infer<typeof ScriptEventBaseDataSchema>;
@@ -42,11 +41,7 @@ export const RunScriptsEndEventDataSchema = RunScriptsEventDataSchema.extend({
   ),
 });
 
-export const ScriptEventBaseDataSchema = z.object({
-  script: NonEmptyStringSchema.describe('Name of the script to run'),
-  pkgName: NonEmptyStringSchema.describe(
-    'Package name in which the script will run',
-  ),
+export const ScriptEventBaseDataSchema = RunScriptManifestSchema.extend({
   total: NonNegativeIntSchema.optional().describe(
     'Total number of scripts to run',
   ),
@@ -57,12 +52,13 @@ export const ScriptEventBaseDataSchema = z.object({
 
 export const ScriptBeginEventDataSchema = ScriptEventBaseDataSchema;
 
-export const ScriptOkEventDataSchema = ScriptEventBaseDataSchema;
+export const ScriptOkEventDataSchema = ScriptEventBaseDataSchema.extend({
+  rawResult: RunScriptResultSchema.shape.rawResult,
+});
 
-export const ScriptFailedEventDataSchema = ScriptEventBaseDataSchema.setKey(
-  'error',
-  zScriptError.describe('Error describing the custom script failure'),
-);
+export const ScriptFailedEventDataSchema = ScriptEventBaseDataSchema.extend({
+  error: RunScriptResultSchema.shape.error,
+});
 
 export type ScriptEventData = {
   RunScriptBegin: ScriptBeginEventData;

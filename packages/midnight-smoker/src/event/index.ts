@@ -4,12 +4,14 @@
  * @module midnight-smoker/event
  */
 
-export * from '#schema/rule-runner-event';
-export * from '#schema/script-runner-event';
+export * from '#schema/lint-event';
+export * from '#schema/script-event';
+export * from './bus';
 export * from './event-constants';
+export * from './event-util';
 export * from './install-events';
+export * from './lint-events';
 export * from './pack-events';
-export * from './rule-runner-events';
-export * from './script-runner-events';
+export * from './script-events';
 export * from './smoker-events';
 export * from './strict-emitter';

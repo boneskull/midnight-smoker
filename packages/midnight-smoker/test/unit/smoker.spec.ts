@@ -1,6 +1,5 @@
 import {InstallEvent, PackEvent, SmokerEvent} from '#event/event-constants';
 import type * as PR from '#plugin/plugin-registry';
-import {type PkgManagerInstallManifest} from '#schema/install-manifest';
 import {type InstallResult} from '#schema/install-result';
 import {type PkgManager} from '#schema/pkg-manager';
 import {NullPkgManagerController} from '@midnight-smoker/test-util/controller';
@@ -24,6 +23,7 @@ import unexpected from 'unexpected';
 import unexpectedEventEmitter from 'unexpected-eventemitter';
 import unexpectedSinon from 'unexpected-sinon';
 import {z} from 'zod';
+import {type PkgManagerInstallManifest} from '../../dist/component/schema/lint-manifest';
 import type {PkgManagerController} from '../../src/controller';
 import type * as MS from '../../src/smoker';
 import * as Mocks from './mocks';
@@ -101,7 +101,7 @@ describe('midnight-smoker', function () {
 
         smoker = await Smoker.createWithCapabilities(
           {script: 'foo'},
-          {registry, pkgManagerController: pmController},
+          {pluginRegistry: registry, pkgManagerController: pmController},
         );
       });
 
@@ -369,7 +369,7 @@ describe('midnight-smoker', function () {
           smoker = await Smoker.createWithCapabilities(
             {ruleRunner: 'run-checks/default'},
             {
-              registry,
+              pluginRegistry: registry,
               pkgManagerController: sandbox.createStubInstance(
                 NullPkgManagerController,
               ),
@@ -522,7 +522,7 @@ describe('midnight-smoker', function () {
           await expect(
             Smoker.createWithCapabilities(
               {workspace: ['foo'], all: true},
-              {registry},
+              {pluginRegistry: registry},
             ),
             'to be rejected with error satisfying',
             /Option "workspace" is mutually exclusive with "all"/,
@@ -532,7 +532,7 @@ describe('midnight-smoker', function () {
         describe('when not passed any scripts at all', function () {
           it('should not throw', async function () {
             await expect(
-              Smoker.createWithCapabilities({}, {registry}),
+              Smoker.createWithCapabilities({}, {pluginRegistry: registry}),
               'to be fulfilled',
             );
           });
@@ -540,7 +540,7 @@ describe('midnight-smoker', function () {
 
         it('should return a Smoker instance', async function () {
           await expect(
-            Smoker.createWithCapabilities({}, {registry}),
+            Smoker.createWithCapabilities({}, {pluginRegistry: registry}),
             'to be fulfilled with value satisfying',
             expect.it('to be a', Smoker),
           );

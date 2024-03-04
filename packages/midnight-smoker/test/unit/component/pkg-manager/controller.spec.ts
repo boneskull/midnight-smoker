@@ -17,7 +17,7 @@ import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedEE from 'unexpected-eventemitter';
 import unexpectedSinon from 'unexpected-sinon';
-import type {ScriptFailedEventData} from '../../../../dist/component/schema/script-runner-event';
+import type {ScriptFailedEventData} from '../../../../dist/component/schema/script-event';
 import type * as Controller from '../../../../src/controller';
 import {createFsMocks} from '../../mocks/fs';
 

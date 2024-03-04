@@ -7,22 +7,16 @@ import {
   type DefinePackageManagerFn,
   type DefineReporterFn,
   type DefineRuleFn,
-  type DefineRuleRunnerFn,
-  type DefineScriptRunnerFn,
   type PluginAPI,
 } from '#plugin/plugin-api';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
 import {type StaticPluginMetadata} from '#plugin/static-metadata';
 import * as RuleNS from '#rule';
-import * as RuleRunnerNS from '#rule-runner';
 import {ExecutorSchema} from '#schema/executor';
 import {PkgManagerDefSchema} from '#schema/pkg-manager-def';
 import {ReporterDefSchema} from '#schema/reporter-def';
 import {RuleDefSchema, type RuleDef} from '#schema/rule-def';
 import {type RuleDefSchemaValue} from '#schema/rule-options';
-import {RuleRunnerSchema} from '#schema/rule-runner';
-import {ScriptRunnerSchema} from '#schema/script-runner';
-import * as ScriptRunnerNS from '#script-runner';
 import * as SchemaUtils from '#util/schema-util';
 import {z} from 'zod';
 import {Helpers} from './helpers';
@@ -54,22 +48,6 @@ export const createPluginAPI = (
     return pluginApi;
   };
 
-  const defineScriptRunner: DefineScriptRunnerFn = (
-    scriptRunner,
-    name = DEFAULT_COMPONENT_ID,
-  ) => {
-    metadata.addScriptRunner(name, ScriptRunnerSchema.parse(scriptRunner));
-    return pluginApi;
-  };
-
-  const defineRuleRunner: DefineRuleRunnerFn = (
-    ruleRunner,
-    name = DEFAULT_COMPONENT_ID,
-  ) => {
-    metadata.addRuleRunner(name, RuleRunnerSchema.parse(ruleRunner));
-    return pluginApi;
-  };
-
   const defineExecutor: DefineExecutorFn = (
     executor,
     name = DEFAULT_COMPONENT_ID,
@@ -89,8 +67,6 @@ export const createPluginAPI = (
     Rule: RuleNS,
     PkgManager: PkgManagerNS,
     Executor: ExecutorNS,
-    RuleRunner: RuleRunnerNS,
-    ScriptRunner: ScriptRunnerNS,
     Event: EventNS,
     z,
     zod: z,
@@ -103,8 +79,6 @@ export const createPluginAPI = (
 
     defineRule,
     definePackageManager,
-    defineScriptRunner,
-    defineRuleRunner,
     defineExecutor,
     defineReporter,
   };

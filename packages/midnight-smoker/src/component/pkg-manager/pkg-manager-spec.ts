@@ -6,9 +6,8 @@
  */
 
 import {DEFAULT_PKG_MANAGER_BIN, DEFAULT_PKG_MANAGER_VERSION} from '#constants';
-import {type StaticPkgManagerSpec} from '#schema/pkg-manager-spec';
+import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {getSystemPkgManagerVersion} from '#util/pkg-util';
-import {instanceofSchema} from '#util/schema-util';
 import {isString} from 'lodash';
 import {parse, type SemVer} from 'semver';
 
@@ -249,8 +248,3 @@ const PKG_MANAGER_SPEC_REGEX = /^([^@]+?)(?:@([^@]+))?$/;
  * private fields don't make it out.
  */
 const semvers = new WeakMap<PkgManagerSpec, SemVer>();
-
-/**
- * Schema for {@link PkgManagerSpec}
- */
-export const PkgManagerSpecSchema = instanceofSchema(PkgManagerSpec);

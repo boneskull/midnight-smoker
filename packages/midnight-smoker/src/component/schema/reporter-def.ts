@@ -17,9 +17,9 @@ import {
   type ReporterWhenCallback,
 } from '#reporter/reporter-def';
 import * as InstallEvents from '#schema/install-event';
+import * as LintEvents from '#schema/lint-event';
 import * as PackEvents from '#schema/pack-event';
-import * as RuleRunnerEvents from '#schema/rule-runner-event';
-import * as ScriptRunnerEvents from '#schema/script-runner-event';
+import * as ScriptRunnerEvents from '#schema/script-event';
 import * as SmokerEvents from '#schema/smoker-event';
 import {
   DefaultFalseSchema,
@@ -69,25 +69,25 @@ export const InstallEventListenerSchemas = {
 
 export const RuleEventListenerSchemas = {
   [`on${RuleEvent.RunRulesBegin}` as const]: eventListenerSchema(
-    RuleRunnerEvents.RunRulesBeginEventDataSchema,
+    LintEvents.RunRulesBeginEventDataSchema,
   ),
   [`on${RuleEvent.RunRuleBegin}` as const]: eventListenerSchema(
-    RuleRunnerEvents.RuleBeginEventDataSchema,
+    LintEvents.RuleBeginEventDataSchema,
   ),
   [`on${RuleEvent.RunRuleOk}` as const]: eventListenerSchema(
-    RuleRunnerEvents.RuleOkEventDataSchema,
+    LintEvents.RuleOkEventDataSchema,
   ),
   [`on${RuleEvent.RunRuleFailed}` as const]: eventListenerSchema(
-    RuleRunnerEvents.RuleFailedEventDataSchema,
+    LintEvents.RuleFailedEventDataSchema,
   ),
   [`on${RuleEvent.RunRulesFailed}` as const]: eventListenerSchema(
-    RuleRunnerEvents.RunRulesFailedEventDataSchema,
+    LintEvents.RunRulesFailedEventDataSchema,
   ),
   [`on${RuleEvent.RunRulesOk}` as const]: eventListenerSchema(
-    RuleRunnerEvents.RunRulesOkEventDataSchema,
+    LintEvents.RunRulesOkEventDataSchema,
   ),
   [`on${RuleEvent.RuleError}` as const]: eventListenerSchema(
-    RuleRunnerEvents.RuleErrorEventDataSchema,
+    LintEvents.RuleErrorEventDataSchema,
   ),
 } as const;
 

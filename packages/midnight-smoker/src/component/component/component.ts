@@ -1,18 +1,22 @@
 import {type ComponentKind} from '#constants';
 import {isBlessedPlugin} from '#plugin/blessed';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
+import {type StaticPluginMetadata} from '#schema';
 // import Debug from 'debug';
 
 // const debug = Debug('midnight-smoker:component');
 
-export interface Component {
+export interface Component extends StaticComponent {
+  readonly plugin: Readonly<PluginMetadata>;
+}
+
+export interface StaticComponent {
   readonly id: string;
   readonly kind: ComponentKind;
   readonly pluginName: string;
-
-  readonly plugin: Readonly<PluginMetadata>;
   readonly componentName: string;
-  isBlessed: boolean;
+  readonly isBlessed: boolean;
+  readonly plugin: StaticPluginMetadata;
 }
 
 /**
@@ -49,11 +53,12 @@ export class ComponentData implements Component {
     return this.id;
   }
 
-  public toJSON(): Component {
+  public toJSON(): StaticComponent {
     return {
       id: this.id,
       kind: this.kind,
       pluginName: this.pluginName,
+      plugin: this.plugin.toJSON(),
       componentName: this.componentName,
       isBlessed: this.isBlessed,
     };

@@ -15,8 +15,6 @@ import {
   type Executor,
   type PkgManagerDef,
   type ReporterDef,
-  type RuleRunner,
-  type ScriptRunner,
   type SomeRule,
 } from '#schema';
 import {
@@ -50,8 +48,6 @@ export type RuleFilter = (rule: SomeRule) => boolean;
  */
 export interface StaticPluginRegistry {
   plugins: StaticPluginMetadata[];
-  scriptRunners: string[];
-  ruleRunners: string[];
   executors: string[];
   pkgManagerDefs: string[];
   reporterDefs: string[];
@@ -62,10 +58,6 @@ export class PluginRegistry {
   private seenRawPlugins: Map<unknown, string>;
 
   private ruleMap: Map<string, SomeRule[]>;
-
-  private scriptRunnerMap: Map<string, ScriptRunner>;
-
-  private ruleRunnerMap: Map<string, RuleRunner>;
 
   private executorMap: Map<string, Executor>;
 
@@ -82,8 +74,6 @@ export class PluginRegistry {
   private constructor() {
     this.pluginMap = new Map();
     this.ruleMap = new Map();
-    this.scriptRunnerMap = new Map();
-    this.ruleRunnerMap = new Map();
     this.executorMap = new Map();
     this.pkgManagerDefMap = new Map();
     this.reporterDefMap = new Map();
@@ -125,8 +115,6 @@ export class PluginRegistry {
    */
   public clear(): void {
     this.ruleMap.clear();
-    this.ruleRunnerMap.clear();
-    this.scriptRunnerMap.clear();
     this.executorMap.clear();
     this.pkgManagerDefMap.clear();
     this.pluginMap.clear();
@@ -140,16 +128,10 @@ export class PluginRegistry {
     return [...this.ruleMap.values()].flat();
   }
 
-  public getScriptRunner(componentId = DEFAULT_COMPONENT_ID) {
-    const value = this.scriptRunnerMap.get(componentId);
-    if (!value) {
-      throw new InvalidComponentError(
-        `ScriptRunner with component ID ${componentId} not found`,
-        ComponentKinds.ScriptRunner,
-        componentId,
-      );
-    }
-    return value;
+  public getPkgManagerDefsByPlugin() {
+    return this.plugins.flatMap((plugin) =>
+      [...plugin.pkgManagerDefMap.values()].map((def) => ({plugin, def})),
+    );
   }
 
   public getExecutor(componentId = DEFAULT_COMPONENT_ID) {
@@ -158,18 +140,6 @@ export class PluginRegistry {
       throw new InvalidComponentError(
         `Executor with component ID ${componentId} not found`,
         ComponentKinds.Executor,
-        componentId,
-      );
-    }
-    return value;
-  }
-
-  public getRuleRunner(componentId = DEFAULT_COMPONENT_ID) {
-    const value = this.ruleRunnerMap.get(componentId);
-    if (!value) {
-      throw new InvalidComponentError(
-        `RuleRunner with component ID ${componentId} not found`,
-        ComponentKinds.RuleRunner,
         componentId,
       );
     }
@@ -475,20 +445,6 @@ export class PluginRegistry {
 
     this.ruleMap.set(metadata.id, [...metadata.ruleMap.values()]);
 
-    for (const component of metadata.scriptRunnerMap.values()) {
-      this.scriptRunnerMap.set(
-        this.componentRegistry.getId(component),
-        component,
-      );
-    }
-
-    for (const component of metadata.ruleRunnerMap.values()) {
-      this.ruleRunnerMap.set(
-        this.componentRegistry.getId(component),
-        component,
-      );
-    }
-
     for (const component of metadata.executorMap.values()) {
       this.executorMap.set(this.componentRegistry.getId(component), component);
     }
@@ -596,8 +552,6 @@ export class PluginRegistry {
   toJSON(): StaticPluginRegistry {
     return {
       plugins: this.plugins,
-      scriptRunners: [...this.scriptRunnerMap.keys()],
-      ruleRunners: [...this.ruleRunnerMap.keys()],
       executors: [...this.executorMap.keys()],
       pkgManagerDefs: [...this.pkgManagerDefMap.keys()],
       reporterDefs: [...this.reporterDefMap.keys()],

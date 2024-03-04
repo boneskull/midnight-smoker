@@ -1,7 +1,6 @@
 export interface Controller {
   init(): Promise<void>;
 
-  destroy?: () => Promise<void>;
-
-  initialized: boolean;
+  [Symbol.dispose]?(): void;
+  [Symbol.asyncDispose]?(): Promise<void>;
 }

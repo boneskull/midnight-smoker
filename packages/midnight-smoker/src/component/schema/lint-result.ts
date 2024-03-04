@@ -2,7 +2,7 @@ import {RuleIssueSchema} from '#schema/rule-issue';
 import {RuleOkSchema} from '#schema/rule-result';
 import {z} from 'zod';
 
-export const RunRulesResultSchema = z
+export const LintResultSchema = z
   .object({
     issues: z
       .array(RuleIssueSchema)
@@ -18,4 +18,4 @@ export const RunRulesResultSchema = z
 /**
  * The result of executing a single {@link Rule}.
  */
-export type RunRulesResult = z.infer<typeof RunRulesResultSchema>;
+export type LintResult = z.infer<typeof LintResultSchema>;

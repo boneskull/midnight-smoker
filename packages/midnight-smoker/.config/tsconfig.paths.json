@@ -23,12 +23,10 @@
       "#plugin/*": ["../src/plugin/*.js"],
       "#reporter": ["../src/component/reporter/index.js"],
       "#reporter/*": ["../src/component/reporter/*.js"],
-      "#rule-runner": ["../src/component/rule-runner/index.js"],
       "#rule": ["../src/component/rule/index.js"],
       "#rule/*": ["../src/component/rule/*.js"],
       "#schema": ["../src/component/schema/index.js"],
       "#schema/*": ["../src/component/schema/*.js"],
-      "#script-runner": ["../src/component/script-runner/index.js"],
       "#smoker": ["../src/smoker.js"],
       "#util": ["../src/util/index.js"],
       "#util/*": ["../src/util/*.js"]

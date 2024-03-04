@@ -5,6 +5,7 @@
  */
 
 export * as Blessed from './blessed';
+export * from './fs-helpers';
 export * from './helpers';
 export * from './plugin';
 export * from './plugin-api';

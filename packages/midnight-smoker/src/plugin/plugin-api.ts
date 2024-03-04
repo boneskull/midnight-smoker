@@ -3,8 +3,6 @@ import type * as Executor from '#executor';
 import type * as PkgManager from '#pkg-manager';
 import type * as Reporter from '#reporter';
 import type * as Rule from '#rule';
-import type * as RuleRunner from '#rule-runner';
-import type * as ScriptRunner from '#script-runner';
 import type * as SchemaUtils from '#util/schema-util';
 import type {z} from 'zod';
 import type * as Helpers from './helpers';
@@ -25,22 +23,6 @@ export type DefineRuleFn = <
  */
 export type DefinePackageManagerFn = (
   packageManager: PkgManager.PkgManagerDef,
-  name?: string,
-) => PluginAPI;
-
-/**
- * Defines a new {@link ScriptRunner} component
- */
-export type DefineScriptRunnerFn = (
-  scriptRunner: ScriptRunner.ScriptRunner,
-  name?: string,
-) => PluginAPI;
-
-/**
- * Defines a new {@link RuleRunner} component
- */
-export type DefineRuleRunnerFn = (
-  ruleRunner: RuleRunner.RuleRunner,
   name?: string,
 ) => PluginAPI;
 
@@ -83,20 +65,10 @@ export interface PluginAPI {
   Rule: typeof Rule;
 
   /**
-   * Namespace related to `RuleRunner`s.
-   */
-  RuleRunner: typeof RuleRunner;
-
-  /**
    * Some useful pre-rolled {@link z zod} schemas; mainly useful for {@link Rule}
    * schemas.
    */
   SchemaUtils: typeof SchemaUtils;
-
-  /**
-   * Namespace related to `ScriptRunner`s
-   */
-  ScriptRunner: typeof ScriptRunner;
 
   /**
    * Namespace related to events
@@ -140,16 +112,6 @@ export interface PluginAPI {
    * ```
    */
   defineRule: DefineRuleFn;
-
-  /**
-   * Defines a {@link RuleRunner.RuleRunner} component
-   */
-  defineRuleRunner: DefineRuleRunnerFn;
-
-  /**
-   * Defines a {@link ScriptRunner.ScriptRunner} component
-   */
-  defineScriptRunner: DefineScriptRunnerFn;
 
   /**
    * Defines a {@link Reporter.ReporterDef} component

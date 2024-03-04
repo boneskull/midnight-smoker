@@ -1,10 +1,7 @@
-import {NonEmptyStringSchema} from '#util/schema-util';
-import {z} from 'zod';
+import {PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
+import {instanceofSchema} from '#util/schema-util';
 
-export type StaticPkgManagerSpec = z.infer<typeof StaticPkgManagerSpecSchema>;
-
-export const StaticPkgManagerSpecSchema = z.object({
-  pkgManager: NonEmptyStringSchema,
-  version: NonEmptyStringSchema,
-  isSystem: z.boolean(),
-});
+/**
+ * Schema for {@link PkgManagerSpec}
+ */
+export const PkgManagerSpecSchema = instanceofSchema(PkgManagerSpec);

@@ -6,9 +6,10 @@ import {
   type RunRulesBeginEventData,
   type RunRulesFailedEventData,
   type RunRulesOkEventData,
-} from '#schema/rule-runner-event';
+} from '#schema/lint-event';
+import {type EventBus} from './bus';
 
-export type RuleRunnerEvents = {
+export type LintEvents = {
   /**
    * Emitted when a rule begins execution.
    *
@@ -67,3 +68,5 @@ export type RuleRunnerEvents = {
    */
   RuleError: RuleErrorEventData;
 };
+
+export type LintEventBus = EventBus<LintEvents, LintEvents>;

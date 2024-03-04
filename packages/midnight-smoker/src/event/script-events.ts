@@ -5,9 +5,9 @@ import {
   type ScriptBeginEventData,
   type ScriptFailedEventData,
   type ScriptOkEventData,
-} from '#schema/script-runner-event';
+} from '#schema/script-event';
 
-export type ScriptRunnerEvents = {
+export type ScriptEvents = {
   /**
    * Emitted just before a custom script is about to be run in a package's temp
    * directory (post-{@link InstallOk})

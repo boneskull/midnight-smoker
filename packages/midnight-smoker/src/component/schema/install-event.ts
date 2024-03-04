@@ -8,7 +8,7 @@ import {
   instanceofSchema,
 } from '#util/schema-util';
 import {z} from 'zod';
-import {StaticPkgManagerSpecSchema} from './pkg-manager-spec';
+import {StaticPkgManagerSpecSchema} from './static-pkg-manager-spec';
 
 export type InstallBeginEventData = z.infer<typeof InstallBeginEventDataSchema>;
 export type InstallEventBaseData = z.infer<typeof InstallEventBaseDataSchema>;

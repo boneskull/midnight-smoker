@@ -33,6 +33,11 @@ export interface LoadPackageManagersOpts {
   desiredPkgManagers?: Array<string | Readonly<PkgManagerSpec>>;
 }
 
+export interface PkgManagerDefSpec {
+  spec: PkgManagerSpec;
+  def: PkgManagerDef;
+}
+
 /**
  * Makes {@link PkgManager PackageManagers} out of
  * {@link PkgManagerDef PkgManagerDefs}.
@@ -60,7 +65,7 @@ export interface LoadPackageManagersOpts {
 export async function loadPackageManagers(
   pkgManagerDefs: PkgManagerDef[],
   opts: LoadPackageManagersOpts = {},
-): Promise<Map<Readonly<PkgManagerSpec>, PkgManagerDef>> {
+): Promise<PkgManagerDefSpec[]> {
   const {cwd = process.cwd(), desiredPkgManagers = []} = opts;
   const specs = await getPkgManagerSpecs(
     pkgManagerDefs,
@@ -126,7 +131,7 @@ const matchPkgManager = curry(_matchPkgManager);
 export function matchPkgManagers(
   pkgManagerDefs: PkgManagerDef[],
   pkgManagerSpecs: Readonly<PkgManagerSpec>[],
-): Map<PkgManagerSpec, PkgManagerDef> {
+): PkgManagerDefSpec[] {
   if (!pkgManagerDefs?.length) {
     throw new InvalidArgError('pkgManagerDefs must be a non-empty array', {
       argName: 'pkgManagerDefs',
@@ -140,30 +145,26 @@ export function matchPkgManagers(
     });
   }
 
-  return pkgManagerSpecs.reduce<Map<PkgManagerSpec, PkgManagerDef>>(
-    (acc, spec) => {
-      let def: PkgManagerDef | undefined;
-      let normalizedVersion: SemVer | string | undefined;
+  return pkgManagerSpecs.map((spec) => {
+    let def: PkgManagerDef | undefined;
+    let normalizedVersion: SemVer | string | undefined;
 
-      for (const pmDef of pkgManagerDefs) {
-        const value = matchPkgManager(spec, pmDef);
-        if (value) {
-          def = pmDef;
-          normalizedVersion = value;
-          break;
-        }
+    for (const pmDef of pkgManagerDefs) {
+      const value = matchPkgManager(spec, pmDef);
+      if (value) {
+        def = pmDef;
+        normalizedVersion = value;
+        break;
       }
+    }
 
-      if (!def) {
-        throw new UnsupportedPackageManagerError(
-          `No PackageManager component found that can handle "${spec}"`,
-          spec.pkgManager,
-          spec.version,
-        );
-      }
-      acc.set(spec.clone({version: normalizedVersion}), def);
-      return acc;
-    },
-    new Map(),
-  );
+    if (!def) {
+      throw new UnsupportedPackageManagerError(
+        `No PackageManager component found that can handle "${spec}"`,
+        spec.pkgManager,
+        spec.version,
+      );
+    }
+    return {spec: spec.clone({version: normalizedVersion}), def};
+  });
 }
