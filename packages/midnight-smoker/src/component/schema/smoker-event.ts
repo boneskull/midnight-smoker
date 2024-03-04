@@ -1,12 +1,8 @@
 import {SmokeFailedError} from '#error/smoker-error';
-import {type SmokerEvent} from '#event/event-constants';
+import {type SmokerEvents} from '#event';
 import {BaseSmokerOptionsSchema} from '#options/options';
-import {type InstallEventData} from '#schema/install-event';
-import {type RuleEventData} from '#schema/lint-event';
 import {LintResultSchema} from '#schema/lint-result';
-import {type PackEventData} from '#schema/pack-event';
 import {RunScriptResultSchema} from '#schema/run-script-result';
-import {type ScriptEventData} from '#schema/script-event';
 import {StaticPluginMetadataSchema} from '#schema/static-plugin-metadata';
 import {
   NonEmptyNonEmptyStringArraySchema,
@@ -87,35 +83,14 @@ export const UnknownErrorEventDataSchema = z.object({
 });
 
 /**
- * Mapping of all events + data that emitted only by the `Smoker` class
- */
-export type SmokerEventData = {
-  [SmokerEvent.BeforeExit]: BeforeExitEventData;
-  [SmokerEvent.Lingered]: LingeredEventData;
-  [SmokerEvent.SmokeBegin]: SmokeBeginEventData;
-  [SmokerEvent.SmokeFailed]: SmokeFailedEventData;
-  [SmokerEvent.SmokeOk]: SmokeOkEventData;
-  [SmokerEvent.UnknownError]: UnknownErrorEventData;
-};
-
-/**
  * The final result type of a `midnight-smoker` run
  */
 export type SmokeResults = SmokeOkEventData;
 
 /**
- * Mapping of all events + data that can be emitted by `midnight-smoker`.
- */
-export type AllEventData = SmokerEventData &
-  InstallEventData &
-  PackEventData &
-  ScriptEventData &
-  RuleEventData;
-
-/**
  * All events emitted by `midnight-smoker`
  */
-export type EventKind = keyof AllEventData;
+export type EventKind = keyof SmokerEvents;
 
 /**
  * Data associated with a specific event
@@ -123,5 +98,5 @@ export type EventKind = keyof AllEventData;
  * @template T - The event
  */
 export type EventData<T extends EventKind = EventKind> = {
-  [K in T]: {event: K} & AllEventData[K];
+  [K in T]: {event: K} & SmokerEvents[K];
 }[T];

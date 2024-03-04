@@ -9,6 +9,9 @@ import {type PkgInstallManifest} from '#schema/pkg-install-manifest';
 import {
   type PkgManagerContext,
   type PkgManagerDef,
+  type SomePkgManagerInstallContext,
+  type SomePkgManagerPackContext,
+  type SomePkgManagerRunScriptContext,
   type SupportedVersionRange,
 } from '#schema/pkg-manager-def';
 import {type RunScriptManifest} from '#schema/run-script-manifest';
@@ -101,7 +104,7 @@ export class PkgManager<Ctx = unknown> extends ReifiedComponent<PkgManagerDef> {
         new Error('No packages to install'),
       );
     }
-    const ctx = {...this.ctx, installManifests};
+    const ctx: SomePkgManagerInstallContext = {...this.ctx, installManifests};
     const rawResult = await this.def.install(ctx);
     this.#installResult = {
       rawResult,
@@ -110,7 +113,7 @@ export class PkgManager<Ctx = unknown> extends ReifiedComponent<PkgManagerDef> {
   }
 
   public async pack(opts: PackOptions = {}): Promise<void> {
-    const ctx = {...this.ctx, ...opts};
+    const ctx: SomePkgManagerPackContext = {...this.ctx, ...opts};
     this.#installManifests = await this.def.pack(ctx);
 
     for (const manifest of this.#installManifests) {
@@ -129,8 +132,12 @@ export class PkgManager<Ctx = unknown> extends ReifiedComponent<PkgManagerDef> {
     runManifest: RunScriptManifest,
     signal: AbortSignal,
   ): Promise<RunScriptResult> {
-    const ctx = {...this.ctx, ...runManifest};
-    return this.def.runScript(ctx, {signal});
+    const ctx: SomePkgManagerRunScriptContext = {
+      ...this.ctx,
+      runManifest,
+      signal,
+    };
+    return this.def.runScript(ctx);
   }
 
   public async setup(): Promise<void> {

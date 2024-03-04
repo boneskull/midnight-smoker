@@ -19,7 +19,7 @@ import {
 import * as InstallEvents from '#schema/install-event';
 import * as LintEvents from '#schema/lint-event';
 import * as PackEvents from '#schema/pack-event';
-import * as ScriptRunnerEvents from '#schema/script-event';
+import * as ScriptEvents from '#schema/script-event';
 import * as SmokerEvents from '#schema/smoker-event';
 import {
   DefaultFalseSchema,
@@ -93,22 +93,22 @@ export const RuleEventListenerSchemas = {
 
 export const ScriptEventListenerSchemas = {
   [`on${RunScriptEvent.RunScriptBegin}` as const]: eventListenerSchema(
-    ScriptRunnerEvents.ScriptBeginEventDataSchema,
+    ScriptEvents.ScriptBeginEventDataSchema,
   ),
   [`on${RunScriptEvent.RunScriptOk}` as const]: eventListenerSchema(
-    ScriptRunnerEvents.ScriptOkEventDataSchema,
+    ScriptEvents.ScriptOkEventDataSchema,
   ),
   [`on${RunScriptEvent.RunScriptFailed}` as const]: eventListenerSchema(
-    ScriptRunnerEvents.ScriptFailedEventDataSchema,
+    ScriptEvents.ScriptFailedEventDataSchema,
   ),
   [`on${RunScriptEvent.RunScriptsBegin}` as const]: eventListenerSchema(
-    ScriptRunnerEvents.RunScriptsEventDataSchema,
+    ScriptEvents.RunScriptsEventDataSchema,
   ),
   [`on${RunScriptEvent.RunScriptsOk}` as const]: eventListenerSchema(
-    ScriptRunnerEvents.RunScriptsEndEventDataSchema,
+    ScriptEvents.RunScriptsEndEventDataSchema,
   ),
   [`on${RunScriptEvent.RunScriptsFailed}` as const]: eventListenerSchema(
-    ScriptRunnerEvents.RunScriptsEndEventDataSchema,
+    ScriptEvents.RunScriptsEndEventDataSchema,
   ),
 } as const;
 

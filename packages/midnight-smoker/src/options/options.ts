@@ -101,13 +101,6 @@ const smokerOptionsShape = {
   script: NonEmptyStringToArraySchema.describe('Script(s) to run.'),
 
   /**
-   * ScriptRunners(s) to use.
-   */
-  scriptRunner: NonEmptyStringSchema.describe(
-    'Component ID of ScriptRunner implementation',
-  ).default(DEFAULT_COMPONENT_ID),
-
-  /**
    * Verbose logging
    */
   verbose: DefaultFalseSchema.describe('Verbose logging'),
@@ -127,14 +120,10 @@ const smokerOptionsShape = {
 
 export const BaseSmokerOptionsSchema = z
   .object(smokerOptionsShape)
-  // .extend(
-  //   mapKeys(smokerOptionsShape, (_, key) => kebabCase(key)) as CamelCasedObject<
-  //     typeof smokerOptionsShape
-  //   >,
-  // )
-  .setKey('include-root', smokerOptionsShape.includeRoot)
-  .setKey('script-runner', smokerOptionsShape.scriptRunner)
-  .setKey('pkg-manager', smokerOptionsShape.pkgManager)
+  .extend({
+    'include-root': smokerOptionsShape.includeRoot,
+    'pkg-manager': smokerOptionsShape.pkgManager,
+  })
   .describe('midnight-smoker options schema');
 
 /**

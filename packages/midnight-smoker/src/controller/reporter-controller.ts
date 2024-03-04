@@ -2,6 +2,7 @@ import {fromUnknownError} from '#error/base-error';
 import {ReporterError} from '#error/reporter-error';
 import {type EventBus, type EventContext} from '#event/bus';
 import {SmokerEvent} from '#event/event-constants';
+import {type SmokerEvents} from '#event/smoker-events';
 import {type SmokerOptions} from '#options';
 import {type PluginMetadata} from '#plugin';
 import {Reporter, type SomeReporter} from '#reporter/reporter';
@@ -11,7 +12,7 @@ import {
   type ReporterDef,
   type ReporterListeners,
 } from '#schema/reporter-def';
-import {type AllEventData, type EventData} from '#schema/smoker-event';
+import {type EventData} from '#schema/smoker-event';
 import {once} from '#util';
 import {readSmokerPkgJson} from '#util/pkg-util';
 import {type AsyncHandler} from 'async-mitt';
@@ -35,10 +36,10 @@ type ReporterStreams = {
  * Handles the setup, teardown, and invocation of {@link Reporter} methods
  */
 export class ReporterController implements Controller {
-  private readonly eventCtx: EventContext<AllEventData, AllEventData>;
+  private readonly eventCtx: EventContext<SmokerEvents, SmokerEvents>;
 
   constructor(
-    private readonly eventBus: EventBus<AllEventData, AllEventData>,
+    private readonly eventBus: EventBus<SmokerEvents, SmokerEvents>,
     private readonly pluginReporterDefs: PluginReporterDef[],
     private readonly opts: Readonly<SmokerOptions>,
   ) {
@@ -165,7 +166,7 @@ export class ReporterController implements Controller {
           methodName as keyof typeof ReporterListenerEventMap
         ];
 
-      const listener: AsyncHandler<AllEventData[typeof event]> = async (
+      const listener: AsyncHandler<SmokerEvents[typeof event]> = async (
         data,
       ) => {
         debug('%s - saw event %s', reporter, event);
@@ -214,6 +215,14 @@ export class ReporterController implements Controller {
     this.bindListeners(reporter);
 
     return reporter;
+  }
+
+  public static create(
+    eventBus: EventBus<SmokerEvents, SmokerEvents>,
+    pluginReporterDefs: PluginReporterDef[],
+    opts: SmokerOptions,
+  ): ReporterController {
+    return new ReporterController(eventBus, pluginReporterDefs, opts);
   }
 }
 

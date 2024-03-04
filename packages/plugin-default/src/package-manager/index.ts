@@ -1,4 +1,3 @@
-import type * as PkgManager from 'midnight-smoker/pkg-manager';
 import type {PluginAPI} from 'midnight-smoker/plugin';
 import Npm7 from './npm7';
 import Npm9 from './npm9';
@@ -10,10 +9,10 @@ const packageManagers = {
   Npm9,
   YarnClassic,
   YarnBerry,
-} as const satisfies Record<string, PkgManager.PkgManagerDef>;
+} as const;
 
 export function loadPkgManagers(api: PluginAPI) {
-  for (const [name, pkgManager] of Object.entries(packageManagers)) {
-    api.definePackageManager(pkgManager, name);
+  for (const [name, Ctor] of Object.entries(packageManagers)) {
+    api.definePackageManager(new Ctor(), name);
   }
 }

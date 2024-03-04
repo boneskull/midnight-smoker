@@ -1,26 +1,22 @@
 import type Debug from 'debug';
 import {pickBy} from 'lodash';
-import {InstallError, InvalidArgError} from 'midnight-smoker/error';
+import {type ScriptError} from 'midnight-smoker/error';
 import {
   ExecError,
-  type ExecResult,
-  type Executor,
-} from 'midnight-smoker/executor';
-import {
-  type InstallManifest,
-  type PackOptions,
-  type PkgManager,
-  type PkgManagerOpts,
-  type PkgManagerRunScriptFnOpts,
-  type PkgManagerSpec,
-} from 'midnight-smoker/pkg-manager';
-import {
+  InstallError,
+  InvalidArgError,
   RunScriptError,
   ScriptFailedError,
   UnknownScriptError,
-  type RunScriptManifest,
+  type ExecResult,
+  type InstallManifest,
+  type PkgManagerAcceptsResult,
+  type PkgManagerDef,
+  type PkgManagerInstallContext,
+  type PkgManagerPackContext,
+  type PkgManagerRunScriptContext,
   type RunScriptResult,
-} from 'midnight-smoker/script-runner';
+} from 'midnight-smoker/pkg-manager';
 import {isSmokerError} from 'midnight-smoker/util';
 
 /**
@@ -78,105 +74,69 @@ export interface NpmPackItem {
 /**
  * Intended to provide whatever we can that's common to all versions of `npm`.
  */
-export abstract class GenericNpmPackageManager implements PkgManager {
+export abstract class BaseNpmPackageManager implements PkgManagerDef {
   protected abstract debug: Debug.Debugger;
 
-  public static readonly lockfile = 'package-lock.json';
+  public abstract accepts(value: string): PkgManagerAcceptsResult;
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  public static accepts(value: string) {}
+  public abstract install(ctx: PkgManagerInstallContext): Promise<ExecResult>;
 
-  /**
-   * @param spec - Package manager name and version
-   * @param executor - Executor instance
-   * @param tmpdir - Temporary directory
-   * @param opts - Extra options
-   */
-  public constructor(
-    public readonly spec: PkgManagerSpec,
-    protected readonly executor: Executor,
-    public readonly tmpdir: string,
-    protected readonly opts: PkgManagerOpts = {},
-  ) {}
+  public abstract pack(ctx: PkgManagerPackContext): Promise<InstallManifest[]>;
 
-  public abstract install(
-    installManifest: InstallManifest[],
-  ): Promise<ExecResult>;
+  public readonly bin = 'npm';
+  public readonly lockfile = 'package-lock.json';
 
-  public abstract pack(opts?: PackOptions): Promise<InstallManifest[]>;
+  public async runScript({
+    executor,
+    loose,
+    spec,
+    runScriptManifest,
+    signal,
+  }: PkgManagerRunScriptContext): Promise<RunScriptResult> {
+    const {script, pkgName, cwd} = runScriptManifest;
 
-  public async runScript(
-    manifest: RunScriptManifest,
-    opts: PkgManagerRunScriptFnOpts = {},
-  ): Promise<RunScriptResult> {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (!manifest) {
-      throw new InvalidArgError(
-        'manifest must be a valid RunScriptManifest object',
-        {argName: 'manifest'},
-      );
-    }
-    const {script, pkgName, cwd} = manifest;
-    const {signal} = opts;
-    let result: RunScriptResult;
+    let rawResult: ExecResult | undefined;
+    let error: ScriptError | undefined;
+    let skipped = false;
     try {
-      const rawResult = await this.executor(
-        this.spec,
+      rawResult = await executor(
+        spec,
         ['run', '--json', script],
         {signal},
         {cwd},
       );
-      result = {pkgName, script, rawResult, cwd};
     } catch (e) {
       const err = e as ExecError;
-      if (err?.id === 'ExecError') {
-        result = {
-          pkgName,
-          script,
-          rawResult: err,
-          cwd,
-        };
-        if (this.opts.loose && /missing script:/i.test(err.stderr)) {
-          result.skipped = true;
-        } else {
-          result.error = new RunScriptError(
-            err,
-            script,
-            pkgName,
-            `${this.spec}`,
-          );
-        }
+      if (loose && /missing script:/i.test(err.stderr)) {
+        skipped = true;
       } else {
-        throw err;
+        error = new RunScriptError(err, script, pkgName, `${spec}`);
       }
     }
 
-    if (!result.error && !result.skipped && result.rawResult.failed) {
-      if (
-        result.rawResult.stderr &&
-        /missing script:/i.test(result.rawResult.stderr)
-      ) {
-        if (!this.opts.loose) {
-          result.error = new UnknownScriptError(
+    if (rawResult) {
+      if (rawResult.failed) {
+        if (loose && /missing script:/i.test(rawResult.stderr)) {
+          skipped = true;
+        } else {
+          error = new UnknownScriptError(
             `Script "${script}" in package "${pkgName}" not found`,
             script,
             pkgName,
           );
-        } else {
-          result.skipped = true;
         }
       } else {
         let message: string;
-        const {exitCode, command, all, stderr, stdout} = result.rawResult;
+        const {exitCode, command, all, stderr, stdout} = rawResult;
         if (exitCode) {
           message = `Script "${script}" in package "${pkgName}" failed with exit code ${exitCode}`;
         } else {
           message = `Script "${script}" in package "${pkgName}" failed`;
         }
-        result.error = new ScriptFailedError(message, {
+        error = new ScriptFailedError(message, {
           script,
           pkgName,
-          pkgManager: `${this.spec}`,
+          pkgManager: `${spec}`,
           command,
           exitCode,
           output: all || stderr || stdout,
@@ -184,9 +144,17 @@ export abstract class GenericNpmPackageManager implements PkgManager {
       }
     }
 
-    if (result.error) {
+    const result: RunScriptResult = {rawResult, error, skipped};
+
+    if ('error' in result) {
       this.debug(
         `(runScripts) Script "%s" in package "%s" failed; continuing...`,
+        script,
+        pkgName,
+      );
+    } else if (result.skipped) {
+      this.debug(
+        '(runScripts) Skipped script %s in package %s; script not found',
         script,
         pkgName,
       );
@@ -201,9 +169,10 @@ export abstract class GenericNpmPackageManager implements PkgManager {
     return result;
   }
   protected async _install(
-    installManifests: InstallManifest[],
+    ctx: PkgManagerInstallContext,
     args: string[],
   ): Promise<ExecResult> {
+    const {executor, installManifests, spec, tmpdir} = ctx;
     if (!installManifests.length) {
       throw new InvalidArgError('installManifests must be a non-empty array', {
         argName: 'installManifests',
@@ -216,16 +185,11 @@ export abstract class GenericNpmPackageManager implements PkgManager {
 
     let installResult: ExecResult;
     try {
-      installResult = await this.executor(
-        this.spec,
-        installArgs,
-        {},
-        {cwd: this.tmpdir},
-      );
-      err = this.handleInstallError(installResult, installSpecs);
+      installResult = await executor(spec, installArgs, {}, {cwd: tmpdir});
+      err = this.handleInstallError(ctx, installResult, installSpecs);
     } catch (e) {
       if (isSmokerError(ExecError, e)) {
-        err = this.handleInstallError(e, installSpecs);
+        err = this.handleInstallError(ctx, e, installSpecs);
       } else {
         throw e;
       }
@@ -238,6 +202,7 @@ export abstract class GenericNpmPackageManager implements PkgManager {
   }
 
   protected handleInstallError(
+    {tmpdir, spec}: PkgManagerInstallContext,
     errOrResult: ExecError | ExecResult,
     installSpecs: string[],
   ): InstallError | undefined {
@@ -246,9 +211,9 @@ export abstract class GenericNpmPackageManager implements PkgManager {
         const parsedError = this.parseNpmError(errOrResult.stdout);
         return new InstallError(
           parsedError.summary,
-          `${this.spec}`,
+          `${spec}`,
           installSpecs,
-          this.tmpdir,
+          tmpdir,
           {
             error: parsedError,
             output: errOrResult.all || errOrResult.stderr || errOrResult.stdout,
@@ -259,9 +224,9 @@ export abstract class GenericNpmPackageManager implements PkgManager {
       } catch (e) {
         return new InstallError(
           `Unable to parse npm output. Use --verbose for more information`,
-          `${this.spec}`,
+          `${spec}`,
           installSpecs,
-          this.tmpdir,
+          tmpdir,
           {
             output: errOrResult.all || errOrResult.stderr || errOrResult.stdout,
             exitCode: errOrResult.exitCode,
@@ -272,9 +237,9 @@ export abstract class GenericNpmPackageManager implements PkgManager {
     } else if (errOrResult.exitCode > 0 || errOrResult instanceof Error) {
       return new InstallError(
         `Use --verbose for more information`,
-        `${this.spec}`,
+        `${spec}`,
         installSpecs,
-        this.tmpdir,
+        tmpdir,
         {
           output: errOrResult.all || errOrResult.stderr || errOrResult.stdout,
           exitCode: errOrResult.exitCode,

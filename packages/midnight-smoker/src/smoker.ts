@@ -179,15 +179,20 @@ export class Smoker {
 
     this.pkgManagerController =
       pkgManagerController ??
-      new PkgManagerController(pluginRegistry, this.eventBus, opts.pkgManager, {
-        verbose: opts.verbose,
-        loose: opts.loose,
-        defaultExecutorId: opts.executor,
-      });
+      PkgManagerController.create(
+        pluginRegistry,
+        this.eventBus,
+        opts.pkgManager,
+        {
+          verbose: opts.verbose,
+          loose: opts.loose,
+          defaultExecutorId: opts.executor,
+        },
+      );
 
     this.reporterController =
       reporterController ??
-      new ReporterController(
+      ReporterController.create(
         this.eventBus,
         this.getEnabledReportersByPlugin(),
         this.opts,
@@ -559,7 +564,7 @@ export class Smoker {
 
     const aggregateErrors = () => {
       const runScriptErrors = runScriptResults.reduce<ScriptError[]>(
-        (acc, result) => (result.error ? [...acc, result.error] : acc),
+        (acc, result) => ('error' in result ? [...acc, result.error] : acc),
         [],
       );
 

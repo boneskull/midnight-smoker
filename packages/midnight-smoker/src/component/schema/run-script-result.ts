@@ -3,6 +3,20 @@ import {ExecResultSchema} from './exec-result';
 import {ScriptErrorSchema} from './script-error';
 
 /**
+ * The error if the script failed.
+ */
+export const ScriptResultErrorSchema = ScriptErrorSchema.describe(
+  'Error if abnormal failure (not a script failure)',
+);
+
+/**
+ * The raw result of running the script.
+ */
+export const ScriptResultRawResultSchema = ExecResultSchema.describe(
+  'Raw result of running the script',
+);
+
+/**
  * Describes the result of running a custom script.
  *
  * The contents of this object describe whether the script failed (and how) or
@@ -10,19 +24,9 @@ import {ScriptErrorSchema} from './script-error';
  */
 export const RunScriptResultSchema = z
   .object({
-    /**
-     * The error if the script failed.
-     */
-    error: ScriptErrorSchema.optional().describe(
-      'Error if abnormal failure (not a script failure)',
-    ),
-
-    /**
-     * The raw result of running the script.
-     */
-    rawResult: ExecResultSchema.optional().describe(
-      'Raw result of running the script',
-    ),
+    rawResult: ScriptResultRawResultSchema.optional(),
+    skipped: z.boolean(),
+    error: ScriptResultErrorSchema.optional(),
   })
   .describe('The result of running a single custom script');
 

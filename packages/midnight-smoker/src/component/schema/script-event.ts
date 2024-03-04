@@ -1,5 +1,9 @@
 import {RunScriptManifestSchema} from '#schema/run-script-manifest';
-import {RunScriptResultSchema} from '#schema/run-script-result';
+import {
+  RunScriptResultSchema,
+  ScriptResultErrorSchema,
+  ScriptResultRawResultSchema,
+} from '#schema/run-script-result';
 import {NonNegativeIntSchema} from '#util/schema-util';
 import {z} from 'zod';
 
@@ -53,12 +57,20 @@ export const ScriptEventBaseDataSchema = RunScriptManifestSchema.extend({
 export const ScriptBeginEventDataSchema = ScriptEventBaseDataSchema;
 
 export const ScriptOkEventDataSchema = ScriptEventBaseDataSchema.extend({
-  rawResult: RunScriptResultSchema.shape.rawResult,
+  rawResult: ScriptResultRawResultSchema,
 });
 
 export const ScriptFailedEventDataSchema = ScriptEventBaseDataSchema.extend({
-  error: RunScriptResultSchema.shape.error,
+  error: ScriptResultErrorSchema,
 });
+
+export const ScriptSkippedEventDataSchema = ScriptEventBaseDataSchema.extend({
+  skipped: z.literal(true),
+});
+
+export type ScriptSkippedEventData = z.infer<
+  typeof ScriptSkippedEventDataSchema
+>;
 
 export type ScriptEventData = {
   RunScriptBegin: ScriptBeginEventData;
@@ -67,4 +79,5 @@ export type ScriptEventData = {
   RunScriptsBegin: RunScriptsBeginEventData;
   RunScriptsOk: RunScriptsOkEventData;
   RunScriptsFailed: RunScriptsFailedEventData;
+  ScriptSkipped: ScriptSkippedEventData;
 };

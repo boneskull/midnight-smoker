@@ -1,64 +1,36 @@
 import Debug from 'debug';
 import {isError} from 'lodash';
 import {PackError, PackParseError} from 'midnight-smoker/error';
-import {
-  type ExecError,
-  type ExecResult,
-  type Executor,
-} from 'midnight-smoker/executor';
+import {type ExecError, type ExecResult} from 'midnight-smoker/executor';
 import {
   normalizeVersion,
   type InstallManifest,
-  type PackOptions,
-  type PkgManager,
-  type PkgManagerDef,
-  type PkgManagerOpts,
-  type PkgManagerSpec,
+  type PkgManagerInstallContext,
+  type PkgManagerPackContext,
 } from 'midnight-smoker/pkg-manager';
-import {type PluginHelpers} from 'midnight-smoker/plugin';
 import path from 'node:path';
 import {Range} from 'semver';
 import {npmVersionData} from './data';
-import {GenericNpmPackageManager, type NpmPackItem} from './npm';
+import {BaseNpmPackageManager, type NpmPackItem} from './npm';
 
-export class Npm7 extends GenericNpmPackageManager implements PkgManager {
-  protected debug: Debug.Debugger;
+export class Npm7 extends BaseNpmPackageManager {
+  protected override debug = Debug(`midnight-smoker:pm:npm7`);
 
-  public static readonly bin = 'npm';
-  public static readonly supportedVersionRange = new Range('^7.0.0 || ^8.0.0');
+  public override readonly supportedVersionRange = new Range(
+    '^7.0.0 || ^8.0.0',
+  );
 
-  public constructor(
-    spec: PkgManagerSpec,
-    executor: Executor,
-    tmpdir: string,
-    opts: PkgManagerOpts = {},
-  ) {
-    super(spec, executor, tmpdir, opts);
-    this.debug = Debug(`midnight-smoker:pm:npm7`);
-  }
-
-  public static accepts(value: string) {
+  public override accepts(value: string) {
     const version = normalizeVersion(npmVersionData, value);
-    if (version && Npm7.supportedVersionRange.test(version)) {
+    if (version && this.supportedVersionRange.test(version)) {
       return version;
     }
   }
 
-  public static async create(
-    this: void,
-    spec: PkgManagerSpec,
-    executor: Executor,
-    helpers: PluginHelpers,
-    opts?: PkgManagerOpts,
-  ) {
-    const tempdir = await helpers.createTempDir();
-    return new Npm7(spec, executor, tempdir, opts);
-  }
-
-  public async install(
-    installManifests: InstallManifest[],
+  public override async install(
+    ctx: PkgManagerInstallContext,
   ): Promise<ExecResult> {
-    return this._install(installManifests, [
+    return this._install(ctx, [
       '--no-audit',
       '--no-package-lock',
       '--global-style',
@@ -66,21 +38,23 @@ export class Npm7 extends GenericNpmPackageManager implements PkgManager {
     ]);
   }
 
-  public async pack(opts: PackOptions = {}): Promise<InstallManifest[]> {
+  public override async pack(
+    ctx: PkgManagerPackContext,
+  ): Promise<InstallManifest[]> {
     let packArgs = [
       'pack',
       '--json',
-      `--pack-destination=${this.tmpdir}`,
+      `--pack-destination=${ctx.tmpdir}`,
       '--foreground-scripts=false', // suppress output of lifecycle scripts so json can be parsed
     ];
-    if (opts.workspaces?.length) {
+    if (ctx.workspaces?.length) {
       packArgs = [
         ...packArgs,
-        ...opts.workspaces.map((w) => `--workspace=${w}`),
+        ...ctx.workspaces.map((w) => `--workspace=${w}`),
       ];
-    } else if (opts.allWorkspaces) {
+    } else if (ctx.allWorkspaces) {
       packArgs = [...packArgs, '--workspaces'];
-      if (opts.includeWorkspaceRoot) {
+      if (ctx.includeWorkspaceRoot) {
         packArgs = [...packArgs, '--include-workspace-root'];
       }
     }
@@ -88,7 +62,7 @@ export class Npm7 extends GenericNpmPackageManager implements PkgManager {
     let packResult: ExecResult;
 
     try {
-      packResult = await this.executor(this.spec, packArgs);
+      packResult = await ctx.executor(ctx.spec, packArgs);
     } catch (e) {
       this.debug('(pack) Failed: %O', e);
       const err = e as ExecError;
@@ -97,18 +71,17 @@ export class Npm7 extends GenericNpmPackageManager implements PkgManager {
         const parsedError = this.parseNpmError(err.stdout);
 
         if (parsedError) {
-          throw new PackError(
-            parsedError.summary,
-            `${this.spec}`,
-            this.tmpdir,
-            {error: parsedError, output: err.stderr, exitCode: err.exitCode},
-          );
+          throw new PackError(parsedError.summary, `${ctx.spec}`, ctx.tmpdir, {
+            error: parsedError,
+            output: err.stderr,
+            exitCode: err.exitCode,
+          });
         }
 
         throw new PackError(
           `Use --verbose for more information`,
-          `${this.spec}`,
-          this.tmpdir,
+          `${ctx.spec}`,
+          ctx.tmpdir,
           {error: err},
         );
       }
@@ -133,7 +106,7 @@ export class Npm7 extends GenericNpmPackageManager implements PkgManager {
       throw isError(err)
         ? new PackParseError(
             `Failed to parse JSON result of "npm pack"`,
-            `${this.spec}`,
+            `${ctx.spec}`,
             err,
             packOutput,
           )
@@ -144,9 +117,9 @@ export class Npm7 extends GenericNpmPackageManager implements PkgManager {
       // workaround for https://github.com/npm/cli/issues/3405
       filename = filename.replace(/^@(.+?)\//, '$1-');
       return {
-        spec: path.join(this.tmpdir, filename),
-        installPath: path.join(this.tmpdir, 'node_modules', name),
-        cwd: this.tmpdir,
+        spec: path.join(ctx.tmpdir, filename),
+        installPath: path.join(ctx.tmpdir, 'node_modules', name),
+        cwd: ctx.tmpdir,
         pkgName: name,
       };
     });
@@ -156,4 +129,4 @@ export class Npm7 extends GenericNpmPackageManager implements PkgManager {
   }
 }
 
-export default Npm7 satisfies PkgManagerDef;
+export default Npm7;

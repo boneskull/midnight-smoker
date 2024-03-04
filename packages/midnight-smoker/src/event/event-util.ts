@@ -43,7 +43,7 @@ export function buildRunScriptsEndEventData(
   beginEventData: RunScriptsEventData,
   results: RunScriptResult[],
 ): RunScriptsEndEventData {
-  const failed = results.filter((result) => result.error).length;
+  const failed = results.filter((result) => 'error' in result).length;
   const passed = results.length - failed;
 
   return {...beginEventData, results, failed, passed};

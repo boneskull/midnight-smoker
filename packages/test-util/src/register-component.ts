@@ -15,8 +15,7 @@ import {
   type PluginAPI,
   type PluginRegistry,
 } from 'midnight-smoker/plugin';
-import {type RuleRunner} from 'midnight-smoker/rule-runner';
-import {type ScriptRunner} from 'midnight-smoker/script-runner';
+import {type ReporterDef} from 'midnight-smoker/reporter';
 import {DEFAULT_TEST_PLUGIN_NAME} from './constants';
 
 export interface RegisterComponentOpts {
@@ -39,11 +38,8 @@ export async function registerComponent(
     plugin: (api) => {
       api = {...api, ...apiOverrides};
       switch (kind) {
-        case 'RuleRunner':
-          api.defineRuleRunner(def as RuleRunner, name);
-          break;
-        case 'ScriptRunner':
-          api.defineScriptRunner(def as ScriptRunner, name);
+        case 'ReporterDef':
+          api.defineReporter(def as ReporterDef, name);
           break;
         case 'Executor':
           api.defineExecutor(def as Executor, name);
@@ -58,22 +54,6 @@ export async function registerComponent(
   };
   await registry.registerPlugin(pluginName, plugin);
   return registry;
-}
-
-export async function registerRuleRunner(
-  registry: PluginRegistry,
-  component: RuleRunner,
-  options: RegisterComponentOpts = {},
-): Promise<PluginRegistry> {
-  return registerComponent(registry, 'RuleRunner', component, options);
-}
-
-export async function registerScriptRunner(
-  registry: PluginRegistry,
-  component: ScriptRunner,
-  options: RegisterComponentOpts = {},
-): Promise<PluginRegistry> {
-  return registerComponent(registry, 'ScriptRunner', component, options);
 }
 
 export async function registerExecutor(

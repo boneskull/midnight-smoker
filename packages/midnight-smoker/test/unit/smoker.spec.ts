@@ -1,18 +1,14 @@
 import {InstallEvent, PackEvent, SmokerEvent} from '#event/event-constants';
+import {type PkgManager} from '#pkg-manager';
 import type * as PR from '#plugin/plugin-registry';
 import {type InstallResult} from '#schema/install-result';
-import {type PkgManager} from '#schema/pkg-manager';
-import {NullPkgManagerController} from '@midnight-smoker/test-util/controller';
+// import {NullPkgManagerController} from '@midnight-smoker/test-util/controller';
 import {
   createExecaMock,
   type ExecaMock,
 } from '@midnight-smoker/test-util/execa';
-import {NullPm} from '@midnight-smoker/test-util/pkg-manager';
-import {
-  registerRule,
-  registerRuleRunner,
-} from '@midnight-smoker/test-util/register';
-import {nullRuleRunner} from '@midnight-smoker/test-util/rule-runner';
+// import {NullPm} from '@midnight-smoker/test-util/pkg-manager';
+import {registerRule} from '@midnight-smoker/test-util/register';
 import {omit} from 'lodash';
 import {type IFs} from 'memfs';
 import os from 'node:os';
@@ -23,8 +19,7 @@ import unexpected from 'unexpected';
 import unexpectedEventEmitter from 'unexpected-eventemitter';
 import unexpectedSinon from 'unexpected-sinon';
 import {z} from 'zod';
-import {type PkgManagerInstallManifest} from '../../dist/component/schema/lint-manifest';
-import type {PkgManagerController} from '../../src/controller';
+import {PkgManagerController} from '../../src/controller';
 import type * as MS from '../../src/smoker';
 import * as Mocks from './mocks';
 import {createFsMocks, type FsMocks} from './mocks/fs';
@@ -50,18 +45,14 @@ describe('midnight-smoker', function () {
   let Smoker: typeof MS.Smoker;
 
   let mocks: SmokerSpecMocks;
-
-  let nullPm: NullPm;
-
-  let pkgManagerMap: Map<string, PkgManager>;
+  let nullPm: PkgManager;
   let PluginRegistry: typeof PR.PluginRegistry;
-  let pmController: sinon.SinonStubbedInstance<PkgManagerController>;
+  let pkgManagerController: sinon.SinonStubbedInstance<PkgManagerController>;
   let fs: IFs;
   let rmStub: sinon.SinonStubbedMember<typeof fs.promises.rm>;
   let fsMocks: FsMocks;
   beforeEach(function () {
     sandbox = createSandbox();
-    pkgManagerMap = new Map();
     const execaMock = createExecaMock();
     ({mocks: fsMocks, fs} = createFsMocks());
     mocks = {
@@ -77,13 +68,7 @@ describe('midnight-smoker', function () {
       delete mocks.debug;
     }
 
-    pkgManagerMap.set(MOCK_PM_ID, nullPm);
-    ({PluginRegistry} = rewiremock.proxy(
-      () => require('../../src/plugin/plugin-registry'),
-      fsMocks,
-    ));
     ({Smoker} = rewiremock.proxy(() => require('../../src/smoker'), mocks));
-    nullPm = new NullPm();
   });
 
   afterEach(function () {
@@ -97,18 +82,21 @@ describe('midnight-smoker', function () {
 
       beforeEach(async function () {
         registry = PluginRegistry.create();
-        pmController = sandbox.createStubInstance(NullPkgManagerController);
+        pkgManagerController = sandbox.createStubInstance(PkgManagerController);
 
         smoker = await Smoker.createWithCapabilities(
           {script: 'foo'},
-          {pluginRegistry: registry, pkgManagerController: pmController},
+          {
+            pluginRegistry: registry,
+            pkgManagerController: pkgManagerController,
+          },
         );
       });
 
       describe('cleanup()', function () {
         describe('when a package manager has been loaded', function () {
           beforeEach(function () {
-            pmController.getPkgManagers.resolves([nullPm]);
+            pkgManagerController.pkgManagers;
           });
           it('should attempt to prune all temp dirs owned by loaded package managers', async function () {
             await smoker.cleanup();
@@ -188,24 +176,24 @@ describe('midnight-smoker', function () {
             },
           ];
           beforeEach(async function () {
-            pmController.pack.resolves(expectedManifest);
+            pkgManagerController.pack.resolves(expectedManifest);
             actualManifest = await smoker.pack();
           });
 
           it('should delegate to the PkgManagerController', function () {
-            expect(pmController.pack, 'was called once');
+            expect(pkgManagerController.pack, 'was called once');
           });
 
           it('should subscribe to all relevant events', function () {
             expect(
-              pmController.addListener,
+              pkgManagerController.addListener,
               'was called times',
               packEvents.length,
             );
           });
           it('should unsubscribe from all relevant events', function () {
             expect(
-              pmController.removeAllListeners,
+              pkgManagerController.removeAllListeners,
               'was called times',
               packEvents.length,
             );
@@ -218,13 +206,13 @@ describe('midnight-smoker', function () {
 
         describe('when packing fails', function () {
           beforeEach(async function () {
-            pmController.pack.rejects(new Error('yikes'));
+            pkgManagerController.pack.rejects(new Error('yikes'));
             await expect(smoker.pack(), 'to be rejected');
           });
 
           it('should unsubscribe from all relevant events', function () {
             expect(
-              pmController.removeAllListeners,
+              pkgManagerController.removeAllListeners,
               'was called times',
               packEvents.length,
             );
@@ -261,7 +249,7 @@ describe('midnight-smoker', function () {
             },
           ];
           beforeEach(async function () {
-            pmController.install.resolves(expectedResult);
+            pkgManagerController.install.resolves(expectedResult);
             actualResult = await smoker.install([
               {
                 pkgManager: nullPm,
@@ -274,19 +262,19 @@ describe('midnight-smoker', function () {
           });
 
           it('should delegate to the PkgManagerController', function () {
-            expect(pmController.install, 'was called once');
+            expect(pkgManagerController.install, 'was called once');
           });
 
           it('should subscribe to all relevant events', function () {
             expect(
-              pmController.addListener,
+              pkgManagerController.addListener,
               'was called times',
               installEvents.length,
             );
           });
           it('should unsubscribe from all relevant events', function () {
             expect(
-              pmController.removeAllListeners,
+              pkgManagerController.removeAllListeners,
               'was called times',
               installEvents.length,
             );
@@ -299,7 +287,7 @@ describe('midnight-smoker', function () {
 
         describe('when installation fails', function () {
           beforeEach(async function () {
-            pmController.install.rejects(new Error('yikes'));
+            pkgManagerController.install.rejects(new Error('yikes'));
             await expect(
               smoker.install([
                 {
@@ -316,7 +304,7 @@ describe('midnight-smoker', function () {
 
           it('should unsubscribe from all relevant events', function () {
             expect(
-              pmController.removeAllListeners,
+              pkgManagerController.removeAllListeners,
               'was called times',
               installEvents.length,
             );

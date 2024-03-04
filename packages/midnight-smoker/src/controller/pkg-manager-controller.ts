@@ -27,6 +27,7 @@ import {
 import {
   PkgManager,
   type PkgManagerSpec,
+  type RunScriptResult,
   type SomePkgManager,
 } from '#pkg-manager';
 import {createTempDir, type PluginMetadata, type PluginRegistry} from '#plugin';
@@ -37,7 +38,6 @@ import {
   type PkgManagerDef,
   type PkgManagerOpts,
   type RunScriptManifest,
-  type RunScriptResult,
 } from '#schema';
 import {once} from '#util';
 import Debug from 'debug';
@@ -110,11 +110,26 @@ export class PkgManagerController implements Controller {
     this.cwd = cwd;
     this.pkgManagerOpts = pkgManagerOpts;
   }
+
   public get pkgManagers() {
     if (!this.#pkgManagers.length) {
       debug('Warning: pkgManagers accessed before initialization!');
     }
     return this.#pkgManagers;
+  }
+
+  public static create(
+    pluginRegistry: PluginRegistry,
+    eventBus: SmokerEventBus,
+    desiredPkgManagers: string[],
+    opts: PkgManagerControllerOpts & PkgManagerOpts = {},
+  ) {
+    return new PkgManagerController(
+      pluginRegistry,
+      eventBus,
+      desiredPkgManagers,
+      opts,
+    );
   }
 
   public async createPkgManagerContext(
@@ -239,7 +254,7 @@ export class PkgManagerController implements Controller {
     pkgManager: PkgManager,
     runManifest: RunScriptManifest,
     signal: AbortSignal,
-  ) {
+  ): Promise<RunScriptResult> {
     if (signal?.aborted) {
       throw new ScriptBailed();
     }
@@ -356,10 +371,16 @@ export class PkgManagerController implements Controller {
               ...eventData,
               error: result.error,
             });
+          } else if (result.skipped) {
+            await this.eventBus.emit(SmokerEvent.ScriptSkipped, {
+              ...eventData,
+              skipped: true,
+            });
           } else {
             await this.eventBus.emit(SmokerEvent.RunScriptOk, {
               ...eventData,
-              rawResult: result.rawResult,
+              // TODO: fix
+              rawResult: result.rawResult!,
             });
           }
           results.push(result);

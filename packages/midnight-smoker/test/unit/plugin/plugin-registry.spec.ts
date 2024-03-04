@@ -6,8 +6,6 @@ import {DEFAULT_TEST_PLUGIN_NAME} from '@midnight-smoker/test-util/constants';
 import {
   registerExecutor,
   registerPlugin,
-  registerRuleRunner,
-  registerScriptRunner,
 } from '@midnight-smoker/test-util/register';
 import {memoize} from 'lodash';
 import {type IFs} from 'memfs';
@@ -306,71 +304,6 @@ describe('midnight-smoker', function () {
             });
           });
         });
-
-        describe('getScriptRunner()', function () {
-          let registry: Reg.PluginRegistry;
-
-          beforeEach(async function () {
-            registry = PluginRegistry.create();
-          });
-
-          describe('when a ScriptRunner with the provided componentId exists', function () {
-            beforeEach(async function () {
-              await registerScriptRunner(registry, sandbox.stub());
-            });
-
-            it('should return the ScriptRunner', function () {
-              const scriptRunner = registry.getScriptRunner(
-                `${DEFAULT_TEST_PLUGIN_NAME}/${DEFAULT_COMPONENT_ID}`,
-              );
-              expect(scriptRunner, 'to be a function');
-            });
-          });
-
-          describe('when no ScriptRunner with the provided componentId exists', function () {
-            it('should throw an InvalidComponentError', function () {
-              expect(
-                () => registry.getScriptRunner('nonexistent-component'),
-                'to throw',
-                {
-                  code: ErrorCodes.InvalidComponentError,
-                  context: {
-                    id: 'nonexistent-component',
-                    kind: ComponentKinds.ScriptRunner,
-                  },
-                },
-              );
-            });
-          });
-
-          describe('when no componentId is provided', function () {
-            describe('and a ScriptRunner with the default componentId exists', function () {
-              beforeEach(async function () {
-                await registerScriptRunner(registry, sandbox.stub(), {
-                  pluginName: PLUGIN_DEFAULT_ID,
-                });
-              });
-
-              it('should return the ScriptRunner', function () {
-                const scriptRunner = registry.getScriptRunner();
-                expect(scriptRunner, 'to be a function');
-              });
-            });
-
-            describe('and no ScriptRunner with the default componentId exists', function () {
-              it('should throw an InvalidComponentError', function () {
-                expect(() => registry.getScriptRunner(), 'to throw', {
-                  code: ErrorCodes.InvalidComponentError,
-                  context: {
-                    id: DEFAULT_COMPONENT_ID,
-                    kind: ComponentKinds.ScriptRunner,
-                  },
-                });
-              });
-            });
-          });
-        });
-
         describe('getExecutor()', function () {
           let registry: Reg.PluginRegistry;
 
@@ -428,70 +361,6 @@ describe('midnight-smoker', function () {
                   context: {
                     id: DEFAULT_COMPONENT_ID,
                     kind: ComponentKinds.Executor,
-                  },
-                });
-              });
-            });
-          });
-        });
-
-        describe('getRuleRunner()', function () {
-          let registry: Reg.PluginRegistry;
-
-          beforeEach(async function () {
-            registry = PluginRegistry.create();
-          });
-
-          describe('when a RuleRunner with the provided componentId exists', function () {
-            beforeEach(async function () {
-              await registerRuleRunner(registry, sandbox.stub());
-            });
-
-            it('should return the RuleRunner', function () {
-              const rulerunner = registry.getRuleRunner(
-                `${DEFAULT_TEST_PLUGIN_NAME}/${DEFAULT_COMPONENT_ID}`,
-              );
-              expect(rulerunner, 'to be a function');
-            });
-          });
-
-          describe('when no RuleRunner with the provided componentId exists', function () {
-            it('should throw an InvalidComponentError', function () {
-              expect(
-                () => registry.getRuleRunner('nonexistent-component'),
-                'to throw',
-                {
-                  code: ErrorCodes.InvalidComponentError,
-                  context: {
-                    id: 'nonexistent-component',
-                    kind: ComponentKinds.RuleRunner,
-                  },
-                },
-              );
-            });
-          });
-
-          describe('when no componentId is provided', function () {
-            describe('and a RuleRunner with the default componentId exists', function () {
-              beforeEach(async function () {
-                await registerRuleRunner(registry, sandbox.stub(), {
-                  pluginName: PLUGIN_DEFAULT_ID,
-                });
-              });
-
-              it('should return the RuleRunner', function () {
-                const rulerunner = registry.getRuleRunner();
-                expect(rulerunner, 'to be a function');
-              });
-            });
-
-            describe('and no RuleRunner with the default componentId exists', function () {
-              it('should throw an InvalidComponentError', function () {
-                expect(() => registry.getRuleRunner(), 'to throw', {
-                  code: ErrorCodes.InvalidComponentError,
-                  context: {
-                    id: DEFAULT_COMPONENT_ID,
-                    kind: ComponentKinds.RuleRunner,
                   },
                 });
               });

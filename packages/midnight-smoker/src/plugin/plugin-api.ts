@@ -36,6 +36,7 @@ export type DefineExecutorFn = (
 
 export type DefineReporterFn<Ctx = any> = (
   reporter: Reporter.ReporterDef<Ctx>,
+  name?: string,
 ) => PluginAPI;
 
 /**

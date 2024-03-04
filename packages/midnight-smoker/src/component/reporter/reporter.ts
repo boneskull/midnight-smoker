@@ -6,6 +6,7 @@ import {
   type ReporterContext,
   type ReporterDef,
   type ReporterListener,
+  type ReporterListeners,
 } from '#schema/reporter-def';
 import {type EventData, type EventKind} from '#schema/smoker-event';
 import Debug from 'debug';
@@ -44,11 +45,10 @@ export class Reporter<Ctx = unknown> extends ReifiedComponent<
 
   public async invokeListener<T extends EventKind>(data: EventData<T>) {
     await Promise.resolve();
-    const listenerName = `on${data.event}` as const;
-    const listener = this.def[listenerName] as
-      | ReporterListener<T, Ctx>
-      | undefined;
-    if (listener) {
+    // XXX don't like these casts
+    const listenerName = `on${data.event}` as keyof ReporterListeners<Ctx>;
+    if (listenerName in this.def) {
+      const listener = this.def[listenerName] as ReporterListener<T, Ctx>;
       try {
         debug('%s - invoking listener for %s', this, data.event);
         await listener(this.ctx, data);

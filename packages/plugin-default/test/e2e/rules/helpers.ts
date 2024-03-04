@@ -1,10 +1,9 @@
+import {LintController} from 'midnight-smoker/controller';
 import {
   type RuleIssue,
   type RuleOptions,
   type SomeRule,
 } from 'midnight-smoker/rule';
-import {createRuleContext} from 'midnight-smoker/rule-runner';
-import {SmokerRuleRunner} from '../../../src/rule-runner';
 
 /**
  * Runs a {@link Rule} against a fixture.
@@ -24,7 +23,7 @@ export async function applyRule<R extends SomeRule>(
     severity: rule.defaultSeverity,
     opts: {...rule.defaultOptions, ...opts},
   };
-  const ctx = await createRuleContext(rule, installPath, config);
-  await SmokerRuleRunner.runRule(ctx, rule, config);
+  const ctx = await LintController.createRuleContext(rule, installPath, config);
+  await LintController.runRule(ctx, rule, config);
   return ctx.finalize();
 }

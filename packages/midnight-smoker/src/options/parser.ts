@@ -48,8 +48,8 @@ export class OptionParser {
   }
 
   static buildSmokerOptions(registry: PluginRegistry) {
-    const zRuleOptions = registry.buildRuleOptions();
-    return BaseSmokerOptionsSchema.setKey('rules', zRuleOptions).transform(
+    const RuleOptionsSchema = registry.buildRuleOptions();
+    return BaseSmokerOptionsSchema.extend({rules: RuleOptionsSchema}).transform(
       (cfg, ctx) => {
         // these may be expressible in Zod, but seems painful
         if (cfg.all) {

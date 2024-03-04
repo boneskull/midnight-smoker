@@ -1,47 +1,13 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import {type ExecResult, type Executor} from 'midnight-smoker/executor';
-import {
-  PkgManagerSpec,
-  type InstallManifest,
-  type PackOptions,
-  type PkgManager,
-  type PkgManagerDef,
-  type PkgManagerOpts,
-  type PkgManagerRunScriptFnOpts,
-  type RunScriptManifest,
-  type RunScriptResult,
-} from 'midnight-smoker/pkg-manager';
+import {type PkgManagerDef} from 'midnight-smoker/pkg-manager';
 import {TEST_TMPDIR} from './constants';
 
 export const nullPmDef: PkgManagerDef = {
-  get bin() {
-    return 'nullpm';
-  },
-  async create(spec, executor, helpers, opts) {
-    return new NullPm(spec, executor, opts);
-  },
+  bin: 'nullpm',
   accepts(value: string) {
     return value;
   },
   lockfile: 'nullpm.lock',
-};
-
-export class NullPm implements PkgManager {
-  spec: Readonly<PkgManagerSpec>;
-  constructor(
-    spec?: PkgManagerSpec,
-    public executor?: Executor,
-    public opts: PkgManagerOpts = {},
-  ) {
-    this.spec =
-      spec ??
-      PkgManagerSpec.create({
-        pkgManager: 'nullpm',
-        version: '1.0.0',
-      });
-  }
-
-  async install(installManifests: InstallManifest[]): Promise<ExecResult> {
+  async install() {
     return {
       stdout: '',
       stderr: '',
@@ -49,9 +15,8 @@ export class NullPm implements PkgManager {
       exitCode: 0,
       failed: false,
     };
-  }
-
-  async pack(opts: PackOptions) {
+  },
+  async pack() {
     return [
       {
         spec: `${TEST_TMPDIR}/bar.tgz`,
@@ -59,27 +24,9 @@ export class NullPm implements PkgManager {
         cwd: TEST_TMPDIR,
       },
     ];
-  }
-
-  public readonly tmpdir = TEST_TMPDIR;
-
-  public readonly path = '/usr/bin/nullpm';
-
-  public async getBinPath(): Promise<string> {
-    return this.path;
-  }
-
-  public async getVersion(): Promise<string> {
-    return '5.0.0';
-  }
-
-  public async runScript(
-    runManifest: RunScriptManifest,
-    opts: PkgManagerRunScriptFnOpts,
-  ): Promise<RunScriptResult> {
+  },
+  async runScript() {
     return {
-      pkgName: runManifest.pkgName,
-      script: runManifest.script,
       rawResult: {
         stdout: '',
         stderr: '',
@@ -87,7 +34,6 @@ export class NullPm implements PkgManager {
         exitCode: 0,
         failed: false,
       },
-      cwd: '/some/cwd',
     };
-  }
-}
+  },
+};

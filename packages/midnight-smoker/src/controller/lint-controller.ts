@@ -273,9 +273,8 @@ export class LintController<T extends BaseNormalizedRuleOptionsRecord>
    * @param rule - Some `Rule`
    * @param ruleOpts - Parsed rule options
    * @returns Results of a single check
-   * @internal
    */
-  private static async runRule<Schema extends RuleDefSchemaValue | void = void>(
+  public static async runRule<Schema extends RuleDefSchemaValue | void = void>(
     this: void,
     context: Readonly<RuleContext>,
     rule: Rule<Schema>,
