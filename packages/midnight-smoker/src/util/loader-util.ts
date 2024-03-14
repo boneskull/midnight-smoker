@@ -114,7 +114,9 @@ export async function justImport(moduleId: string, pkgJson?: PackageJson) {
     ({default: raw} = raw);
   }
   return raw;
-} /**
+}
+
+/**
  * Type guard for a CJS module with an `__esModule` property
  *
  * @param value - Any value
@@ -123,7 +125,9 @@ export async function justImport(moduleId: string, pkgJson?: PackageJson) {
 
 export function isErsatzESModule(value: unknown): value is {__esModule: true} {
   return isObject(value) && '__esModule' in value;
-} /**
+}
+
+/**
  * Resolves module at `moduleId` from `fromDir` dir
  *
  * @param moduleId - Module identifier

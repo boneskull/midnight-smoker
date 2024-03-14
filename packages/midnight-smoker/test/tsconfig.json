@@ -3,6 +3,7 @@
     "../../../.config/tsconfig.test.json",
     "../.config/tsconfig.paths.json"
   ],
+  "compilerOptions": {},
   "include": ["."],
   "references": [
     {

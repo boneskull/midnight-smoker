@@ -50,7 +50,7 @@ describe('midnight-smoker', function () {
           const mockEmitAsync = sandbox.spy(emitter, 'emitAsync');
           await eventBus.emit('bar', {data: 'testData'});
           expect(mockEmitAsync, 'to have a call satisfying', [
-            'testEvent',
+            'bar',
             {
               data: 'testData',
             },
@@ -58,10 +58,10 @@ describe('midnight-smoker', function () {
         });
 
         it('emitSync() should call emitter.emit', function () {
-          const mockEmit = this.sandbox.spy(emitter, 'emit');
+          const mockEmit = sandbox.spy(emitter, 'emit');
           eventBus.emitSync('foo', {data: 'testData'});
           expect(mockEmit, 'to have a call satisfying', [
-            'testEvent',
+            'foo',
             {data: 'testData'},
           ]);
         });

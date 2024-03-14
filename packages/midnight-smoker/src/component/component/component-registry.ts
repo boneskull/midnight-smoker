@@ -1,19 +1,35 @@
-import {type ComponentKind} from '#constants';
+import {type ComponentKind, type ComponentKinds} from '#constants';
 import {ComponentCollisionError} from '#error';
+import {type SomePkgManager} from '#pkg-manager/pkg-manager';
 import {isBlessedPlugin} from '#plugin/blessed';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
+import {type Executor} from '#schema/executor';
+import {type SomePkgManagerDef} from '#schema/pkg-manager-def';
+import {type ReporterDef} from '#schema/reporter-def';
+import {type SomeRule} from '#schema/rule';
+import {type SomeRuleDef} from '#schema/rule-def';
 import {inspect} from 'util';
 import {ComponentData, type Component} from './component';
 
+export type ComponentObject<T extends ComponentKind> =
+  T extends typeof ComponentKinds.Rule
+    ? SomeRule
+    : T extends typeof ComponentKinds.RuleDef
+      ? SomeRuleDef
+      : T extends typeof ComponentKinds.PkgManagerDef
+        ? SomePkgManagerDef
+        : T extends typeof ComponentKinds.PkgManager
+          ? SomePkgManager
+          : T extends typeof ComponentKinds.ReporterDef
+            ? ReporterDef
+            : T extends typeof ComponentKinds.Executor
+              ? Executor
+              : never;
+
 export class ComponentRegistry {
-  private componentsByKind: Map<ComponentKind, Map<string, Component>>;
-
-  private componentMap: WeakMap<object, Component>;
-
-  private constructor() {
-    this.componentMap = new WeakMap();
-    this.componentsByKind = new Map();
-  }
+  private componentsByKind: Map<ComponentKind, Map<string, Component>> =
+    new Map();
+  private componentMap: WeakMap<object, Component> = new WeakMap();
 
   public static create(): ComponentRegistry {
     return new ComponentRegistry();
@@ -59,6 +75,15 @@ export class ComponentRegistry {
    */
   public getId(def: object): string {
     return this.getComponent(def).id;
+  }
+
+  public getComponentByKind<T extends ComponentKind>(
+    kind: T,
+    id: string,
+  ): ComponentObject<T> | undefined {
+    return this.componentsByKind.get(kind)?.get(id) as
+      | ComponentObject<T>
+      | undefined;
   }
 
   public getPlugin(def: object): Readonly<PluginMetadata> {

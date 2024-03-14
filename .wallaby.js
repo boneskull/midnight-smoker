@@ -46,9 +46,42 @@ module.exports = () => {
       '!./packages/docs/test/**/*',
     ],
     runMode: 'onsave',
-    workers: {recycle: true},
+    // workers: {restart: true},
     setup(wallaby) {
       process.env.WALLABY = '1';
+      // const Module = require('module');
+      // const path = require('path');
+      // const {imports} = require(
+      //   path.join(
+      //     wallaby.projectCacheDir,
+      //     'packages',
+      //     'midnight-smoker',
+      //     'package.json',
+      //   ),
+      // );
+      // const mappedImports = Object.fromEntries(
+      //   Object.entries(imports).map(([key, value]) => [
+      //     key,
+      //     value.replace('dist', 'src'),
+      //   ]),
+      // );
+
+      // const originalResolveFilename = Module._resolveFilename;
+
+      // Module._resolveFilename = function (request, _parent) {
+      //   console.log('Resolving %s', request);
+      //   if (request in mappedImports) {
+      //     const newRequest = path.join(
+      //       wallaby.projectCacheDir,
+      //       'packages',
+      //       'midnight-smoker',
+      //       mappedImports[request],
+      //     );
+      //     return originalResolveFilename.call(this, newRequest, _parent);
+      //   }
+
+      //   return originalResolveFilename.call(this, request, _parent);
+      // };
     },
   };
 };

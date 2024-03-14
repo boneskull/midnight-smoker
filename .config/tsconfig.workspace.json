@@ -8,7 +8,6 @@
     "resolvePackageJsonImports": true
   },
   "ts-node": {
-    "transpileOnly": true,
-    "swc": true
+    "transpileOnly": true
   }
 }

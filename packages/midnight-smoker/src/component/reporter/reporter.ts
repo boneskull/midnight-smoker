@@ -24,15 +24,14 @@ const REPORTER_DEFAULTS = {
 export class Reporter<Ctx = unknown> extends ReifiedComponent<
   ReporterDef<Ctx>
 > {
-  public ctx: ReporterContext<Ctx>;
   constructor(
+    id: string,
     def: ReporterDef<Ctx>,
-    ctx: ReporterContext<Ctx>,
     plugin: Readonly<PluginMetadata>,
+    public readonly ctx: ReporterContext<Ctx>,
   ) {
     Object.assign(def, {...REPORTER_DEFAULTS, ...def});
-    super(def, plugin);
-    this.ctx = ctx;
+    super(id, def, plugin);
   }
 
   public get name() {
@@ -84,11 +83,12 @@ export class Reporter<Ctx = unknown> extends ReifiedComponent<
   }
 
   public static create<Ctx = unknown>(
+    id: string,
     def: ReporterDef<Ctx>,
-    ctx: ReporterContext<Ctx>,
     plugin: Readonly<PluginMetadata>,
+    ctx: ReporterContext<Ctx>,
   ): Reporter<Ctx> {
-    return new Reporter(def, ctx, plugin);
+    return new Reporter(id, def, plugin, ctx);
   }
 
   public toString() {

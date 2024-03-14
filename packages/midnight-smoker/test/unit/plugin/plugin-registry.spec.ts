@@ -262,13 +262,9 @@ describe('midnight-smoker', function () {
 
           describe('when a plugin object has a description differing from its metadata', function () {
             it('should store the new description', async function () {
-              const oldMetadata = PluginMetadata.createTransient(
-                componentRegistry,
-                'foo',
-                {
-                  description: 'old description',
-                },
-              );
+              const oldMetadata = PluginMetadata.createTransient('foo', {
+                description: 'old description',
+              });
 
               const pluginObject = {plugin: () => {}, description: 'something'};
               await registry.registerPlugin(oldMetadata, pluginObject);

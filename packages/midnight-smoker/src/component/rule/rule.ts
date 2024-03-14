@@ -51,8 +51,12 @@ export class Rule<Schema extends RuleDefSchemaValue | void = void>
 
   public readonly url?: string;
 
-  public constructor(def: RuleDef<Schema>, plugin: Readonly<PluginMetadata>) {
-    super(def, plugin);
+  public constructor(
+    id: string,
+    def: RuleDef<Schema>,
+    plugin: Readonly<PluginMetadata>,
+  ) {
+    super(id, def, plugin);
     this.name = def.name;
     this.description = def.description;
     this.defaultSeverity = def.defaultSeverity
@@ -100,10 +104,11 @@ export class Rule<Schema extends RuleDefSchemaValue | void = void>
 
   public static create<Schema extends RuleDefSchemaValue | void = void>(
     this: void,
+    id: string,
     ruleDef: RuleDef<Schema>,
     plugin: Readonly<PluginMetadata>,
   ) {
-    const rule = new Rule(ruleDef, plugin);
+    const rule = new Rule(id, ruleDef, plugin);
     debug('Instantiated Rule %s from plugin %s', rule.name, plugin.id);
     return rule;
   }

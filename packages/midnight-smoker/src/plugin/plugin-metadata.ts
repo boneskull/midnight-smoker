@@ -4,8 +4,6 @@
  * @packageDocumentation
  * @see {@link PluginMetadata}
  */
-import {type ComponentRegistry} from '#component';
-import {ComponentKinds} from '#constants';
 import {isZodError} from '#error/base-error';
 import {InvalidArgError} from '#error/invalid-arg-error';
 import {
@@ -14,7 +12,6 @@ import {
 } from '#pkg-manager/pkg-manager-loader';
 import {BLESSED_PLUGINS, type BlessedPlugin} from '#plugin/blessed';
 import type {StaticPluginMetadata} from '#plugin/static-metadata';
-import {Rule} from '#rule/rule';
 import type {Executor} from '#schema/executor';
 import type {PkgManagerDef} from '#schema/pkg-manager-def';
 import type {ReporterDef} from '#schema/reporter-def';
@@ -29,6 +26,8 @@ import path from 'node:path';
 import type {LiteralUnion, PackageJson} from 'type-fest';
 import {z} from 'zod';
 import {fromZodError} from 'zod-validation-error';
+import {type PkgManagerDefSpec} from '../component/schema/pkg-manager-def-spec';
+import {assertNonEmptyArray, type NonEmptyArray} from '../util';
 
 const debug = Debug('midnight-smoker:plugin:metadata');
 
@@ -184,27 +183,19 @@ export class PluginMetadata implements StaticPluginMetadata {
    */
   public readonly version?: string;
 
-  protected componentRegistry: ComponentRegistry;
-
   /**
    * {@inheritDoc create:(0)}
    */
-  protected constructor(
-    registry: ComponentRegistry,
-    entryPoint: string,
-    id?: string,
-  );
+  protected constructor(entryPoint: string, id?: string);
 
   /**
    * {@inheritDoc create:(1)}
    */
-  protected constructor(registry: ComponentRegistry, opts: PluginMetadataOpts);
+  protected constructor(opts: PluginMetadataOpts);
   protected constructor(
-    registry: ComponentRegistry,
     optsOrEntryPoint: PluginMetadataOpts | string,
     id?: string,
   ) {
-    this.componentRegistry = registry;
     try {
       const opts = isString(optsOrEntryPoint)
         ? zPluginMetadataOpts.parse({
@@ -244,7 +235,6 @@ export class PluginMetadata implements StaticPluginMetadata {
    * @internal
    */
   public static create(
-    registry: ComponentRegistry,
     entryPoint: string,
     id?: string,
   ): Readonly<PluginMetadata>;
@@ -257,10 +247,7 @@ export class PluginMetadata implements StaticPluginMetadata {
    * @returns - A new {@link PluginMetadata} instance
    * @internal
    */
-  public static create(
-    registry: ComponentRegistry,
-    opts: PluginMetadataOpts,
-  ): Readonly<PluginMetadata>;
+  public static create(opts: PluginMetadataOpts): Readonly<PluginMetadata>;
 
   /**
    * Creates a new {@link PluginMetadata} from an existing {@link PluginMetadata}
@@ -273,13 +260,11 @@ export class PluginMetadata implements StaticPluginMetadata {
    * @returns - A new {@link PluginMetadata} instance based on `metadata`
    */
   public static create(
-    registry: ComponentRegistry,
     metadata: Readonly<PluginMetadata>,
     opts: Partial<PluginMetadataOpts> | string,
   ): Readonly<PluginMetadata>;
 
   public static create(
-    registry: ComponentRegistry,
     optsEntryPtOrMetadata:
       | PluginMetadataOpts
       | string
@@ -300,10 +285,10 @@ export class PluginMetadata implements StaticPluginMetadata {
           argName: 'id',
         });
       }
-      metadata = new PluginMetadata(registry, optsEntryPtOrMetadata, idOrOpts);
+      metadata = new PluginMetadata(optsEntryPtOrMetadata, idOrOpts);
     } else {
       const opts = isString(idOrOpts) ? {id: idOrOpts} : idOrOpts ?? {};
-      metadata = new PluginMetadata(registry, {
+      metadata = new PluginMetadata({
         ...optsEntryPtOrMetadata,
         ...opts,
       });
@@ -326,7 +311,6 @@ export class PluginMetadata implements StaticPluginMetadata {
    * @internal
    */
   public static createTransient(
-    registry: ComponentRegistry,
     name: string,
     pkg?: PackageJson,
   ): Readonly<PluginMetadata> {
@@ -336,15 +320,11 @@ export class PluginMetadata implements StaticPluginMetadata {
         {argName: 'name'},
       );
     }
-    return PluginMetadata.create(registry, {
+    return PluginMetadata.create({
       id: name,
       entryPoint: PluginMetadata.Transient,
       pkgJson: pkg,
     });
-  }
-
-  public getComponentId(def: object): string {
-    return this.componentRegistry.getId(def);
   }
 
   public get isBlessed() {
@@ -378,66 +358,30 @@ export class PluginMetadata implements StaticPluginMetadata {
    * @internal
    */
   public addPkgManagerDef(name: string, value: PkgManagerDef): void {
-    this.componentRegistry.registerComponent(
-      ComponentKinds.PkgManagerDef,
-      this,
-      name,
-      value,
-    );
-
     this.pkgManagerDefMap.set(name, value);
-
     debug('Plugin %s added pkg manager "%s"', this, name);
-  }
-
-  public addRule<Schema extends RuleDefSchemaValue | void = void>(
-    def: RuleDef<Schema>,
-  ): Rule<Schema> {
-    const {name} = def;
-    const rule = Rule.create(def, this);
-    this.ruleMap.set(name, rule);
-    return rule;
   }
 
   public addRuleDef<Schema extends RuleDefSchemaValue | void = void>(
     def: RuleDef<Schema>,
   ): void {
     const {name} = def;
-
-    this.componentRegistry.registerComponent(
-      ComponentKinds.Rule,
-      this,
-      name,
-      def,
-    );
-
     this.ruleDefMap.set(name, def);
   }
 
   public addExecutor(name: string, value: Executor): void {
-    this.componentRegistry.registerComponent(
-      ComponentKinds.Executor,
-      this,
-      name,
-      value,
-    );
-
     this.executorMap.set(name, value);
   }
 
   public addReporterDef(value: ReporterDef): void {
-    this.componentRegistry.registerComponent(
-      ComponentKinds.ReporterDef,
-      this,
-      value.name,
-      value,
-    );
-
     this.reporterDefMap.set(value.name, value);
   }
 
-  public async loadPkgManagers(opts: LoadPackageManagersOpts) {
+  public async loadPkgManagers(
+    opts: LoadPackageManagersOpts,
+  ): Promise<NonEmptyArray<PkgManagerDefSpec>> {
     const pkgManagerDefs = [...this.pkgManagerDefMap.values()];
+    assertNonEmptyArray(pkgManagerDefs);
     return loadPackageManagers(pkgManagerDefs, opts);
   }
 }
@@ -459,7 +403,7 @@ export type {LiteralUnion};
  *   `PluginRegistry` instance gets the same one. That isn't the same as "this
  *   should only run once"--it should run once per `PluginRegistry` instance.
  */
-export async function initBlessedMetadata(registry: ComponentRegistry) {
+export async function initBlessedMetadata() {
   const entries = await Promise.all(
     BLESSED_PLUGINS.map(async (id) => {
       const {packageJson: pkgJson} = await readPackageJson({
@@ -468,7 +412,7 @@ export async function initBlessedMetadata(registry: ComponentRegistry) {
       });
       return [
         id,
-        PluginMetadata.create(registry, {
+        PluginMetadata.create({
           id,
           requestedAs: id,
           entryPoint: require.resolve(id),

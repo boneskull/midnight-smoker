@@ -88,3 +88,17 @@ export function once<This, Args extends any[], TReturn>(
     return onceTarget.call(this, ...args);
   };
 }
+
+export type NonEmptyArray<T> = [T, ...T[]];
+
+export function isNonEmptyArray<T>(value: T[]): value is NonEmptyArray<T> {
+  return value.length > 0;
+}
+
+export function assertNonEmptyArray<T>(
+  value: T[],
+): asserts value is NonEmptyArray<T> {
+  if (!isNonEmptyArray(value)) {
+    throw new Error('Expected a non-empty array');
+  }
+}

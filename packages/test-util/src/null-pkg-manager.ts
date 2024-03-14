@@ -19,7 +19,7 @@ export const nullPmDef: PkgManagerDef = {
   async pack() {
     return [
       {
-        spec: `${TEST_TMPDIR}/bar.tgz`,
+        pkgSpec: `${TEST_TMPDIR}/bar.tgz`,
         pkgName: 'bar',
         cwd: TEST_TMPDIR,
       },
@@ -34,6 +34,7 @@ export const nullPmDef: PkgManagerDef = {
         exitCode: 0,
         failed: false,
       },
+      skipped: false,
     };
   },
 };

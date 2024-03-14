@@ -10,7 +10,7 @@ export const InstallManifestSchema = z
     pkgName: NonEmptyStringSchema.describe(
       'The name of the package to install',
     ),
-    spec: NonEmptyStringSchema.describe('The package spec to install'),
+    pkgSpec: NonEmptyStringSchema.describe('The package spec to install'),
     isAdditional: z
       .boolean()
       .optional()

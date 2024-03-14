@@ -1,4 +1,8 @@
-import {DEFAULT_COMPONENT_ID} from '#constants';
+import {
+  ComponentKinds,
+  DEFAULT_COMPONENT_ID,
+  type ComponentKind,
+} from '#constants';
 import * as EventNS from '#event';
 import * as ExecutorNS from '#executor';
 import * as PkgManagerNS from '#pkg-manager';
@@ -28,6 +32,7 @@ import {Helpers} from './helpers';
  * @returns A {@link PluginAPI} object for use by a specific plugin
  */
 export const createPluginAPI = (
+  registerComponent: (kind: ComponentKind, def: object, name: string) => void,
   getPlugins: () => StaticPluginMetadata[],
   metadata: Readonly<PluginMetadata>,
 ): Readonly<PluginAPI> => {
@@ -37,6 +42,7 @@ export const createPluginAPI = (
     ruleDef: RuleDef<Schema>,
   ) => {
     metadata.addRuleDef(RuleDefSchema.parse(ruleDef));
+    registerComponent(ComponentKinds.RuleDef, ruleDef, ruleDef.name);
     return pluginApi;
   };
 
@@ -45,6 +51,7 @@ export const createPluginAPI = (
     name = DEFAULT_COMPONENT_ID,
   ) => {
     metadata.addPkgManagerDef(name, PkgManagerDefSchema.parse(pkgManagerDef));
+    registerComponent(ComponentKinds.PkgManagerDef, pkgManagerDef, name);
     return pluginApi;
   };
 
@@ -53,11 +60,17 @@ export const createPluginAPI = (
     name = DEFAULT_COMPONENT_ID,
   ) => {
     metadata.addExecutor(name, ExecutorSchema.parse(executor));
+    registerComponent(ComponentKinds.Executor, executor, name);
     return pluginApi;
   };
 
   const defineReporter: DefineReporterFn = (reporterDef) => {
     metadata.addReporterDef(ReporterDefSchema.parse(reporterDef));
+    registerComponent(
+      ComponentKinds.PkgManagerDef,
+      reporterDef,
+      reporterDef.name,
+    );
     return pluginApi;
   };
 

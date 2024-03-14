@@ -9,7 +9,13 @@
 /* eslint-disable no-labels */
 import {RuleSeverities} from '#constants';
 import {
-  CleanupError,
+  LintController,
+  PkgManagerController,
+  ReporterController,
+  type PluginReporterDef,
+  type PluginRuleDef,
+} from '#controller';
+import {
   InvalidArgError,
   SmokeFailedError,
   fromUnknownError,
@@ -20,12 +26,12 @@ import {
   type ScriptError,
 } from '#error';
 import {
+  EventBus,
   SmokerEvent,
   type SmokerEventBus,
   type SmokerEvents,
   type StrictEmitter,
 } from '#event';
-import {EventBus} from '#event/bus';
 import type {RawSmokerOptions, SmokerOptions} from '#options/options';
 import {OptionParser} from '#options/parser';
 import {Blessed, PluginRegistry, type StaticPluginMetadata} from '#plugin';
@@ -34,19 +40,10 @@ import {type LintResult} from '#schema/lint-result';
 import {type SomeRule} from '#schema/rule';
 import type {RunScriptResult} from '#schema/run-script-result';
 import {type SmokeResults} from '#schema/smoker-event';
-import {isErrnoException} from '#util/error-util';
 import {castArray} from '#util/schema-util';
 import Debug from 'debug';
 import {isFunction} from 'lodash';
-import fs from 'node:fs/promises';
-import {type PkgManager, type SomePkgManager} from './component';
-import {
-  LintController,
-  PkgManagerController,
-  ReporterController,
-  type PluginReporterDef,
-  type PluginRuleDef,
-} from './controller';
+import {type SomePkgManager} from './component';
 
 type SetupResult =
   | {
@@ -63,9 +60,12 @@ export type SmokerEmitter = StrictEmitter<SmokerEvents>;
  * {@link Smoker} instance.
  */
 export interface SmokerCapabilities {
+  eventBus?: SmokerEventBus;
   pkgManagerController?: PkgManagerController;
   pluginRegistry?: PluginRegistry;
   reporterController?: ReporterController;
+
+  lintController?: LintController;
 }
 
 /**
@@ -86,6 +86,7 @@ export class Smoker {
    * Whether to bail on the first script failure
    */
   private readonly bail: boolean;
+  private readonly eventBus: SmokerEventBus;
 
   /**
    * Whether to include the workspace root
@@ -108,6 +109,7 @@ export class Smoker {
    */
   private readonly pluginRegistry: PluginRegistry;
   private readonly reporterController: ReporterController;
+  private readonly lintController?: LintController;
   private readonly reporters: Set<string>;
 
   /**
@@ -131,16 +133,14 @@ export class Smoker {
    */
   public readonly scripts: string[];
 
-  private readonly eventBus: SmokerEventBus;
-
-  private readOnly = false;
-
   private constructor(
     opts: SmokerOptions,
     {
+      eventBus = EventBus.create(),
       pluginRegistry = PluginRegistry.create(),
       pkgManagerController,
       reporterController,
+      lintController,
     }: SmokerCapabilities = {},
   ) {
     const {
@@ -173,35 +173,33 @@ export class Smoker {
         'Option "workspace" is mutually exclusive with "all" and/or "includeRoot"',
       );
     }
-    this.eventBus = EventBus.create();
 
+    this.eventBus = eventBus;
     this.pluginRegistry = pluginRegistry;
 
     this.pkgManagerController =
       pkgManagerController ??
-      PkgManagerController.create(
-        pluginRegistry,
-        this.eventBus,
-        opts.pkgManager,
-        {
-          verbose: opts.verbose,
-          loose: opts.loose,
-          defaultExecutorId: opts.executor,
-        },
-      );
+      PkgManagerController.create(pluginRegistry, eventBus, opts.pkgManager, {
+        verbose: opts.verbose,
+        loose: opts.loose,
+        defaultExecutorId: opts.executor,
+      });
 
     this.reporterController =
       reporterController ??
       ReporterController.create(
-        this.eventBus,
+        this.pluginRegistry,
         this.getEnabledReportersByPlugin(),
         this.opts,
+        this.eventBus,
       );
+
+    this.lintController = lintController;
 
     debug(`Smoker instantiated with registry: ${this.pluginRegistry}`);
   }
 
-  [Symbol.dispose]() {
+  public [Symbol.dispose]() {
     this.reporterController[Symbol.dispose]();
     this.eventBus[Symbol.dispose]();
   }
@@ -234,6 +232,14 @@ export class Smoker {
       caps.pluginRegistry,
     );
     return new Smoker(options, {...caps, pluginRegistry});
+  }
+
+  public static async getPkgManagers(
+    this: void,
+    opts?: RawSmokerOptions,
+  ): Promise<SomePkgManager[]> {
+    const smoker = await Smoker.create(opts);
+    return smoker.getAllPkgManagers();
   }
 
   public static async getPlugins(
@@ -272,14 +278,6 @@ export class Smoker {
     return smoker.getAllRules();
   }
 
-  public static async getPkgManagers(
-    this: void,
-    opts?: RawSmokerOptions,
-  ): Promise<PkgManager[]> {
-    const smoker = await Smoker.create(opts);
-    return smoker.getAllPkgManagers();
-  }
-
   /**
    * Instantiate `Smoker` and immediately run.
    *
@@ -293,105 +291,12 @@ export class Smoker {
     return smoker.smoke();
   }
 
-  /**
-   * Cleans up temp directories associated with package managers.
-   *
-   * If the {@link SmokerOptions.linger} option is set to `true`, this method
-   * will _not_ clean up the directories, but will instead emit a
-   * {@link SmokerEvent.Lingered Lingered} event.
-   *
-   * @todo The specific cleanup mechanism should be moved to the package manager
-   *   implementation.
-   */
-  public async cleanup(): Promise<void> {
-    const pkgManagers = this.pkgManagerController.pkgManagers;
-    if (!this.linger) {
-      await Promise.all(
-        pkgManagers.map(async (pm) => {
-          const {tmpdir} = pm;
-          try {
-            await fs.rm(tmpdir, {recursive: true, force: true});
-          } catch (err) {
-            if (isErrnoException(err)) {
-              if (err.code !== 'ENOENT') {
-                throw new CleanupError(
-                  `Failed to clean temp directory ${tmpdir}`,
-                  tmpdir,
-                  err,
-                );
-              }
-            } else {
-              throw err;
-            }
-          }
-        }),
-      );
-    } else if (pkgManagers.length) {
-      const lingered = pkgManagers.map((pm) => pm.tmpdir);
-      debug('Leaving %d temp dirs on disk: %O', lingered.length, lingered);
-      await this.eventBus.emit(SmokerEvent.Lingered, {directories: lingered});
-    }
-  }
-
   public getComponentId(def: object) {
     return this.pluginRegistry.getComponentId(def);
   }
 
-  private getEnabledReportersByPlugin(): PluginReporterDef[] {
-    return this.pluginRegistry.plugins.flatMap((plugin) =>
-      [...plugin.reporterDefMap.values()]
-        .filter(
-          (def) =>
-            this.reporters.has(this.getComponentId(def)) ||
-            (isFunction(def.when) && def.when(this.opts)),
-        )
-        .map(
-          (def) => [plugin, def] as [plugin: typeof plugin, def: typeof def],
-        ),
-    );
-  }
-
-  private getEnabledRules(): PluginRuleDef[] {
-    return this.pluginRegistry.plugins.flatMap((plugin) =>
-      [...plugin.ruleDefMap.values()]
-        .filter((def) => {
-          const id = this.getComponentId(def);
-          return this.opts.rules[id].severity !== RuleSeverities.Off;
-        })
-        .map(
-          (def) => [plugin, def] as [plugin: typeof plugin, def: typeof def],
-        ),
-    );
-  }
-
   public getPkgManagerDefs() {
     return this.pluginRegistry.pkgManagerDefs;
-  }
-
-  private async getAllReporters() {
-    const pluginReporters = this.pluginRegistry.plugins.flatMap((plugin) =>
-      [...plugin.reporterDefMap.values()]
-        .filter((def) => def.isHidden !== true)
-        .map(
-          (def) => [plugin, def] as [plugin: typeof plugin, def: typeof def],
-        ),
-    );
-
-    return ReporterController.loadReporters(pluginReporters, this.opts);
-  }
-
-  private getAllRules() {
-    const pluginRules = this.pluginRegistry.plugins.flatMap((plugin) =>
-      [...plugin.ruleDefMap.values()].map(
-        (def) => [plugin, def] as [plugin: typeof plugin, def: typeof def],
-      ),
-    );
-    return LintController.loadRules(pluginRules);
-  }
-
-  private async getAllPkgManagers(): Promise<SomePkgManager[]> {
-    await this.pkgManagerController.init();
-    return this.pkgManagerController.pkgManagers;
   }
 
   /**
@@ -411,7 +316,7 @@ export class Smoker {
     try {
       let ruleResults: LintResult | undefined;
       const runScriptResults: RunScriptResult[] = [];
-      await this.runChecks();
+      await this.runLint();
 
       return await this.postRun(undefined, ruleResults, runScriptResults);
     } catch (err) {
@@ -419,8 +324,13 @@ export class Smoker {
         error: fromUnknownError(err),
       });
     } finally {
-      await this.eventBus.emit(SmokerEvent.BeforeExit, {});
+      await this.cleanup();
     }
+  }
+
+  private async cleanup() {
+    await this.pkgManagerController.destroy();
+    await this.eventBus.emit(SmokerEvent.BeforeExit, {});
   }
 
   /**
@@ -440,14 +350,16 @@ export class Smoker {
    * @param installResults - The result of {@link Smoker.install}
    * @returns Result of running all enabled rules on all installed packages
    */
-  public async runChecks(): Promise<LintResult> {
-    const lintController = LintController.create(
-      this.eventBus,
-      this.pkgManagerController.pkgManagers,
-      this.getEnabledRules(),
-      this.opts.rules,
-    );
-
+  public async runLint(): Promise<LintResult> {
+    const lintController =
+      this.lintController ??
+      LintController.create(
+        this.pluginRegistry,
+        this.eventBus,
+        this.pkgManagerController.pkgManagers,
+        this.getEnabledRules(),
+        this.opts.rules,
+      );
     debug(
       'Running enabled rules: %s',
       lintController.rules.map((rule) => rule.id).join(', '),
@@ -479,7 +391,7 @@ export class Smoker {
 
       // RUN CHECKS
       if (this.shouldLint) {
-        ruleResults = await this.runChecks();
+        ruleResults = await this.runLint();
       }
 
       // RUN SCRIPTS
@@ -493,7 +405,7 @@ export class Smoker {
         error: fromUnknownError(err),
       });
     } finally {
-      await this.eventBus.emit(SmokerEvent.BeforeExit, {});
+      await this.cleanup();
     }
   }
 
@@ -510,36 +422,93 @@ export class Smoker {
    * 4. {@link OptionParser.parse Parse} the options.
    *
    * @param opts - The options for the smoker.
-   * @param registry - The plugin registry for the smoker.
+   * @param pluginRegistry - The plugin registry for the smoker.
    * @returns An object containing the plugin registry and parsed options.
    * @internal
    */
   private static async bootstrap(
     this: void,
     opts: RawSmokerOptions = {},
-    registry?: PluginRegistry,
+    pluginRegistry?: PluginRegistry,
   ) {
     const plugins = castArray(opts.plugin).filter(
       (requested) => !Blessed.isBlessedPlugin(requested),
     );
     debug('Requested external plugins: %O', plugins);
 
-    if (!registry) {
-      registry = PluginRegistry.create();
+    if (!pluginRegistry) {
+      pluginRegistry = PluginRegistry.create();
       // this must be done in sequence to protect the blessed plugins
-      await registry.loadPlugins(Blessed.BLESSED_PLUGINS);
-      await registry.loadPlugins(plugins);
+      await pluginRegistry.loadPlugins(Blessed.BLESSED_PLUGINS);
+      await pluginRegistry.loadPlugins(plugins);
     }
 
     // disable new registrations
-    registry.close();
+    pluginRegistry.close();
 
-    debug('Loaded %d plugin(s)', registry.plugins.length);
+    debug('Loaded %d plugin(s)', pluginRegistry.plugins.length);
 
     return {
-      pluginRegistry: registry,
-      options: OptionParser.create(registry).parse(opts),
+      pluginRegistry,
+      options: OptionParser.create(pluginRegistry).parse(opts),
     };
+  }
+
+  private async getAllPkgManagers(): Promise<SomePkgManager[]> {
+    await this.pkgManagerController.init();
+    return this.pkgManagerController.pkgManagers;
+  }
+
+  private async getAllReporters() {
+    const pluginReporters = this.pluginRegistry.plugins.flatMap((plugin) =>
+      [...plugin.reporterDefMap.values()]
+        .filter((def) => def.isHidden !== true)
+        .map(
+          (def) => [plugin, def] as [plugin: typeof plugin, def: typeof def],
+        ),
+    );
+
+    return ReporterController.loadReporters(
+      this.pluginRegistry,
+      pluginReporters,
+      this.opts,
+    );
+  }
+
+  private getAllRules() {
+    const pluginRules = this.pluginRegistry.plugins.flatMap((plugin) =>
+      [...plugin.ruleDefMap.values()].map(
+        (def) => [plugin, def] as [plugin: typeof plugin, def: typeof def],
+      ),
+    );
+    return LintController.loadRules(this.pluginRegistry, pluginRules);
+  }
+
+  private getEnabledReportersByPlugin(): PluginReporterDef[] {
+    return this.pluginRegistry.plugins.flatMap((plugin) =>
+      [...plugin.reporterDefMap.values()]
+        .filter(
+          (def) =>
+            this.reporters.has(this.getComponentId(def)) ||
+            (isFunction(def.when) && def.when(this.opts)),
+        )
+        .map(
+          (def) => [plugin, def] as [plugin: typeof plugin, def: typeof def],
+        ),
+    );
+  }
+
+  private getEnabledRules(): PluginRuleDef[] {
+    return this.pluginRegistry.plugins.flatMap((plugin) =>
+      [...plugin.ruleDefMap.values()]
+        .filter((def) => {
+          const id = this.getComponentId(def);
+          return this.opts.rules[id].severity !== RuleSeverities.Off;
+        })
+        .map(
+          (def) => [plugin, def] as [plugin: typeof plugin, def: typeof def],
+        ),
+    );
   }
 
   /**
@@ -564,7 +533,7 @@ export class Smoker {
 
     const aggregateErrors = () => {
       const runScriptErrors = runScriptResults.reduce<ScriptError[]>(
-        (acc, result) => ('error' in result ? [...acc, result.error] : acc),
+        (acc, result) => (result.error ? [...acc, result.error] : acc),
         [],
       );
 
@@ -588,14 +557,6 @@ export class Smoker {
       errors.push(...runScriptErrors, ...ruleErrors);
       return errors;
     };
-
-    // this triggers the "Lingered" event which must happen before
-    // the final "SmokeOK" or "SmokeFailed" event, or there could be a race condition.
-    try {
-      await this.cleanup();
-    } catch {
-      // TODO: handle
-    }
 
     const errors = aggregateErrors();
 

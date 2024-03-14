@@ -24,6 +24,8 @@ module.exports = {
         allowEmptyCatch: true,
       },
     ],
+
+    'object-shorthand': 'error',
   },
   parserOptions: {
     sourceType: 'script',

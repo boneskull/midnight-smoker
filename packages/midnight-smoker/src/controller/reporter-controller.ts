@@ -1,10 +1,10 @@
 import {fromUnknownError} from '#error/base-error';
 import {ReporterError} from '#error/reporter-error';
-import {type EventBus, type EventContext} from '#event/bus';
+import {EventBus, type EventContext} from '#event/bus';
 import {SmokerEvent} from '#event/event-constants';
 import {type SmokerEvents} from '#event/smoker-events';
 import {type SmokerOptions} from '#options';
-import {type PluginMetadata} from '#plugin';
+import {type PluginMetadata, type PluginRegistry} from '#plugin';
 import {Reporter, type SomeReporter} from '#reporter/reporter';
 import {
   ReporterListenerEventMap,
@@ -20,6 +20,7 @@ import Debug from 'debug';
 import {isFunction, pickBy} from 'lodash';
 import {Console} from 'node:console';
 import {type PackageJson} from 'type-fest';
+import {ComponentKinds} from '../constants';
 import {type Controller} from './controller';
 
 export type PluginReporterDef = [
@@ -39,21 +40,31 @@ export class ReporterController implements Controller {
   private readonly eventCtx: EventContext<SmokerEvents, SmokerEvents>;
 
   constructor(
-    private readonly eventBus: EventBus<SmokerEvents, SmokerEvents>,
+    private readonly pluginRegistry: PluginRegistry,
     private readonly pluginReporterDefs: PluginReporterDef[],
     private readonly opts: Readonly<SmokerOptions>,
+    private readonly eventBus: EventBus<
+      SmokerEvents,
+      SmokerEvents
+    > = EventBus.create(),
   ) {
     this.eventCtx = eventBus.context();
   }
 
   public static async loadReporters(
     this: void,
+    pluginRegistry: PluginRegistry,
     pluginReporterDefs: PluginReporterDef[],
     opts: SmokerOptions,
   ): Promise<SomeReporter[]> {
+    const ctrl = ReporterController.create(
+      pluginRegistry,
+      pluginReporterDefs,
+      opts,
+    );
     return Promise.all(
       pluginReporterDefs.map(([plugin, def]) =>
-        ReporterController.loadReporter(plugin, def, opts),
+        ctrl.loadReporter(plugin, def, opts),
       ),
     );
   }
@@ -138,7 +149,7 @@ export class ReporterController implements Controller {
     return {stdout, stderr};
   }
 
-  private static async loadReporter<Ctx = unknown>(
+  private async loadReporter<Ctx = unknown>(
     plugin: Readonly<PluginMetadata>,
     def: ReporterDef<Ctx>,
     opts: SmokerOptions,
@@ -148,7 +159,14 @@ export class ReporterController implements Controller {
     await Promise.resolve();
     pkgJson ??= await readSmokerPkgJson();
     ctx ??= await ReporterController.createReporterContext(def, opts, pkgJson);
-    const reporter = Reporter.create(def, ctx, plugin);
+    const id = this.pluginRegistry.getComponentId(def);
+    this.pluginRegistry.registerComponent(
+      plugin,
+      ComponentKinds.Reporter,
+      def,
+      def.name,
+    );
+    const reporter = Reporter.create(id, def, plugin, ctx);
     debug('Loaded %s', reporter);
     return reporter;
   }
@@ -198,12 +216,7 @@ export class ReporterController implements Controller {
     def: ReporterDef<Ctx>,
     pkgJson: PackageJson,
   ): Promise<Reporter<Ctx>> {
-    const reporter = await ReporterController.loadReporter(
-      plugin,
-      def,
-      this.opts,
-      pkgJson,
-    );
+    const reporter = await this.loadReporter(plugin, def, this.opts, pkgJson);
 
     try {
       await reporter.setup();
@@ -218,11 +231,17 @@ export class ReporterController implements Controller {
   }
 
   public static create(
-    eventBus: EventBus<SmokerEvents, SmokerEvents>,
+    pluginRegistry: PluginRegistry,
     pluginReporterDefs: PluginReporterDef[],
     opts: SmokerOptions,
+    eventBus?: EventBus<SmokerEvents, SmokerEvents>,
   ): ReporterController {
-    return new ReporterController(eventBus, pluginReporterDefs, opts);
+    return new ReporterController(
+      pluginRegistry,
+      pluginReporterDefs,
+      opts,
+      eventBus,
+    );
   }
 }
 

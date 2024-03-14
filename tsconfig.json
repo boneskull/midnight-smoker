@@ -4,8 +4,8 @@
   "references": [
     {"path": "./packages/midnight-smoker/src/tsconfig.json"},
     {"path": "./packages/test-util/tsconfig.json"},
-    {"path": "./packages/plugin-default/tsconfig.json"}
+    {"path": "./packages/plugin-default/tsconfig.json"},
     // split up due to cycle
-    // {"path": "./packages/midnight-smoker/test/tsconfig.json"}
+    {"path": "./packages/midnight-smoker/test/tsconfig.json"}
   ]
 }

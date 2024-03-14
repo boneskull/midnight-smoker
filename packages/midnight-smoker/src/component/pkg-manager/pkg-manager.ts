@@ -9,9 +9,9 @@ import {type PkgInstallManifest} from '#schema/pkg-install-manifest';
 import {
   type PkgManagerContext,
   type PkgManagerDef,
-  type SomePkgManagerInstallContext,
-  type SomePkgManagerPackContext,
-  type SomePkgManagerRunScriptContext,
+  type PkgManagerInstallContext,
+  type PkgManagerPackContext,
+  type PkgManagerRunScriptContext,
   type SupportedVersionRange,
 } from '#schema/pkg-manager-def';
 import {type RunScriptManifest} from '#schema/run-script-manifest';
@@ -28,11 +28,12 @@ export class PkgManager<Ctx = unknown> extends ReifiedComponent<PkgManagerDef> {
   #installResult?: InstallResult;
 
   constructor(
+    id: string,
     def: PkgManagerDef,
-    public readonly ctx: PkgManagerContext<Ctx>,
     plugin: Readonly<PluginMetadata>,
+    public readonly ctx: PkgManagerContext<Ctx>,
   ) {
-    super(def, plugin);
+    super(id, def, plugin);
   }
 
   public get bin(): string {
@@ -67,28 +68,29 @@ export class PkgManager<Ctx = unknown> extends ReifiedComponent<PkgManagerDef> {
 
   public static create<Ctx = unknown>(
     this: void,
+    id: string,
     def: PkgManagerDef,
-    ctx: PkgManagerContext<Ctx>,
     plugin: Readonly<PluginMetadata>,
+    ctx: PkgManagerContext<Ctx>,
   ): PkgManager {
-    return new PkgManager(def, ctx, plugin);
+    return new PkgManager(id, def, plugin, ctx);
   }
 
-  public addAdditionalDep(pkgName: string): void {
-    if (this.#installManifestMap.has(pkgName)) {
+  public addAdditionalDep(pkgSpec: string): void {
+    if (this.#installManifestMap.has(pkgSpec)) {
       throw new PackageManagerError(
-        `Additional dep ${pkgName} is already installed!`,
+        `Additional dep ${pkgSpec} is already installed!`,
         this.spec,
         new Error('Duplicate package name'),
       );
     }
     this.#installManifests.push({
       cwd: this.ctx.tmpdir,
-      spec: pkgName,
-      pkgName,
+      pkgSpec,
+      pkgName: pkgSpec,
       isAdditional: true,
     });
-    debug('Added additional dep %s to pkg manager %s', pkgName, this.id);
+    debug('Added additional dep %s to pkg manager %s', pkgSpec, this.id);
   }
 
   public async install(): Promise<void> {
@@ -104,7 +106,7 @@ export class PkgManager<Ctx = unknown> extends ReifiedComponent<PkgManagerDef> {
         new Error('No packages to install'),
       );
     }
-    const ctx: SomePkgManagerInstallContext = {...this.ctx, installManifests};
+    const ctx: PkgManagerInstallContext = {...this.ctx, installManifests};
     const rawResult = await this.def.install(ctx);
     this.#installResult = {
       rawResult,
@@ -113,7 +115,7 @@ export class PkgManager<Ctx = unknown> extends ReifiedComponent<PkgManagerDef> {
   }
 
   public async pack(opts: PackOptions = {}): Promise<void> {
-    const ctx: SomePkgManagerPackContext = {...this.ctx, ...opts};
+    const ctx: PkgManagerPackContext = {...this.ctx, ...opts};
     this.#installManifests = await this.def.pack(ctx);
 
     for (const manifest of this.#installManifests) {
@@ -129,12 +131,12 @@ export class PkgManager<Ctx = unknown> extends ReifiedComponent<PkgManagerDef> {
   }
 
   public async runScript(
-    runManifest: RunScriptManifest,
+    runScriptManifest: RunScriptManifest,
     signal: AbortSignal,
   ): Promise<RunScriptResult> {
-    const ctx: SomePkgManagerRunScriptContext = {
+    const ctx: PkgManagerRunScriptContext<Ctx> = {
       ...this.ctx,
-      runManifest,
+      runScriptManifest,
       signal,
     };
     return this.def.runScript(ctx);
@@ -142,6 +144,7 @@ export class PkgManager<Ctx = unknown> extends ReifiedComponent<PkgManagerDef> {
 
   public async setup(): Promise<void> {
     await Promise.resolve();
+    // eslint-disable-next-line @typescript-eslint/unbound-method
     if (isFunction(this.def.setup)) {
       debug('Setting up package manager %s', this.id);
 
@@ -159,6 +162,7 @@ export class PkgManager<Ctx = unknown> extends ReifiedComponent<PkgManagerDef> {
 
   public async teardown(): Promise<void> {
     await Promise.resolve();
+    // eslint-disable-next-line @typescript-eslint/unbound-method
     if (isFunction(this.def.teardown)) {
       debug('Tearing down package manager %s', this.id);
 

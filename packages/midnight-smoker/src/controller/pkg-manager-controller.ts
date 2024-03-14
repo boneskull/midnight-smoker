@@ -4,8 +4,14 @@
  *
  * @packageDocumentation
  */
-import {DEFAULT_EXECUTOR_ID, SYSTEM_EXECUTOR_ID} from '#constants';
+
 import {
+  ComponentKinds,
+  DEFAULT_EXECUTOR_ID,
+  SYSTEM_EXECUTOR_ID,
+} from '#constants';
+import {
+  CleanupError,
   InstallError,
   PackError,
   PackParseError,
@@ -30,7 +36,7 @@ import {
   type RunScriptResult,
   type SomePkgManager,
 } from '#pkg-manager';
-import {createTempDir, type PluginMetadata, type PluginRegistry} from '#plugin';
+import {type PluginMetadata, type PluginRegistry} from '#plugin';
 import {
   type Executor,
   type PackOptions,
@@ -39,7 +45,8 @@ import {
   type PkgManagerOpts,
   type RunScriptManifest,
 } from '#schema';
-import {once} from '#util';
+import {isErrnoException, once} from '#util';
+import {FileManager, type FileManagerOpts} from '#util/filemanager';
 import Debug from 'debug';
 import {isError} from 'lodash';
 import {type Controller} from './controller';
@@ -63,6 +70,10 @@ export interface PkgManagerControllerOpts {
   cwd?: string;
   defaultExecutorId?: string;
   systemExecutorId?: string;
+
+  fileManagerOpts?: FileManagerOpts;
+
+  linger?: boolean;
 }
 
 /**
@@ -93,22 +104,30 @@ export class PkgManagerController implements Controller {
   public readonly pkgManagerOpts: PkgManagerOpts;
   public readonly systemExecutor: Executor;
 
+  public readonly linger: boolean;
+
+  #fm: FileManager;
+
   public constructor(
-    protected readonly pluginRegistry: PluginRegistry,
-    protected readonly eventBus: SmokerEventBus,
-    protected readonly desiredPkgManagers: string[],
+    private readonly pluginRegistry: PluginRegistry,
+    private readonly eventBus: SmokerEventBus,
+    private readonly desiredPkgManagers: string[] = [],
     opts: PkgManagerControllerOpts & PkgManagerOpts = {},
   ) {
     const {
       defaultExecutorId = DEFAULT_EXECUTOR_ID,
       systemExecutorId = SYSTEM_EXECUTOR_ID,
       cwd = process.cwd(),
+      fileManagerOpts,
+      linger,
       ...pkgManagerOpts
     } = opts;
+    this.linger = Boolean(linger);
     this.defaultExecutor = this.pluginRegistry.getExecutor(defaultExecutorId);
     this.systemExecutor = this.pluginRegistry.getExecutor(systemExecutorId);
     this.cwd = cwd;
     this.pkgManagerOpts = pkgManagerOpts;
+    this.#fm = new FileManager(fileManagerOpts);
   }
 
   public get pkgManagers() {
@@ -121,7 +140,7 @@ export class PkgManagerController implements Controller {
   public static create(
     pluginRegistry: PluginRegistry,
     eventBus: SmokerEventBus,
-    desiredPkgManagers: string[],
+    desiredPkgManagers: string[] = [],
     opts: PkgManagerControllerOpts & PkgManagerOpts = {},
   ) {
     return new PkgManagerController(
@@ -132,30 +151,106 @@ export class PkgManagerController implements Controller {
     );
   }
 
+  /**
+   * Creates a _base_ {@link PkgManagerContext} object for the given spec.
+   *
+   * When passing the result to a `PkgManager` instance method, create a new
+   * object based on this `PkgManagerContext` with any extra properties needed.
+   *
+   * @param spec Spec for context
+   * @param opts PkgManagerOpts
+   * @returns Minimal `PkgManagerContext`
+   * @internal
+   */
   public async createPkgManagerContext(
     spec: PkgManagerSpec,
     opts: PkgManagerOpts = {},
   ): Promise<PkgManagerContext> {
+    const tmpdir = await this.#fm.createTempDir(
+      `${spec.pkgManager}-${spec.version}`,
+    );
+    const executor = this.executorForSpec(spec);
     return {
       spec,
-      tmpdir: await createTempDir(),
-      executor: this.executorForSpec(spec),
+      tmpdir,
+      executor,
       ...opts,
     };
   }
 
+  /**
+   * Executes {@link PkgManager.teardown} of each `PkgManager`, then runs cleanup
+   * on temp dirs (based on {@link PkgManagerController.linger})
+   */
   public async destroy() {
+    this.pkgManagers; //?
     await Promise.all(
-      this.#pkgManagers.map((pkgManager) => pkgManager.teardown()),
+      this.pkgManagers.map((pkgManager) => pkgManager.teardown()),
     );
+    if (!this.linger) {
+      await Promise.all(
+        this.pkgManagers.map(async (pm) => {
+          const {tmpdir} = pm;
+          try {
+            await this.#fm.rimraf(tmpdir);
+          } catch (err) {
+            if (isErrnoException(err)) {
+              if (err.code !== 'ENOENT') {
+                throw new CleanupError(
+                  `Failed to clean temp directory ${tmpdir}`,
+                  tmpdir,
+                  err,
+                );
+              }
+            } else {
+              throw err;
+            }
+          }
+        }),
+      );
+    } else if (this.pkgManagers.length) {
+      const lingered = this.pkgManagers.map((pm) => pm.tmpdir);
+      debug('Leaving %d temp dirs on disk: %O', lingered.length, lingered);
+      await this.eventBus.emit(SmokerEvent.Lingered, {directories: lingered});
+    }
   }
 
   @once
   public async init() {
+    const {cwd, desiredPkgManagers, pkgManagerOpts} = this;
+    const {plugins} = this.pluginRegistry;
+    const createPkgManagerContext = this.createPkgManagerContext.bind(this);
+    const getComponent = this.pluginRegistry.getComponent.bind(
+      this.pluginRegistry,
+    );
+    const registerComponent = this.pluginRegistry.registerComponent.bind(
+      this.pluginRegistry,
+    );
+
+    // this is an async generator because of the nested loop, which is not
+    // conducive to mapping via `Promise.all`
+    async function* initPkgManagers() {
+      for (const plugin of plugins) {
+        const pkgManagerDefSpecs = await plugin.loadPkgManagers({
+          cwd,
+          desiredPkgManagers,
+        });
+        for (const {spec, def} of pkgManagerDefSpecs) {
+          const ctx = await createPkgManagerContext(spec, pkgManagerOpts);
+          const {id, componentName} = getComponent(def);
+          registerComponent(
+            plugin,
+            ComponentKinds.PkgManager,
+            def,
+            componentName,
+          );
+          yield PkgManager.create(id, def, plugin, ctx);
+        }
+      }
+    }
+
     const pkgManagers: SomePkgManager[] = [];
-    for await (const pkgManager of this.initPkgManagers(
-      this.pluginRegistry.plugins,
-    )) {
+    for await (const pkgManager of initPkgManagers()) {
       pkgManagers.push(pkgManager);
     }
     this.#pkgManagers = pkgManagers;
@@ -220,6 +315,7 @@ export class PkgManagerController implements Controller {
    * @returns A promise that resolves to an array of `PkgManagerInstallManifest`
    *   objects.
    * @internal
+   * @todo Ensure `#installManifests` is empty when this is called
    */
   public async pack(opts: PackOptions = {}): Promise<void> {
     const pkgManagers = this.pkgManagers;
@@ -250,7 +346,7 @@ export class PkgManagerController implements Controller {
     );
   }
 
-  public async runScript(
+  private async runScript(
     pkgManager: PkgManager,
     runManifest: RunScriptManifest,
     signal: AbortSignal,
@@ -331,6 +427,7 @@ export class PkgManagerController implements Controller {
         ac.abort();
       }
     };
+
     this.eventBus.onSync(SmokerEvent.RunScriptFailed, runScriptFailedListener);
 
     await this.eventBus.emit(SmokerEvent.RunScriptsBegin, beginEvtData);
@@ -406,20 +503,6 @@ export class PkgManagerController implements Controller {
 
   private executorForSpec(spec: PkgManagerSpec) {
     return spec.isSystem ? this.defaultExecutor : this.systemExecutor;
-  }
-
-  private async *initPkgManagers(plugins: Readonly<PluginMetadata>[]) {
-    const {cwd, desiredPkgManagers, pkgManagerOpts} = this;
-    for (const plugin of plugins) {
-      const pkgManagerDefSpecs = await plugin.loadPkgManagers({
-        cwd,
-        desiredPkgManagers,
-      });
-      for (const {spec, def} of pkgManagerDefSpecs) {
-        const ctx = await this.createPkgManagerContext(spec, pkgManagerOpts);
-        yield PkgManager.create(def, ctx, plugin);
-      }
-    }
   }
 }
 

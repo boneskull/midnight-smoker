@@ -7,17 +7,17 @@ import {
 } from 'midnight-smoker/executor';
 import {
   PkgManagerSpec,
-  type InstallManifest,
+  SemVer,
+  type PkgManagerInstallContext,
+  type PkgManagerPackContext,
+  type PkgManagerRunScriptContext,
 } from 'midnight-smoker/pkg-manager';
-import {Helpers} from 'midnight-smoker/plugin';
 import rewiremock from 'rewiremock/node';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
 import {type NpmPackItem} from '../../../src/package-manager/npm';
 import type * as NPM7 from '../../../src/package-manager/npm7';
-
-import {type Range} from 'semver';
 import type {ConsoleMock, DebugMock} from '../../mocks';
 import {mockConsole, mockDebug} from '../../mocks';
 
@@ -45,7 +45,7 @@ describe('@midnight-smoker/plugin-default', function () {
       debug: mockDebug,
     };
 
-    sandbox.stub(Helpers, 'createTempDir').resolves(MOCK_TMPDIR);
+    // sandbox.stub(Helpers, 'createTempDir').resolves(MOCK_TMPDIR);
 
     // don't stub out debug statements if running in wallaby
     if (process.env.WALLABY) {
@@ -78,52 +78,33 @@ describe('@midnight-smoker/plugin-default', function () {
         spec = await PkgManagerSpec.from('npm@7.0.0');
       });
 
-      describe('static method', function () {
-        describe('create()', function () {
-          it('should resolve w/ an Npm instance', async function () {
-            await expect(
-              Npm7.create(spec, executor, Helpers),
-              'to be fulfilled with value satisfying',
-              expect.it('to be a', Npm7),
-            );
-          });
-        });
-
-        describe('accepts', function () {
-          let range: Range;
-
-          beforeEach(function () {
-            range = Npm7.supportedVersionRange;
-          });
-
-          it('should return false for versions < 7.0.0', function () {
-            expect(range.test('6.0.0'), 'to be false');
-          });
-
-          it('should return true for versions >=7 & <9', function () {
-            expect(range.test('8.0.0'), 'to be true');
-          });
-
-          it('should return false for versions >=9', function () {
-            expect(range.test('9.0.0'), 'to be false');
-          });
-        });
-      });
-
       describe('constructor', function () {
         describe('when provided no options', function () {
-          it('should throw', function () {
-            // @ts-expect-error bad args
+          it('should not throw', function () {
             expect(() => new Npm7(), 'not to throw');
           });
         });
       });
 
-      describe('method', function () {
+      describe('instance method', function () {
         let npm: NPM7.Npm7;
 
-        beforeEach(async function () {
-          npm = await Npm7.create(spec, executor, Helpers);
+        beforeEach(function () {
+          npm = new Npm7();
+        });
+
+        describe('accepts', function () {
+          it('should return undefined for versions < 7.0.0', function () {
+            expect(npm.accepts('6.0.0'), 'to be undefined');
+          });
+
+          it('should return a SemVer for versions >=7 & <9', function () {
+            expect(npm.accepts('8.0.0'), 'to be a', SemVer);
+          });
+
+          it('should return undefined for versions >=9', function () {
+            expect(npm.accepts('9.0.0'), 'to be undefined');
+          });
         });
 
         describe('pack()', function () {
@@ -134,16 +115,22 @@ describe('@midnight-smoker/plugin-default', function () {
               files: [],
             },
           ];
+          let ctx: PkgManagerPackContext;
 
           beforeEach(function () {
             executor.resolves({
               stdout: JSON.stringify(npmPackItems),
             } as any);
+            ctx = {
+              spec,
+              tmpdir: MOCK_TMPDIR,
+              executor,
+            };
           });
 
-          describe('when called without options', function () {
+          describe('when called with a base context', function () {
             it('should call exec without extra flags', async function () {
-              await npm.pack();
+              await npm.pack(ctx);
 
               expect(executor, 'to have a call satisfying', [
                 spec,
@@ -157,9 +144,9 @@ describe('@midnight-smoker/plugin-default', function () {
             });
           });
 
-          describe('when called with "workspaces" option', function () {
+          describe('when called with context containing "workspaces" option', function () {
             it('should call exec with --workspace args', async function () {
-              await npm.pack({workspaces: ['bar', 'baz']});
+              await npm.pack({...ctx, workspaces: ['bar', 'baz']});
               expect(executor, 'to have a call satisfying', [
                 spec,
                 [
@@ -174,9 +161,9 @@ describe('@midnight-smoker/plugin-default', function () {
             });
           });
 
-          describe('when called with "allWorkspaces" option', function () {
+          describe('when called with context containing "allWorkspaces" option', function () {
             it('should call exec with --workspaces flag', async function () {
-              await npm.pack({allWorkspaces: true});
+              await npm.pack({...ctx, allWorkspaces: true});
               expect(executor, 'to have a call satisfying', [
                 spec,
                 [
@@ -189,9 +176,10 @@ describe('@midnight-smoker/plugin-default', function () {
               ]);
             });
 
-            describe('when called with "includeWorkspaceRoot" option', function () {
+            describe('when called with contxt containing "includeWorkspaceRoot" option', function () {
               it('should call exec with --workspaces flag and --include-workspace-root flag', async function () {
                 await npm.pack({
+                  ...ctx,
                   allWorkspaces: true,
                   includeWorkspaceRoot: true,
                 });
@@ -234,9 +222,13 @@ describe('@midnight-smoker/plugin-default', function () {
             });
 
             it('should reject', async function () {
-              await expect(npm.pack(), 'to be rejected with error satisfying', {
-                code: ErrorCodes.PackError,
-              });
+              await expect(
+                npm.pack(ctx),
+                'to be rejected with error satisfying',
+                {
+                  code: ErrorCodes.PackError,
+                },
+              );
             });
           });
 
@@ -247,20 +239,24 @@ describe('@midnight-smoker/plugin-default', function () {
             });
 
             it('should reject', async function () {
-              await expect(npm.pack(), 'to be rejected with error satisfying', {
-                code: ErrorCodes.PackParseError,
-              });
+              await expect(
+                npm.pack(ctx),
+                'to be rejected with error satisfying',
+                {
+                  code: ErrorCodes.PackParseError,
+                },
+              );
             });
           });
 
           describe('when packing is successful', function () {
-            it('should resolve with an array of PackedPackage objects', async function () {
+            it('should resolve with an array of InstallManifest objects', async function () {
               await expect(
-                npm.pack(),
+                npm.pack(ctx),
                 'to be fulfilled with value satisfying',
                 [
                   {
-                    spec: `/some/dir/tubby-3.2.1.tgz`,
+                    pkgSpec: `/some/dir/tubby-3.2.1.tgz`,
                     pkgName: 'tubby',
                     cwd: '/some/dir',
                   },
@@ -271,23 +267,29 @@ describe('@midnight-smoker/plugin-default', function () {
         });
 
         describe('install()', function () {
-          const manifest: InstallManifest[] = [
-            {
-              spec: `${MOCK_TMPDIR}/bar.tgz`,
-              pkgName: 'bar',
-              cwd: MOCK_TMPDIR,
-              installPath: `${MOCK_TMPDIR}/node_modules/bar`,
-            },
-            {
-              spec: `${MOCK_TMPDIR}/baz.tgz`,
-              pkgName: 'baz',
-              cwd: MOCK_TMPDIR,
-              installPath: `${MOCK_TMPDIR}/node_modules/baz`,
-            },
-          ];
+          let ctx: PkgManagerInstallContext;
 
           beforeEach(function () {
             executor.resolves({stdout: 'stuff', exitCode: 0} as any);
+            ctx = {
+              spec,
+              tmpdir: MOCK_TMPDIR,
+              executor,
+              installManifests: [
+                {
+                  pkgSpec: `${MOCK_TMPDIR}/bar.tgz`,
+                  pkgName: 'bar',
+                  cwd: MOCK_TMPDIR,
+                  installPath: `${MOCK_TMPDIR}/node_modules/bar`,
+                },
+                {
+                  pkgSpec: `${MOCK_TMPDIR}/baz.tgz`,
+                  pkgName: 'baz',
+                  cwd: MOCK_TMPDIR,
+                  installPath: `${MOCK_TMPDIR}/node_modules/baz`,
+                },
+              ],
+            };
           });
 
           describe('when npm fails and outputs garbage', function () {
@@ -298,7 +300,7 @@ describe('@midnight-smoker/plugin-default', function () {
 
             it('should reject', async function () {
               await expect(
-                npm.install(manifest),
+                npm.install(ctx),
                 'to be rejected with error satisfying',
                 {
                   code: ErrorCodes.InstallError,
@@ -309,7 +311,7 @@ describe('@midnight-smoker/plugin-default', function () {
           });
 
           it('should call npm with "--global-style"', async function () {
-            await npm.install(manifest);
+            await npm.install(ctx);
             expect(executor, 'to have a call satisfying', [
               spec,
               [
@@ -318,7 +320,7 @@ describe('@midnight-smoker/plugin-default', function () {
                 '--no-package-lock',
                 '--global-style',
                 '--json',
-                ...manifest.map(({spec}) => spec),
+                ...ctx.installManifests.map(({pkgSpec}) => pkgSpec),
               ],
               {},
               {cwd: '/some/dir'},
@@ -328,7 +330,7 @@ describe('@midnight-smoker/plugin-default', function () {
           describe('when "manifest" argument is empty', function () {
             it('should reject', async function () {
               await expect(
-                npm.install([]),
+                npm.install({...ctx, installManifests: []}),
                 'to be rejected with error satisfying',
                 {code: ErrorCodes.InvalidArgError},
               );
@@ -337,18 +339,23 @@ describe('@midnight-smoker/plugin-default', function () {
         });
 
         describe('runScript()', function () {
+          let ctx: PkgManagerRunScriptContext;
+
           beforeEach(function () {
             executor.resolves({failed: false, stdout: 'stuff'} as any);
-          });
-          describe('when called without "manifest" argument', function () {
-            it('should reject', async function () {
-              await expect(
-                // @ts-expect-error - intentionally passing no args
-                npm.runScript(),
-                'to be rejected with error satisfying',
-                {code: ErrorCodes.InvalidArgError},
-              );
-            });
+            ctx = {
+              spec,
+              executor,
+              tmpdir: MOCK_TMPDIR,
+              loose: false,
+              pkgName: 'foo',
+              script: 'some-script',
+              runScriptManifest: {
+                cwd: `${MOCK_TMPDIR}/node_modules/foo`,
+                pkgName: 'foo',
+                script: 'some-script',
+              },
+            };
           });
 
           describe('when npm fails', function () {
@@ -358,14 +365,7 @@ describe('@midnight-smoker/plugin-default', function () {
 
             it('should resolve with a result containing an error', async function () {
               await expect(
-                npm.runScript(
-                  {
-                    cwd: `${MOCK_TMPDIR}/node_modules/foo`,
-                    pkgName: 'foo',
-                    script: 'some-script',
-                  },
-                  {} as any,
-                ),
+                npm.runScript(ctx),
                 'to be fulfilled with value satisfying',
                 {
                   error: {code: ErrorCodes.RunScriptError},
@@ -385,14 +385,7 @@ describe('@midnight-smoker/plugin-default', function () {
 
             it('should resolve with a result containing an error', async function () {
               await expect(
-                npm.runScript(
-                  {
-                    cwd: `${MOCK_TMPDIR}/node_modules/foo`,
-                    pkgName: 'foo',
-                    script: 'some-script',
-                  },
-                  {} as any,
-                ),
+                npm.runScript(ctx),
                 'to be fulfilled with value satisfying',
                 {
                   error: {
@@ -414,14 +407,7 @@ describe('@midnight-smoker/plugin-default', function () {
 
             it('should resolve with a result containing an error', async function () {
               await expect(
-                npm.runScript(
-                  {
-                    cwd: `${MOCK_TMPDIR}/node_modules/foo`,
-                    pkgName: 'foo',
-                    script: 'some-script',
-                  },
-                  {} as any,
-                ),
+                npm.runScript(ctx),
                 'to be fulfilled with value satisfying',
                 {
                   error: {code: ErrorCodes.UnknownScriptError},
@@ -433,14 +419,7 @@ describe('@midnight-smoker/plugin-default', function () {
           describe('when the script succeeds', function () {
             it('should resolve with a result containing no error', async function () {
               await expect(
-                npm.runScript(
-                  {
-                    cwd: `${MOCK_TMPDIR}/node_modules/foo`,
-                    pkgName: 'foo',
-                    script: 'some-script',
-                  },
-                  {} as any,
-                ),
+                npm.runScript(ctx),
                 'to be fulfilled with value satisfying',
                 expect.it('not to have key', 'error'),
               );

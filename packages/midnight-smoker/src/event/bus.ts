@@ -14,7 +14,7 @@ export class EventBus<
 > {
   public readonly emitter: Emitter<SyncEvents, AsyncEvents>;
 
-  protected constructor(emitter = asyncMitt<SyncEvents, AsyncEvents>()) {
+  public constructor(emitter = asyncMitt<SyncEvents, AsyncEvents>()) {
     this.emitter = emitter;
   }
 

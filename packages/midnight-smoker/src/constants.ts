@@ -58,8 +58,10 @@ export const ComponentKinds = {
   Rule: 'Rule',
   RuleDef: 'RuleDef',
   PkgManagerDef: 'PkgManagerDef',
+  PkgManager: 'PkgManager',
   Executor: 'Executor',
   ReporterDef: 'ReporterDef',
+  Reporter: 'Reporter',
 } as const;
 
 /**
@@ -68,3 +70,7 @@ export const ComponentKinds = {
  * @see {@link ComponentKinds}
  */
 export type ComponentKind = keyof typeof ComponentKinds;
+
+export const MIDNIGHT_SMOKER = 'midnight-smoker';
+
+export const UNKNOWN_TMPDIR_PREFIX = 'unknown';

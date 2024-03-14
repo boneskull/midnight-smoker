@@ -4,12 +4,14 @@
  *
  * @packageDocumentation
  */
-
 import {DEFAULT_PKG_MANAGER_BIN, DEFAULT_PKG_MANAGER_VERSION} from '#constants';
+import {type PkgManagerDef} from '#schema/pkg-manager-def';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {getSystemPkgManagerVersion} from '#util/pkg-util';
+import type {NonEmptyArray} from '#util/util';
 import {isString} from 'lodash';
 import {parse, type SemVer} from 'semver';
+import {guessPackageManager} from './pkg-manager-guesser';
 
 /**
  * Options for {@link PkgManagerSpec}.
@@ -234,6 +236,47 @@ export class PkgManagerSpec {
     }
     return `${this.pkgManager}@${this.version}`;
   }
+
+  public static async fromMany(
+    specs: Iterable<PkgManagerSpec | string>,
+  ): Promise<Readonly<PkgManagerSpec>[]> {
+    return Promise.all([...specs].map((spec) => PkgManagerSpec.from(spec)));
+  }
+
+  /**
+   * Given a nonempty list of package manager definitions, resolves a list of
+   * {@link PkgManagerSpec} instances.
+   *
+   * This is guaranteed to return at least one {@link PkgManagerSpec} instance.
+   *
+   * @param defs - Package manager definitions
+   * @param opts - Options
+   * @returns One or more {@link PkgManagerSpec} instances representing available
+   *   package managers
+   */
+  public static async fromPkgManagerDefs(
+    this: void,
+    defs: NonEmptyArray<PkgManagerDef>,
+    {desiredPkgManagers = [], cwd = process.cwd()}: FromPkgManagerDefsOpts = {},
+  ): Promise<NonEmptyArray<Readonly<PkgManagerSpec>>> {
+    if (desiredPkgManagers.length) {
+      const specs = (await PkgManagerSpec.fromMany(
+        desiredPkgManagers,
+      )) as NonEmptyArray<Readonly<PkgManagerSpec>>;
+      if (specs.length) {
+        return specs;
+      }
+    }
+    return [await guessPackageManager(defs, cwd)];
+  }
+}
+
+/**
+ * Options for {@link PkgManagerSpec.fromPkgManagerDefs}.
+ */
+export interface FromPkgManagerDefsOpts {
+  cwd?: string;
+  desiredPkgManagers?: Array<string | Readonly<PkgManagerSpec>>;
 }
 
 /**

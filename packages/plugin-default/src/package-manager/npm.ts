@@ -1,13 +1,16 @@
 import type Debug from 'debug';
-import {pickBy} from 'lodash';
+import {isError, pickBy} from 'lodash';
 import {type ScriptError} from 'midnight-smoker/error';
 import {
   ExecError,
   InstallError,
   InvalidArgError,
+  PackError,
+  PackParseError,
   RunScriptError,
   ScriptFailedError,
   UnknownScriptError,
+  normalizeVersion,
   type ExecResult,
   type InstallManifest,
   type PkgManagerAcceptsResult,
@@ -18,6 +21,9 @@ import {
   type RunScriptResult,
 } from 'midnight-smoker/pkg-manager';
 import {isSmokerError} from 'midnight-smoker/util';
+import path from 'node:path';
+import {type Range} from 'semver';
+import {npmVersionData} from './data';
 
 /**
  * When `npm` fails when run with `--json`, the error output is also in JSON.
@@ -30,21 +36,6 @@ export interface NpmJsonOutput {
     detail?: string;
     code?: null | string;
   };
-}
-
-/**
- * Type of item in the {@link NpmPackItem.files} array.
- *
- * Actual object contains more fields.
- *
- * @internal
- */
-
-export interface NpmPackItemFileEntry {
-  /**
-   * Path of file
-   */
-  path: string;
 }
 
 /**
@@ -72,19 +63,124 @@ export interface NpmPackItem {
 }
 
 /**
+ * Type of item in the {@link NpmPackItem.files} array.
+ *
+ * Actual object contains more fields.
+ *
+ * @internal
+ */
+export interface NpmPackItemFileEntry {
+  /**
+   * Path of file
+   */
+  path: string;
+}
+
+/**
  * Intended to provide whatever we can that's common to all versions of `npm`.
  */
 export abstract class BaseNpmPackageManager implements PkgManagerDef {
   protected abstract debug: Debug.Debugger;
 
-  public abstract accepts(value: string): PkgManagerAcceptsResult;
-
-  public abstract install(ctx: PkgManagerInstallContext): Promise<ExecResult>;
-
-  public abstract pack(ctx: PkgManagerPackContext): Promise<InstallManifest[]>;
-
   public readonly bin = 'npm';
   public readonly lockfile = 'package-lock.json';
+
+  public abstract supportedVersionRange: Range;
+
+  public accepts(value: string): PkgManagerAcceptsResult {
+    const version = normalizeVersion(npmVersionData, value);
+    if (version && this.supportedVersionRange.test(version)) {
+      return version;
+    }
+  }
+
+  public async pack(ctx: PkgManagerPackContext): Promise<InstallManifest[]> {
+    let packArgs = [
+      'pack',
+      '--json',
+      `--pack-destination=${ctx.tmpdir}`,
+      '--foreground-scripts=false', // suppress output of lifecycle scripts so json can be parsed
+    ];
+    if (ctx.workspaces?.length) {
+      packArgs = [
+        ...packArgs,
+        ...ctx.workspaces.map((w) => `--workspace=${w}`),
+      ];
+    } else if (ctx.allWorkspaces) {
+      packArgs = [...packArgs, '--workspaces'];
+      if (ctx.includeWorkspaceRoot) {
+        packArgs = [...packArgs, '--include-workspace-root'];
+      }
+    }
+
+    let packResult: ExecResult;
+
+    try {
+      packResult = await ctx.executor(ctx.spec, packArgs);
+    } catch (e) {
+      this.debug('(pack) Failed: %O', e);
+      const err = e as ExecError;
+      if (err.id === 'ExecError') {
+        // in some cases we can get something more user-friendly via the JSON output
+        const parsedError = this.parseNpmError(err.stdout);
+
+        if (parsedError) {
+          throw new PackError(parsedError.summary, `${ctx.spec}`, ctx.tmpdir, {
+            error: parsedError,
+            output: err.stderr,
+            exitCode: err.exitCode,
+          });
+        }
+
+        throw new PackError(
+          `Use --verbose for more information`,
+          `${ctx.spec}`,
+          ctx.tmpdir,
+          {error: err},
+        );
+      }
+      throw e;
+    }
+
+    let parsed: NpmPackItem[];
+
+    const {stdout: packOutput} = packResult;
+    try {
+      parsed = JSON.parse(packOutput) as NpmPackItem[];
+      this.debug(
+        '(pack) Packed: %O',
+        parsed.map(({filename, name, files}) => ({
+          filename,
+          name,
+          files: files.map((file) => file.path),
+        })),
+      );
+    } catch (err) {
+      this.debug('(pack) Failed to parse JSON: %s', packOutput);
+      throw isError(err)
+        ? new PackParseError(
+            `Failed to parse JSON result of "npm pack"`,
+            `${ctx.spec}`,
+            err,
+            packOutput,
+          )
+        : err;
+    }
+
+    const installManifest = parsed.map<InstallManifest>(({filename, name}) => {
+      // workaround for https://github.com/npm/cli/issues/3405
+      filename = filename.replace(/^@(.+?)\//, '$1-');
+      return {
+        pkgSpec: path.join(ctx.tmpdir, filename),
+        installPath: path.join(ctx.tmpdir, 'node_modules', name),
+        cwd: ctx.tmpdir,
+        pkgName: name,
+      };
+    });
+    this.debug('(pack) Packed %d packages', installManifest.length);
+
+    return installManifest;
+  }
 
   public async runScript({
     executor,
@@ -105,62 +201,67 @@ export abstract class BaseNpmPackageManager implements PkgManagerDef {
         {signal},
         {cwd},
       );
-    } catch (e) {
-      const err = e as ExecError;
-      if (loose && /missing script:/i.test(err.stderr)) {
-        skipped = true;
+    } catch (err) {
+      if (isSmokerError(ExecError, err)) {
+        if (loose && /missing script:/i.test(err.stderr)) {
+          skipped = true;
+        } else {
+          error = new RunScriptError(err, script, pkgName, `${spec}`);
+        }
       } else {
-        error = new RunScriptError(err, script, pkgName, `${spec}`);
+        throw err;
       }
     }
 
     if (rawResult) {
       if (rawResult.failed) {
-        if (loose && /missing script:/i.test(rawResult.stderr)) {
-          skipped = true;
+        if (/missing script:/i.test(rawResult.stderr)) {
+          if (loose) {
+            skipped = true;
+          } else {
+            error = new UnknownScriptError(
+              `Script "${script}" in package "${pkgName}" not found`,
+              script,
+              pkgName,
+            );
+          }
         } else {
-          error = new UnknownScriptError(
-            `Script "${script}" in package "${pkgName}" not found`,
+          let message: string;
+          const {exitCode, command, all, stderr, stdout} = rawResult;
+          if (exitCode) {
+            message = `Script "${script}" in package "${pkgName}" failed with exit code ${exitCode}`;
+          } else {
+            message = `Script "${script}" in package "${pkgName}" failed`;
+          }
+          error = new ScriptFailedError(message, {
             script,
             pkgName,
-          );
+            pkgManager: `${spec}`,
+            command,
+            exitCode,
+            output: all || stderr || stdout,
+          });
         }
-      } else {
-        let message: string;
-        const {exitCode, command, all, stderr, stdout} = rawResult;
-        if (exitCode) {
-          message = `Script "${script}" in package "${pkgName}" failed with exit code ${exitCode}`;
-        } else {
-          message = `Script "${script}" in package "${pkgName}" failed`;
-        }
-        error = new ScriptFailedError(message, {
-          script,
-          pkgName,
-          pkgManager: `${spec}`,
-          command,
-          exitCode,
-          output: all || stderr || stdout,
-        });
       }
     }
 
     const result: RunScriptResult = {rawResult, error, skipped};
 
-    if ('error' in result) {
+    if (result.error) {
       this.debug(
-        `(runScripts) Script "%s" in package "%s" failed; continuing...`,
+        `Script "%s" in package "%s" failed; continuing...`,
         script,
         pkgName,
       );
     } else if (result.skipped) {
       this.debug(
-        '(runScripts) Skipped script %s in package %s; script not found',
+        'Skipped script %s in package %s; script not found',
         script,
         pkgName,
       );
     } else {
       this.debug(
-        '(runScripts) Successfully executed script %s in package %s',
+        'Successfully executed script %s in package %s',
         script,
         pkgName,
       );
@@ -168,6 +269,9 @@ export abstract class BaseNpmPackageManager implements PkgManagerDef {
 
     return result;
   }
+
+  public abstract install(ctx: PkgManagerInstallContext): Promise<ExecResult>;
+
   protected async _install(
     ctx: PkgManagerInstallContext,
     args: string[],
@@ -179,7 +283,7 @@ export abstract class BaseNpmPackageManager implements PkgManagerDef {
       });
     }
 
-    const installSpecs = installManifests.map(({spec}) => spec);
+    const installSpecs = installManifests.map(({pkgSpec: spec}) => spec);
     let err: InstallError | undefined;
     const installArgs = ['install', ...args, ...installSpecs];
 
@@ -255,7 +359,7 @@ export abstract class BaseNpmPackageManager implements PkgManagerDef {
    * @param json - JSON string to parse (typically `stdout` of a child process)
    * @returns Parsed error object, or `undefined` if parsing failed
    */
-  parseNpmError(json: string): NpmJsonOutput['error'] {
+  protected parseNpmError(json: string): NpmJsonOutput['error'] {
     const parsed = JSON.parse(json) as NpmJsonOutput;
     // trim falsy values, which seems to happen a lot.
     return pickBy(parsed.error, Boolean) as NpmJsonOutput['error'];

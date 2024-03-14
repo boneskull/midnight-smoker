@@ -4,10 +4,10 @@ import {type SmokerEventBus} from '#event/smoker-events';
 import {type SomePkgManager} from '#pkg-manager/pkg-manager';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
 import {
+  Rule,
   RuleContext,
   type BaseNormalizedRuleOptions,
   type BaseNormalizedRuleOptionsRecord,
-  type Rule,
   type RuleConfig,
   type RuleDefSchemaValue,
   type RuleIssue,
@@ -22,6 +22,8 @@ import {once} from '#util';
 import {readPackageJson} from '#util/pkg-util';
 import Debug from 'debug';
 import {uniqBy} from 'lodash';
+import {type PluginRegistry} from '..';
+import {ComponentKinds} from '../constants';
 import {type Controller} from './controller';
 
 const debug = Debug('midnight-smoker:controller:lint-controller');
@@ -31,25 +33,41 @@ export type PluginRuleDef = [
   def: SomeRuleDef,
 ];
 
-export class LintController<T extends BaseNormalizedRuleOptionsRecord>
-  implements Controller
-{
+export class LintController implements Controller {
   public rules: SomeRule[] = [];
 
   protected constructor(
+    private readonly pluginRegistry: PluginRegistry,
     private readonly eventBus: SmokerEventBus,
     private readonly pkgManagers: SomePkgManager[],
     protected readonly pluginRuleDefs: PluginRuleDef[],
-    protected readonly rulesConfig: T,
+    protected readonly rulesConfig: BaseNormalizedRuleOptionsRecord,
   ) {}
 
   @once
   public async init() {
-    this.rules = LintController.loadRules(this.pluginRuleDefs);
+    this.rules = LintController.loadRules(
+      this.pluginRegistry,
+      this.pluginRuleDefs,
+    );
   }
 
-  public static loadRules(pluginRuleDefs: PluginRuleDef[]): SomeRule[] {
-    return pluginRuleDefs.map(([plugin, def]) => plugin.addRule(def));
+  public static loadRules(
+    this: void,
+    pluginRegistry: PluginRegistry,
+    pluginRuleDefs: PluginRuleDef[],
+  ): SomeRule[] {
+    return pluginRuleDefs.map(([plugin, def]) => {
+      const {id, componentName} = pluginRegistry.getComponent(def);
+      const rule = Rule.create(id, def, plugin);
+      pluginRegistry.registerComponent(
+        plugin,
+        ComponentKinds.Rule,
+        rule,
+        rule.name ?? componentName,
+      );
+      return rule;
+    });
   }
 
   /**
@@ -81,14 +99,16 @@ export class LintController<T extends BaseNormalizedRuleOptionsRecord>
     return RuleContext.create(rule, staticCtx);
   }
 
-  public static create<T extends BaseNormalizedRuleOptionsRecord>(
+  public static create(
     this: void,
+    pluginRegistry: PluginRegistry,
     eventBus: SmokerEventBus,
     pkgManagers: SomePkgManager[],
     pluginRuleDefs: PluginRuleDef[],
-    rulesConfig: T,
+    rulesConfig: BaseNormalizedRuleOptionsRecord,
   ) {
     return new LintController(
+      pluginRegistry,
       eventBus,
       pkgManagers,
       pluginRuleDefs,

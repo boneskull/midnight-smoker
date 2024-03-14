@@ -6,10 +6,7 @@ import {
   type InstallManifest,
 } from '#schema/install-manifest';
 import {PkgManagerSpecSchema} from '#schema/pkg-manager-spec';
-import {
-  RunScriptManifestSchema,
-  type RunScriptManifest,
-} from '#schema/run-script-manifest';
+import {RunScriptManifestSchema} from '#schema/run-script-manifest';
 import {
   RunScriptResultSchema,
   type RunScriptResult,
@@ -32,32 +29,33 @@ export type PkgManagerContext<Ctx = unknown> = z.infer<
   typeof BasePkgManagerContextSchema
 > &
   Ctx;
-export type PkgManagerInstallContext<Ctx = unknown> = PkgManagerContext<Ctx> & {
-  installManifests: InstallManifest[];
-};
+export type PkgManagerInstallContext<Ctx = unknown> = z.infer<
+  typeof PkgManagerInstallContextSchema
+> &
+  Ctx;
 
 /**
  * Options for a {@link PkgManagerFactory}
  */
 export type PkgManagerOpts = z.infer<typeof PkgManagerOptsSchema>;
-export type PkgManagerPackContext<Ctx = unknown> = PkgManagerContext<Ctx> & {
-  allWorkspaces: boolean;
-  includeWorkspaceRoot: boolean;
-  workspaces: string[];
-  timeout: number;
-};
-export type PkgManagerRunScriptContext<Ctx = unknown> =
-  PkgManagerContext<Ctx> & {runScriptManifest: RunScriptManifest};
+export type PkgManagerPackContext<Ctx = unknown> = z.infer<
+  typeof PkgManagerPackContextSchema
+> &
+  Ctx;
+export type PkgManagerRunScriptContext<Ctx = unknown> = z.infer<
+  typeof PkgManagerRunScriptContextSchema
+> &
+  Ctx;
+
 export type PkgManagerRunScriptFn = (
   ctx: SomePkgManagerRunScriptContext,
 ) => Promise<RunScriptResult>;
 export type PkgManagerRunScriptFnOpts = z.infer<
   typeof PkgManagerRunScriptFnOptsSchema
 >;
-export type SomePkgManagerContext = PkgManagerContext<any>;
-export type SomePkgManagerInstallContext = PkgManagerInstallContext<any>;
-export type SomePkgManagerPackContext = PkgManagerPackContext<any>;
-export type SomePkgManagerRunScriptContext = PkgManagerRunScriptContext<any>;
+export type SomePkgManagerInstallContext = PkgManagerInstallContext;
+export type SomePkgManagerPackContext = PkgManagerPackContext;
+export type SomePkgManagerRunScriptContext = PkgManagerRunScriptContext;
 export type SupportedVersionRange = z.infer<
   typeof PkgManagerSupportedVersionRangeSchema
 >;
@@ -89,27 +87,23 @@ export const BasePkgManagerContextSchema = z
     signal: AbortSignalSchema.optional(),
   })
   .passthrough();
-export const PkgManagerPackContextSchema =
-  customSchema<SomePkgManagerPackContext>(
-    BasePkgManagerContextSchema.extend({
-      allWorkspaces: z.boolean().optional(),
-      includeWorkspaceRoot: z.boolean().optional(),
-      workspaces: z.array(NonEmptyStringSchema).optional(),
-      timeout: z.number().optional(),
-    }),
-  );
+export const PkgManagerPackContextSchema = BasePkgManagerContextSchema.extend({
+  allWorkspaces: z.boolean().optional(),
+  includeWorkspaceRoot: z.boolean().optional(),
+  workspaces: z.array(NonEmptyStringSchema).optional(),
+  timeout: z.number().optional(),
+});
+
 export const PkgManagerInstallContextSchema =
-  customSchema<SomePkgManagerInstallContext>(
-    BasePkgManagerContextSchema.extend({
-      installManifests: InstallManifestsSchema,
-    }),
-  );
+  BasePkgManagerContextSchema.extend({
+    installManifests: InstallManifestsSchema,
+  });
+
 export const PkgManagerRunScriptContextSchema =
-  customSchema<SomePkgManagerRunScriptContext>(
-    BasePkgManagerContextSchema.extend({
-      runScriptManifest: RunScriptManifestSchema,
-    }),
-  );
+  BasePkgManagerContextSchema.extend({
+    runScriptManifest: RunScriptManifestSchema,
+  });
+
 export const PkgManagerInstallSchema = z
   .function(
     z.tuple([PkgManagerInstallContextSchema] as [
@@ -153,9 +147,11 @@ export const PkgManagerTeardownSchema = z.function(
   ]),
   VoidOrPromiseVoidSchema,
 );
+
 export const PkgManagerAcceptsResultSchema = z
   .union([SemVerSchema, NonEmptyStringSchema])
   .optional();
+
 export const PkgManagerAcceptsSchema = z.function(
   z.tuple([NonEmptyStringSchema] as [
     versionOrRangeOrTag: typeof NonEmptyStringSchema,

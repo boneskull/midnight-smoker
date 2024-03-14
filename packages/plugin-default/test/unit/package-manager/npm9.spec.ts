@@ -1,11 +1,9 @@
 import type {nullExecutor} from '@midnight-smoker/test-util';
 import {
   PkgManagerSpec,
-  type InstallManifest,
+  type PkgManagerInstallContext,
 } from 'midnight-smoker/pkg-manager';
-import {Helpers} from 'midnight-smoker/plugin';
 import rewiremock from 'rewiremock/node';
-import {type Range} from 'semver';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
@@ -33,7 +31,7 @@ describe('@midnight-smoker/plugin-default', function () {
 
     executor = sandbox.stub();
 
-    sandbox.stub(Helpers, 'createTempDir').resolves(MOCK_TMPDIR);
+    // sandbox.stub(Helpers, 'createTempDir').resolves(MOCK_TMPDIR);
 
     mocks = {
       'node:console': mockConsole,
@@ -63,65 +61,64 @@ describe('@midnight-smoker/plugin-default', function () {
         spec = await PkgManagerSpec.from('npm@9.8.1');
       });
 
-      describe('static method', function () {
-        describe('accepts', function () {
-          let range: Range;
-
-          beforeEach(function () {
-            range = Npm9.supportedVersionRange;
-          });
-
-          it('should return false for versions < 9.0.0', function () {
-            expect(range.test('8.0.0'), 'to be false');
-          });
-
-          it('should return true for versions >= 9.0.0', function () {
-            expect(range.test('9.0.0'), 'to be true');
-          });
-
-          it('should return true for versions >= 10.0.0', function () {
-            expect(range.test('10.0.0'), 'to be true');
-          });
-        });
-      });
       describe('instance method', function () {
         let npm: NPM9.Npm9;
 
         beforeEach(async function () {
-          npm = await Npm9.create(spec, executor, Helpers);
+          npm = new Npm9();
+        });
+
+        describe('accepts', function () {
+          it('should return false for versions < 9.0.0', function () {
+            expect(npm.accepts('8.0.0'), 'to be false');
+          });
+
+          it('should return true for versions >= 9.0.0', function () {
+            expect(npm.accepts('9.0.0'), 'to be true');
+          });
+
+          it('should return true for versions >= 10.0.0', function () {
+            expect(npm.accepts('10.0.0'), 'to be true');
+          });
         });
 
         describe('install()', function () {
-          const manifest: InstallManifest[] = [
-            {
-              spec: `${MOCK_TMPDIR}/bar.tgz`,
-              pkgName: 'bar',
-              cwd: MOCK_TMPDIR,
-              installPath: `${MOCK_TMPDIR}/node_modules/bar`,
-            },
-            {
-              spec: `${MOCK_TMPDIR}/baz.tgz`,
-              pkgName: 'baz',
-              cwd: MOCK_TMPDIR,
-              installPath: `${MOCK_TMPDIR}/node_modules/baz`,
-            },
-          ];
+          let ctx: PkgManagerInstallContext;
 
           beforeEach(function () {
+            ctx = {
+              spec,
+              tmpdir: MOCK_TMPDIR,
+              executor,
+              installManifests: [
+                {
+                  pkgSpec: `${MOCK_TMPDIR}/bar.tgz`,
+                  pkgName: 'bar',
+                  cwd: MOCK_TMPDIR,
+                  installPath: `${MOCK_TMPDIR}/node_modules/bar`,
+                },
+                {
+                  pkgSpec: `${MOCK_TMPDIR}/baz.tgz`,
+                  pkgName: 'baz',
+                  cwd: MOCK_TMPDIR,
+                  installPath: `${MOCK_TMPDIR}/node_modules/baz`,
+                },
+              ],
+            };
             executor.resolves({stdout: 'stuff', exitCode: 0} as any);
           });
 
           it('should call npm with "--install-strategy=shallow"', async function () {
-            await npm.install(manifest);
+            await npm.install(ctx);
             expect(executor, 'to have a call satisfying', [
-              npm.spec,
+              spec,
               [
                 'install',
                 '--no-audit',
                 '--no-package-lock',
                 '--install-strategy=shallow',
                 '--json',
-                ...manifest.map(({spec}) => spec),
+                ...ctx.installManifests.map(({pkgSpec}) => pkgSpec),
               ],
               {},
               {cwd: '/some/dir'},

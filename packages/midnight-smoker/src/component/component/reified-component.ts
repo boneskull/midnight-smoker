@@ -10,13 +10,16 @@ export abstract class ReifiedComponent<T extends object> {
 
   #def: T;
 
-  constructor(def: T, plugin: Readonly<PluginMetadata>) {
+  #id: string;
+
+  constructor(id: string, def: T, plugin: Readonly<PluginMetadata>) {
     this.#plugin = plugin;
     this.#def = def;
+    this.#id = id;
   }
 
   public get id(): string {
-    return this.plugin.getComponentId(this);
+    return this.#id;
   }
 
   public get isBlessed(): boolean {
