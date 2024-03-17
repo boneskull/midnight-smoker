@@ -91,7 +91,7 @@ export class Reporter<Ctx = unknown> extends ReifiedComponent<
     return new Reporter(id, def, plugin, ctx);
   }
 
-  public toString() {
+  public override toString() {
     return `[Reporter] ${this.def.name}`;
   }
 }

@@ -98,7 +98,7 @@ export class Rule<Schema extends RuleDefSchemaValue | void = void>
     };
   }
 
-  public toString(): string {
+  public override toString(): string {
     return this.id;
   }
 

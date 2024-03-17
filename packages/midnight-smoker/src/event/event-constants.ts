@@ -13,6 +13,21 @@ export const InstallEvent = {
    * {@inheritDoc SmokerEvents.InstallOk}
    */
   InstallOk: 'InstallOk',
+
+  /**
+   * {@inheritDoc SmokerEvents.InstallBegin}
+   */
+  PkgManagerInstallBegin: 'PkgManagerInstallBegin',
+
+  /**
+   * {@inheritDoc SmokerEvents.InstallFailed}
+   */
+  PkgManagerInstallFailed: 'PkgManagerInstallFailed',
+
+  /**
+   * {@inheritDoc SmokerEvents.InstallOk}
+   */
+  PkgManagerInstallOk: 'PkgManagerInstallOk',
 } as const;
 
 export const PackEvent = {

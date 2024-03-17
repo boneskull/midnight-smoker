@@ -4,33 +4,13 @@
  * @packageDocumentation
  */
 
-import {type PkgManager, type SomePkgManager} from '#pkg-manager/pkg-manager';
-import {type InstallEventBaseData} from '#schema/install-event';
-import {type PackBeginEventData} from '#schema/pack-event';
+import {type PkgManager} from '#pkg-manager/pkg-manager';
 import {type RunScriptManifest} from '#schema/run-script-manifest';
 import type {RunScriptResult} from '#schema/run-script-result';
 import type {
   RunScriptsEndEventData,
   RunScriptsEventData,
 } from '#schema/script-event';
-import {filter, map, uniq} from 'lodash';
-
-/**
- * Builds the event data for the `PackBegin` event.
- *
- * @param pkgManagers - An array of package managers.
- * @returns The event data object.
- * @internal
- */
-export function buildPackBeginEventData(
-  pkgManagers: SomePkgManager[],
-): PackBeginEventData {
-  return {
-    // XXX fix
-    uniquePkgs: [],
-    pkgManagers: pkgManagers.map((pkgManager) => pkgManager.spec.toJSON()),
-  };
-}
 
 /**
  * Builds the event data for the `RunScriptsEnd` event.
@@ -68,37 +48,5 @@ export function buildRunScriptsBeginEventData(
     }),
   );
 
-  return {manifest: manifest, total: total};
+  return {manifest, total};
 }
-
-/**
- * It's a fair amount of work to mash the data into a format more suitable for
- * display.
- *
- * @param pkgManagerInstallManifests What to install and with what package
- *   manager. Will include additional depsz
- * @returns Something to be emitted
- * @internal
- */
-export function buildInstallEventData(
-  pkgManagers: SomePkgManager[],
-): InstallEventBaseData {
-  const manifests = pkgManagers.flatMap(
-    ({installManifests}) => installManifests,
-  );
-  const specs = pkgManagers.map(({spec}) => spec.toJSON());
-  const additionalDeps = uniq(
-    map(filter(manifests, {isAdditional: true}), 'pkgName'),
-  );
-  const uniquePkgs = uniq(manifests.flatMap(({pkgName}) => pkgName));
-
-  return {
-    uniquePkgs,
-    pkgManagers: specs,
-    additionalDeps,
-    manifests,
-    total: pkgManagers.length * manifests.length,
-  };
-}
-
-export const buildPackOkEventData = buildInstallEventData;

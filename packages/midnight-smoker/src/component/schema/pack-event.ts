@@ -48,7 +48,27 @@ export const PackFailedEventDataSchema = PackBeginEventDataSchema.extend({
 });
 
 export type PackEventData = {
+  /**
+   * Emitted whenever a package is about to be packed into a tarball.
+   *
+   * @event
+   */
   [PackEvent.PackBegin]: PackBeginEventData;
+
+  /**
+   * Emitted whenever a package is packed successfully into a tarball.
+   *
+   * @event
+   */
   [PackEvent.PackOk]: PackOkEventData;
+
+  /**
+   * Emitted whenever packing a tarball fails.
+   *
+   * This is considered unrecoverable, and `midnight-smoker` will exit with a
+   * non-zero code soon thereafter.
+   *
+   * @event
+   */
   [PackEvent.PackFailed]: PackFailedEventData;
 };

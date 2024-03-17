@@ -2,7 +2,7 @@ import {RuleError} from '#error/rule-error';
 import {SmokerEvent} from '#event/event-constants';
 import {type SmokerEventBus} from '#event/smoker-events';
 import {type SomePkgManager} from '#pkg-manager/pkg-manager';
-import {type PluginMetadata} from '#plugin/plugin-metadata';
+import {type PluginMetadata, type PluginRegistry} from '#plugin';
 import {
   Rule,
   RuleContext,
@@ -22,7 +22,6 @@ import {once} from '#util';
 import {readPackageJson} from '#util/pkg-util';
 import Debug from 'debug';
 import {uniqBy} from 'lodash';
-import {type PluginRegistry} from '..';
 import {ComponentKinds} from '../constants';
 import {type Controller} from './controller';
 

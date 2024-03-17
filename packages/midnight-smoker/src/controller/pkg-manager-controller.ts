@@ -20,11 +20,6 @@ import {
 } from '#error';
 import {
   SmokerEvent,
-  buildInstallEventData,
-  buildPackBeginEventData,
-  buildPackOkEventData,
-  buildRunScriptsBeginEventData,
-  buildRunScriptsEndEventData,
   type InstallEvents,
   type PackEvents,
   type ScriptEvents,
@@ -50,6 +45,7 @@ import {FileManager, type FileManagerOpts} from '#util/filemanager';
 import Debug from 'debug';
 import {isError} from 'lodash';
 import {type Controller} from './controller';
+import {PkgManagerControllerEventHelper} from './pkg-manager-controller-event-helper';
 
 /**
  * All events emitted by the {@link PkgManagerController} class.
@@ -108,6 +104,8 @@ export class PkgManagerController implements Controller {
 
   #fm: FileManager;
 
+  #emitter: PkgManagerControllerEventHelper;
+
   public constructor(
     private readonly pluginRegistry: PluginRegistry,
     private readonly eventBus: SmokerEventBus,
@@ -128,6 +126,7 @@ export class PkgManagerController implements Controller {
     this.cwd = cwd;
     this.pkgManagerOpts = pkgManagerOpts;
     this.#fm = new FileManager(fileManagerOpts);
+    this.#emitter = new PkgManagerControllerEventHelper(this.eventBus);
   }
 
   public get pkgManagers() {
@@ -254,6 +253,10 @@ export class PkgManagerController implements Controller {
       pkgManagers.push(pkgManager);
     }
     this.#pkgManagers = pkgManagers;
+
+    // TODO: error handling
+    await Promise.all(pkgManagers.map((pkgManager) => pkgManager.setup()));
+
     debug('Initialized %d pkg managers', pkgManagers.length);
   }
 
@@ -278,33 +281,53 @@ export class PkgManagerController implements Controller {
       }
     }
 
-    const eventData = buildInstallEventData(pkgManagers);
-
     // this increments by the number of install manifests for each PM
     let current = 0;
 
-    await this.eventBus.emit(SmokerEvent.InstallBegin, eventData);
+    await this.#emitter.installBegin({pkgManagers});
 
-    await Promise.all(
-      pkgManagers.map(async (pkgManager) => {
-        try {
-          await pkgManager.install();
-        } catch (err) {
-          if (err instanceof InstallError) {
-            await this.eventBus.emit(SmokerEvent.InstallFailed, {
-              ...eventData,
-              current,
-              error: err,
+    try {
+      await Promise.all(
+        pkgManagers.map(async (pkgManager) => {
+          try {
+            await this.#emitter.pkgManagerInstallBegin({
+              pkgManagers,
+              pkgManager,
+              current: current + pkgManager.installManifests.length,
             });
+          } catch (err) {
+            // FIXME: better error handling from this
+            debug('Error emitting PkgManagerInstallBegin: %O', err);
           }
-          throw err;
-        }
-        await this.eventBus.emit(SmokerEvent.InstallOk, {
-          ...eventData,
-          current: (current += pkgManager.installManifests.length),
+          try {
+            await pkgManager.install();
+          } catch (err) {
+            if (err instanceof InstallError) {
+              await this.#emitter.pkgManagerInstallFailed({
+                current: current + pkgManager.installManifests.length,
+                pkgManager,
+                error: err,
+                pkgManagers,
+              });
+            }
+            throw err;
+          } finally {
+            current += pkgManager.installManifests.length;
+          }
+        }),
+      );
+      await this.#emitter.installOk({
+        pkgManagers,
+      });
+    } catch (err) {
+      if (err instanceof InstallError) {
+        await this.#emitter.installFailed({
+          pkgManagers,
+          error: err,
         });
-      }),
-    );
+      }
+      throw err;
+    }
   }
 
   /**
@@ -320,18 +343,16 @@ export class PkgManagerController implements Controller {
   public async pack(opts: PackOptions = {}): Promise<void> {
     const pkgManagers = this.pkgManagers;
 
-    const eventData = buildPackBeginEventData(pkgManagers);
-
-    await this.eventBus.emit(SmokerEvent.PackBegin, eventData);
+    await this.#emitter.packBegin({pkgManagers});
 
     await Promise.all(
       pkgManagers.map(async (pkgManager) => {
         try {
-          await pkgManager.setup().then(() => pkgManager.pack(opts));
+          await pkgManager.pack(opts);
         } catch (err) {
           if (err instanceof PackError || err instanceof PackParseError) {
-            await this.eventBus.emit(SmokerEvent.PackFailed, {
-              ...eventData,
+            await this.#emitter.packFailed({
+              pkgManagers,
               error: err,
             });
           }
@@ -340,10 +361,7 @@ export class PkgManagerController implements Controller {
       }),
     );
 
-    await this.eventBus.emit(
-      SmokerEvent.PackOk,
-      buildPackOkEventData(pkgManagers),
-    );
+    await this.#emitter.packOk({pkgManagers});
   }
 
   private async runScript(
@@ -401,28 +419,13 @@ export class PkgManagerController implements Controller {
   ): Promise<RunScriptResult[]> {
     const ac = new AbortController();
 
-    let total = 0;
+    const total = 0;
     let current = 0;
-    const runManifestsByPkgManager = new Map<PkgManager, RunScriptManifest[]>(
-      this.pkgManagers.map((pkgManager) => {
-        const {pkgInstallManifests} = pkgManager;
-        const runManifests: RunScriptManifest[] = pkgInstallManifests.flatMap(
-          ({installPath: cwd, pkgName}) =>
-            scripts.map((script) => ({script, cwd, pkgName})),
-        );
-        total += runManifests.length;
-        return [pkgManager, runManifests] as [
-          SomePkgManager,
-          RunScriptManifest[],
-        ];
-      }),
-    );
+    let failed = false;
 
-    const beginEvtData = buildRunScriptsBeginEventData(
-      runManifestsByPkgManager,
-    );
-
+    const {pkgManagers} = this;
     const runScriptFailedListener = () => {
+      failed = true;
       if (opts.bail) {
         ac.abort();
       }
@@ -430,12 +433,16 @@ export class PkgManagerController implements Controller {
 
     this.eventBus.onSync(SmokerEvent.RunScriptFailed, runScriptFailedListener);
 
-    await this.eventBus.emit(SmokerEvent.RunScriptsBegin, beginEvtData);
+    await this.#emitter.runScriptsBegin({
+      pkgManagers: this.pkgManagers,
+      scripts,
+    });
 
     const results: RunScriptResult[] = [];
 
     try {
-      for (const [pkgManager, runScriptManifests] of runManifestsByPkgManager) {
+      for (const pkgManager of pkgManagers) {
+        const runScriptManifests = pkgManager.buildRunScriptManifests(scripts);
         for (const runScriptManifest of runScriptManifests) {
           const eventData = {...runScriptManifest, total, current: current++};
           const {script, pkgName} = runScriptManifest;
@@ -484,11 +491,10 @@ export class PkgManagerController implements Controller {
         }
       }
 
-      const endEvtData = buildRunScriptsEndEventData(beginEvtData, results);
-      if (endEvtData.failed > 0) {
-        await this.eventBus.emit(SmokerEvent.RunScriptsFailed, endEvtData);
+      if (failed) {
+        await this.#emitter.runScriptsFailed({pkgManagers, results, scripts});
       } else {
-        await this.eventBus.emit(SmokerEvent.RunScriptsOk, endEvtData);
+        await this.#emitter.runScriptsOk({pkgManagers, results, scripts});
       }
 
       ac.abort();

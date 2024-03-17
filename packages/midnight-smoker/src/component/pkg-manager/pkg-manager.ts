@@ -27,6 +27,8 @@ export class PkgManager<Ctx = unknown> extends ReifiedComponent<PkgManagerDef> {
   #installManifests: InstallManifest[] = [];
   #installResult?: InstallResult;
 
+  #scripts?: string[];
+
   constructor(
     id: string,
     def: PkgManagerDef,
@@ -52,6 +54,12 @@ export class PkgManager<Ctx = unknown> extends ReifiedComponent<PkgManagerDef> {
     return this.installManifests.filter(({isAdditional, installPath}) =>
       Boolean(installPath && !isAdditional),
     ) as PkgInstallManifest[];
+  }
+
+  public buildRunScriptManifests(scripts: string[]): RunScriptManifest[] {
+    return this.pkgInstallManifests.flatMap(({installPath: cwd, pkgName}) =>
+      scripts.map((script) => ({script, cwd, pkgName})),
+    );
   }
 
   public get spec(): PkgManagerSpec {

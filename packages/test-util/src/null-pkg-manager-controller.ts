@@ -18,7 +18,7 @@ import sinon from 'sinon';
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
 export class NullPkgManagerController extends PkgManagerController {
-  public static create(
+  public static override create(
     pluginRegistry: PluginRegistry,
     eventBus: SmokerEventBus,
     desiredPkgManagers: string[],
