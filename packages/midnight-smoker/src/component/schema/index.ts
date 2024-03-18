@@ -11,6 +11,7 @@ export * from './lint-result';
 export * from './pack-event';
 export * from './pack-options';
 export * from './pkg-manager-def';
+export * from './pkg-manager-def-spec';
 export * from './pkg-manager-install-manifest';
 export * from './reporter-def';
 export * from './rule';

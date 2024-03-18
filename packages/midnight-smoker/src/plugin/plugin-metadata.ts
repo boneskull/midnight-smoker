@@ -6,28 +6,35 @@
  */
 import {isZodError} from '#error/base-error';
 import {InvalidArgError} from '#error/invalid-arg-error';
+import {loadPackageManagers, type LoadPackageManagersOpts} from '#pkg-manager';
 import {
-  loadPackageManagers,
-  type LoadPackageManagersOpts,
-} from '#pkg-manager/pkg-manager-loader';
-import {BLESSED_PLUGINS, type BlessedPlugin} from '#plugin/blessed';
-import type {StaticPluginMetadata} from '#plugin/static-metadata';
-import type {Executor} from '#schema/executor';
-import type {PkgManagerDef} from '#schema/pkg-manager-def';
-import type {ReporterDef} from '#schema/reporter-def';
-import {type SomeRule} from '#schema/rule';
-import {type RuleDef, type SomeRuleDef} from '#schema/rule-def';
-import {type RuleDefSchemaValue} from '#schema/rule-options';
-import {readPackageJson} from '#util/pkg-util';
-import {NonEmptyStringSchema, PackageJsonSchema} from '#util/schema-util';
+  BLESSED_PLUGINS,
+  type BlessedPlugin,
+  type StaticPluginMetadata,
+} from '#plugin';
+import type {ReporterDef} from '#schema';
+import {
+  type Executor,
+  type PkgManagerDef,
+  type PkgManagerDefSpec,
+  type RuleDef,
+  type RuleDefSchemaValue,
+  type SomeRule,
+  type SomeRuleDef,
+} from '#schema';
+import {
+  assertNonEmptyArray,
+  NonEmptyStringSchema,
+  PackageJsonSchema,
+  readPackageJson,
+  type NonEmptyArray,
+} from '#util';
 import Debug from 'debug';
 import {isString} from 'lodash';
 import path from 'node:path';
 import type {LiteralUnion, PackageJson} from 'type-fest';
 import {z} from 'zod';
 import {fromZodError} from 'zod-validation-error';
-import {type PkgManagerDefSpec} from '../component/schema/pkg-manager-def-spec';
-import {assertNonEmptyArray, type NonEmptyArray} from '../util';
 
 const debug = Debug('midnight-smoker:plugin:metadata');
 

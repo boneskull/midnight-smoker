@@ -4,7 +4,7 @@
  * @module midnight-smoker/plugin
  */
 
-export * as Blessed from './blessed';
+export * from './blessed';
 export * from './fs-helpers';
 export * from './helpers';
 export * from './plugin';

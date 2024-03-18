@@ -34,7 +34,12 @@ import {
 } from '#event';
 import type {RawSmokerOptions, SmokerOptions} from '#options/options';
 import {OptionParser} from '#options/parser';
-import {Blessed, PluginRegistry, type StaticPluginMetadata} from '#plugin';
+import {
+  BLESSED_PLUGINS,
+  PluginRegistry,
+  isBlessedPlugin,
+  type StaticPluginMetadata,
+} from '#plugin';
 import {type SomeReporter} from '#reporter/reporter';
 import {type LintResult} from '#schema/lint-result';
 import {type SomeRule} from '#schema/rule';
@@ -432,14 +437,14 @@ export class Smoker {
     pluginRegistry?: PluginRegistry,
   ) {
     const plugins = castArray(opts.plugin).filter(
-      (requested) => !Blessed.isBlessedPlugin(requested),
+      (requested) => !isBlessedPlugin(requested),
     );
     debug('Requested external plugins: %O', plugins);
 
     if (!pluginRegistry) {
       pluginRegistry = PluginRegistry.create();
       // this must be done in sequence to protect the blessed plugins
-      await pluginRegistry.loadPlugins(Blessed.BLESSED_PLUGINS);
+      await pluginRegistry.loadPlugins(BLESSED_PLUGINS);
       await pluginRegistry.loadPlugins(plugins);
     }
 
