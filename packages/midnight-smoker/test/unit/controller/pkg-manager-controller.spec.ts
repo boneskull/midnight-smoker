@@ -1,14 +1,18 @@
 import {ComponentKinds, MIDNIGHT_SMOKER} from '#constants';
 import type * as PMC from '#controller/pkg-manager-controller';
-import {PackageManagerError} from '#error';
+import {ErrorCodes} from '#error';
 import {EventBus, SmokerEvent, type SmokerEventBus} from '#event';
 import {
+  InstallError,
+  PackError,
+  PackParseError,
   PkgManager,
   PkgManagerSpec,
   ScriptFailedError,
-  type InstallResult,
+  type InstallManifest,
   type PkgManagerContext,
   type RunScriptResult,
+  type SomePkgManager,
 } from '#pkg-manager';
 import {PluginMetadata, PluginRegistry} from '#plugin';
 import {nullExecutor, nullPmDef} from '@midnight-smoker/test-util';
@@ -29,7 +33,7 @@ import {MOCK_TMPROOT, createFsMocks} from '../mocks';
 const expect = unexpected.clone().use(unexpectedSinon);
 
 describe('midnight-smoker', function () {
-  describe('ctrl', function () {
+  describe('controller', function () {
     describe('PkgManagerController', function () {
       // let PkgManagerSpec: typeof PkgMgr.PkgManagerSpec;
       let sandbox: SinonSandbox;
@@ -300,15 +304,26 @@ describe('midnight-smoker', function () {
 
         describe('runScripts()', function () {
           const scripts = ['script1', 'script2'];
-          const opts: PMC.PkgManagerControllerRunScriptsOpts = {}; // replace with actual options
-          let installResults: InstallResult[];
+          let opts: PMC.PkgManagerControllerRunScriptsOpts;
+          let pkgManager: SomePkgManager;
 
-          beforeEach(function () {
-            // registry.getScriptRunner.returns(nullScriptRunner);
-            installResults = [
-              {
-                rawResult: {} as any,
-                installManifests: [
+          beforeEach(async function () {
+            opts = {};
+            pkgManager = PkgManager.create('nullpm', nullPmDef, plugin, {
+              tmpdir: path.join(
+                MOCK_TMPROOT,
+                MIDNIGHT_SMOKER,
+                'nullpm-1.0.0',
+                'asdf',
+              ),
+              spec: await PkgManagerSpec.from('nullpm@1.0.0'),
+            } as PkgManagerContext);
+            sandbox.replaceGetter(ctrl, 'pkgManagers', () => [pkgManager]);
+            sandbox.replaceGetter(
+              pkgManager,
+              'installManifests',
+              () =>
+                <InstallManifest[]>[
                   {
                     isAdditional: false,
                     pkgSpec: 'foo@1.0.0',
@@ -324,8 +339,7 @@ describe('midnight-smoker', function () {
                     installPath: path.join(MOCK_TMPROOT, 'node_modules', 'bar'),
                   },
                 ],
-              },
-            ];
+            );
           });
 
           it('should return an array of RunScriptResult objects', async function () {
@@ -334,8 +348,9 @@ describe('midnight-smoker', function () {
               'to be fulfilled with value satisfying',
               expect
                 .it('to have items satisfying', {
-                  pkgName: expect.it('to be a string'),
-                  script: expect.it('to be a string'),
+                  rawResult: {},
+                  skipped: false,
+                  error: undefined,
                 })
                 .and('to have length', 4),
             );
@@ -345,7 +360,10 @@ describe('midnight-smoker', function () {
             await ctrl.runScripts(scripts, opts);
             expect(eventBus.emit, 'to have a call satisfying', [
               SmokerEvent.RunScriptsBegin,
-              {manifest: {}, total: 0},
+              {
+                manifest: {'nullpm@1.0.0': expect.it('to have length', 4)},
+                total: 4,
+              },
             ]);
           });
 
@@ -353,32 +371,64 @@ describe('midnight-smoker', function () {
             await ctrl.runScripts(scripts, opts);
             expect(eventBus.emit, 'to have a call satisfying', [
               SmokerEvent.RunScriptsOk,
-              {manifest: {}, total: 0, results: [], failed: 0, passed: 0},
+              {
+                manifest: {'nullpm@1.0.0': expect.it('to have length', 4)},
+                total: 4,
+                results: expect.it('to be an array'),
+                failed: 0,
+                passed: 4,
+                skipped: 0,
+              },
             ]);
+          });
+
+          it('should emit RunScriptBegin for each script', async function () {
+            await ctrl.runScripts(scripts, opts);
+            expect(eventBus.emit, 'to have a call satisfying', [
+              SmokerEvent.RunScriptBegin,
+              {
+                script: scripts[0],
+                cwd: expect.it('to start with', MOCK_TMPROOT),
+                pkgName: 'foo',
+                total: 4,
+                current: 1,
+              },
+            ])
+              .and('to have a call satisfying', [
+                SmokerEvent.RunScriptBegin,
+                {
+                  script: scripts[1],
+                  cwd: expect.it('to start with', MOCK_TMPROOT),
+                  pkgName: 'foo',
+                  total: 4,
+                  current: 2,
+                },
+              ])
+              .and('to have a call satisfying', [
+                SmokerEvent.RunScriptBegin,
+                {
+                  script: scripts[0],
+                  cwd: expect.it('to start with', MOCK_TMPROOT),
+                  pkgName: 'bar',
+                  total: 4,
+                  current: 3,
+                },
+              ])
+              .and('to have a call satisfying', [
+                SmokerEvent.RunScriptBegin,
+                {
+                  script: scripts[1],
+                  cwd: expect.it('to start with', MOCK_TMPROOT),
+                  pkgName: 'bar',
+                  total: 4,
+                  current: 4,
+                },
+              ]);
           });
 
           describe('when a script fails', function () {
             let result: RunScriptResult;
             beforeEach(function () {
-              // brokenScriptRunner = sandbox
-              //   .stub()
-              //   .callsFake(
-              //     async (
-              //       runManifest: RunScriptManifest,
-              //       pkgManager: PkgManager,
-              //       opts: ScriptRunnerOpts,
-              //     ) => {
-              //       await Promise.resolve();
-              //       if (opts.signal?.aborted) {
-              //         throw new Errors.ScriptBailed();
-              //       }
-              //       ctrl.emit(
-              //         SmokerEvent.RunScriptFailed,
-              //         result as ScriptFailedEventData,
-              //       );
-              //       return result;
-              //     },
-              //   );
               result = {
                 rawResult: {
                   stdout: '',
@@ -390,145 +440,508 @@ describe('midnight-smoker', function () {
                 error: new ScriptFailedError('oh no'),
                 skipped: false,
               };
+              sandbox.stub(pkgManager, 'runScript').resolves(result);
             });
 
             it('should emit RunScriptFailed', async function () {
-              await ctrl.runScripts(scripts, {bail: true});
+              await ctrl.runScripts(scripts);
               expect(eventBus.emit, 'to have a call satisfying', [
                 SmokerEvent.RunScriptFailed,
+                {
+                  total: 4,
+                  current: expect.it('to be a number'),
+                  error: result.error,
+                },
               ]);
             });
 
             it('should emit RunScriptsFailed', async function () {
-              await expect(
-                () => ctrl.runScripts(scripts, opts).catch(() => {}),
-                'to emit from',
-                ctrl,
+              await ctrl.runScripts(scripts).catch(() => {});
+              expect(eventBus.emit, 'to have a call satisfying', [
                 SmokerEvent.RunScriptsFailed,
-              );
+                {
+                  results: expect.it('to be an array'),
+                  failed: expect.it('to be a number'),
+                  passed: 0,
+                },
+              ]);
             });
 
             describe('when the "bail" flag is true', function () {
               beforeEach(function () {
-                // registry.getScriptRunner.returns(brokenScriptRunner);
+                opts = {bail: true};
               });
 
               it('should only execute the first script', async function () {
-                const results = await ctrl.runScripts(scripts, {
-                  bail: true,
-                });
+                const results = await ctrl.runScripts(scripts, opts);
                 expect(results, 'to have length', 1);
               });
 
               it('should emit RunScriptFailed', async function () {
-                await expect(
-                  () =>
-                    ctrl
-                      .runScripts(scripts, {
-                        bail: true,
-                      })
-                      .catch(() => {}),
-                  'to emit from',
-                  ctrl,
+                await ctrl.runScripts(scripts);
+                expect(eventBus.emit, 'to have a call satisfying', [
                   SmokerEvent.RunScriptFailed,
-                );
+                  {
+                    total: 4,
+                    current: expect.it('to be a number'),
+                    error: result.error,
+                  },
+                ]);
               });
 
               it('should emit RunScriptsFailed', async function () {
-                await expect(
-                  () =>
-                    ctrl
-                      .runScripts(scripts, {
-                        bail: true,
-                      })
-                      .catch(() => {}),
-                  'to emit from',
-                  ctrl,
+                await ctrl.runScripts(scripts, opts);
+                expect(eventBus.emit, 'to have a call satisfying', [
                   SmokerEvent.RunScriptsFailed,
-                );
-              });
-            });
-
-            describe('when the script runner rejects', function () {
-              let err: PackageManagerError;
-
-              beforeEach(function () {
-                err = new PackageManagerError(
-                  'egad',
-                  {} as PkgManagerSpec,
-                  new Error('execa error'),
-                );
-              });
-
-              it('should only execute the first script', async function () {
-                await ctrl.runScripts(scripts, {bail: true}).catch(() => {});
-                // expect(brokenScriptRunner, 'was called once');
-              });
-
-              it('should reject', async function () {
-                await expect(
-                  () =>
-                    ctrl.runScripts(scripts, {
-                      bail: true,
-                    }),
-                  'to be rejected with error satisfying',
-                  err,
-                );
-              });
-
-              it('should not emit RunScriptFailed', async function () {
-                await expect(
-                  () => ctrl.runScripts(scripts, {bail: true}).catch(() => {}),
-                  'not to emit from',
-                  ctrl,
-                  SmokerEvent.RunScriptFailed,
-                );
-              });
-
-              it('should not emit RunScriptsFailed', async function () {
-                await expect(
-                  () => ctrl.runScripts(scripts, {bail: true}).catch(() => {}),
-                  'not to emit from',
-                  ctrl,
-                  SmokerEvent.RunScriptsFailed,
-                );
+                  {
+                    results: expect
+                      .it('to be an array')
+                      .and('to have length', 1),
+                    failed: 1,
+                    passed: 0,
+                    total: 4,
+                  },
+                ]);
               });
             });
           });
 
-          describe('when the script runner rejects', function () {
-            let err: PackageManagerError;
+          describe('when a script is skipped', function () {
+            let result: RunScriptResult;
+
             beforeEach(function () {
-              err = new PackageManagerError(
-                'egad',
-                {} as PkgManagerSpec,
-                new Error('execa error'),
-              );
+              result = {
+                rawResult: {
+                  stdout: '',
+                  stderr: '',
+                  command: '',
+                  exitCode: 1,
+                  failed: true,
+                },
+                skipped: true,
+              };
+              sandbox.stub(pkgManager, 'runScript').resolves(result);
+            });
+
+            it('should emit RunScriptSkipped', async function () {
+              await ctrl.runScripts(scripts, opts);
+              expect(eventBus.emit, 'to have a call satisfying', [
+                SmokerEvent.RunScriptSkipped,
+                {
+                  script: scripts[0],
+                  cwd: expect.it('to start with', MOCK_TMPROOT),
+                  pkgName: 'foo',
+                  total: 4,
+                  current: 1,
+                  skipped: true,
+                },
+              ])
+                .and('to have a call satisfying', [
+                  SmokerEvent.RunScriptSkipped,
+                  {
+                    script: scripts[1],
+                    cwd: expect.it('to start with', MOCK_TMPROOT),
+                    pkgName: 'foo',
+                    total: 4,
+                    current: 2,
+                    skipped: true,
+                  },
+                ])
+                .and('to have a call satisfying', [
+                  SmokerEvent.RunScriptSkipped,
+                  {
+                    script: scripts[0],
+                    cwd: expect.it('to start with', MOCK_TMPROOT),
+                    pkgName: 'bar',
+                    total: 4,
+                    current: 3,
+                    skipped: true,
+                  },
+                ])
+                .and('to have a call satisfying', [
+                  SmokerEvent.RunScriptSkipped,
+                  {
+                    script: scripts[1],
+                    cwd: expect.it('to start with', MOCK_TMPROOT),
+                    pkgName: 'bar',
+                    total: 4,
+                    current: 4,
+                    skipped: true,
+                  },
+                ]);
+            });
+
+            it('should emit RunScriptsOk', async function () {
+              await ctrl.runScripts(scripts, opts);
+              expect(eventBus.emit, 'to have a call satisfying', [
+                SmokerEvent.RunScriptsOk,
+                {
+                  manifest: {'nullpm@1.0.0': expect.it('to have length', 4)},
+                  total: 4,
+                  results: expect.it('to be an array'),
+                  failed: 0,
+                  passed: 0,
+                  skipped: 4,
+                },
+              ]);
+            });
+          });
+
+          describe('when a PkgManager throws', function () {
+            let err: Error;
+
+            beforeEach(function () {
+              err = new Error('egad');
+              sandbox.stub(pkgManager, 'runScript').rejects(err);
             });
 
             it('should reject', async function () {
               await expect(
                 () => ctrl.runScripts(scripts, opts),
                 'to be rejected with error satisfying',
-                err,
+                {cause: err, code: ErrorCodes.PackageManagerError},
               );
             });
 
             it('should not emit RunScriptFailed', async function () {
-              await expect(
-                () => ctrl.runScripts(scripts, opts).catch(() => {}),
-                'not to emit from',
-                ctrl,
+              await ctrl.runScripts(scripts, opts).catch(() => {});
+              expect(eventBus.emit, 'not to have calls satisfying', [
                 SmokerEvent.RunScriptFailed,
-              );
+                {},
+              ]);
             });
 
             it('should not emit RunScriptsFailed', async function () {
-              await expect(
-                () => ctrl.runScripts(scripts, opts).catch(() => {}),
-                'not to emit from',
-                ctrl,
+              await ctrl.runScripts(scripts, opts).catch(() => {});
+              expect(eventBus.emit, 'not to have calls satisfying', [
                 SmokerEvent.RunScriptsFailed,
+                {},
+              ]);
+            });
+
+            describe('when the "bail" flag is true', function () {
+              beforeEach(function () {
+                opts = {bail: true};
+              });
+
+              it('should reject', async function () {
+                await expect(
+                  () => ctrl.runScripts(scripts, opts),
+                  'to be rejected with error satisfying',
+                  {cause: err, code: ErrorCodes.PackageManagerError},
+                );
+              });
+
+              it('should not emit RunScriptFailed', async function () {
+                await ctrl.runScripts(scripts, opts).catch(() => {});
+                expect(eventBus.emit, 'not to have calls satisfying', [
+                  SmokerEvent.RunScriptFailed,
+                  {},
+                ]);
+              });
+
+              it('should not emit RunScriptsFailed', async function () {
+                await ctrl.runScripts(scripts, opts).catch(() => {});
+                expect(eventBus.emit, 'not to have calls satisfying', [
+                  SmokerEvent.RunScriptsFailed,
+                  {},
+                ]);
+              });
+            });
+          });
+        });
+
+        describe('pack()', function () {
+          let ctrl: PMC.PkgManagerController;
+          let pkgManager: SomePkgManager;
+          let pkgManagerPackStub: SinonStubbedMember<SomePkgManager['pack']>;
+
+          beforeEach(async function () {
+            registry.getExecutor.returns(nullExecutor);
+            ctrl = new PkgManagerController(registry, eventBus, [], {
+              verbose: true,
+            });
+            pkgManager = PkgManager.create('nullpm', nullPmDef, plugin, {
+              tmpdir: path.join(
+                MOCK_TMPROOT,
+                MIDNIGHT_SMOKER,
+                'nullpm-1.0.0',
+                'asdf',
+              ),
+              spec: await PkgManagerSpec.from('nullpm@1.0.0'),
+            } as PkgManagerContext);
+            sandbox.replaceGetter(ctrl, 'pkgManagers', () => [pkgManager]);
+            pkgManagerPackStub = sandbox.stub(pkgManager, 'pack').resolves();
+          });
+
+          it('should call pack on all PkgManagers', async function () {
+            await ctrl.pack();
+            expect(pkgManager.pack, 'was called once');
+          });
+
+          it('should emit PackBegin', async function () {
+            await ctrl.pack();
+            expect(eventBus.emit, 'to have a call satisfying', [
+              SmokerEvent.PackBegin,
+              {
+                uniquePkgs: [],
+                pkgManagers: [pkgManager.spec.toJSON()],
+              },
+            ]);
+          });
+
+          it('should emit PackOk', async function () {
+            await ctrl.pack();
+            expect(eventBus.emit, 'to have a call satisfying', [
+              SmokerEvent.PackOk,
+              {
+                uniquePkgs: [],
+                pkgManagers: [pkgManager.spec.toJSON()],
+              },
+            ]);
+          });
+
+          describe('when a PkgManager throws a PackError', function () {
+            let err: PackError;
+
+            beforeEach(function () {
+              err = new PackError('oh no', pkgManager.spec, 'something');
+              pkgManagerPackStub.rejects(err);
+            });
+
+            it('should reject', async function () {
+              await expect(
+                ctrl.pack(),
+                'to be rejected with error satisfying',
+                err,
+              );
+            });
+
+            it('should emit PackFailed', async function () {
+              // TODO find a better way to express this
+              await expect(ctrl.pack(), 'to be rejected');
+              expect(eventBus.emit, 'to have a call satisfying', [
+                SmokerEvent.PackFailed,
+                {
+                  uniquePkgs: [],
+                  pkgManagers: [pkgManager.spec.toJSON()],
+                  error: err,
+                },
+              ]);
+            });
+          });
+
+          describe('when a PkgManager throws a PackParseError', function () {
+            let err: PackParseError;
+
+            beforeEach(function () {
+              err = new PackParseError(
+                'ugh',
+                pkgManager.spec,
+                new SyntaxError('yikes dogg'),
+                'stuff',
+              );
+              pkgManagerPackStub.rejects(err);
+            });
+
+            it('should reject', async function () {
+              await expect(
+                ctrl.pack(),
+                'to be rejected with error satisfying',
+                err,
+              );
+            });
+
+            it('should emit PackFailed', async function () {
+              // TODO find a better way to express this
+              await expect(ctrl.pack(), 'to be rejected');
+              expect(eventBus.emit, 'to have a call satisfying', [
+                SmokerEvent.PackFailed,
+                {
+                  uniquePkgs: [],
+                  pkgManagers: [pkgManager.spec.toJSON()],
+                  error: err,
+                },
+              ]);
+            });
+          });
+
+          describe('when a PkgManager throws whatever', function () {
+            let err: Error;
+            beforeEach(function () {
+              err = new Error('rando');
+              pkgManagerPackStub.rejects(err);
+            });
+
+            it('should reject', async function () {
+              await expect(
+                ctrl.pack(),
+                'to be rejected with error satisfying',
+                err,
+              );
+            });
+
+            it('should not emit PackFailed', async function () {
+              await ctrl.pack().catch(() => {});
+              expect(eventBus.emit, 'not to have calls satisfying', [
+                SmokerEvent.PackFailed,
+                {},
+              ]);
+            });
+          });
+        });
+
+        describe('install()', function () {
+          let ctrl: PMC.PkgManagerController;
+          let pkgManager: SomePkgManager;
+          let pkgManagerInstallStub: SinonStubbedMember<
+            SomePkgManager['install']
+          >;
+
+          beforeEach(async function () {
+            pkgManager = PkgManager.create('nullpm', nullPmDef, plugin, {
+              tmpdir: path.join(
+                MOCK_TMPROOT,
+                MIDNIGHT_SMOKER,
+                'nullpm-1.0.0',
+                'asdf',
+              ),
+              spec: await PkgManagerSpec.from('nullpm@1.0.0'),
+            } as PkgManagerContext);
+            registry.getExecutor.returns(nullExecutor);
+            ctrl = new PkgManagerController(registry, eventBus, [], {});
+            sandbox.replaceGetter(ctrl, 'pkgManagers', () => [pkgManager]);
+            sandbox.stub(pkgManager, 'addAdditionalDep');
+            pkgManagerInstallStub = sandbox.stub(pkgManager, 'install');
+            sandbox.replaceGetter(
+              pkgManager,
+              'installManifests',
+              () =>
+                <InstallManifest[]>[
+                  {
+                    isAdditional: false,
+                    pkgSpec: 'foo@1.0.0',
+                    pkgName: 'foo',
+                    cwd: MOCK_TMPROOT,
+                    installPath: path.join(MOCK_TMPROOT, 'node_modules', 'foo'),
+                  },
+                  {
+                    isAdditional: false,
+                    pkgSpec: 'bar@1.0.0',
+                    pkgName: 'bar',
+                    cwd: MOCK_TMPROOT,
+                    installPath: path.join(MOCK_TMPROOT, 'node_modules', 'bar'),
+                  },
+                ],
+            );
+          });
+
+          it('should add additional dependencies to all package managers', async function () {
+            const additionalDeps = ['dep1', 'dep2'];
+            await ctrl.install(additionalDeps);
+            expect(
+              pkgManager.addAdditionalDep,
+              'to have calls exhaustively satisfying',
+              [['dep1'], ['dep2']],
+            );
+          });
+
+          it('should call install() on each PkgManager', async function () {
+            await ctrl.install();
+            expect(pkgManager.install, 'was called once');
+          });
+
+          it('should emit InstallBegin', async function () {
+            await ctrl.install();
+            expect(eventBus.emit, 'to have a call satisfying', [
+              SmokerEvent.InstallBegin,
+              {
+                pkgManagers: [pkgManager.spec.toJSON()],
+              },
+            ]);
+          });
+
+          describe('when installation succeeds', function () {
+            it('should emit InstallOk', async function () {
+              await ctrl.install();
+              expect(eventBus.emit, 'to have a call satisfying', [
+                SmokerEvent.InstallOk,
+                {
+                  pkgManagers: [pkgManager.spec.toJSON()],
+                },
+              ]);
+            });
+
+            it('should emit PkgManagerInstallBegin for each PkgManager', async function () {
+              await ctrl.install();
+              expect(eventBus.emit, 'to have a call exhaustively satisfying', [
+                SmokerEvent.PkgManagerInstallBegin,
+                {
+                  pkgManager: pkgManager.spec.toJSON(),
+                  current: 2,
+                  total: 2,
+                },
+              ]);
+            });
+
+            it('should emit PkgManagerInstallOk for each PkgManager', async function () {
+              await ctrl.install();
+              expect(eventBus.emit, 'to have a call exhaustively satisfying', [
+                SmokerEvent.PkgManagerInstallOk,
+                {
+                  pkgManager: pkgManager.spec.toJSON(),
+                  current: 2,
+                  total: 2,
+                },
+              ]);
+            });
+          });
+
+          describe('when installation fails', function () {
+            let err: InstallError;
+            beforeEach(function () {
+              err = new InstallError(
+                'Install failed',
+                pkgManager.spec,
+                ['foo@1.0.0', 'bar@1.0.0'],
+                pkgManager.tmpdir,
+              );
+              pkgManagerInstallStub.rejects(err);
+            });
+
+            it('should emit PkgManagerInstallFailed', async function () {
+              await ctrl.install().catch(() => {});
+              expect(eventBus.emit, 'to have a call exhaustively satisfying', [
+                SmokerEvent.PkgManagerInstallFailed,
+                {
+                  pkgManager: pkgManager.spec.toJSON(),
+                  error: err,
+                  total: 2,
+                  current: 2,
+                },
+              ]);
+            });
+
+            it('should emit InstallFailed', async function () {
+              await ctrl.install().catch(() => {});
+              expect(eventBus.emit, 'to have a call exhaustively satisfying', [
+                SmokerEvent.InstallFailed,
+                {
+                  uniquePkgs: ['foo', 'bar'],
+                  pkgManagers: [pkgManager.spec.toJSON()],
+                  additionalDeps: [],
+                  manifests: pkgManager.installManifests,
+                  error: err,
+                  total: 2,
+                },
+              ]);
+            });
+
+            it('should reject', async function () {
+              await expect(
+                ctrl.install(),
+                'to be rejected with error satisfying',
+                err,
               );
             });
           });
@@ -537,90 +950,3 @@ describe('midnight-smoker', function () {
     });
   });
 });
-
-// describe('midnight-smoker', function () {
-//   describe('component', function () {
-//     describe('package manager', function () {
-//       describe('PkgManagerController', function () {
-//         const specs = ['nullpm@1.0.0', 'nullpm@2.0.0'];
-
-//         let PkgManagerSpec: typeof PkgMgr.PkgManagerSpec;
-//         let sandbox: sinon.SinonSandbox;
-//         let registry: sinon.SinonStubbedInstance<PluginRegistry>;
-//         let PkgManagerController: typeof Controller.PkgManagerController;
-
-//         beforeEach(function () {
-//           sandbox = createSandbox();
-//           const {mocks} = createFsMocks();
-//           registry = sandbox.createStubInstance(PluginRegistry);
-//           // ({PkgManagerSpec} = rewiremock.proxy(
-//           //   () =>
-//           //     require('../../../../src/component/pkg-manager/pkg-manager-spec'),
-//           //   mocks,
-//           // ));
-//           ({PkgManagerController} = rewiremock.proxy(
-//             () => require('../../../../src/ctrl'),
-//             mocks,
-//           ));
-//         });
-
-//         afterEach(function () {
-//           sandbox.restore();
-//         });
-
-//         describe('constructor', function () {
-//           it('should return a PkgManagerController', function () {
-//             const ctrl = new PkgManagerController(registry, specs, {});
-//             expect(ctrl, 'to be a', PkgManagerController);
-//           });
-//         });
-
-//         describe('method', function () {
-//           let ctrl: Controller.PkgManagerController;
-//           let pkgManagerMap: Map<PkgMgr.PkgManagerSpec, PkgMgr.PkgManager>;
-//           let nullPm1: NullPm;
-//           let nullPm2: NullPm;
-
-//           beforeEach(async function () {
-//             const [spec1, spec2] = await Promise.all([
-//               PkgManagerSpec.from('nullpm@1.0.0'),
-//               PkgManagerSpec.from('nullpm@2.0.0'),
-//             ]);
-//             nullPm1 = new NullPm(spec1);
-//             nullPm2 = new NullPm(spec2);
-//             pkgManagerMap = new Map([
-//               [spec1, nullPm1],
-//               [spec2, nullPm2],
-//             ]);
-//             registry.loadPackageManagers.resolves(pkgManagerMap);
-
-//             ctrl = new PkgManagerController(registry, specs, {});
-//           });
-
-//           describe('getPkgManagers()', function () {
-//             it('should return an array of frozen package managers', async function () {
-//               await expect(
-//                 ctrl.getPkgManagers(),
-//                 'to be fulfilled with value satisfying',
-//                 expect
-//                   .it('to equal', [nullPm1, nullPm2])
-//                   .and(
-//                     'when passed as parameter to',
-//                     Object.isFrozen,
-//                     'to be true',
-//                   ),
-//               );
-//             });
-
-//             it('should delegate to its PluginRegistry and cache the result', async function () {
-//               await ctrl.getPkgManagers();
-//               await ctrl.getPkgManagers();
-//               expect(registry.loadPackageManagers, 'was called once');
-//             });
-//           });
-
-// });
-//       });
-//     });
-//   });
-// });

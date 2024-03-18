@@ -41,7 +41,10 @@ export const RunScriptsEndEventDataSchema = RunScriptsEventDataSchema.extend({
     'Count of scripts which failed',
   ),
   passed: NonNegativeIntSchema.default(0).describe(
-    'Count of scripts that succeeded',
+    'Count of scripts which succeeded',
+  ),
+  skipped: NonNegativeIntSchema.default(0).describe(
+    'Count of scripts which were skipped',
   ),
 });
 
@@ -68,7 +71,7 @@ export const ScriptSkippedEventDataSchema = ScriptEventBaseDataSchema.extend({
   skipped: z.literal(true),
 });
 
-export type ScriptSkippedEventData = z.infer<
+export type RunScriptSkippedEventData = z.infer<
   typeof ScriptSkippedEventDataSchema
 >;
 
@@ -79,5 +82,5 @@ export type ScriptEventData = {
   RunScriptsBegin: RunScriptsBeginEventData;
   RunScriptsOk: RunScriptsOkEventData;
   RunScriptsFailed: RunScriptsFailedEventData;
-  ScriptSkipped: ScriptSkippedEventData;
+  RunScriptSkipped: RunScriptSkippedEventData;
 };

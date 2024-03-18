@@ -43,7 +43,7 @@ import {
 import {isErrnoException, once} from '#util';
 import {FileManager, type FileManagerOpts} from '#util/filemanager';
 import Debug from 'debug';
-import {isError} from 'lodash';
+import {isError, sumBy} from 'lodash';
 import {type Controller} from './controller';
 import {PkgManagerControllerEventHelper} from './pkg-manager-controller-event-helper';
 
@@ -182,7 +182,6 @@ export class PkgManagerController implements Controller {
    * on temp dirs (based on {@link PkgManagerController.linger})
    */
   public async destroy() {
-    this.pkgManagers; //?
     await Promise.all(
       this.pkgManagers.map((pkgManager) => pkgManager.teardown()),
     );
@@ -273,7 +272,7 @@ export class PkgManagerController implements Controller {
    * @todo AbortController
    */
   public async install(additionalDeps: string[] = []): Promise<void> {
-    const pkgManagers = this.pkgManagers;
+    const {pkgManagers} = this;
 
     for (const additionalDep of additionalDeps) {
       for (const pkgManager of pkgManagers) {
@@ -296,11 +295,16 @@ export class PkgManagerController implements Controller {
               current: current + pkgManager.installManifests.length,
             });
           } catch (err) {
-            // FIXME: better error handling from this
+            // FIXME: better error handling from event emits
             debug('Error emitting PkgManagerInstallBegin: %O', err);
           }
           try {
             await pkgManager.install();
+            await this.#emitter.pkgManagerInstallOk({
+              pkgManagers,
+              pkgManager,
+              current: current + pkgManager.installManifests.length,
+            });
           } catch (err) {
             if (err instanceof InstallError) {
               await this.#emitter.pkgManagerInstallFailed({
@@ -369,7 +373,7 @@ export class PkgManagerController implements Controller {
     runManifest: RunScriptManifest,
     signal: AbortSignal,
   ): Promise<RunScriptResult> {
-    if (signal?.aborted) {
+    if (signal.aborted) {
       throw new ScriptBailed();
     }
 
@@ -393,8 +397,7 @@ export class PkgManagerController implements Controller {
       throw err;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (signal?.aborted) {
+    if (signal.aborted) {
       throw new ScriptBailed();
     }
 
@@ -415,38 +418,36 @@ export class PkgManagerController implements Controller {
    */
   public async runScripts(
     scripts: string[],
-    opts: PkgManagerControllerRunScriptsOpts,
+    {bail = false}: PkgManagerControllerRunScriptsOpts = {},
   ): Promise<RunScriptResult[]> {
     const ac = new AbortController();
 
-    const total = 0;
-    let current = 0;
+    let current = 1;
     let failed = false;
 
     const {pkgManagers} = this;
-    const runScriptFailedListener = () => {
-      failed = true;
-      if (opts.bail) {
-        ac.abort();
-      }
-    };
-
-    this.eventBus.onSync(SmokerEvent.RunScriptFailed, runScriptFailedListener);
-
     await this.#emitter.runScriptsBegin({
-      pkgManagers: this.pkgManagers,
+      pkgManagers,
       scripts,
     });
 
     const results: RunScriptResult[] = [];
 
+    const total =
+      pkgManagers.length *
+      sumBy(pkgManagers, (pm) => pm.installManifests.length) *
+      scripts.length;
+
     try {
-      for (const pkgManager of pkgManagers) {
+      PKG_MANAGERS: for (const pkgManager of pkgManagers) {
         const runScriptManifests = pkgManager.buildRunScriptManifests(scripts);
         for (const runScriptManifest of runScriptManifests) {
           const eventData = {...runScriptManifest, total, current: current++};
           const {script, pkgName} = runScriptManifest;
 
+          if (ac.signal.aborted) {
+            break PKG_MANAGERS;
+          }
           await this.eventBus.emit(SmokerEvent.RunScriptBegin, eventData);
           let result: RunScriptResult;
           try {
@@ -457,13 +458,14 @@ export class PkgManagerController implements Controller {
             );
           } catch (err) {
             if (err instanceof ScriptBailed) {
-              break;
+              break PKG_MANAGERS;
             }
-            if (opts.bail) {
+            if (bail) {
               ac.abort();
             }
             throw err;
           }
+
           if (result.error) {
             debug(
               'Script "%s" failed in package "%s": %O',
@@ -475,8 +477,12 @@ export class PkgManagerController implements Controller {
               ...eventData,
               error: result.error,
             });
+            failed = true;
+            if (bail) {
+              ac.abort();
+            }
           } else if (result.skipped) {
-            await this.eventBus.emit(SmokerEvent.ScriptSkipped, {
+            await this.eventBus.emit(SmokerEvent.RunScriptSkipped, {
               ...eventData,
               skipped: true,
             });
@@ -491,20 +497,19 @@ export class PkgManagerController implements Controller {
         }
       }
 
+      if (bail && ac.signal.aborted) {
+        failed = true;
+      }
+
       if (failed) {
         await this.#emitter.runScriptsFailed({pkgManagers, results, scripts});
       } else {
         await this.#emitter.runScriptsOk({pkgManagers, results, scripts});
       }
-
-      ac.abort();
-      return results;
     } finally {
-      this.eventBus.offSync(
-        SmokerEvent.RunScriptFailed,
-        runScriptFailedListener,
-      );
+      ac.abort();
     }
+    return results;
   }
 
   private executorForSpec(spec: PkgManagerSpec) {

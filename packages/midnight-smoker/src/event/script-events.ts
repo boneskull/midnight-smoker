@@ -1,11 +1,11 @@
 import {
+  type RunScriptSkippedEventData,
   type RunScriptsBeginEventData,
   type RunScriptsFailedEventData,
   type RunScriptsOkEventData,
   type ScriptBeginEventData,
   type ScriptFailedEventData,
   type ScriptOkEventData,
-  type ScriptSkippedEventData,
 } from '#schema/script-event';
 
 export type ScriptEvents = {
@@ -59,5 +59,5 @@ export type ScriptEvents = {
   /**
    * Emitted if a script is skipped for a workspace (because it does not exist)
    */
-  ScriptSkipped: ScriptSkippedEventData;
+  RunScriptSkipped: RunScriptSkippedEventData;
 };

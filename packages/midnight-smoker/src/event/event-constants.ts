@@ -78,7 +78,10 @@ export const RunScriptEvent = {
    */
   RunScriptsOk: 'RunScriptsOk',
 
-  ScriptSkipped: 'ScriptSkipped',
+  /**
+   * {@inheritDoc SmokerEvents.RunScriptSkipped}
+   */
+  RunScriptSkipped: 'RunScriptSkipped',
 } as const;
 
 export const RuleEvent = {

@@ -20,14 +20,6 @@ export type InstallOkData = DataWithPkgManagers;
 export type PackBeginData = DataWithPkgManagers;
 export type PackOkData = DataWithPkgManagers;
 export type PkgManagerInstallOkData = PkgManagerInstallBeginData;
-
-export interface RunScriptsBeginData extends DataWithPkgManagers {
-  scripts: string[];
-}
-
-export interface RunScriptsOkData extends RunScriptsBeginData {
-  results: RunScriptResult[];
-}
 export type RunScriptsFailedData = RunScriptsOkData;
 
 export interface DataWithError<T extends Error> {
@@ -59,6 +51,14 @@ export interface PkgManagerInstallBeginData
 export interface PkgManagerInstallFailedData
   extends PkgManagerInstallBeginData,
     DataWithError<InstallError> {}
+
+export interface RunScriptsBeginData extends DataWithPkgManagers {
+  scripts: string[];
+}
+
+export interface RunScriptsOkData extends RunScriptsBeginData {
+  results: RunScriptResult[];
+}
 
 export class PkgManagerControllerEventHelper {
   private static allManifests = memoize((pkgManagers: SomePkgManager[]) =>
@@ -140,6 +140,12 @@ export class PkgManagerControllerEventHelper {
 
       return {manifest, total};
     },
+    (scripts, pkgManagers) => {
+      return `${scripts.sort().join(',')}-${pkgManagers
+        .map((pkgManager) => `${pkgManager.spec}`)
+        .sort()
+        .join(',')}`;
+    },
   );
 
   /**
@@ -149,23 +155,22 @@ export class PkgManagerControllerEventHelper {
    * @param results - The results of running the scripts.
    * @returns The event data for the `RunScriptsEnd` event.
    */
-  private static buildRunScriptsEndEventData = memoize(
-    (
-      scripts: string[],
-      pkgManagers: SomePkgManager[],
-      results: RunScriptResult[],
-    ): RunScriptsEndEventData => {
-      const beginEventData =
-        PkgManagerControllerEventHelper.buildRunScriptsBeginEventData(
-          scripts,
-          pkgManagers,
-        );
-      const failed = results.filter((result) => 'error' in result).length;
-      const passed = results.length - failed;
+  private static buildRunScriptsEndEventData = (
+    scripts: string[],
+    pkgManagers: SomePkgManager[],
+    results: RunScriptResult[],
+  ): RunScriptsEndEventData => {
+    const beginEventData =
+      PkgManagerControllerEventHelper.buildRunScriptsBeginEventData(
+        scripts,
+        pkgManagers,
+      );
+    const failed = results.filter((result) => 'error' in result).length;
+    const skipped = results.filter((result) => result.skipped).length;
+    const passed = results.length - failed - skipped;
 
-      return {...beginEventData, results, failed, passed};
-    },
-  );
+    return {...beginEventData, results, failed, passed, skipped};
+  };
   private static pkgManagerSpecs = memoize((pkgManagers: SomePkgManager[]) =>
     pkgManagers.map(({spec}) => spec.toJSON()),
   );
@@ -223,39 +228,6 @@ export class PkgManagerControllerEventHelper {
     });
   }
 
-  public async runScriptsBegin({pkgManagers, scripts}: RunScriptsBeginData) {
-    await this.bus.emit(SmokerEvent.RunScriptsBegin, {
-      ...PkgManagerControllerEventHelper.buildRunScriptsBeginEventData(
-        scripts,
-        pkgManagers,
-      ),
-    });
-  }
-
-  public async runScriptsOk({pkgManagers, scripts, results}: RunScriptsOkData) {
-    await this.bus.emit(SmokerEvent.RunScriptsOk, {
-      ...PkgManagerControllerEventHelper.buildRunScriptsEndEventData(
-        scripts,
-        pkgManagers,
-        results,
-      ),
-    });
-  }
-
-  public async runScriptsFailed({
-    pkgManagers,
-    scripts,
-    results,
-  }: RunScriptsFailedData) {
-    await this.bus.emit(SmokerEvent.RunScriptsFailed, {
-      ...PkgManagerControllerEventHelper.buildRunScriptsEndEventData(
-        scripts,
-        pkgManagers,
-        results,
-      ),
-    });
-  }
-
   public async pkgManagerInstallBegin({
     pkgManagers,
     pkgManager,
@@ -297,6 +269,39 @@ export class PkgManagerControllerEventHelper {
       total,
       current,
       pkgManager: pkgManager.spec.toJSON(),
+    });
+  }
+
+  public async runScriptsBegin({pkgManagers, scripts}: RunScriptsBeginData) {
+    await this.bus.emit(SmokerEvent.RunScriptsBegin, {
+      ...PkgManagerControllerEventHelper.buildRunScriptsBeginEventData(
+        scripts,
+        pkgManagers,
+      ),
+    });
+  }
+
+  public async runScriptsFailed({
+    pkgManagers,
+    scripts,
+    results,
+  }: RunScriptsFailedData) {
+    await this.bus.emit(SmokerEvent.RunScriptsFailed, {
+      ...PkgManagerControllerEventHelper.buildRunScriptsEndEventData(
+        scripts,
+        pkgManagers,
+        results,
+      ),
+    });
+  }
+
+  public async runScriptsOk({pkgManagers, scripts, results}: RunScriptsOkData) {
+    await this.bus.emit(SmokerEvent.RunScriptsOk, {
+      ...PkgManagerControllerEventHelper.buildRunScriptsEndEventData(
+        scripts,
+        pkgManagers,
+        results,
+      ),
     });
   }
 }

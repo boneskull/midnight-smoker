@@ -31,9 +31,7 @@ export const RunScriptResultSchema = z
   .describe('The result of running a single custom script');
 
 /**
- * {@inheritDoc zRunScriptResult}
- *
- * @see {@link zRunScriptResult}
+ * {@inheritDoc RunScriptResultSchema}
  */
 
 export type RunScriptResult = z.infer<typeof RunScriptResultSchema>;
