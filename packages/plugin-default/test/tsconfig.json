@@ -1,0 +1,18 @@
+{
+  "extends": "../../../.config/tsconfig.test.json",
+  "compilerOptions": {
+    "paths": {
+      "midnight-smoker": ["../../midnight-smoker"],
+      "@midnight-smoker/test-util": ["../../test-util"]
+    }
+  },
+  "include": ["."],
+  "references": [
+    {
+      "path": "../src/tsconfig.json"
+    },
+    {
+      "path": "../../test-util/src/tsconfig.json"
+    }
+  ]
+}

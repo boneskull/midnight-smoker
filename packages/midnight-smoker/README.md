@@ -61,7 +61,7 @@ npx midnight-smoker test:smoke
 
 **midnight-smoker** is compatible with npm and yarn workspaces. Probably.
 
-## Deets
+## Usage
 
 ### Automated Checks
 
@@ -184,16 +184,16 @@ Provide the `--add <thing>` option to **midnight-smoker**, where `thing` is anyt
 
 If unspecified in `--add`, **midnight-smoker** will use the version of the dependency in your `package.json`'s `devDependencies`/`dependencies`/`optionalDependencies`/`peerDepedenencies` fields (in that order of preference).
 
-If the tool isn't found in these fields, **midnight-smoker** will just pull down the `latest` tag of the dependency.
+If the tool isn't found in these fields, **midnight-smoker** will use the `latest` tag of the dependency.
 
 `--add` can be provided multiple times.
 
 > [!NOTE]
-> You should just add the thing to your `devDependencies` if it isn't there. That is smart. That is cool.
+> You should add the thing to your `devDependencies` if it isn't there. That is smart. That is cool.
 
 ### Config Files
 
-I know what you're thinking: "I just don't have enough config files!" **midnight-smoker** solves this problem by giving you the opportunity to add another one. Config files are supported via a `smoker` field in `package.json`, or one of:
+I know what you're thinking: "I just don't have enough config files!" **midnight-smoker** solves this problem by giving you the opportunity to add another one. Config may be specified in a `smoker` field in `package.json`, or one of:
 
 - `.smokerrc.(json|js|cjs|mjs)`
 - `smoker.config.(json|js|cjs|mjs)`

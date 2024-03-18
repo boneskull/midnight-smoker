@@ -1,0 +1,8 @@
+{
+  "name": "ersatz-esm-plugin",
+  "version": "1.0.0",
+  "description": "Example of a midnight-smoker plugin exporting __esModule: true",
+  "scripts": {
+    "postinstall": "echo \"Do not install this fixture\"; exit 1"
+  }
+}

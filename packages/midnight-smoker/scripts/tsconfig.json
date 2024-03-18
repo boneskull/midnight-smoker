@@ -1,0 +1,10 @@
+{
+  "extends": "../../../.config/tsconfig.workspace.json",
+  "include": ["*.ts"],
+  "compilerOptions": {
+    "paths": {
+      "../src/*": ["../src/*"]
+    }
+  },
+  "references": [{"path": "../src/tsconfig.json"}]
+}

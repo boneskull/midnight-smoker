@@ -1,17 +1,16 @@
 {
-  "extends": "@tsconfig/node16/tsconfig.json",
-  "compilerOptions": {
-    "types": ["node", "mocha"],
-    "noEmit": true,
-    "composite": true
-  },
+  "extends": [
+    "../../../.config/tsconfig.test.json",
+    "../.config/tsconfig.paths.json"
+  ],
+  "compilerOptions": {},
   "include": ["."],
   "references": [
     {
-      "path": "../src"
+      "path": "../src/tsconfig.json"
+    },
+    {
+      "path": "../../test-util/tsconfig.json"
     }
-  ],
-  "ts-node": {
-    "transpileOnly": true
-  }
+  ]
 }

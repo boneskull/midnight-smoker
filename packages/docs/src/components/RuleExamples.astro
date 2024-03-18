@@ -1,0 +1,53 @@
+---
+import {TabItem, Tabs} from '@astrojs/starlight/components';
+import {getCollection} from 'astro:content';
+
+const RULE_EXAMPLES_COLLECTION = 'rule-examples';
+const DEFAULTS_LABEL = 'Defaults';
+const DISABLED_LABEL = 'Disabled';
+
+export type Props = {
+  rule: string;
+};
+
+const {rule} = Astro.props;
+
+const defaultDescriptions: Record<string, string> = {
+  [DEFAULTS_LABEL]: `This is the default behavior of the <code>${rule}</code> rule.`,
+  [DISABLED_LABEL]: `This disables the <code>${rule}</code> rule entirely.`,
+};
+
+const exampleData = await getCollection(
+  RULE_EXAMPLES_COLLECTION,
+  ({data}) => data.rule === rule,
+);
+
+const examples = await Promise.all(
+  exampleData.map(
+    async (entry) =>
+      await entry.render().then(({Content}) => ({Content, data: entry.data})),
+  ),
+);
+
+// Sort examples so that the "Defaults" example is always first and "Disabled" is always last
+examples.sort((a, b) => {
+  if (a.data.label === DEFAULTS_LABEL || b.data.label === DISABLED_LABEL)
+    return -1;
+  if (b.data.label === DEFAULTS_LABEL || a.data.label === DISABLED_LABEL)
+    return 1;
+  return 0;
+});
+---
+
+<Tabs>
+  {
+    examples.map(({Content, data}) => (
+      <TabItem label={data.label}>
+        <p>
+          <em set:html={data.description ?? defaultDescriptions[data.label]} />
+        </p>
+        <Content />
+      </TabItem>
+    ))
+  }
+</Tabs>

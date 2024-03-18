@@ -1,7 +1,7 @@
 {
   "name": "midnight-smoker",
   "version": "8.0.0",
-  "description": "Smoke test your package tarball (instead of failing miserably)",
+  "description": "Smoke test & lint your package artifacts (instead of failing miserably)",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/boneskull/midnight-smoker.git",
@@ -21,13 +21,129 @@
     "smoker": "bin/smoker.js"
   },
   "main": "./dist/index.js",
+  "imports": {
+    "#cli": "./dist/cli/index.js",
+    "#cli/*": "./dist/cli/*.js",
+    "#component": "./dist/component/component/index.js",
+    "#config-file": "./dist/config-file.js",
+    "#constants": "./dist/constants.js",
+    "#controller": "./dist/controller/index.js",
+    "#controller/*": "./dist/controller/*.js",
+    "#error": "./dist/error/index.js",
+    "#error/*": "./dist/error/*.js",
+    "#event": "./dist/event/index.js",
+    "#event/*": "./dist/event/*.js",
+    "#executor": "./dist/component/executor/index.js",
+    "#options": "./dist/options/index.js",
+    "#options/*": "./dist/options/*.js",
+    "#pkg-manager": "./dist/component/pkg-manager/index.js",
+    "#pkg-manager/*": "./dist/component/pkg-manager/*.js",
+    "#plugin": "./dist/plugin/index.js",
+    "#plugin/*": "./dist/plugin/*.js",
+    "#reporter": "./dist/component/reporter/index.js",
+    "#reporter/*": "./dist/component/reporter/*.js",
+    "#rule": "./dist/component/rule/index.js",
+    "#rule/*": "./dist/component/rule/*.js",
+    "#schema": "./dist/component/schema/index.js",
+    "#schema/*": "./dist/component/schema/*.js",
+    "#smoker": "./dist/smoker.js",
+    "#util": "./dist/util/index.js",
+    "#util/*": "./dist/util/*.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "typedoc": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./plugin": {
+      "types": "./dist/plugin/index.d.ts",
+      "typedoc": "./src/plugin/index.ts",
+      "default": "./dist/plugin/index.js"
+    },
+    "./plugin/helpers": {
+      "types": "./dist/plugin/helpers.d.ts",
+      "typedoc": "./src/plugin/helpers.ts",
+      "default": "./dist/plugin/helpers.js"
+    },
+    "./plugin/blessed": {
+      "types": "./dist/plugin/blessed.d.ts",
+      "typedoc": "./src/plugin/blessed.ts",
+      "default": "./dist/plugin/blessed.js"
+    },
+    "./component": {
+      "types": "./dist/component/component/index.d.ts",
+      "typedoc": "./src/component/component/index.ts",
+      "default": "./dist/component/component/index.js"
+    },
+    "./error": {
+      "types": "./dist/error/index.d.ts",
+      "typedoc": "./src/error/index.ts",
+      "default": "./dist/error/index.js"
+    },
+    "./event": {
+      "types": "./dist/event/index.d.ts",
+      "typedoc": "./src/event/index.ts",
+      "default": "./dist/event/index.js"
+    },
+    "./rule": {
+      "types": "./dist/component/rule/index.d.ts",
+      "typedoc": "./src/component/rule/index.ts",
+      "default": "./dist/component/rule/index.js"
+    },
+    "./reporter": {
+      "types": "./dist/component/reporter/index.d.ts",
+      "typedoc": "./src/component/reporter/index.ts",
+      "default": "./dist/component/reporter/index.js"
+    },
+    "./executor": {
+      "types": "./dist/component/executor/index.d.ts",
+      "typedoc": "./src/component/executor/index.ts",
+      "default": "./dist/component/executor/index.js"
+    },
+    "./pkg-manager": {
+      "types": "./dist/component/pkg-manager/index.d.ts",
+      "typedoc": "./src/component/pkg-manager/index.ts",
+      "default": "./dist/component/pkg-manager/index.js"
+    },
+    "./rule-runner": {
+      "types": "./dist/component/rule-runner/index.d.ts",
+      "typedoc": "./src/component/rule-runner/index.ts",
+      "default": "./dist/component/rule-runner/index.js"
+    },
+    "./script-runner": {
+      "types": "./dist/component/script-runner/index.d.ts",
+      "typedoc": "./src/component/script-runner/index.ts",
+      "default": "./dist/component/script-runner/index.js"
+    },
+    "./package.json": "./package.json",
+    "./smoker": "./bin/smoker.js",
+    "./constants": {
+      "types": "./dist/constants.d.ts",
+      "typedoc": "./src/constants.ts",
+      "default": "./dist/constants.js"
+    },
+    "./controller": {
+      "types": "./dist/controller/index.d.ts",
+      "typedoc": "./src/controller/index.ts",
+      "default": "./dist/controller/index.js"
+    },
+    "./util": {
+      "types": "./dist/util/index.d.ts",
+      "typedoc": "./src/util/index.ts",
+      "default": "./dist/util/index.js"
+    }
+  },
   "types": "./dist/index.d.ts",
   "files": [
+    "./bin",
     "./data",
     "./dist",
     "./schema",
     "./src",
-    "!**/*.tsbuildinfo"
+    "CHANGELOG.md",
+    "!**/*.tsbuildinfo",
+    "!tsconfig.json"
   ],
   "keywords": [
     "test",
@@ -51,41 +167,54 @@
     "test": "run-s test:unit test:smoke",
     "test:ci": "run-s test:unit test:smoke test:e2e",
     "test:e2e": "mocha --timeout 20s --slow 10s \"test/e2e/**/*.spec.ts\"",
-    "test:smoke": "node ./bin/smoker.js smoke:ts smoke:js --add ts-node --add @tsconfig/node16",
+    "test:smoke": "node ./bin/smoker.js run smoke:ts smoke:js --add ts-node --add @tsconfig/node16",
+    "test:snapshots-only": "npm run test:e2e -- --fgrep \"[snapshot]\"",
     "test:unit": "mocha \"test/unit/**/*.spec.ts\"",
     "test:update-snapshots": "cross-env SNAPSHOT_UPDATE=1 npm run test:e2e -- --fgrep \"[snapshot]\"",
-    "update-schema": "ts-node ./scripts/generate-schema.ts && prettier --write ./schema/midnight-smoker.schema.json"
+    "update-schema": "ts-node ./scripts/generate-schema.ts"
   },
   "dependencies": {
+    "@midnight-smoker/plugin-default": "file:../plugin-default",
     "@types/semver": "7.5.6",
+    "async-mitt": "0.0.0",
     "chalk": "4.1.2",
-    "corepack": "0.23.0",
+    "cli-table3": "0.6.3",
     "debug": "4.3.4",
     "deepmerge": "4.3.1",
     "execa": "5.1.1",
     "glob": "10.3.10",
-    "is-file-esm": "1.0.0",
     "lilconfig": "3.0.0",
-    "log-symbols": "4.1.0",
-    "ora": "5.4.1",
-    "pluralize": "8.0.0",
+    "lodash": "4.17.21",
+    "mitt": "3.0.1",
     "read-pkg-up": "7.0.1",
     "semver": "7.5.4",
     "source-map-support": "0.5.21",
     "strict-event-emitter-types": "2.0.0",
+    "string-width": "4.2.3",
+    "stringify-object": "3.3.0",
+    "terminal-link": "2.1.1",
+    "type-fest": "4.8.3",
     "which": "4.0.0",
     "yargs": "17.7.2",
     "zod": "3.22.4",
     "zod-validation-error": "2.1.0"
   },
   "devDependencies": {
+    "@midnight-smoker/test-util": "file:../test-util",
     "@types/debug": "4.1.12",
     "@types/is-file-esm": "1.0.3",
+    "@types/json-stable-stringify": "1.0.35",
+    "@types/lodash": "4.14.202",
     "@types/pluralize": "0.0.33",
+    "@types/stringify-object": "3.3.1",
     "@types/which": "3.0.3",
     "@types/yargs": "17.0.32",
+    "memfs": "4.6.0",
     "strip-ansi": "5.2.0",
     "unexpected-eventemitter": "2.4.0",
     "zod-to-json-schema": "3.22.3"
+  },
+  "overrides": {
+    "zod": "$zod"
   }
 }

@@ -1,7 +1,8 @@
 {
   "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
   "packages": {
-    "packages/midnight-smoker": {}
+    "packages/midnight-smoker": {},
+    "packages/plugin-default": {}
   },
   "plugins": ["node-workspace"],
   "extra-files": ["packages/midnight-smoker/README.md"]
