@@ -46,7 +46,7 @@ module.exports = () => {
       '!./packages/docs/test/**/*',
     ],
     runMode: 'onsave',
-    // workers: {restart: true},
+    workers: {recycle: true},
     setup(wallaby) {
       process.env.WALLABY = '1';
       // const Module = require('module');
