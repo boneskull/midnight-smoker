@@ -11,7 +11,7 @@ import {getSystemPkgManagerVersion} from '#util/pkg-util';
 import type {NonEmptyArray} from '#util/util';
 import {isString} from 'lodash';
 import {parse, type SemVer} from 'semver';
-import {guessPackageManager} from './pkg-manager-guesser';
+import {guessPackageManager} from './pkg-manager-oracle';
 
 /**
  * Options for {@link PkgManagerSpec}.

@@ -22,11 +22,10 @@ import {
   type SomeRule,
 } from '#schema';
 import {
+  FileManager,
   NonEmptyNonEmptyStringArraySchema,
   isErrnoException,
-  justImport,
-  readPackageJson,
-  resolveFrom,
+  type FileManagerOpts,
 } from '#util';
 import Debug from 'debug';
 import {isEmpty, isError, isString} from 'lodash';
@@ -54,6 +53,10 @@ export interface StaticPluginRegistry {
   plugins: StaticPluginMetadata[];
 }
 
+export interface PluginRegistryOpts {
+  fileManagerOpts?: FileManagerOpts;
+}
+
 export class PluginRegistry {
   private pluginMap: Map<string, Readonly<PluginMetadata>>;
   private seenRawPlugins: Map<unknown, string>;
@@ -64,9 +67,12 @@ export class PluginRegistry {
 
   #isClosed = false;
 
-  public constructor() {
+  #fm: FileManager;
+
+  public constructor({fileManagerOpts}: PluginRegistryOpts = {}) {
     this.pluginMap = new Map();
     this.seenRawPlugins = new Map();
+    this.#fm = new FileManager(fileManagerOpts);
     this.componentRegistry = ComponentRegistry.create();
   }
 
@@ -78,8 +84,8 @@ export class PluginRegistry {
     return this.componentRegistry.getComponent(def);
   }
 
-  public static create() {
-    return new PluginRegistry();
+  public static create(opts?: PluginRegistryOpts) {
+    return new PluginRegistry(opts);
   }
 
   public get isClosed() {
@@ -408,7 +414,7 @@ export class PluginRegistry {
     if (plugin === undefined) {
       let rawPlugin: unknown;
       try {
-        rawPlugin = await justImport(metadata.entryPoint, metadata.pkgJson);
+        rawPlugin = await this.#fm.import(metadata.entryPoint);
       } catch (err) {
         throw isError(err) ? new PluginImportError(err, metadata) : err;
       }
@@ -470,7 +476,7 @@ export class PluginRegistry {
 
     const tryResolve = (from: string) => {
       try {
-        return resolveFrom(pluginSpecifier, cwd);
+        return this.#fm.resolve(pluginSpecifier, cwd);
       } catch (err) {
         if (isErrnoException(err)) {
           if (err.code !== 'MODULE_NOT_FOUND') {
@@ -497,8 +503,7 @@ export class PluginRegistry {
 
     debug('Found entry point %s for plugin %s', entryPoint, pluginSpecifier);
 
-    const {packageJson} = await readPackageJson({
-      cwd: dirname(entryPoint),
+    const {packageJson} = await this.#fm.findPkgUp(dirname(entryPoint), {
       normalize: true,
       strict: true,
     });

@@ -43,11 +43,6 @@ describe('midnight-smoker', function () {
 
         componentRegistry = sandbox.createStubInstance(ComponentRegistry);
 
-        const PMM = rewiremock.proxy(
-          () => require('../../../src/plugin/plugin-metadata'),
-          mocks,
-        );
-
         ({PluginRegistry} = rewiremock.proxy(
           () => require('../../../src/plugin/plugin-registry'),
           {
@@ -72,8 +67,6 @@ describe('midnight-smoker', function () {
             // '#plugin/plugin-metadata': PMM,
           },
         ));
-
-        ({PluginMetadata} = PMM);
       });
 
       describe('static method', function () {

@@ -3,6 +3,7 @@ import {isError, isObject} from 'lodash';
 import fs from 'node:fs/promises';
 import {Module} from 'node:module';
 import path from 'node:path';
+import {fileURLToPath} from 'node:url';
 import type {PackageJson} from 'type-fest';
 import type {TranspileOptions} from 'typescript';
 
@@ -79,9 +80,15 @@ export const importTs = async (
  * @param pkgJson - `package.json` associated with the module, if any
  * @returns Hopefully, whatever is exported
  */
-export async function justImport(moduleId: string, pkgJson?: PackageJson) {
+export async function justImport(
+  moduleId: string | URL,
+  pkgJson?: PackageJson,
+) {
   // no zalgo here
   await Promise.resolve();
+  if (moduleId instanceof URL) {
+    moduleId = fileURLToPath(moduleId);
+  }
   if (!path.isAbsolute(moduleId)) {
     // TODO throw SmokeError
     throw new TypeError('moduleId must be resolved');
@@ -135,6 +142,15 @@ export function isErsatzESModule(value: unknown): value is {__esModule: true} {
  * @returns Resolved module path
  */
 
-export function resolveFrom(moduleId: string, fromDir = process.cwd()): string {
+export function resolveFrom(
+  moduleId: string | URL,
+  fromDir: string | URL = process.cwd(),
+): string {
+  if (moduleId instanceof URL) {
+    moduleId = fileURLToPath(moduleId);
+  }
+  if (fromDir instanceof URL) {
+    fromDir = fileURLToPath(fromDir);
+  }
   return Module.createRequire(path.join(fromDir, 'index.js')).resolve(moduleId);
 }

@@ -74,3 +74,5 @@ export type ComponentKind = keyof typeof ComponentKinds;
 export const MIDNIGHT_SMOKER = 'midnight-smoker';
 
 export const UNKNOWN_TMPDIR_PREFIX = 'unknown';
+
+export const PACKAGE_JSON = 'package.json';
