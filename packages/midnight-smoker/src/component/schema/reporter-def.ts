@@ -32,6 +32,52 @@ import {z} from 'zod';
 
 export * from '#reporter/reporter-def';
 
+/**
+ * Values of {@link ReporterDef.stdout} and {@link ReporterDef.stderr}
+ */
+export type ReporterStream = z.infer<typeof ReporterStreamSchema>;
+
+/**
+ * Schema for a {@link NodeJS.WritableStream}
+ *
+ * _Warning_: Does no validation.
+ */
+export const WritableStreamSchema = customSchema<NodeJS.WritableStream>();
+
+/**
+ * Parameters passed to a {@link ReporterFn} by `midnight-smoker`
+ */
+export const ReporterContextSchema = z
+  .object({
+    /**
+     * A console for logging
+     *
+     * _Warning_: Does no validation.
+     */
+    console: customSchema<Console>(),
+
+    /**
+     * Options for `midnight-smoker`
+     */
+    opts: BaseSmokerOptionsSchema,
+
+    /**
+     * `midnight-smoker`'s `package.json`
+     */
+    pkgJson: PackageJsonSchema,
+
+    /**
+     * The `stdout` stream as configured in {@link ReporterDef.stdout}
+     */
+    stdout: WritableStreamSchema,
+
+    /**
+     * The `stderr` stream as configured in {@link ReporterDef.stderr}
+     */
+    stderr: WritableStreamSchema,
+  })
+  .passthrough();
+
 export function eventListenerSchema<T extends z.ZodTypeAny>(data: T) {
   return z
     .function(
@@ -155,52 +201,6 @@ export type ReporterFn = (params: ReporterParams) => void | Promise<void>;
  * Represents the parameters for {@link ReporterFn}
  */
 export type ReporterParams = z.infer<typeof ReporterContextSchema>;
-
-/**
- * Values of {@link ReporterDef.stdout} and {@link ReporterDef.stderr}
- */
-export type ReporterStream = z.infer<typeof ReporterStreamSchema>;
-
-/**
- * Schema for a {@link NodeJS.WritableStream}
- *
- * _Warning_: Does no validation.
- */
-export const WritableStreamSchema = customSchema<NodeJS.WritableStream>();
-
-/**
- * Parameters passed to a {@link ReporterFn} by `midnight-smoker`
- */
-export const ReporterContextSchema = z
-  .object({
-    /**
-     * A console for logging
-     *
-     * _Warning_: Does no validation.
-     */
-    console: customSchema<Console>(),
-
-    /**
-     * Options for `midnight-smoker`
-     */
-    opts: BaseSmokerOptionsSchema,
-
-    /**
-     * `midnight-smoker`'s `package.json`
-     */
-    pkgJson: PackageJsonSchema,
-
-    /**
-     * The `stdout` stream as configured in {@link ReporterDef.stdout}
-     */
-    stdout: WritableStreamSchema,
-
-    /**
-     * The `stderr` stream as configured in {@link ReporterDef.stderr}
-     */
-    stderr: WritableStreamSchema,
-  })
-  .passthrough();
 
 /**
  * Schema representing a {@link ReporterWhenCallback} function

@@ -20,20 +20,18 @@ import Debug from 'debug';
 import {isFunction} from 'lodash';
 import {type PkgManagerSpec} from './pkg-manager-spec';
 
-export type SomePkgManager = PkgManager<any>;
+export type SomePkgManager = PkgManager;
 
-export class PkgManager<Ctx = unknown> extends ReifiedComponent<PkgManagerDef> {
-  #installManifestMap: Map<string, InstallManifest> = new Map();
-  #installManifests: InstallManifest[] = [];
-  #installResult?: InstallResult;
-
-  #scripts?: string[];
+export class PkgManager extends ReifiedComponent<PkgManagerDef> {
+  private installManifestMap: Map<string, InstallManifest> = new Map();
+  private _installManifests: InstallManifest[] = [];
+  private _installResult?: InstallResult;
 
   constructor(
     id: string,
     def: PkgManagerDef,
     plugin: Readonly<PluginMetadata>,
-    public readonly ctx: PkgManagerContext<Ctx>,
+    public readonly ctx: PkgManagerContext,
   ) {
     super(id, def, plugin);
   }
@@ -43,11 +41,11 @@ export class PkgManager<Ctx = unknown> extends ReifiedComponent<PkgManagerDef> {
   }
 
   public get installManifests(): InstallManifest[] {
-    return this.#installManifests;
+    return this._installManifests;
   }
 
   public get installResult(): InstallResult | undefined {
-    return this.#installResult;
+    return this._installResult;
   }
 
   public get pkgInstallManifests(): PkgInstallManifest[] {
@@ -74,25 +72,25 @@ export class PkgManager<Ctx = unknown> extends ReifiedComponent<PkgManagerDef> {
     return this.ctx.tmpdir;
   }
 
-  public static create<Ctx = unknown>(
+  public static create(
     this: void,
     id: string,
     def: PkgManagerDef,
     plugin: Readonly<PluginMetadata>,
-    ctx: PkgManagerContext<Ctx>,
+    ctx: PkgManagerContext,
   ): PkgManager {
     return new PkgManager(id, def, plugin, ctx);
   }
 
   public addAdditionalDep(pkgSpec: string): void {
-    if (this.#installManifestMap.has(pkgSpec)) {
+    if (this.installManifestMap.has(pkgSpec)) {
       throw new PackageManagerError(
         `Additional dep ${pkgSpec} is already installed!`,
         this.spec,
         new Error('Duplicate package name'),
       );
     }
-    this.#installManifests.push({
+    this._installManifests.push({
       cwd: this.ctx.tmpdir,
       pkgSpec,
       pkgName: pkgSpec,
@@ -101,12 +99,13 @@ export class PkgManager<Ctx = unknown> extends ReifiedComponent<PkgManagerDef> {
     debug('Added additional dep %s to pkg manager %s', pkgSpec, this.id);
   }
 
-  public async install(): Promise<void> {
-    if (this.#installResult) {
+  public async install(
+    installManifests: InstallManifest[] = this.installManifests,
+  ): Promise<InstallResult> {
+    if (this._installResult) {
       debug('Already installed');
-      return;
+      return this._installResult;
     }
-    const {installManifests} = this;
     if (!installManifests.length) {
       throw new PackageManagerError(
         'No packages to install',
@@ -116,33 +115,36 @@ export class PkgManager<Ctx = unknown> extends ReifiedComponent<PkgManagerDef> {
     }
     const ctx: PkgManagerInstallContext = {...this.ctx, installManifests};
     const rawResult = await this.def.install(ctx);
-    this.#installResult = {
+    this._installResult = {
       rawResult,
       installManifests,
     };
+    return this._installResult;
   }
 
-  public async pack(opts: PackOptions = {}): Promise<void> {
+  public async pack(opts: PackOptions = {}): Promise<InstallManifest[]> {
     const ctx: PkgManagerPackContext = {...this.ctx, ...opts};
-    this.#installManifests = await this.def.pack(ctx);
+    this._installManifests = await this.def.pack(ctx);
 
-    for (const manifest of this.#installManifests) {
-      if (this.#installManifestMap.has(manifest.pkgName)) {
+    for (const manifest of this._installManifests) {
+      if (this.installManifestMap.has(manifest.pkgName)) {
         throw new PackageManagerError(
           `Duplicate package name: ${manifest.pkgName}`,
           this.spec,
           new Error('Duplicate package name'),
         );
       }
-      this.#installManifestMap.set(manifest.pkgName, manifest);
+      this.installManifestMap.set(manifest.pkgName, manifest);
     }
+
+    return this.installManifests;
   }
 
   public async runScript(
     runScriptManifest: RunScriptManifest,
     signal: AbortSignal,
   ): Promise<RunScriptResult> {
-    const ctx: PkgManagerRunScriptContext<Ctx> = {
+    const ctx: PkgManagerRunScriptContext = {
       ...this.ctx,
       runScriptManifest,
       signal,

@@ -22,6 +22,7 @@ export const nullPmDef: PkgManagerDef = {
         pkgSpec: `${TEST_TMPDIR}/bar.tgz`,
         pkgName: 'bar',
         cwd: TEST_TMPDIR,
+        installPath: `${TEST_TMPDIR}/node_modules/bar`,
       },
     ];
   },

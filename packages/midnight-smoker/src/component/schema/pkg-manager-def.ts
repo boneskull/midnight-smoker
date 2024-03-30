@@ -25,14 +25,10 @@ import {z} from 'zod';
 export type PkgManagerAcceptsResult = z.infer<
   typeof PkgManagerAcceptsResultSchema
 >;
-export type PkgManagerContext<Ctx = unknown> = z.infer<
-  typeof BasePkgManagerContextSchema
-> &
-  Ctx;
-export type PkgManagerInstallContext<Ctx = unknown> = z.infer<
+export type PkgManagerContext = z.infer<typeof BasePkgManagerContextSchema>;
+export type PkgManagerInstallContext = z.infer<
   typeof PkgManagerInstallContextSchema
-> &
-  Ctx;
+>;
 
 /**
  * Options for a {@link PkgManagerFactory}
@@ -171,7 +167,7 @@ export type PkgManagerSupportedVersionRange = z.infer<
   typeof PkgManagerSupportedVersionRangeSchema
 >;
 
-export type SomePkgManagerDef = PkgManagerDef<any>;
+export type SomePkgManagerDef = PkgManagerDef;
 
 /**
  * Schema for a package manager definition
@@ -229,14 +225,14 @@ export const PkgManagerDefSchema = customSchema<SomePkgManagerDef>(
   ),
 );
 
-export interface PkgManagerDef<Ctx = unknown> {
+export interface PkgManagerDef {
   bin: string;
   accepts: PkgManagerAccepts;
   supportedVersionRange?: PkgManagerSupportedVersionRange;
   lockfile?: string;
-  setup?(ctx: PkgManagerContext<Ctx>): void | Promise<void>;
-  teardown?(ctx: PkgManagerContext<Ctx>): void | Promise<void>;
-  install(ctx: PkgManagerInstallContext<Ctx>): Promise<ExecResult>;
-  pack(ctx: PkgManagerPackContext<Ctx>): Promise<InstallManifest[]>;
-  runScript(ctx: PkgManagerRunScriptContext<Ctx>): Promise<RunScriptResult>;
+  setup?(ctx: PkgManagerContext): void | Promise<void>;
+  teardown?(ctx: PkgManagerContext): void | Promise<void>;
+  install(ctx: PkgManagerInstallContext): Promise<ExecResult>;
+  pack(ctx: PkgManagerPackContext): Promise<InstallManifest[]>;
+  runScript(ctx: PkgManagerRunScriptContext): Promise<RunScriptResult>;
 }

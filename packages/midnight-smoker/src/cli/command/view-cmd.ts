@@ -6,7 +6,7 @@
 
 import {bold} from 'chalk';
 // eslint-disable-next-line @typescript-eslint/no-restricted-imports
-import {guessPackageManager} from '#pkg-manager/pkg-manager-guesser';
+import {guessPackageManager} from '#pkg-manager/pkg-manager-oracle';
 import {Smoker} from '#smoker';
 import {inspect} from 'node:util';
 import {type Writable} from 'type-fest';

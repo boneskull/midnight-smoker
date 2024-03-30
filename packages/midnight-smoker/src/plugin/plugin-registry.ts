@@ -65,14 +65,14 @@ export class PluginRegistry {
 
   public readonly componentRegistry: ComponentRegistry;
 
-  #isClosed = false;
+  private _isClosed = false;
 
-  #fm: FileManager;
+  private _fm: FileManager;
 
   public constructor({fileManagerOpts}: PluginRegistryOpts = {}) {
     this.pluginMap = new Map();
     this.seenRawPlugins = new Map();
-    this.#fm = new FileManager(fileManagerOpts);
+    this._fm = new FileManager(fileManagerOpts);
     this.componentRegistry = ComponentRegistry.create();
   }
 
@@ -89,7 +89,7 @@ export class PluginRegistry {
   }
 
   public get isClosed() {
-    return this.#isClosed;
+    return this._isClosed;
   }
 
   public async getBlessedMetadata() {
@@ -112,7 +112,7 @@ export class PluginRegistry {
     this.pluginMap.clear();
     this.seenRawPlugins.clear();
     this.componentRegistry.clear();
-    this.#isClosed = false;
+    this._isClosed = false;
   }
 
   public getRules() {
@@ -285,7 +285,7 @@ export class PluginRegistry {
    * Closes the registry, preventing further plugins from being registered.
    */
   public close() {
-    this.#isClosed = true;
+    this._isClosed = true;
   }
 
   /**
@@ -414,7 +414,7 @@ export class PluginRegistry {
     if (plugin === undefined) {
       let rawPlugin: unknown;
       try {
-        rawPlugin = await this.#fm.import(metadata.entryPoint);
+        rawPlugin = await this._fm.import(metadata.entryPoint);
       } catch (err) {
         throw isError(err) ? new PluginImportError(err, metadata) : err;
       }
@@ -476,7 +476,7 @@ export class PluginRegistry {
 
     const tryResolve = (from: string) => {
       try {
-        return this.#fm.resolve(pluginSpecifier, cwd);
+        return this._fm.resolve(pluginSpecifier, cwd);
       } catch (err) {
         if (isErrnoException(err)) {
           if (err.code !== 'MODULE_NOT_FOUND') {
@@ -503,7 +503,7 @@ export class PluginRegistry {
 
     debug('Found entry point %s for plugin %s', entryPoint, pluginSpecifier);
 
-    const {packageJson} = await this.#fm.findPkgUp(dirname(entryPoint), {
+    const {packageJson} = await this._fm.findPkgUp(dirname(entryPoint), {
       normalize: true,
       strict: true,
     });
