@@ -25,6 +25,9 @@ async function main() {
     input: {
       pluginRegistry,
       desiredPkgManagers: ['nullpm@1.0.0'],
+      packOptions: {
+        allWorkspaces: true,
+      },
     },
     id: 'main',
     logger: debug,
@@ -40,9 +43,7 @@ async function main() {
       console.error(err);
     },
     next(value) {
-      if (value.matches('loaded')) {
-        m.send({type: 'PACK', opts: {allWorkspaces: true}});
-      } else if (value.matches('ready')) {
+      if (value.matches('ready')) {
         m.send({type: 'RUN_SCRIPTS', scripts: ['build']});
       }
     },

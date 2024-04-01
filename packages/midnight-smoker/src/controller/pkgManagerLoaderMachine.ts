@@ -8,12 +8,15 @@ import {
   enqueueActions,
   log,
   not,
-  sendParent,
   setup,
   type ActorRefFrom,
 } from 'xstate';
+import {fromUnknownError} from '../error';
 import {makeId} from './pkgManagerControlMachine';
-import {pkgManagerPluginLoaderMachine} from './pkgManagerPluginLoaderMachine';
+import {
+  pkgManagerPluginLoaderMachine,
+  type PMPLOutput,
+} from './pkgManagerPluginLoaderMachine';
 
 export interface PMLMInput {
   cwd: string;
@@ -31,6 +34,7 @@ export interface PMLMContext extends PMLMInput {
     ActorRefFrom<typeof pkgManagerPluginLoaderMachine>
   >;
   pkgManagers: SomePkgManager[];
+  error?: Error;
 }
 
 export interface PMLMEventPluginsLoaded {
@@ -39,9 +43,20 @@ export interface PMLMEventPluginsLoaded {
   pkgManagers: SomePkgManager[];
 }
 
-export type PMLMEvents = PMLMEventPluginsLoaded;
+export interface PMPLDoneEvent {
+  type: 'xstate.done.actor.pkgManagerPluginLoader.*';
+  output: PMPLOutput;
+}
 
-export type PMLMOutput = SomePkgManager[];
+export type PMLMEvents = PMLMEventPluginsLoaded | PMPLDoneEvent;
+
+export type PMLMOutput =
+  | {
+      pkgManagers: SomePkgManager[];
+    }
+  | {
+      error: Error;
+    };
 
 export const pkgManagerLoaderMachine = setup({
   types: {
@@ -54,8 +69,12 @@ export const pkgManagerLoaderMachine = setup({
     pkgManagerPluginLoader: pkgManagerPluginLoaderMachine,
   },
   guards: {
-    hasPluginLoaders: ({context: {pluginLoaders}}) => pluginLoaders.size > 0,
-    hasPkgManagers: ({context: {pkgManagers}}) => pkgManagers.length > 0,
+    hasPluginLoaders: ({context: {pluginLoaders}}) =>
+      Boolean(pluginLoaders.size),
+    hasPkgManagers: ({context: {pkgManagers}}) => Boolean(pkgManagers.length),
+    hasError: ({context: {error}}) => Boolean(error),
+    notHasPkgManagers: not('hasPkgManagers'),
+    notHasError: not('hasError'),
   },
   actions: {
     eventLogger: log(({event}) => `received evt ${event.type}`),
@@ -78,7 +97,7 @@ export const pkgManagerLoaderMachine = setup({
           ActorRefFrom<typeof pkgManagerPluginLoaderMachine>
         >();
         for (const plugin of pluginRegistry.plugins) {
-          const id = `pkgManagerPluginLoader-${makeId()}`;
+          const id = `pkgManagerPluginLoader.${makeId()}`;
           const actor = spawn('pkgManagerPluginLoader', {
             id,
             input: {
@@ -122,6 +141,23 @@ export const pkgManagerLoaderMachine = setup({
     '*': {
       actions: ['eventLogger'],
     },
+    'xstate.done.actor.pkgManagerPluginLoader.*': {
+      actions: [
+        assign({
+          /**
+           * @todo Create `AggregateError` if `context.error` already set
+           */
+          error: ({context, event: {output}}) =>
+            !context.error && 'error' in output && output.error
+              ? fromUnknownError(output.error)
+              : context.error,
+        }),
+      ],
+    },
+  },
+  always: {
+    guard: 'hasError',
+    target: '.errored',
   },
   entry: [
     'entryLogger',
@@ -133,19 +169,19 @@ export const pkgManagerLoaderMachine = setup({
   states: {
     loadingPlugins: {
       on: {
-        PLUGINS_LOADED: {
-          guard: not('hasPkgManagers'),
+        'xstate.done.actor.pkgManagerPluginLoader.*': {
           actions: [
             assign({
-              pkgManagers: ({event, context}) => [
-                ...context.pkgManagers,
-                ...event.pkgManagers,
-              ],
+              pkgManagers: ({context, event: {output}}) =>
+                'pkgManagers' in output && output.pkgManagers?.length
+                  ? [...context.pkgManagers, ...output.pkgManagers]
+                  : context.pkgManagers,
             }),
           ],
           target: 'validating',
         },
       },
+      exit: ['stopPluginLoaders'],
     },
     validating: {
       always: {
@@ -154,15 +190,16 @@ export const pkgManagerLoaderMachine = setup({
       },
     },
     done: {
-      entry: [
-        'stopPluginLoaders',
-        sendParent(({context: {pkgManagers}}) => ({
-          type: 'LOADED',
-          pkgManagers,
-        })),
-      ],
+      type: 'final',
+    },
+    errored: {
       type: 'final',
     },
   },
-  output: ({context: {pkgManagers}}) => pkgManagers,
+  output: ({context: {pkgManagers, error}}) => {
+    if (error) {
+      return {error};
+    }
+    return {pkgManagers};
+  },
 });

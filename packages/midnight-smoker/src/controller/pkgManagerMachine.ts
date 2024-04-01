@@ -4,6 +4,7 @@ import {uniqBy} from 'lodash';
 import {
   and,
   assign,
+  enqueueActions,
   fromPromise,
   log,
   not,
@@ -13,38 +14,28 @@ import {
 } from 'xstate';
 import {
   type InstallResult,
+  type PackOptions,
   type RunScriptManifest,
   type RunScriptResult,
   type SomePkgManager,
 } from '../component';
+import {fromUnknownError} from '../error';
 import {makeId} from './pkgManagerControlMachine';
 import {scriptRunnerMachine, type SRMOutput} from './scriptRunnerMachine';
-export type PackMachineOpts = {
-  allWorkspaces?: boolean;
-  includeWorkspaceRoot?: boolean;
-  workspaces?: string[];
-  timeout?: number;
-};
-
-export type PackActorCtx = {pkgManager: SomePkgManager; opts: PackMachineOpts};
 
 export interface PMMInput {
   pkgManager: SomePkgManager;
+  packOpts?: PackOptions;
 }
 
 export interface PMMContext extends PMMInput {
   installManifests: InstallManifest[];
-  packOpts?: PackMachineOpts;
   installResult?: InstallResult;
   runScriptManifests: RunScriptManifest[];
   abortController: AbortController;
-  runScriptResults?: RunScriptResult[];
-  scriptRunners: Map<string, ActorRefFrom<typeof scriptRunnerMachine>>;
-}
-
-export interface PMMPackEvent {
-  type: 'PACK';
-  opts?: PackMachineOpts;
+  scriptRunners: Record<string, ActorRefFrom<typeof scriptRunnerMachine>>;
+  scriptResults: SRMOutput[];
+  error?: Error;
 }
 
 export interface PMMInstallEvent {
@@ -60,21 +51,23 @@ export interface PMMRunScriptsEvent {
   scripts: string[];
 }
 
+export interface PMMScriptRunnerDoneEvent {
+  type: 'xstate.done.actor.scriptRunner.*';
+  output: SRMOutput;
+}
+
 export type PMMEvents =
-  | PMMPackEvent
   | PMMInstallEvent
   | PMMSetupEvent
   | PMMRunScriptsEvent
-  | {type: 'xstate.done.actor.scriptRunner.*'; output: SRMOutput};
+  | PMMScriptRunnerDoneEvent;
 
 export const pkgManagerMachine = setup({
   types: {
     context: {} as PMMContext,
     events: {} as PMMEvents,
     input: {} as {pkgManager: SomePkgManager},
-    // output: {} as {
-    //   installManifests: InstallManifest[];
-    // },
+    output: {} as {error?: Error},
   },
   guards: {
     uniqueInstallManifests: ({context: {installManifests}}) =>
@@ -85,12 +78,20 @@ export const pkgManagerMachine = setup({
     hasRunScriptManifests: ({context: {runScriptManifests}}) =>
       Boolean(runScriptManifests?.length),
     hasScriptRunners: ({context: {scriptRunners}}) =>
-      Boolean(scriptRunners.size),
+      Boolean(Object.keys(scriptRunners).length),
+    packedSuccessfully: and(['hasInstallManifests', 'uniqueInstallManifests']),
+    hasDuplicateInstallManifests: and([
+      'hasInstallManifests',
+      not('uniqueInstallManifests'),
+    ]),
+    notHasInstallManifests: not('hasInstallManifests'),
+    notHasScriptRunners: not('hasScriptRunners'),
+    notHasRunScriptManifests: not('hasRunScriptManifests'),
   },
   actors: {
     pack: fromPromise<
       InstallManifest[],
-      {pkgManager: SomePkgManager; opts?: PackMachineOpts}
+      {pkgManager: SomePkgManager; opts?: PackOptions}
     >(async ({input: {pkgManager, opts}}) => pkgManager.pack(opts)),
     setup: fromPromise<void, SomePkgManager>(async ({input: pkgManager}) => {
       await pkgManager.setup();
@@ -98,9 +99,9 @@ export const pkgManagerMachine = setup({
     install: fromPromise<
       InstallResult,
       {pkgManager: SomePkgManager; installManifests: InstallManifest[]}
-    >(async ({input: {pkgManager, installManifests}}) =>
-      pkgManager.install(installManifests),
-    ),
+    >(async ({input: {pkgManager, installManifests}}) => {
+      return pkgManager.install(installManifests);
+    }),
     runScripts: fromPromise<
       RunScriptResult[],
       {
@@ -119,6 +120,56 @@ export const pkgManagerMachine = setup({
   },
   actions: {
     eventLogger: log(({event}) => `received evt ${event.type}`),
+    sendPackedEvent: sendParent(({self, context}) => ({
+      type: 'PACKED',
+      sender: self.id,
+      installManifests: context.installManifests,
+    })),
+    sendInstalledEvent: sendParent(({self, context: {installResult}}) => ({
+      type: 'INSTALLED',
+      sender: self.id,
+      installResult,
+    })),
+    sendRanScriptEvent: sendParent(({context: {scriptResults}}) => ({
+      type: 'RAN_SCRIPT',
+      result: scriptResults.at(-1),
+    })),
+    spawnScriptRunners: assign({
+      scriptRunners: ({
+        spawn,
+        context: {pkgManager, abortController, runScriptManifests},
+      }) =>
+        Object.fromEntries(
+          runScriptManifests.map((runScriptManifest) => {
+            const id = `scriptRunner.${makeId()}`;
+            const actor = spawn('scriptRunner', {
+              input: {
+                pkgManager,
+                runScriptManifest,
+                signal: abortController.signal,
+              },
+              id,
+            });
+            // @ts-expect-error private field
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            actor.logger = actor._actorScope.logger = Debug(id);
+            return [id, actor];
+          }),
+        ),
+    }),
+    createDuplicateInstallManifestsError: assign({
+      error: new Error('duplicate install manifests'),
+    }),
+    createNoInstallManifestsError: assign({
+      error: new Error('no install manifests; nothing to do'),
+    }),
+    assignError: assign({
+      error: ({event}) => {
+        if ('error' in event && event.error) {
+          return fromUnknownError(event.error);
+        }
+      },
+    }),
   },
 }).createMachine({
   /**
@@ -129,24 +180,17 @@ export const pkgManagerMachine = setup({
     installManifests: [],
     runScriptManifests: [],
     abortController: new AbortController(),
-    scriptRunners: new Map(),
+    scriptRunners: {},
+    scriptResults: [],
   }),
   id: 'PkgManager',
-  initial: 'settingUp',
+  initial: 'setup',
   on: {
     '*': {
       actions: ['eventLogger'],
     },
-    PACK: {
-      actions: [
-        assign({
-          packOpts: ({event: {opts = {}}}) => opts,
-        }),
-      ],
-    },
     RUN_SCRIPTS: {
       actions: [
-        log('received RUN_SCRIPTS event'),
         assign({
           runScriptManifests: ({context: {pkgManager}, event: {scripts}}) =>
             pkgManager.buildRunScriptManifests(scripts),
@@ -155,35 +199,22 @@ export const pkgManagerMachine = setup({
     },
   },
   states: {
-    settingUp: {
+    setup: {
       invoke: {
         input: ({context: {pkgManager}}) => pkgManager,
         src: 'setup',
         onDone: {
-          target: 'ready',
+          target: 'packing',
+        },
+        onError: {
+          target: 'errored',
+          actions: ['assignError'],
         },
       },
       exit: log('setup complete'),
     },
-    ready: {
-      entry: log('ready'),
-      on: {
-        PACK: {
-          actions: [
-            assign({
-              packOpts: ({event: {opts = {}}}) => opts,
-            }),
-          ],
-          target: 'packing',
-        },
-      },
-      always: {
-        target: 'packing',
-        guard: 'hasPackOpts',
-      },
-    },
     packing: {
-      entry: log('entering packing'),
+      entry: log('packing...'),
       invoke: {
         src: 'pack',
         input: ({context: {pkgManager, packOpts: opts = {}}}) => ({
@@ -197,29 +228,39 @@ export const pkgManagerMachine = setup({
               installManifests: ({event: {output: installManifests}}) =>
                 installManifests,
             }),
-            log('packed successfully'),
-            sendParent(({self, context}) => ({
-              type: 'PACKED',
-              sender: self.id,
-              installManifests: context.installManifests,
-            })),
-            log(
-              ({context: {installManifests}}) =>
-                `sent PACKED with ${installManifests.length} install manifests`,
-            ),
+            'sendPackedEvent',
           ],
         },
+        onError: {
+          target: 'errored',
+          actions: ['assignError'],
+        },
       },
+      exit: log(
+        ({context: {installManifests}}) =>
+          `packed with ${installManifests.length} install manifests`,
+      ),
     },
     packed: {
-      entry: log('in packed state'),
-      always: {
-        guard: and(['hasInstallManifests', 'uniqueInstallManifests']),
-        target: 'installing',
-      },
+      always: [
+        {
+          guard: 'packedSuccessfully',
+          target: 'installing',
+        },
+        {
+          guard: 'hasDuplicateInstallManifests',
+          target: 'errored',
+          actions: ['createDuplicateInstallManifestsError'],
+        },
+        {
+          guard: 'notHasInstallManifests',
+          target: 'errored',
+          actions: ['createNoInstallManifestsError'],
+        },
+      ],
     },
     installing: {
-      entry: log('in installing state'),
+      entry: log('installing...'),
       invoke: {
         src: 'install',
         input: ({context: {pkgManager, installManifests}}) => ({
@@ -229,22 +270,25 @@ export const pkgManagerMachine = setup({
         onDone: {
           target: 'installed',
           actions: [
-            log('installed successfully'),
             assign({
               installResult: ({event: {output: installResult}}) =>
                 installResult,
             }),
-            sendParent(({self, context: {installResult}}) => ({
-              type: 'INSTALLED',
-              sender: self.id,
-              installResult,
-            })),
+            'sendInstalledEvent',
           ],
+        },
+        onError: {
+          target: 'errored',
+          actions: ['assignError'],
         },
       },
     },
     installed: {
-      entry: log('in installed state'),
+      entry: log('installed'),
+      always: {target: 'ready'},
+    },
+    ready: {
+      entry: log('ready...'),
       always: {
         guard: 'hasRunScriptManifests',
         target: 'runningScripts',
@@ -252,81 +296,58 @@ export const pkgManagerMachine = setup({
     },
     runningScripts: {
       entry: [
-        log('in runningScripts state'),
-        assign({
-          scriptRunners: ({
-            spawn,
-            context: {pkgManager, abortController, runScriptManifests},
-          }) =>
-            new Map(
-              runScriptManifests.map((runScriptManifest) => {
-                const id = `scriptRunner.${makeId()}`;
-                const actor = spawn('scriptRunner', {
-                  input: {
-                    pkgManager,
-                    runScriptManifest,
-                    signal: abortController.signal,
-                  },
-                  id,
-                });
-                // @ts-expect-error private field
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-                actor.logger = actor._actorScope.logger = Debug(id);
-                return [id, actor];
-              }),
-            ),
-        }),
+        log(
+          ({context: {runScriptManifests}}) =>
+            `running ${runScriptManifests.length} scripts...`,
+        ),
+        'spawnScriptRunners',
       ],
       on: {
         'xstate.done.actor.scriptRunner.*': {
           guard: 'hasScriptRunners',
           actions: [
-            assign({
-              scriptRunners: ({
-                context: {scriptRunners},
-                event: {
-                  output: {id},
-                },
+            enqueueActions(
+              ({
+                enqueue,
+                context: {scriptRunners, scriptResults},
+                event: {output},
               }) => {
-                scriptRunners.delete(id);
-                return scriptRunners;
+                const {id} = output;
+                enqueue.stopChild(id);
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const {[id]: _, ...rest} = scriptRunners;
+                enqueue.assign({
+                  scriptRunners: rest,
+                  scriptResults: [...scriptResults, output],
+                });
               },
-            }),
+            ),
+            'sendRanScriptEvent',
             log(
               ({context: {scriptRunners}}) =>
-                `${scriptRunners.size} scriptRunners remain`,
+                `${Object.keys(scriptRunners).length} scriptRunners remain`,
             ),
           ],
         },
       },
       always: {
-        target: 'done',
-        guard: not('hasScriptRunners'),
+        target: 'ranScripts',
+        guard: 'notHasScriptRunners',
       },
-      // invoke: {
-      //   src: 'runScripts',
-      //   input: ({
-      //     context: {pkgManager, runScriptManifests, abortController},
-      //   }) => ({
-      //     pkgManager,
-      //     runScriptManifests,
-      //     signal: abortController.signal,
-      //   }),
-      //   onDone: {
-      //     target: 'done',
-      //     actions: [
-      //       log('ran scripts'),
-      //       assign({
-      //         runScriptResults: ({event: {output: runScriptResults}}) =>
-      //           runScriptResults,
-      //       }),
-      //     ],
-      //   },
+    },
+    ranScripts: {
+      entry: log('all scripts were run'),
     },
     done: {
       entry: log('done done'),
       type: 'final',
     },
+    errored: {
+      entry: log('errored!'),
+      type: 'final',
+    },
   },
-  // output: ({context: {installManifests}}) => ({installManifests}),
+  output: ({context: {error}}) => ({
+    error,
+  }),
 });

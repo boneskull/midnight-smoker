@@ -18,19 +18,28 @@ export interface SRMContext extends SRMInput {
   error?: ScriptError;
 }
 
-export type SRMOutput =
-  | {
-      id: string;
-      result: RunScriptResult;
-    }
-  | {
-      id: string;
-      error: ScriptError;
-    }
-  | {
-      id: string;
-      bailed: ScriptBailed;
-    };
+export interface BaseSRMOutput {
+  id: string;
+  manifest: RunScriptManifest;
+  pkgManager: PkgManager;
+}
+
+export interface SRMOutputResult extends BaseSRMOutput {
+  type: 'RESULT';
+  result: RunScriptResult;
+}
+
+export interface SRMOutputError extends BaseSRMOutput {
+  type: 'ERROR';
+  error: ScriptError;
+}
+
+export interface SRMOutputBailed extends BaseSRMOutput {
+  type: 'BAILED';
+  bailed: ScriptBailed;
+}
+
+export type SRMOutput = SRMOutputResult | SRMOutputError | SRMOutputBailed;
 
 export const scriptRunnerMachine = setup({
   types: {
@@ -104,13 +113,17 @@ export const scriptRunnerMachine = setup({
       entry: log('done'),
     },
   },
-  output: ({self: {id}, context: {result, error, bailed}}) => {
+  output: ({
+    self: {id},
+    context: {runScriptManifest, result, error, bailed, pkgManager},
+  }) => {
+    const base: BaseSRMOutput = {id, manifest: runScriptManifest, pkgManager};
     if (error) {
-      return {error, id};
+      return {...base, error, type: 'ERROR'};
     }
     if (bailed) {
-      return {bailed, id};
+      return {...base, bailed, type: 'BAILED'};
     }
-    return {result: result!, id};
+    return {...base, result: result!, type: 'RESULT'};
   },
 });
