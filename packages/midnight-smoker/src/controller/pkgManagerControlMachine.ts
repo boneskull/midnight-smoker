@@ -3,22 +3,37 @@ import Debug from 'debug';
 import {type SetRequired} from 'type-fest';
 import {
   assign,
+  emit,
   enqueueActions,
   log,
   not,
   setup,
-  stopChild,
   type ActorRefFrom,
 } from 'xstate';
 import {
+  type InstallOkEventData,
   type InstallResult,
+  type PackBeginEventData,
+  type PackOkEventData,
   type PackOptions,
-  type SomePkgManager,
+  type PkgManager,
+  type RunScriptManifest,
+  type ScriptError,
 } from '../component';
 import {type Executor} from '../component/executor';
 import {DEFAULT_EXECUTOR_ID, SYSTEM_EXECUTOR_ID} from '../constants';
+import {fromUnknownError} from '../error';
+import {
+  SmokerEvent,
+  type RunScriptSkippedEventData,
+  type RunScriptsBeginEventData,
+  type ScriptBeginEventData,
+  type ScriptFailedEventData,
+  type ScriptOkEventData,
+} from '../event';
 import {type PluginRegistry} from '../plugin/plugin-registry';
 import {FileManager, type FileManagerOpts} from '../util/filemanager';
+import {PkgManagerControllerEventHelper} from './pkg-manager-controller-event-helper';
 import {
   pkgManagerLoaderMachine,
   type PMLMOutput,
@@ -26,22 +41,24 @@ import {
 import {pkgManagerMachine} from './pkgManagerMachine';
 import {type SRMOutput} from './scriptRunnerMachine';
 
-export interface PMCtrlMachineInput {
-  pluginRegistry: PluginRegistry;
-  desiredPkgManagers: string[];
-  defaultExecutorId?: string;
-  systemExecutorId?: string;
-  cwd?: string;
-  fileManagerOpts?: FileManagerOpts;
-  linger?: boolean;
-  packOptions?: PackOptions;
-}
-
+export type PMCtrlEvents =
+  | PMCtrlInitEvent
+  | PMCtrlPackEvent
+  | PMCtrlPackedEvent
+  | PMCtrlLoadedEvent
+  | PMCtrlInstalledEvent
+  | PMCtrlRunScriptsEvent
+  | PMCtrlPkgManagerLoaderDoneEvent
+  | PMCtrlRunScriptFailedEvent
+  | PMCtrlPkgManagerDoneEvent
+  | PMCtrlWillRunScriptsEvent
+  | PMCtrlWillRunScriptEvent
+  | PMCtrlDidRunScriptEvent;
 type PMCtrlMachineContext = Omit<
   SetRequired<PMCtrlMachineInput, 'cwd' | 'linger'>,
   'defaultExecutorId' | 'systemExecutorId' | 'fileManagerOpts'
 > & {
-  pkgManagers: SomePkgManager[];
+  pkgManagers: PkgManager[];
   defaultExecutor: Executor;
   systemExecutor: Executor;
   fm: FileManager;
@@ -50,66 +67,124 @@ type PMCtrlMachineContext = Omit<
   scripts?: string[];
   loader?: ActorRefFrom<typeof pkgManagerLoaderMachine>;
   error?: Error;
+  currentScript?: number;
+  totalScripts?: number;
 };
 
-export const makeId = () => Math.random().toString(36).substring(7);
-interface PMCtrlPackedEvent {
-  type: 'PACKED';
-  sender: string;
-  installManifests: InstallManifest[];
+export interface PMCtrlDidRunScriptEvent {
+  output: SRMOutput;
+  type: 'DID_RUN_SCRIPT';
+}
+
+export interface PMCtrlExternalRunScriptBeginEvent
+  extends ScriptBeginEventData {
+  type: typeof SmokerEvent.RunScriptBegin;
+}
+
+export interface PMCtrlExternalRunScriptFailedEvent
+  extends ScriptFailedEventData {
+  type: typeof SmokerEvent.RunScriptFailed;
+}
+
+export interface PMCtrlExternalRunScriptOkEvent extends ScriptOkEventData {
+  type: typeof SmokerEvent.RunScriptOk;
+}
+
+export interface PMCtrlExternalRunScriptSkippedEvent
+  extends RunScriptSkippedEventData {
+  type: typeof SmokerEvent.RunScriptSkipped;
+}
+
+export interface PMCtrlExternalRunScriptsBeginEvent
+  extends RunScriptsBeginEventData {
+  type: typeof SmokerEvent.RunScriptsBegin;
+}
+
+export interface PMCtrlExternalPackBeginEvent extends PackBeginEventData {
+  type: typeof SmokerEvent.PackBegin;
+}
+
+export interface PMCtrlExternalPackOkEvent extends PackOkEventData {
+  type: typeof SmokerEvent.PackOk;
+}
+export interface PMCtrlExternalInstallOkEvent extends InstallOkEventData {
+  type: typeof SmokerEvent.InstallOk;
 }
 
 interface PMCtrlInitEvent {
   type: 'INIT';
 }
 
-interface PMCtrlPackEvent {
-  type: 'PACK';
-  opts?: PackOptions;
+export interface PMCtrlInstalledEvent {
+  installResult: InstallResult;
+  sender: string;
+  type: 'INSTALLED';
 }
 
 interface PMCtrlLoadedEvent {
+  pkgManagers: PkgManager[];
   type: 'LOADED';
-  pkgManagers: SomePkgManager[];
 }
 
-interface PMCtrlInstalledEvent {
-  type: 'INSTALLED';
+export interface PMCtrlMachineInput {
+  cwd?: string;
+  defaultExecutorId?: string;
+  desiredPkgManagers: string[];
+  fileManagerOpts?: FileManagerOpts;
+  linger?: boolean;
+  packOptions?: PackOptions;
+  pluginRegistry: PluginRegistry;
+  systemExecutorId?: string;
+}
+
+interface PMCtrlPackEvent {
+  opts?: PackOptions;
+  type: 'PACK';
+}
+
+export interface PMCtrlPackedEvent {
+  installManifests: InstallManifest[];
   sender: string;
-  installResult: InstallResult;
-}
-
-interface PMCtrlRunScriptsEvent {
-  type: 'RUN_SCRIPTS';
-  scripts: string[];
-}
-
-interface PMCtrlRanScriptEvent {
-  type: 'RAN_SCRIPT';
-  result: SRMOutput;
-}
-
-interface PMCtrlPkgManagerLoaderDoneEvent {
-  type: 'xstate.done.actor.pkgManagerLoader';
-  output: PMLMOutput;
+  type: 'PACKED';
 }
 
 interface PMCtrlPkgManagerDoneEvent {
-  type: 'xstate.done.actor.pkgManager.*';
   output: {error?: Error};
+  type: 'xstate.done.actor.pkgManager.*';
 }
 
-type PMCtrlEvents =
-  | PMCtrlInitEvent
-  | PMCtrlPackEvent
-  | PMCtrlPackedEvent
-  | PMCtrlLoadedEvent
-  | PMCtrlInstalledEvent
-  | PMCtrlRunScriptsEvent
-  | PMCtrlPkgManagerLoaderDoneEvent
-  | PMCtrlPkgManagerDoneEvent
-  | PMCtrlRanScriptEvent;
+interface PMCtrlPkgManagerLoaderDoneEvent {
+  output: PMLMOutput;
+  type: 'xstate.done.actor.pkgManagerLoader';
+}
 
+export interface PMCtrlRunScriptFailedEvent {
+  current: number;
+  error: ScriptError;
+  runScriptManifest: RunScriptManifest;
+  total: number;
+  type: 'RUN_SCRIPT_FAILED';
+}
+
+interface PMCtrlRunScriptsEvent {
+  scripts: string[];
+  type: 'RUN_SCRIPTS';
+}
+
+export interface PMCtrlWillRunScriptEvent {
+  pkgManagerIndex: number;
+  runScriptManifest: RunScriptManifest;
+  scriptIndex: number;
+  type: 'WILL_RUN_SCRIPT';
+}
+
+export interface PMCtrlWillRunScriptsEvent {
+  pkgManagers: PkgManager[];
+  scripts: string[];
+  type: 'WILL_RUN_SCRIPTS';
+}
+
+export const makeId = () => Math.random().toString(36).substring(7);
 export const pkgManagerControlMachine = setup({
   types: {
     context: {} as PMCtrlMachineContext,
@@ -122,18 +197,24 @@ export const pkgManagerControlMachine = setup({
     pkgManagerLoader: pkgManagerLoaderMachine,
   },
   guards: {
+    hasLoadError: (_, {type}: PMLMOutput) => type === 'ERROR',
     hasPkgManagerLoader: ({context: {loader}}) => loader !== undefined,
     hasPkgManagers: ({context}) => context.pkgManagers.length > 0,
     hasError: ({context: {error}}) => error !== undefined,
-    preprocessingComplete: ({context: {pkgManagerMachines}}) => {
-      return [...pkgManagerMachines.values()].every((machine) =>
+    preparationComplete: ({context: {pkgManagerMachines}}) =>
+      [...pkgManagerMachines.values()].every((machine) =>
         machine.getSnapshot().matches('ready'),
-      );
-    },
+      ),
     runScriptsComplete: ({context: {needsRunning}}) => needsRunning === 0,
     notHasError: not('hasError'),
+    loadedOk: (_, {type}: PMLMOutput) => type === 'OK',
   },
   actions: {
+    // TODO: aggregate for multiple
+    assignError: assign({
+      error: ({context: {error}}, params: {error?: unknown}) =>
+        params.error ? fromUnknownError(params.error) : error,
+    }),
     decrementNeedsRunning: assign({
       needsRunning: ({context: {needsRunning}}) => needsRunning - 1,
     }),
@@ -141,6 +222,12 @@ export const pkgManagerControlMachine = setup({
       needsRunning: ({context: {pkgManagerMachines}}) =>
         pkgManagerMachines.size,
     }),
+    emitPackOk: emit(
+      ({context: {pkgManagers}}): PMCtrlExternalPackOkEvent => ({
+        type: SmokerEvent.PackOk,
+        ...PkgManagerControllerEventHelper.buildInstallEventData(pkgManagers),
+      }),
+    ),
     eventLogger: log(({event}) => `received evt ${event.type}`),
     stopPkgManagerMachines: enqueueActions(
       ({enqueue, context: {pkgManagerMachines}}) => {
@@ -148,6 +235,103 @@ export const pkgManagerControlMachine = setup({
           enqueue.stopChild(machine);
         }
         enqueue.assign({pkgManagerMachines: new Map()});
+      },
+    ),
+    scriptsBegin: enqueueActions(
+      (
+        {enqueue, context: {pkgManagerMachines, pkgManagers}},
+        {scripts}: {scripts: string[]},
+      ) => {
+        let total = 0;
+
+        const manifest = Object.fromEntries(
+          pkgManagers.map((pkgManager) => {
+            const runScriptManifests =
+              pkgManager.buildRunScriptManifests(scripts);
+            total += runScriptManifests.length;
+            return [`${pkgManager.spec}`, runScriptManifests];
+          }),
+        );
+
+        const evt: PMCtrlExternalRunScriptsBeginEvent = {
+          type: SmokerEvent.RunScriptsBegin,
+          manifest,
+          total,
+        };
+        enqueue.emit(evt);
+        enqueue.assign({
+          totalScripts: total,
+        });
+
+        for (const machine of pkgManagerMachines.values()) {
+          enqueue.sendTo(machine, {type: 'RUN_SCRIPTS', scripts});
+        }
+      },
+    ),
+    scriptBegin: emit(
+      (
+        {context: {totalScripts}},
+        {
+          runScriptManifest,
+          scriptIndex,
+          pkgManagerIndex,
+        }: PMCtrlWillRunScriptEvent,
+      ): PMCtrlExternalRunScriptBeginEvent => ({
+        type: SmokerEvent.RunScriptBegin,
+        current: scriptIndex * pkgManagerIndex,
+        total: totalScripts,
+        ...runScriptManifest,
+      }),
+    ),
+    scriptCompleted: enqueueActions(
+      ({enqueue, context: {totalScripts}}, {output}: {output: SRMOutput}) => {
+        switch (output.type) {
+          case 'RESULT': {
+            const {result, manifest} = output;
+            let evt:
+              | PMCtrlExternalRunScriptFailedEvent
+              | PMCtrlExternalRunScriptOkEvent
+              | PMCtrlExternalRunScriptSkippedEvent;
+            if (result.error) {
+              evt = {
+                type: SmokerEvent.RunScriptFailed,
+                ...manifest,
+                total: totalScripts!,
+                current: 0,
+                error: result.error,
+              };
+            } else if (result.skipped) {
+              evt = {
+                type: SmokerEvent.RunScriptSkipped,
+                ...manifest,
+                total: totalScripts!,
+                current: 0,
+                skipped: true,
+              };
+            } else {
+              evt = {
+                type: SmokerEvent.RunScriptOk,
+                ...manifest,
+                total: totalScripts!,
+                current: 0,
+                rawResult: result.rawResult!,
+              };
+            }
+            enqueue.emit(evt);
+            break;
+          }
+          case 'ERROR': {
+            // XXX: https://github.com/statelyai/xstate/issues/4820
+            enqueue.assign({
+              error: output.error,
+            });
+            break;
+          }
+          case 'BAILED': {
+            // idk
+            break;
+          }
+        }
       },
     ),
     spawnPkgManagerLoader: assign({
@@ -180,27 +364,34 @@ export const pkgManagerControlMachine = setup({
         return actor;
       },
     }),
+    assignPkgManagers: assign({
+      pkgManagers: ({context}, {pkgManagers}: {pkgManagers?: PkgManager[]}) =>
+        pkgManagers ?? context.pkgManagers,
+    }),
     spawnPkgManagerMachines: assign({
-      pkgManagerMachines: ({context, spawn}) => {
+      pkgManagerMachines: ({context: {pkgManagers}, spawn}) => {
         const machines = new Map<
           string,
           ActorRefFrom<typeof pkgManagerMachine>
         >();
-        for (const pkgManager of context.pkgManagers) {
+        pkgManagers.forEach((pkgManager, index) => {
           const id = `pkgManager.${makeId()}`;
           const actor = spawn('pkgManager', {
             id,
-            input: {pkgManager},
+            input: {pkgManager, index: index + 1},
           });
           // @ts-expect-error private field
           // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
           actor.logger = actor._actorScope.logger = Debug(id);
           machines.set(pkgManager.id, actor);
-        }
+        });
         return machines;
       },
     }),
-    stopPkgManagerLoader: stopChild('pkgManagerLoader'),
+    stopPkgManagerLoader: enqueueActions(({enqueue}) => {
+      enqueue.stopChild('pkgManagerLoader');
+      enqueue.assign({loader: undefined});
+    }),
   },
 }).createMachine({
   /**
@@ -232,72 +423,87 @@ export const pkgManagerControlMachine = setup({
   initial: 'setup',
   on: {
     '*': {
-      actions: ['eventLogger'],
+      actions: [{type: 'eventLogger'}],
     },
     'xstate.done.actor.pkgManager.*': {
       actions: [
-        assign({
-          error: ({
-            event: {
-              output: {error},
-            },
-          }) => error,
-        }),
+        {
+          type: 'assignError',
+          params: ({event: {output}}) => ({error: output.error}),
+        },
       ],
     },
   },
   states: {
     setup: {
-      entry: log('setting up...'),
+      entry: [log('setting up...')],
       initial: 'loading',
       states: {
         loading: {
-          entry: [log('loading package managers...'), 'spawnPkgManagerLoader'],
-          on: {
-            'xstate.done.actor.pkgManagerLoader': {
-              actions: [
-                enqueueActions(({enqueue, event: {output}, context}) => {
-                  if ('pkgManagers' in output) {
-                    enqueue.assign({
-                      pkgManagers: [
-                        ...context.pkgManagers,
-                        ...output.pkgManagers,
-                      ],
-                    });
-                  } else if ('error' in output) {
-                    enqueue.assign({error: output.error});
-                  } else {
-                    enqueue.assign({
-                      error: new Error(
-                        `Invalid pkgManagerLoader output: ${JSON.stringify(
-                          output,
-                        )}`,
-                      ),
-                    });
-                  }
-                }),
-                assign({
-                  loader: undefined,
-                }),
-                'stopPkgManagerLoader',
-              ],
-              target: 'validating',
+          entry: [
+            log('loading package managers...'),
+            {type: 'spawnPkgManagerLoader'},
+          ],
+          initial: 'loaderWorking',
+          states: {
+            loaderWorking: {
+              entry: [log('waiting for loader...')],
+              on: {
+                'xstate.done.actor.pkgManagerLoader': [
+                  {
+                    guard: {
+                      type: 'loadedOk',
+                      params: ({event: {output}}) => output,
+                    },
+                    actions: [
+                      {
+                        type: 'assignPkgManagers',
+                        params: ({event: {output}}) =>
+                          output.type === 'OK' ? output : {},
+                      },
+                    ],
+                    target: 'loadComplete',
+                  },
+                  {
+                    guard: {
+                      type: 'hasLoadError',
+                      params: ({event: {output}}) => output,
+                    },
+                    actions: [
+                      {
+                        type: 'assignError',
+                        params: ({event: {output}}) =>
+                          output.type === 'ERROR' ? {error: output.error} : {},
+                      },
+                    ],
+                    target: 'loadErrored',
+                  },
+                ],
+              },
+              exit: [{type: 'stopPkgManagerLoader'}],
+            },
+            loadComplete: {
+              entry: [log('load ok')],
+              type: 'final',
+            },
+            loadErrored: {
+              entry: [log('load errored')],
+              type: 'final',
             },
           },
-        },
-        validating: {
-          always: [
-            {guard: 'hasError', target: 'errored'},
-            {guard: 'notHasError', target: 'loaded'},
+          onDone: [
+            {target: 'loaded', guard: {type: 'notHasError'}},
+            {target: 'errored', guard: {type: 'hasError'}},
           ],
         },
         errored: {
+          entry: [log('errored out!')],
           type: 'final',
         },
         loaded: {
-          guard: 'hasPkgManagers',
+          guard: [{type: 'hasPkgManagers'}],
           entry: [
-            'spawnPkgManagerMachines',
+            {type: 'spawnPkgManagerMachines'},
             log(
               ({context}) =>
                 `spawned ${context.pkgManagers.length} pkgManager machines`,
@@ -307,39 +513,48 @@ export const pkgManagerControlMachine = setup({
         },
       },
       onDone: {
-        target: 'working',
+        target: 'preparation',
         actions: [log('done setting up')],
       },
     },
-    working: {
+    preparation: {
       on: {
-        PACKED: {
-          description: 'For re-emitting',
-          actions: [log(({event: {sender}}) => `packed: ${sender}`)],
-        },
-        INSTALLED: {
-          description: 'For re-emitting',
-          actions: [log(({event: {sender}}) => `installed: ${sender}`)],
-        },
+        // XXX need per-pkg-manager pack and install events
+        // XXX need higher-level events for both
+        // PACKED: {
+        //   description: 'For re-emitting',
+        //   actions: [
+        //     emit(({event: {installManifests}}) => ({
+        //       type: SmokerEvent.PackOk,
+        //       installManifests,
+        //     })),
+        //   ],
+        // },
+        // INSTALLED: {
+        //   description: 'For re-emitting',
+        //   actions: [
+        //     emit(({event: {installResult}}) => ({
+        //       type: SmokerEvent.InstallOk,
+        //       installResult,
+        //     })),
+        //   ],
+        // },
       },
       always: {
         target: 'ready',
-        guard: 'preprocessingComplete',
+        guard: {type: 'preparationComplete'},
         actions: [log('all pkg manager machines in ready state')],
       },
     },
     ready: {
-      entry: ['assignNeedsRunning'],
+      entry: [{type: 'assignNeedsRunning'}],
       on: {
         RUN_SCRIPTS: {
           actions: [
-            enqueueActions(
-              ({enqueue, context: {pkgManagerMachines}, event: {scripts}}) => {
-                for (const machine of pkgManagerMachines.values()) {
-                  enqueue.sendTo(machine, {type: 'RUN_SCRIPTS', scripts});
-                }
-              },
-            ),
+            {
+              type: 'scriptsBegin',
+              params: ({event: {scripts}}) => ({scripts}),
+            },
           ],
           target: 'runningScripts',
         },
@@ -348,8 +563,14 @@ export const pkgManagerControlMachine = setup({
     runningScripts: {
       entry: [log('running scripts...')],
       on: {
-        RAN_SCRIPT: {
-          actions: ['decrementNeedsRunning'],
+        WILL_RUN_SCRIPT: {
+          actions: [{type: 'scriptBegin', params: ({event}) => event}],
+        },
+        DID_RUN_SCRIPT: {
+          actions: [
+            {type: 'decrementNeedsRunning'},
+            {type: 'scriptCompleted', params: ({event}) => event},
+          ],
         },
       },
       always: {

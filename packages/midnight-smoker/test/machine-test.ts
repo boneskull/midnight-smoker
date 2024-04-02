@@ -7,6 +7,12 @@ import {
 import Debug from 'debug';
 import {createActor} from 'xstate';
 import {pkgManagerControlMachine} from '../src/controller/pkgManagerControlMachine';
+import {SmokerEvent} from '../src/event';
+
+const debug = Debug('testMachine');
+const debugComplete = Debug('testMachine:complete');
+const debugError = Debug('testMachine:error');
+const debugEvent = Debug('testMachine:event');
 
 async function main() {
   const pluginRegistry = PluginRegistry.create();
@@ -37,10 +43,10 @@ async function main() {
 
   m.subscribe({
     complete() {
-      console.log(m.getSnapshot().output);
+      debugComplete(m.getSnapshot().output);
     },
     error: (err) => {
-      console.error(err);
+      debugError(err);
     },
     next(value) {
       if (value.matches('ready')) {
@@ -49,7 +55,23 @@ async function main() {
     },
   });
 
+  const debugListener = (e: {type: string}) => {
+    debugEvent(e.type);
+  };
+
+  m.on(SmokerEvent.PackOk, debugListener);
+  m.on(SmokerEvent.InstallOk, debugListener);
+  m.on(SmokerEvent.RunScriptBegin, debugListener);
+  m.on(SmokerEvent.RunScriptOk, debugListener);
+  m.on(SmokerEvent.RunScriptFailed, debugListener);
+  m.on(SmokerEvent.RunScriptsBegin, debugListener);
+  m.on(SmokerEvent.RunScriptsOk, debugListener);
+  m.on(SmokerEvent.RunScriptsFailed, debugListener);
+
   m.send({type: 'INIT'});
 }
 
-main();
+main().catch((err) => {
+  console.error(err);
+  process.exitCode = 1;
+});

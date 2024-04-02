@@ -1,15 +1,22 @@
-import {assign, fromPromise, log, setup} from 'xstate';
+import {assign, fromPromise, log, sendParent, setup} from 'xstate';
 import {
   type PkgManager,
   type RunScriptManifest,
   type RunScriptResult,
 } from '../component';
-import {type ScriptBailed, type ScriptError} from '../error';
+import {fromUnknownError, type ScriptBailed, type ScriptError} from '../error';
+import {type PMMWillRunScriptEvent} from './pkgManagerMachine';
 
 export interface SRMInput {
   pkgManager: PkgManager;
   runScriptManifest: RunScriptManifest;
   signal: AbortSignal;
+
+  /**
+   * Index of the script in the list of scripts to run _for a particular package
+   * manager_.
+   */
+  index: number;
 }
 
 export interface SRMContext extends SRMInput {
@@ -22,6 +29,7 @@ export interface BaseSRMOutput {
   id: string;
   manifest: RunScriptManifest;
   pkgManager: PkgManager;
+  index: number;
 }
 
 export interface SRMOutputResult extends BaseSRMOutput {
@@ -39,6 +47,8 @@ export interface SRMOutputBailed extends BaseSRMOutput {
   bailed: ScriptBailed;
 }
 
+type SRMRunScriptInput = Omit<SRMInput, 'index'>;
+
 export type SRMOutput = SRMOutputResult | SRMOutputError | SRMOutputBailed;
 
 export const scriptRunnerMachine = setup({
@@ -47,8 +57,21 @@ export const scriptRunnerMachine = setup({
     input: {} as SRMInput,
     output: {} as SRMOutput,
   },
+  actions: {
+    sendWillRunScriptEvent: sendParent(
+      ({context: {index, runScriptManifest}}): PMMWillRunScriptEvent => ({
+        type: 'WILL_RUN_SCRIPT',
+        runScriptManifest,
+        index,
+      }),
+    ),
+    assignScriptError: assign({
+      error: ({context}, {error}: {error?: unknown}) =>
+        error ? (fromUnknownError(error) as ScriptError) : context.error,
+    }),
+  },
   actors: {
-    runScript: fromPromise<RunScriptResult, SRMInput>(
+    runScript: fromPromise<RunScriptResult, SRMRunScriptInput>(
       async ({input: {pkgManager, runScriptManifest, signal}}) =>
         pkgManager.def.runScript({
           ...pkgManager.ctx,
@@ -67,13 +90,14 @@ export const scriptRunnerMachine = setup({
   },
 }).createMachine({
   always: {
-    guard: 'aborted',
+    guard: {type: 'aborted'},
     target: '.aborted',
   },
   initial: 'running',
   context: ({input}) => input,
   states: {
     running: {
+      entry: [{type: 'sendWillRunScriptEvent'}],
       invoke: {
         src: 'runScript',
         input: ({context: {pkgManager, runScriptManifest, signal}}) => ({
@@ -91,33 +115,38 @@ export const scriptRunnerMachine = setup({
         },
         onError: {
           actions: [
-            assign({
-              error: ({event: {error}}) => error as ScriptError,
-            }),
+            {
+              type: 'assignScriptError',
+              params: ({event: {error}}) => ({error}),
+            },
           ],
           target: 'errored',
         },
       },
     },
     aborted: {
+      entry: [log('aborted')],
       type: 'final',
-      entry: log('aborted'),
     },
     errored: {
+      entry: [log('errored')],
       type: 'final',
-      entry: log('errored'),
     },
     done: {
-      guard: 'hasResult',
+      entry: [log('done')],
       type: 'final',
-      entry: log('done'),
     },
   },
   output: ({
     self: {id},
-    context: {runScriptManifest, result, error, bailed, pkgManager},
-  }) => {
-    const base: BaseSRMOutput = {id, manifest: runScriptManifest, pkgManager};
+    context: {runScriptManifest, result, error, bailed, pkgManager, index},
+  }): SRMOutput => {
+    const base: BaseSRMOutput = {
+      id,
+      manifest: runScriptManifest,
+      pkgManager,
+      index,
+    };
     if (error) {
       return {...base, error, type: 'ERROR'};
     }

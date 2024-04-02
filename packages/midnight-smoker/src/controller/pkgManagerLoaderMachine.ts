@@ -52,9 +52,11 @@ export type PMLMEvents = PMLMEventPluginsLoaded | PMPLDoneEvent;
 
 export type PMLMOutput =
   | {
+      type: 'OK';
       pkgManagers: SomePkgManager[];
     }
   | {
+      type: 'ERROR';
       error: Error;
     };
 
@@ -196,10 +198,6 @@ export const pkgManagerLoaderMachine = setup({
       type: 'final',
     },
   },
-  output: ({context: {pkgManagers, error}}) => {
-    if (error) {
-      return {error};
-    }
-    return {pkgManagers};
-  },
+  output: ({context: {pkgManagers, error}}) =>
+    error ? {error, type: 'ERROR'} : {pkgManagers, type: 'OK'},
 });

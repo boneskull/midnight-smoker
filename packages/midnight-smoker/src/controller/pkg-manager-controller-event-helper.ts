@@ -74,7 +74,7 @@ export class PkgManagerControllerEventHelper {
    * @returns Something to be emitted
    * @internal
    */
-  private static buildInstallEventData = memoize(
+  public static buildInstallEventData = memoize(
     (pkgManagers: SomePkgManager[]): Readonly<InstallEventBaseData> => {
       const manifests =
         PkgManagerControllerEventHelper.allManifests(pkgManagers);
