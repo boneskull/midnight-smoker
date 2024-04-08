@@ -45,6 +45,21 @@ export const PackEvent = {
    * {@inheritDoc SmokerEvents.PackOk}
    */
   PackOk: 'PackOk',
+
+  /**
+   * {@inheritDoc SmokerEvents.PkgManagerPackBegin}
+   */
+  PkgManagerPackBegin: 'PkgManagerPackBegin',
+
+  /**
+   * {@inheritDoc SmokerEvents.PkgManagerPackFailed}
+   */
+  PkgManagerPackFailed: 'PkgManagerPackFailed',
+
+  /**
+   * {@inheritDoc SmokerEvents.PkgManagerPackOk}
+   */
+  PkgManagerPackOk: 'PkgManagerPackOk',
 } as const;
 
 export const RunScriptEvent = {

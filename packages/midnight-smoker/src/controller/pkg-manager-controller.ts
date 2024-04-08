@@ -299,6 +299,7 @@ export class PkgManagerController implements Controller {
             debug('Error emitting PkgManagerInstallBegin: %O', err);
           }
           try {
+            // @ts-expect-error need signal
             await pkgManager.install();
             await this.#emitter.pkgManagerInstallOk({
               pkgManagers,
@@ -352,7 +353,8 @@ export class PkgManagerController implements Controller {
     await Promise.all(
       pkgManagers.map(async (pkgManager) => {
         try {
-          await pkgManager.pack(opts);
+          // @ts-expect-error need signal
+          await pkgManager.pack(undefined, opts);
         } catch (err) {
           if (err instanceof PackError || err instanceof PackParseError) {
             await this.#emitter.packFailed({

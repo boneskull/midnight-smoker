@@ -16,6 +16,7 @@ import {
 } from '#schema/pkg-manager-def';
 import {type RunScriptManifest} from '#schema/run-script-manifest';
 import {type RunScriptResult} from '#schema/run-script-result';
+import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import Debug from 'debug';
 import {isFunction} from 'lodash';
 import {type PkgManagerSpec} from './pkg-manager-spec';
@@ -64,6 +65,10 @@ export class PkgManager extends ReifiedComponent<PkgManagerDef> {
     return this.ctx.spec;
   }
 
+  public get staticSpec(): StaticPkgManagerSpec {
+    return this.ctx.spec.toJSON();
+  }
+
   public get supportedVersionRange(): SupportedVersionRange | undefined {
     return this.def.supportedVersionRange;
   }
@@ -101,6 +106,7 @@ export class PkgManager extends ReifiedComponent<PkgManagerDef> {
 
   public async install(
     installManifests: InstallManifest[] = this.installManifests,
+    signal: AbortSignal,
   ): Promise<InstallResult> {
     if (this._installResult) {
       debug('Already installed');
@@ -113,7 +119,11 @@ export class PkgManager extends ReifiedComponent<PkgManagerDef> {
         new Error('No packages to install'),
       );
     }
-    const ctx: PkgManagerInstallContext = {...this.ctx, installManifests};
+    const ctx: PkgManagerInstallContext = {
+      ...this.ctx,
+      installManifests,
+      signal,
+    };
     const rawResult = await this.def.install(ctx);
     this._installResult = {
       rawResult,
@@ -122,8 +132,11 @@ export class PkgManager extends ReifiedComponent<PkgManagerDef> {
     return this._installResult;
   }
 
-  public async pack(opts: PackOptions = {}): Promise<InstallManifest[]> {
-    const ctx: PkgManagerPackContext = {...this.ctx, ...opts};
+  public async pack(
+    signal: AbortSignal,
+    opts: PackOptions = {},
+  ): Promise<InstallManifest[]> {
+    const ctx: PkgManagerPackContext = {...this.ctx, ...opts, signal};
     this._installManifests = await this.def.pack(ctx);
 
     for (const manifest of this._installManifests) {

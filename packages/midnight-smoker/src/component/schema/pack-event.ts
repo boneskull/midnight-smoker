@@ -1,52 +1,15 @@
 import {PackError, PackParseError} from '#error';
 import {type PackEvent} from '#event/event-constants';
 import {InstallEventBaseDataSchema} from '#schema/install-event';
-import {instanceofSchema} from '#util/schema-util';
+import {NonNegativeIntSchema, instanceofSchema} from '#util/schema-util';
 import {z} from 'zod';
+import {PackOptionsSchema} from './pack-options';
+import {StaticPkgManagerSpecSchema} from './static-pkg-manager-spec';
 
 /**
  * {@inheritDoc PackBeginEventDataSchema}
  */
 export type PackBeginEventData = z.infer<typeof PackBeginEventDataSchema>;
-
-/**
- * {@inheritDoc PackFailedEventDataSchema}
- */
-export type PackFailedEventData = z.infer<typeof PackFailedEventDataSchema>;
-
-/**
- * {@inheritDoc PackOkEventDataSchema}
- */
-export type PackOkEventData = z.infer<typeof PackOkEventDataSchema>;
-
-/**
- * Data for the `PackBegin` event
- */
-export const PackBeginEventDataSchema = z.object({
-  /**
-   * List of unique package manager specifiers, each of which corresponding to a
-   * package manager which will perform a "pack" operation.
-   */
-  pkgManagers: InstallEventBaseDataSchema.shape.pkgManagers,
-
-  /**
-   * List of packages to pack
-   */
-  uniquePkgs: InstallEventBaseDataSchema.shape.uniquePkgs,
-});
-
-/**
- * Data for the `PackOk` event
- */
-export const PackOkEventDataSchema = InstallEventBaseDataSchema;
-
-/**
- * Data for the `PackFailed` event
- */
-export const PackFailedEventDataSchema = PackBeginEventDataSchema.extend({
-  error: instanceofSchema(PackError).or(instanceofSchema(PackParseError)),
-});
-
 export type PackEventData = {
   /**
    * Emitted whenever a package is about to be packed into a tarball.
@@ -71,4 +34,74 @@ export type PackEventData = {
    * @event
    */
   [PackEvent.PackFailed]: PackFailedEventData;
+
+  [PackEvent.PkgManagerPackBegin]: PkgManagerPackBeginEventData;
+
+  [PackEvent.PkgManagerPackFailed]: PkgManagerPackFailedEventData;
+
+  [PackEvent.PkgManagerPackOk]: PkgManagerPackOkEventData;
 };
+
+/**
+ * {@inheritDoc PackFailedEventDataSchema}
+ */
+export type PackFailedEventData = z.infer<typeof PackFailedEventDataSchema>;
+
+/**
+ * {@inheritDoc PackOkEventDataSchema}
+ */
+export type PackOkEventData = z.infer<typeof PackOkEventDataSchema>;
+export type PkgManagerPackBeginEventData = z.infer<
+  typeof PkgManagerPackBeginEventDataSchema
+>;
+export type PkgManagerPackFailedEventData = z.infer<
+  typeof PkgManagerPackFailedEventDataSchema
+>;
+export type PkgManagerPackOkEventData = z.infer<
+  typeof PkgManagerPackOkEventDataSchema
+>;
+
+/**
+ * Data for the `PackBegin` event
+ */
+export const PackBeginEventDataSchema = z.object({
+  /**
+   * List of unique package manager specifiers, each of which corresponding to a
+   * package manager which will perform a "pack" operation.
+   */
+  pkgManagers: InstallEventBaseDataSchema.shape.pkgManagers,
+
+  packOptions: PackOptionsSchema.optional(),
+});
+
+export const PackingErrorSchema = instanceofSchema(PackError).or(
+  instanceofSchema(PackParseError),
+);
+
+/**
+ * Data for the `PackOk` event
+ */
+export const PackOkEventDataSchema = InstallEventBaseDataSchema.extend({
+  packOptions: PackOptionsSchema.optional(),
+});
+
+/**
+ * Data for the `PackFailed` event
+ */
+export const PackFailedEventDataSchema = PackBeginEventDataSchema.extend({
+  error: PackingErrorSchema,
+});
+export const PkgManagerPackBeginEventDataSchema = z.object({
+  pkgManager: StaticPkgManagerSpecSchema,
+  packOptions: PackOptionsSchema.optional(),
+  current: NonNegativeIntSchema.describe('Current pkg manager index'),
+  total: NonNegativeIntSchema.describe('Total number of pkg managers'),
+});
+export const PkgManagerPackFailedEventDataSchema =
+  PkgManagerPackBeginEventDataSchema.extend({
+    error: PackingErrorSchema,
+  });
+export const PkgManagerPackOkEventDataSchema =
+  PkgManagerPackBeginEventDataSchema.extend({
+    manifests: InstallEventBaseDataSchema.shape.manifests,
+  });

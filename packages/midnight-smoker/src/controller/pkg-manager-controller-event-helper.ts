@@ -102,7 +102,7 @@ export class PkgManagerControllerEventHelper {
    * @returns The event data object.
    * @internal
    */
-  private static buildPackBeginEventData = memoize(
+  public static buildPackBeginEventData = memoize(
     (pkgManagers: SomePkgManager[]): Readonly<PackBeginEventData> => {
       const manifests =
         PkgManagerControllerEventHelper.allManifests(pkgManagers);

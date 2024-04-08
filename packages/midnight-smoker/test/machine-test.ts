@@ -1,3 +1,4 @@
+import {BaseSmokerOptionsSchema} from '#options/options';
 import {PluginRegistry} from '#plugin';
 import {
   nullExecutor,
@@ -5,14 +6,36 @@ import {
   registerPlugin,
 } from '@midnight-smoker/test-util';
 import Debug from 'debug';
-import {createActor} from 'xstate';
-import {pkgManagerControlMachine} from '../src/controller/pkgManagerControlMachine';
+import {createActor, fromPromise} from 'xstate';
+import {type PkgManagerDefSpec} from '../src/component';
 import {SmokerEvent} from '../src/event';
+import {ControlMachine} from '../src/machine/controller/control-machine';
+import {type PMCtrlExternalEvents} from '../src/machine/controller/control-machine-events';
+import {
+  PluginLoaderMachine,
+  type LoadPkgManagersInput,
+} from '../src/machine/plugin-loader-machine';
 
-const debug = Debug('testMachine');
 const debugComplete = Debug('testMachine:complete');
 const debugError = Debug('testMachine:error');
 const debugEvent = Debug('testMachine:event');
+const debugEmit = Debug('testMachine:emit');
+
+const failingPluginLoaderMachine = PluginLoaderMachine.provide({
+  actors: {
+    loadPkgManagers: fromPromise<PkgManagerDefSpec[], LoadPkgManagersInput>(
+      async () => {
+        throw new Error('broken');
+      },
+    ),
+  },
+});
+
+const failingMachine = ControlMachine.provide({
+  actors: {
+    pluginLoader: failingPluginLoaderMachine,
+  },
+});
 
 async function main() {
   const pluginRegistry = PluginRegistry.create();
@@ -22,53 +45,73 @@ async function main() {
       // cheap way to clone a function
       api.defineExecutor(nullExecutor.bind({}), 'system');
       api.definePackageManager(nullPmDef, 'nullpm');
+      api.defineReporter({
+        name: 'console',
+        when: () => true,
+        description: 'null reporter',
+      });
     },
     name: '@midnight-smoker/plugin-default',
   });
 
   const debug = Debug('pmCtrl');
-  const m = createActor(pkgManagerControlMachine, {
+  // const m = createActor(failingMachine, {
+  const m = createActor(ControlMachine, {
     input: {
       pluginRegistry,
       desiredPkgManagers: ['nullpm@1.0.0'],
       packOptions: {
         allWorkspaces: true,
       },
+      smokerOptions: BaseSmokerOptionsSchema.parse({reporter: ['console']}),
     },
     id: 'main',
     logger: debug,
-  });
-
-  m.start();
-
-  m.subscribe({
-    complete() {
-      debugComplete(m.getSnapshot().output);
-    },
-    error: (err) => {
-      debugError(err);
-    },
-    next(value) {
-      if (value.matches('ready')) {
-        m.send({type: 'RUN_SCRIPTS', scripts: ['build']});
+    inspect: (evt) => {
+      if (evt.type === '@xstate.event') {
+        debugEvent(`${evt.actorRef.id}: %s`, evt.event.type);
       }
     },
   });
 
-  const debugListener = (e: {type: string}) => {
-    debugEvent(e.type);
+  m.start();
+
+  const emitted = new Set<string>();
+  const listener = (evt: PMCtrlExternalEvents) => {
+    debugEmit(evt.type);
+    emitted.add(evt.type);
   };
 
-  m.on(SmokerEvent.PackOk, debugListener);
-  m.on(SmokerEvent.InstallOk, debugListener);
-  m.on(SmokerEvent.RunScriptBegin, debugListener);
-  m.on(SmokerEvent.RunScriptOk, debugListener);
-  m.on(SmokerEvent.RunScriptFailed, debugListener);
-  m.on(SmokerEvent.RunScriptsBegin, debugListener);
-  m.on(SmokerEvent.RunScriptsOk, debugListener);
-  m.on(SmokerEvent.RunScriptsFailed, debugListener);
+  for (const event of Object.values(SmokerEvent)) {
+    m.on(event, listener);
+  }
+
+  const runningScripts = false;
+  m.subscribe({
+    complete() {
+      debugComplete(m.getSnapshot().output);
+
+      debugComplete(emitted);
+    },
+    error: (err) => {
+      debugError(err);
+    },
+    // next(value) {
+    //   if (value.matches('ready') && !runningScripts) {
+    //     m.send({type: 'RUN_SCRIPTS', scripts: ['build']});
+    //     runningScripts = true;
+    //     setTimeout(() => {
+    //       m.send({type: 'HALT'});
+    //     }, 2000);
+    //   }
+    // },
+  });
 
   m.send({type: 'INIT'});
+  m.send({type: 'RUN_SCRIPTS', scripts: ['build']});
+  setTimeout(() => {
+    m.send({type: 'HALT'});
+  }, 5);
 }
 
 main().catch((err) => {

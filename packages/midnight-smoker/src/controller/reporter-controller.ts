@@ -95,7 +95,7 @@ export class ReporterController implements Controller {
    * @param pkgJson - `midnight-smoker`'s `package.json`
    * @returns A promise that resolves to a `ReporterContext` object.
    */
-  private static async createReporterContext<Ctx = unknown>(
+  public static async createReporterContext<Ctx = unknown>(
     this: void,
     def: ReporterDef<Ctx>,
     opts: SmokerOptions,

@@ -203,7 +203,10 @@ export function isZodError(value: unknown): value is ZodError {
  * @param err - A thrown thing
  * @returns The original thing (if an `Error`) otherwise a new `Error`
  */
-export function fromUnknownError(err: unknown): Error {
+export function fromUnknownError(err?: unknown): Error {
+  if (isError(err)) {
+    return err;
+  }
   debug('Handling unknown error: %o', err);
-  return isError(err) ? err : new Error(`Unknown error: ${err}`);
+  return new Error(`Unknown error: ${err}`);
 }

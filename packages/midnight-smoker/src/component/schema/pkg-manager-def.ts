@@ -34,14 +34,10 @@ export type PkgManagerInstallContext = z.infer<
  * Options for a {@link PkgManagerFactory}
  */
 export type PkgManagerOpts = z.infer<typeof PkgManagerOptsSchema>;
-export type PkgManagerPackContext<Ctx = unknown> = z.infer<
-  typeof PkgManagerPackContextSchema
-> &
-  Ctx;
-export type PkgManagerRunScriptContext<Ctx = unknown> = z.infer<
+export type PkgManagerPackContext = z.infer<typeof PkgManagerPackContextSchema>;
+export type PkgManagerRunScriptContext = z.infer<
   typeof PkgManagerRunScriptContextSchema
-> &
-  Ctx;
+>;
 
 export type PkgManagerRunScriptFn = (
   ctx: SomePkgManagerRunScriptContext,
@@ -80,7 +76,6 @@ export const BasePkgManagerContextSchema = z
     executor: ExecutorSchema,
     loose: z.boolean().optional(),
     verbose: z.boolean().optional(),
-    signal: AbortSignalSchema.optional(),
   })
   .passthrough();
 export const PkgManagerPackContextSchema = BasePkgManagerContextSchema.extend({
@@ -88,16 +83,19 @@ export const PkgManagerPackContextSchema = BasePkgManagerContextSchema.extend({
   includeWorkspaceRoot: z.boolean().optional(),
   workspaces: z.array(NonEmptyStringSchema).optional(),
   timeout: z.number().optional(),
+  signal: AbortSignalSchema,
 });
 
 export const PkgManagerInstallContextSchema =
   BasePkgManagerContextSchema.extend({
     installManifests: InstallManifestsSchema,
+    signal: AbortSignalSchema,
   });
 
 export const PkgManagerRunScriptContextSchema =
   BasePkgManagerContextSchema.extend({
     runScriptManifest: RunScriptManifestSchema,
+    signal: AbortSignalSchema,
   });
 
 export const PkgManagerInstallSchema = z

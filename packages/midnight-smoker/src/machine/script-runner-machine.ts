@@ -1,11 +1,18 @@
-import {assign, fromPromise, log, sendParent, setup} from 'xstate';
+import {
+  assign,
+  fromPromise,
+  log,
+  sendTo,
+  setup,
+  type AnyActorRef,
+} from 'xstate';
 import {
   type PkgManager,
   type RunScriptManifest,
   type RunScriptResult,
 } from '../component';
 import {fromUnknownError, type ScriptBailed, type ScriptError} from '../error';
-import {type PMMWillRunScriptEvent} from './pkgManagerMachine';
+import {type PMMWillRunScriptEvent} from './pkg-manager/pkg-manager-machine-events';
 
 export interface SRMInput {
   pkgManager: PkgManager;
@@ -17,6 +24,8 @@ export interface SRMInput {
    * manager_.
    */
   index: number;
+
+  parentRef: AnyActorRef;
 }
 
 export interface SRMContext extends SRMInput {
@@ -47,7 +56,7 @@ export interface SRMOutputBailed extends BaseSRMOutput {
   bailed: ScriptBailed;
 }
 
-type SRMRunScriptInput = Omit<SRMInput, 'index'>;
+type SRMRunScriptInput = Omit<SRMInput, 'index' | 'parentRef'>;
 
 export type SRMOutput = SRMOutputResult | SRMOutputError | SRMOutputBailed;
 
@@ -58,12 +67,16 @@ export const scriptRunnerMachine = setup({
     output: {} as SRMOutput,
   },
   actions: {
-    sendWillRunScriptEvent: sendParent(
-      ({context: {index, runScriptManifest}}): PMMWillRunScriptEvent => ({
-        type: 'WILL_RUN_SCRIPT',
-        runScriptManifest,
-        index,
-      }),
+    sendWillRunScriptEvent: sendTo(
+      ({context: {parentRef}}) => parentRef,
+      ({context}): PMMWillRunScriptEvent => {
+        const {runScriptManifest, index} = context;
+        return {
+          type: 'WILL_RUN_SCRIPT',
+          runScriptManifest,
+          index,
+        };
+      },
     ),
     assignScriptError: assign({
       error: ({context}, {error}: {error?: unknown}) =>

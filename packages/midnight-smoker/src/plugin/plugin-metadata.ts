@@ -6,6 +6,7 @@
  */
 import {isZodError} from '#error/base-error';
 import {InvalidArgError} from '#error/invalid-arg-error';
+import {type SmokerOptions} from '#options/options';
 import {loadPackageManagers, type LoadPackageManagersOpts} from '#pkg-manager';
 import {
   BLESSED_PLUGINS,
@@ -30,7 +31,7 @@ import {
   type NonEmptyArray,
 } from '#util';
 import Debug from 'debug';
-import {isString} from 'lodash';
+import {curry, isFunction, isString} from 'lodash';
 import path from 'node:path';
 import type {LiteralUnion, PackageJson} from 'type-fest';
 import {z} from 'zod';
@@ -49,7 +50,7 @@ export const TRANSIENT = '<transient>';
 /**
  * Plugin ID.
  */
-const zId = NonEmptyStringSchema.describe(
+const PluginIdSchema = NonEmptyStringSchema.describe(
   'The plugin (package) name, derived from its `package.json` if possible',
 );
 
@@ -57,7 +58,7 @@ const zId = NonEmptyStringSchema.describe(
  * Validation for {@link PluginMetadataOpts} as optionally passsed to
  * {@link PluginMetadata.create}
  */
-const zPluginMetadataOptsInput = z.object({
+const PluginMetadataOptsInputSchema = z.object({
   entryPoint: z
     .literal(TRANSIENT)
     .or(
@@ -68,7 +69,7 @@ const zPluginMetadataOptsInput = z.object({
     .describe('The entry point of the plugin as an absolute path'),
   description: NonEmptyStringSchema.optional().describe('Plugin description'),
   version: NonEmptyStringSchema.optional().describe('Plugin version'),
-  id: zId.optional(),
+  id: PluginIdSchema.optional(),
   requestedAs: NonEmptyStringSchema.optional().describe(
     'The module name as requested by the user. Must be resolvable by Node.js and may differ from id',
   ),
@@ -84,8 +85,8 @@ const zPluginMetadataOptsInput = z.object({
  *
  * @todo Is there a better way to do this?
  */
-export const zPluginMetadataOpts = zPluginMetadataOptsInput
-  .transform((opts) =>
+export const PluginMetadataOptsSchema = PluginMetadataOptsInputSchema.transform(
+  (opts) =>
     opts.entryPoint === TRANSIENT
       ? opts
       : {
@@ -95,15 +96,35 @@ export const zPluginMetadataOpts = zPluginMetadataOptsInput
             opts.pkgJson?.name ??
             path.relative(process.cwd(), opts.entryPoint),
         },
-  )
+)
   // `id` no longer optional
-  .pipe(zPluginMetadataOptsInput.setKey('id', zId))
+  .pipe(PluginMetadataOptsInputSchema.setKey('id', PluginIdSchema))
   .describe('Options for PluginMetadata.create()');
 
 /**
  * Options for {@link PluginMetadata.create}
  */
-export type PluginMetadataOpts = z.input<typeof zPluginMetadataOpts>;
+export type PluginMetadataOpts = z.input<typeof PluginMetadataOptsSchema>;
+
+const shouldEnableReporter = curry(
+  (
+    getComponentId: (def: object) => string,
+    opts: SmokerOptions,
+    def: ReporterDef,
+  ) => {
+    const desiredReporters = new Set(opts.reporter);
+    if (desiredReporters.has(getComponentId(def))) {
+      return true; // the user explicitly requested this reporter
+    }
+
+    if (isFunction(def.when) && def.when(opts)) {
+      return true; // enabled via `when`
+    }
+
+    return false;
+  },
+  3,
+);
 
 /**
  * All the metadata collected about a plugin.
@@ -205,12 +226,12 @@ export class PluginMetadata implements StaticPluginMetadata {
   ) {
     try {
       const opts = isString(optsOrEntryPoint)
-        ? zPluginMetadataOpts.parse({
+        ? PluginMetadataOptsSchema.parse({
             entryPoint: optsOrEntryPoint,
             requestedAs: optsOrEntryPoint,
             id,
           })
-        : zPluginMetadataOpts.parse(optsOrEntryPoint);
+        : PluginMetadataOptsSchema.parse(optsOrEntryPoint);
 
       // basic information
       this.id = opts.id;
@@ -390,6 +411,22 @@ export class PluginMetadata implements StaticPluginMetadata {
     const pkgManagerDefs = [...this.pkgManagerDefMap.values()];
     assertNonEmptyArray(pkgManagerDefs);
     return loadPackageManagers(pkgManagerDefs, opts);
+  }
+
+  public getEnabledReporters(
+    opts: SmokerOptions,
+    getComponentId: (def: object) => string,
+  ) {
+    const reporterDefs = [...this.reporterDefMap.values()];
+
+    assertNonEmptyArray(reporterDefs);
+    assertNonEmptyArray(opts.reporter);
+
+    const shouldEnable = shouldEnableReporter(getComponentId, opts);
+
+    const enabledReporters = reporterDefs.filter(shouldEnable);
+
+    return enabledReporters;
   }
 }
 

@@ -1,6 +1,6 @@
-import type {InstallEvents} from '#event/install-events';
+import {type InstallEvents} from '#event/install-events';
 import {type LintEvents} from '#event/lint-events';
-import type {PackEvents} from '#event/pack-events';
+import {type PackEvents} from '#event/pack-events';
 import {type ScriptEvents} from '#event/script-events';
 import {
   type BeforeExitEventData,
