@@ -2,6 +2,8 @@ import {ReporterController} from '#controller';
 import {type SmokerOptions} from '#options';
 import {type PluginRegistry} from '#plugin';
 import {Reporter, type SomeReporter} from '#reporter/reporter';
+import {Rule} from '#rule/rule';
+import {type SomeRule, type SomeRuleDef} from '#schema';
 import {type PackageJson} from 'type-fest';
 import {and, assign, fromPromise, log, not, setup} from 'xstate';
 import {
@@ -12,8 +14,9 @@ import {
   type PkgManagerOpts,
   type ReporterContext,
   type ReporterDef,
+  type RuleContext,
 } from '../component';
-import {ComponentKinds} from '../constants';
+import {ComponentKinds, RuleSeverities} from '../constants';
 import {fromUnknownError} from '../error';
 import {type PluginMetadata} from '../plugin';
 import {readSmokerPkgJson, type FileManager} from '../util';
@@ -41,10 +44,14 @@ export interface PluginLoaderContext extends PluginLoaderInput {
   smokerPkgJson?: PackageJson;
   reporterDefsWithCtx?: ReporterDefWithCtx[];
   reporters?: SomeReporter[];
+  ruleDefs: SomeRuleDef[];
+  ruleDefsWithCtx?: RuleDefWithCtx[];
+  rules?: SomeRule[];
 }
 export type PluginLoaderOutputOk = MachineOutputOk<{
   pkgManagers: PkgManager[];
   reporters: SomeReporter[];
+  rules: SomeRule[];
 }>;
 
 export type PluginLoaderOutputError = MachineOutputError;
@@ -83,6 +90,11 @@ export interface CreateReporterContextsInput {
 export interface ReporterDefWithCtx {
   def: ReporterDef;
   ctx: ReporterContext;
+}
+
+export interface RuleDefWithCtx {
+  def: SomeRuleDef;
+  ctx: RuleContext;
 }
 
 export const PluginLoaderMachine = setup({
@@ -132,11 +144,19 @@ export const PluginLoaderMachine = setup({
     }),
 
     assignEnabledReporterDefs: assign({
-      enabledReporters: ({context: {smokerOpts, pluginRegistry, plugin}}) => {
-        return plugin.getEnabledReporters(
+      enabledReporters: ({context: {smokerOpts, pluginRegistry, plugin}}) =>
+        plugin.getEnabledReporters(
           smokerOpts,
           pluginRegistry.getComponentId.bind(pluginRegistry),
-        );
+        ),
+    }),
+
+    assignEnabledRuleDefs: assign({
+      ruleDefs: ({context: {plugin, pluginRegistry, smokerOpts}}) => {
+        return [...plugin.ruleDefMap.values()].filter((def) => {
+          const id = pluginRegistry.getComponentId(def);
+          return smokerOpts.rules[id].severity !== RuleSeverities.Off;
+        });
       },
     }),
 
@@ -162,6 +182,20 @@ export const PluginLoaderMachine = setup({
             componentName,
           );
           return Reporter.create(id, def, plugin, ctx);
+        }),
+    }),
+    createRules: assign({
+      rules: ({context: {plugin, pluginRegistry, ruleDefs = []}}) =>
+        ruleDefs.map((def) => {
+          const {id, componentName} = pluginRegistry.getComponent(def);
+          const rule = Rule.create(id, def, plugin);
+          pluginRegistry.registerComponent(
+            plugin,
+            ComponentKinds.Rule,
+            rule,
+            rule.name ?? componentName,
+          );
+          return rule;
         }),
     }),
   },
@@ -190,6 +224,16 @@ export const PluginLoaderMachine = setup({
         }),
       );
     }),
+    // createRuleContexts: fromPromise<
+    //   RuleDefWithCtx[],
+    //   {smokerOpts: SmokerOptions, ruleDefs: SomeRuleDef[]}
+    // >(async ({input: {smokerOpts, ruleDefs}}) => {
+    //   return Promise.all(
+    //     ruleDefs.map(async (def) => {
+    //       const ctx: RuleContext = await RuleController.createRuleContext(
+    //     })
+    //   )
+    // }),
     createPkgManagerContexts: fromPromise<
       PkgManagerDefSpecsWithCtx[],
       CreatePkgManagerContextsInput
@@ -244,12 +288,14 @@ export const PluginLoaderMachine = setup({
   context: ({input}): PluginLoaderContext => ({
     ...input,
     enabledReporters: [],
+    ruleDefs: [],
   }),
   initial: 'loading',
   states: {
     loading: {
       entry: [
         {type: 'assignEnabledReporterDefs'},
+        {type: 'assignEnabledRuleDefs'},
         log('getting enabled reporters'),
       ],
       invoke: {
@@ -419,6 +465,15 @@ export const PluginLoaderMachine = setup({
             },
           },
         },
+        materializeRules: {
+          initial: 'createRules',
+          states: {
+            createRules: {
+              entry: [{type: 'createRules'}],
+              type: 'final',
+            },
+          },
+        },
       },
       onDone: [
         {
@@ -440,21 +495,14 @@ export const PluginLoaderMachine = setup({
       type: 'final',
     },
   },
-  output: ({self: {id}, context: {pkgManagers, reporters, error}}) => {
+  output: ({
+    self: {id},
+    context: {pkgManagers = [], reporters = [], rules = [], error},
+  }) => {
     if (error) {
       return {error, type: 'ERROR', id};
     }
-    if (!pkgManagers?.length) {
-      return {
-        error: new Error('No PkgManagers were created'),
-        type: 'ERROR',
-        id,
-      };
-    }
-    if (!reporters?.length) {
-      return {error: new Error('No Reporters were created'), type: 'ERROR', id};
-    }
-    return {reporters, pkgManagers, type: 'OK', id};
+    return {reporters, pkgManagers, rules, type: 'OK', id};
   },
   id: 'pluginLoader',
 });

@@ -125,6 +125,7 @@ describe('@midnight-smoker/plugin-default', function () {
               spec,
               tmpdir: MOCK_TMPDIR,
               executor,
+              signal: new AbortController().signal,
             };
           });
 
@@ -275,6 +276,7 @@ describe('@midnight-smoker/plugin-default', function () {
               spec,
               tmpdir: MOCK_TMPDIR,
               executor,
+              signal: new AbortController().signal,
               installManifests: [
                 {
                   pkgSpec: `${MOCK_TMPDIR}/bar.tgz`,
@@ -344,6 +346,7 @@ describe('@midnight-smoker/plugin-default', function () {
           beforeEach(function () {
             executor.resolves({failed: false, stdout: 'stuff'} as any);
             ctx = {
+              signal: new AbortController().signal,
               spec,
               executor,
               tmpdir: MOCK_TMPDIR,

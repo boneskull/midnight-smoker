@@ -60,4 +60,5 @@ export const runScripts = fromPromise<RunScriptResult[], RunScriptsParams>(
     ),
 );
 
-export {scriptRunnerMachine as scriptRunner} from '../script-runner-machine';
+export {LintMachine} from '../lint-machine';
+export {ScriptRunnerMachine} from '../script-runner-machine';

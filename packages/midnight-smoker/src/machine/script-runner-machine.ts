@@ -60,7 +60,7 @@ type SRMRunScriptInput = Omit<SRMInput, 'index' | 'parentRef'>;
 
 export type SRMOutput = SRMOutputResult | SRMOutputError | SRMOutputBailed;
 
-export const scriptRunnerMachine = setup({
+export const ScriptRunnerMachine = setup({
   types: {
     context: {} as SRMContext,
     input: {} as SRMInput,

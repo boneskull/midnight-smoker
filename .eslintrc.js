@@ -142,6 +142,7 @@ module.exports = {
             allowInterfaceStart: true,
             allowBlockStart: true,
             allowArrayStart: true,
+            allowTypeStart: true,
           },
         ],
 

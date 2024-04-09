@@ -8,3 +8,5 @@ export function loadReporters(api: PluginAPI) {
   api.defineReporter(JSONReporter);
   api.defineReporter(ExitListener);
 }
+
+export {ConsoleReporter, ExitListener, JSONReporter};

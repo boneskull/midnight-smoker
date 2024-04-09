@@ -82,6 +82,10 @@ export class RuleContext implements StaticRuleContext {
     return this.staticCtx.severity;
   }
 
+  public get pkgName() {
+    return this.staticCtx.pkgJson.name;
+  }
+
   /**
    * Creates a {@link RuleContext}.
    */

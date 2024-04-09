@@ -87,6 +87,7 @@ describe('@midnight-smoker/plugin-default', function () {
 
           beforeEach(function () {
             ctx = {
+              signal: new AbortController().signal,
               spec,
               tmpdir: MOCK_TMPDIR,
               executor,

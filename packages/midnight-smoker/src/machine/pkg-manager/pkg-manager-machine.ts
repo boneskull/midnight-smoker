@@ -1,19 +1,21 @@
 import {
-  InstallError,
   fromUnknownError,
+  InstallError,
   type PackError,
   type PackParseError,
 } from '#error';
 import type {PkgManager} from '#pkg-manager';
 import {
+  type BaseNormalizedRuleOptionsRecord,
   type InstallManifest,
   type InstallResult,
   type PackOptions,
+  type RunRuleManifest,
   type RunScriptManifest,
+  type SomeRule,
 } from '#schema';
-import {isSmokerError} from '#util';
-import Debug from 'debug';
-import {uniqBy} from 'lodash';
+import {isSmokerError, type FileManager} from '#util';
+import {isEmpty, uniqBy} from 'lodash';
 import {
   and,
   assign,
@@ -28,15 +30,17 @@ import {
 import type * as CtrlEvent from '../controller/control-machine-events';
 import {
   makeId,
+  monkeypatchActorLogger,
   type MachineOutputError,
   type MachineOutputOk,
 } from '../machine-util';
 import type * as ScriptEvent from '../script-runner-machine';
 import {
   install,
+  LintMachine,
   pack,
   runScripts,
-  scriptRunner,
+  ScriptRunnerMachine,
   setupPkgManager,
   teardownPkgManager,
 } from './pkg-manager-machine-actors';
@@ -47,7 +51,12 @@ import {
 
 export interface PMMInput {
   pkgManager: PkgManager;
+  rules: SomeRule[];
   packOptions?: PackOptions;
+
+  ruleOptions: BaseNormalizedRuleOptionsRecord;
+
+  fileManager: FileManager;
 
   /**
    * Index of this package manager in the list of loaded package managers.
@@ -62,7 +71,11 @@ export interface PMMContext extends PMMInput {
   installResult?: InstallResult;
   runScriptManifests: RunScriptManifest[];
   abortController: AbortController;
-  scriptRunners: Record<string, ActorRefFrom<typeof scriptRunner>>;
+  scriptRunnerMachines: Record<
+    string,
+    ActorRefFrom<typeof ScriptRunnerMachine>
+  >;
+  lintMachines: Record<string, ActorRefFrom<typeof LintMachine>>;
   error?: Error;
   setupComplete: boolean;
 }
@@ -89,8 +102,9 @@ export const PkgManagerMachine = setup({
     hasPackOpts: ({context: {packOptions: packOpts}}) => Boolean(packOpts),
     hasRunScriptManifests: ({context: {runScriptManifests}}) =>
       Boolean(runScriptManifests?.length),
-    hasScriptRunners: ({context: {scriptRunners}}) =>
-      Boolean(Object.keys(scriptRunners).length),
+    hasScriptRunners: ({context: {scriptRunnerMachines}}) =>
+      !isEmpty(scriptRunnerMachines),
+    hasLintMachines: ({context: {lintMachines}}) => !isEmpty(lintMachines),
     packedSuccessfully: and(['hasInstallManifests', 'uniqueInstallManifests']),
     hasDuplicateInstallManifests: and([
       'hasInstallManifests',
@@ -107,7 +121,8 @@ export const PkgManagerMachine = setup({
       output.type === 'BAILED',
   },
   actors: {
-    scriptRunner,
+    lintMachine: LintMachine,
+    scriptRunner: ScriptRunnerMachine,
     pack,
     install,
     setupPkgManager,
@@ -117,14 +132,14 @@ export const PkgManagerMachine = setup({
   actions: {
     updateScriptRunners: enqueueActions(
       (
-        {enqueue, context: {scriptRunners}},
+        {enqueue, context: {scriptRunnerMachines: scriptRunners}},
         {output: {id}}: {output: ScriptEvent.SRMOutput},
       ) => {
         enqueue.stopChild(id);
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const {[id]: _, ...rest} = scriptRunners;
         enqueue.assign({
-          scriptRunners: rest,
+          scriptRunnerMachines: rest,
         });
       },
     ),
@@ -289,7 +304,7 @@ export const PkgManagerMachine = setup({
       setupComplete: true,
     }),
     spawnScriptRunners: assign({
-      scriptRunners: ({
+      scriptRunnerMachines: ({
         self,
         spawn,
         context: {pkgManager, abortController, runScriptManifests},
@@ -307,12 +322,46 @@ export const PkgManagerMachine = setup({
               },
               id,
             });
-            // @ts-expect-error private field
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-            actor.logger = actor._actorScope.logger = Debug(id);
-            return [id, actor];
+            return [id, monkeypatchActorLogger(actor, id)];
           }),
         ),
+    }),
+    spawnLintMachines: assign({
+      lintMachines: ({
+        self,
+        spawn,
+        context: {fileManager, installManifests, rules, ruleOptions},
+      }) => {
+        const lintMachines = Object.fromEntries(
+          rules.map((rule) => {
+            const id = `lintMachine.${makeId()}`;
+            const lintManifests = installManifests
+              .filter(({installPath, isAdditional}) =>
+                Boolean(installPath && !isAdditional),
+              )
+              .map(
+                ({pkgName, installPath}) =>
+                  ({
+                    pkgName,
+                    installPath,
+                  }) as RunRuleManifest,
+              );
+            const ruleConfig = ruleOptions[rule.id];
+            const actor = spawn('lintMachine', {
+              input: {
+                fileManager,
+                rule,
+                ruleConfig,
+                parentRef: self,
+                lintManifests,
+              },
+              id,
+            });
+            return [id, monkeypatchActorLogger(actor, id)];
+          }),
+        );
+        return lintMachines;
+      },
     }),
   },
 }).createMachine({
@@ -324,7 +373,8 @@ export const PkgManagerMachine = setup({
     installManifests: [],
     runScriptManifests: [],
     abortController: new AbortController(),
-    scriptRunners: {},
+    scriptRunnerMachines: {},
+    lintMachines: {},
     setupComplete: false,
   }),
   initial: 'setup',

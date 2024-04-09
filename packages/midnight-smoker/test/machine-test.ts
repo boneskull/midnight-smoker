@@ -1,6 +1,10 @@
 import {BaseSmokerOptionsSchema} from '#options/options';
 import {PluginRegistry} from '#plugin';
 import {
+  ConsoleReporter,
+  JSONReporter,
+} from '@midnight-smoker/plugin-default/reporter';
+import {
   nullExecutor,
   nullPmDef,
   registerPlugin,
@@ -10,7 +14,7 @@ import {createActor, fromPromise} from 'xstate';
 import {type PkgManagerDefSpec} from '../src/component';
 import {SmokerEvent} from '../src/event';
 import {ControlMachine} from '../src/machine/controller/control-machine';
-import {type PMCtrlExternalEvents} from '../src/machine/controller/control-machine-events';
+import {type CtrlEmitted} from '../src/machine/controller/control-machine-events';
 import {
   PluginLoaderMachine,
   type LoadPkgManagersInput,
@@ -45,11 +49,8 @@ async function main() {
       // cheap way to clone a function
       api.defineExecutor(nullExecutor.bind({}), 'system');
       api.definePackageManager(nullPmDef, 'nullpm');
-      api.defineReporter({
-        name: 'console',
-        when: () => true,
-        description: 'null reporter',
-      });
+      api.defineReporter(ConsoleReporter);
+      api.defineReporter(JSONReporter);
     },
     name: '@midnight-smoker/plugin-default',
   });
@@ -63,7 +64,9 @@ async function main() {
       packOptions: {
         allWorkspaces: true,
       },
-      smokerOptions: BaseSmokerOptionsSchema.parse({reporter: ['console']}),
+      smokerOptions: BaseSmokerOptionsSchema.parse({
+        reporter: ['console', 'json'],
+      }),
     },
     id: 'main',
     logger: debug,
@@ -77,12 +80,13 @@ async function main() {
   m.start();
 
   const emitted = new Set<string>();
-  const listener = (evt: PMCtrlExternalEvents) => {
+  const listener = (evt: CtrlEmitted) => {
     debugEmit(evt.type);
     emitted.add(evt.type);
   };
 
   for (const event of Object.values(SmokerEvent)) {
+    // @ts-expect-error stuff
     m.on(event, listener);
   }
 
@@ -111,7 +115,7 @@ async function main() {
   m.send({type: 'RUN_SCRIPTS', scripts: ['build']});
   setTimeout(() => {
     m.send({type: 'HALT'});
-  }, 5);
+  }, 2000);
 }
 
 main().catch((err) => {

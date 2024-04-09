@@ -1,5 +1,10 @@
 import {type InstallError, type PackError, type PackParseError} from '#error';
-import {type InstallEvents, type PackEvents, type ScriptEvents} from '#event';
+import {
+  type InstallEvents,
+  type PackEvents,
+  type ScriptEvents,
+  type SmokerOnlyEvents,
+} from '#event';
 import {type PkgManager} from '#pkg-manager';
 import {
   type InstallManifest,
@@ -9,9 +14,10 @@ import {
   type ScriptError,
   type StaticPkgManagerSpec,
 } from '#schema';
-import {type Simplify} from 'type-fest';
+import {type Simplify, type ValueOf} from 'type-fest';
 import {type PMMOutput} from '../pkg-manager/pkg-manager-machine';
 import {type PluginLoaderOutput} from '../plugin-loader-machine';
+import {type RMOutput} from '../reporter-machine';
 import {
   type SRMOutputBailed,
   type SRMOutputError,
@@ -37,19 +43,27 @@ export type CtrlEvents =
   | CtrlRunScriptFailedEvent
   | CtrlRunScriptsEvent
   | CtrlWillRunScriptEvent
+  | CtrlReporterDoneEvent
   | CtrlWillRunScriptsEvent;
 
-type SourceEvents = InstallEvents & PackEvents & ScriptEvents;
+type SourceEvents = InstallEvents &
+  PackEvents &
+  ScriptEvents &
+  Pick<SmokerOnlyEvents, 'BeforeExit'>;
 
 export type CtrlExternalEventsMap = {
   [K in keyof SourceEvents]: SourceEvents[K] & {type: K};
 };
 
-export type CtrlEmitted = CtrlExternalEventsMap[keyof CtrlExternalEventsMap];
+export type CtrlEmitted = ValueOf<CtrlExternalEventsMap>;
 
 export type CtrlExternalEvent<K extends keyof CtrlExternalEventsMap> = Simplify<
   CtrlExternalEventsMap[K]
 >;
+
+export interface CtrlLintEvent {
+  type: 'LINT';
+}
 
 export interface CtrlDidRunScriptBailedEvent {
   output: SRMOutputBailed;
@@ -86,6 +100,11 @@ export interface CtrlLoadedEvent {
 export interface CtrlPkgManagerDoneEvent {
   output: PMMOutput;
   type: 'xstate.done.actor.pkgManager.*';
+}
+
+export interface CtrlReporterDoneEvent {
+  type: 'xstate.done.actor.reporter.*';
+  output: RMOutput;
 }
 
 export interface CtrlPkgManagerInstallOkEvent {

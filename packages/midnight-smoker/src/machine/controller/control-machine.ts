@@ -14,9 +14,11 @@ import {type Reporter} from '#reporter/reporter';
 import {
   type Executor,
   type InstallManifest,
+  type LintResult,
   type PackOptions,
   type RunScriptManifest,
   type RunScriptResult,
+  type SomeRule,
   type StaticPkgManagerSpec,
 } from '#schema';
 import {FileManager, type FileManagerOpts} from '#util/filemanager';
@@ -37,39 +39,20 @@ import {
 import * as MachineUtil from '../machine-util';
 import {
   PkgManagerMachine,
+  type PMMOutput,
+} from '../pkg-manager/pkg-manager-machine';
+import {
   PluginLoaderMachine,
-  cleanupActor,
   type PluginLoaderOutput,
-  type SRMOutput,
-  type SRMOutputResult,
-} from './control-machine-actors';
+} from '../plugin-loader-machine';
+import {ReporterMachine, type RMOutput} from '../reporter-machine';
+import {type SRMOutput, type SRMOutputResult} from '../script-runner-machine';
 import type * as Event from './control-machine-events';
 
-export type CtrlContext = Omit<
-  SetRequired<CtrlInput, 'cwd' | 'linger'>,
-  'defaultExecutorId' | 'systemExecutorId' | 'fileManagerOpts'
-> & {
-  pkgManagers: PkgManager[];
-  defaultExecutor: Executor;
-  systemExecutor: Executor;
-  fm: FileManager;
-  pkgManagerMachines: Record<string, ActorRefFrom<typeof PkgManagerMachine>>;
-
-  scripts?: string[];
-  // loader?: ActorRefFrom<typeof pkgManagerLoaderMachine>;
-  error?: Error;
-  currentScript?: number;
-  totalScripts?: number;
-  pluginLoaderMachines: Record<
-    string,
-    ActorRefFrom<typeof PluginLoaderMachine>
-  >;
-  runScriptResults?: RunScriptResult[];
-  reporters: Reporter[];
-  runScriptManifestsByPkgManager?: Record<string, RunScriptManifest[]>;
-  packIncomplete?: Set<string>;
-  installIncomplete?: Set<string>;
-};
+interface LintManifest {
+  pkgName: string;
+  installPath: string;
+}
 
 export interface CtrlInput {
   cwd?: string;
@@ -90,6 +73,36 @@ export interface CtrlInput {
 
   systemExecutorId?: string;
 }
+export type CtrlContext = Omit<
+  SetRequired<CtrlInput, 'cwd' | 'linger'>,
+  'defaultExecutorId' | 'systemExecutorId' | 'fileManagerOpts'
+> & {
+  pkgManagers: PkgManager[];
+  defaultExecutor: Executor;
+  systemExecutor: Executor;
+  fm: FileManager;
+  pkgManagerMachines: Record<string, ActorRefFrom<typeof PkgManagerMachine>>;
+
+  pluginLoaderMachines: Record<
+    string,
+    ActorRefFrom<typeof PluginLoaderMachine>
+  >;
+  reporterMachines: Record<string, ActorRefFrom<typeof ReporterMachine>>;
+  reporters: Reporter[];
+  rules: SomeRule[];
+  shouldLint: boolean;
+  // installManifests?: InstallManifest[];
+  scripts?: string[];
+  error?: Error;
+  currentScript?: number;
+  totalScripts?: number;
+  runScriptResults?: RunScriptResult[];
+  runScriptManifestsByPkgManager?: Record<string, RunScriptManifest[]>;
+  packIncomplete?: Set<string>;
+  installIncomplete?: Set<string>;
+  lintResults?: LintResult[];
+  lintManifests?: LintManifest[];
+};
 
 export type CtrlOutputOk = MachineUtil.MachineOutputOk;
 export type CtrlOutputError = MachineUtil.MachineOutputError;
@@ -105,11 +118,14 @@ export const ControlMachine = setup({
     output: {} as CtrlOutput,
   },
   actors: {
+    reporter: ReporterMachine,
     pkgManager: PkgManagerMachine,
     pluginLoader: PluginLoaderMachine,
-    cleanup: cleanupActor,
   },
   guards: {
+    didLint: ({context: {lintResults}}) => !lintResults,
+    didNotLint: not('didLint'),
+    shouldLint: ({context: {shouldLint}}) => shouldLint,
     isPackingComplete: ({context: {packIncomplete}}) =>
       Boolean(packIncomplete && packIncomplete.size === 0),
     isPackingIncomplete: not('isPackingComplete'),
@@ -142,6 +158,22 @@ export const ControlMachine = setup({
       !result.error && !result.skipped,
   },
   actions: {
+    // assignInstallManifests: assign({
+    //   installManifests: (
+    //     {context: {installManifests = []}},
+    //     newInstallManifests: InstallManifest[],
+    //   ) => [...installManifests, ...newInstallManifests],
+    // }),
+    cleanup: enqueueActions(
+      ({enqueue, context: {pkgManagerMachines, reporterMachines}}) => {
+        Object.values(pkgManagerMachines).forEach((pkgManagerMachine) => {
+          enqueue.sendTo(pkgManagerMachine, {type: 'HALT'});
+        });
+        Object.values(reporterMachines).forEach((reporterMachine) => {
+          enqueue.sendTo(reporterMachine, {type: 'HALT'});
+        });
+      },
+    ),
     markPackComplete: enqueueActions(
       ({
         enqueue,
@@ -193,6 +225,7 @@ export const ControlMachine = setup({
       error: ({context}, {error}: {error?: unknown}): Error | undefined =>
         error ? fromUnknownError(error) : context.error,
     }),
+    emitBeforeExit: emit({type: SmokerEvent.BeforeExit}),
     emitPackOk: emit(
       ({context: {pkgManagers}}): Event.CtrlExternalEvent<'PackOk'> => ({
         type: SmokerEvent.PackOk,
@@ -342,11 +375,12 @@ export const ControlMachine = setup({
         enqueue.assign({pkgManagerMachines: {}});
       },
     ),
-    haltPkgManagerMachines: enqueueActions(
-      ({enqueue, context: {pkgManagerMachines}}) => {
-        for (const machine of Object.values(pkgManagerMachines)) {
-          enqueue.sendTo(machine, {type: 'HALT'});
+    stopReporterMachines: enqueueActions(
+      ({enqueue, context: {reporterMachines}}) => {
+        for (const machine of Object.values(reporterMachines)) {
+          enqueue.stopChild(machine);
         }
+        enqueue.assign({reporterMachines: {}});
       },
     ),
     stopPluginLoaders: enqueueActions(
@@ -375,9 +409,6 @@ export const ControlMachine = setup({
 
         enqueue.assign({
           runScriptManifestsByPkgManager: manifestsBySpec,
-        });
-
-        enqueue.assign({
           totalScripts: total,
         });
 
@@ -508,9 +539,39 @@ export const ControlMachine = setup({
         return [...runScriptResults, runScriptResult];
       },
     }),
+    stopReporterMachine: enqueueActions(
+      (
+        {enqueue, context: {reporterMachines}},
+        {output: {id}}: {output: RMOutput},
+      ) => {
+        enqueue.stopChild(id);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const {[id]: _, ...rest} = reporterMachines;
+        enqueue.assign({
+          reporterMachines: rest,
+        });
+      },
+    ),
+    stopPkgManagerMachine: enqueueActions(
+      (
+        {enqueue, context: {pkgManagerMachines}},
+        {output: {id}}: {output: PMMOutput},
+      ) => {
+        enqueue.stopChild(id);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const {[id]: _, ...rest} = pkgManagerMachines;
+        enqueue.assign({
+          pkgManagerMachines: rest,
+        });
+      },
+    ),
     spawnPkgManagerMachines: assign({
       pkgManagerMachines: (
-        {self, context: {pkgManagers}, spawn},
+        {
+          self,
+          context: {fm: fileManager, pkgManagers, rules, smokerOptions},
+          spawn,
+        },
         {
           installIncomplete,
           packIncomplete,
@@ -521,10 +582,32 @@ export const ControlMachine = setup({
             const id = `pkgManager.${MachineUtil.makeId()}`;
             const actor = spawn('pkgManager', {
               id,
-              input: {pkgManager, index: index + 1, parentRef: self},
+              input: {
+                pkgManager,
+                fileManager,
+                index: index + 1,
+                parentRef: self,
+                rules,
+                ruleOptions: smokerOptions.rules,
+              },
             });
             packIncomplete.add(id);
             installIncomplete.add(id);
+            return [id, MachineUtil.monkeypatchActorLogger(actor, id)];
+          }),
+        ),
+    }),
+
+    spawnReporterMachines: assign({
+      reporterMachines: ({spawn, context: {reporters}, self}) =>
+        Object.fromEntries(
+          reporters.map((reporter) => {
+            const id = `reporter.${MachineUtil.makeId()}`;
+            const actor = spawn('reporter', {
+              id,
+              // @ts-expect-error https://github.com/statelyai/xstate/blob/main/packages/core/src/types.ts#L114 -- no TEmitted
+              input: {emitter: self, reporter},
+            });
             return [id, MachineUtil.monkeypatchActorLogger(actor, id)];
           }),
         ),
@@ -537,6 +620,10 @@ export const ControlMachine = setup({
       reporters: (_, output: PluginLoaderOutput) => {
         MachineUtil.assertMachineOutputOk(output);
         return output.reporters;
+      },
+      rules: (_, output: PluginLoaderOutput) => {
+        MachineUtil.assertMachineOutputOk(output);
+        return output.rules;
       },
     }),
     spawnPluginLoaders: assign({
@@ -588,20 +675,25 @@ export const ControlMachine = setup({
       smokerOptions,
       packOptions, // TODO: only use smokeroptions
     },
-  }) => ({
-    defaultExecutor: pluginRegistry.getExecutor(defaultExecutorId),
-    systemExecutor: pluginRegistry.getExecutor(systemExecutorId),
+  }): CtrlContext => ({
     desiredPkgManagers,
     pluginRegistry,
     cwd,
-    fm: new FileManager(fileManagerOpts),
+    smokerOptions,
+    packOptions,
     linger,
+
+    defaultExecutor: pluginRegistry.getExecutor(defaultExecutorId),
+    systemExecutor: pluginRegistry.getExecutor(systemExecutorId),
+    fm: new FileManager(fileManagerOpts),
+
+    shouldLint: false,
     pkgManagers: [],
     pkgManagerMachines: {},
     pluginLoaderMachines: {},
-    smokerOptions,
-    packOptions,
+    reporterMachines: {},
     reporters: [],
+    rules: [],
   }),
   initial: 'loading',
   on: {
@@ -614,25 +706,32 @@ export const ControlMachine = setup({
     },
 
     HALT: {
-      entry: [log('stopping...')],
+      actions: [log('stopping...')],
       target: '.done',
     },
 
-    'xstate.done.actor.pkgManager.*': [
+    LINT: {
+      guard: {type: 'didNotLint'},
+      actions: [assign({shouldLint: true}), log('will lint')],
+    },
+
+    'xstate.done.actor.reporter.*': [
       {
         guard: {
           type: 'isMachineOutputNotOk',
           params: ({event: {output}}) => output,
         },
-        actions: {
-          type: 'assignError',
-          params: ({event: {output}}) => {
-            MachineUtil.assertMachineOutputNotOk(output);
-            return {
-              error: output.error,
-            };
+        actions: [
+          {
+            type: 'assignError',
+            params: ({event: {output}}) => {
+              MachineUtil.assertMachineOutputNotOk(output);
+              return {
+                error: output.error,
+              };
+            },
           },
-        },
+        ],
         target: '.errored',
       },
       {
@@ -649,6 +748,45 @@ export const ControlMachine = setup({
             }) => `pkg manager machine ${id} exited gracefully`,
           ),
         ],
+      },
+      {actions: [{type: 'stopReporterMachine', params: ({event}) => event}]},
+    ],
+    'xstate.done.actor.pkgManager.*': [
+      {
+        guard: {
+          type: 'isMachineOutputNotOk',
+          params: ({event: {output}}) => output,
+        },
+        actions: [
+          {
+            type: 'assignError',
+            params: ({event: {output}}) => {
+              MachineUtil.assertMachineOutputNotOk(output);
+              return {
+                error: output.error,
+              };
+            },
+          },
+        ],
+        target: '.errored',
+      },
+      {
+        guard: {
+          type: 'isMachineOutputOk',
+          params: ({event: {output}}) => output,
+        },
+        actions: [
+          log(
+            ({
+              event: {
+                output: {id},
+              },
+            }) => `pkg manager machine ${id} exited gracefully`,
+          ),
+        ],
+      },
+      {
+        actions: [{type: 'stopPkgManagerMachine', params: ({event}) => event}],
       },
     ],
   },
@@ -721,6 +859,9 @@ export const ControlMachine = setup({
               ({context}) =>
                 `spawned ${context.pkgManagers.length} pkgManager machines`,
             ),
+            {
+              type: 'spawnReporterMachines',
+            },
             emit(
               ({
                 context: {pkgManagers, packOptions},
@@ -758,6 +899,10 @@ export const ControlMachine = setup({
           {
             guard: {type: 'isPackingIncomplete'},
             actions: [
+              // {
+              //   type: 'assignInstallManifests',
+              //   params: ({event: {installManifests}}) => installManifests,
+              // },
               {type: 'emitPkgManagerPackOk', params: ({event}) => event},
               {type: 'markPackComplete'},
             ],
@@ -800,26 +945,26 @@ export const ControlMachine = setup({
       exit: [assign({installIncomplete: undefined, packIncomplete: undefined})],
     },
     ready: {
-      enter: [log('ready for events')],
+      entry: [log('ready for events')],
       always: [
         {
           guard: and(['hasScripts', 'notHasRunScriptResults']),
           target: 'runningScripts',
-          actions: [
-            {
-              type: 'scriptsBegin',
-              params: ({context: {scripts}}) => ({scripts: scripts!}),
-            },
-          ],
         },
         {
-          guard: 'hasRunScriptResults',
-          actions: [log('scripts already run!')],
+          guard: {type: 'shouldLint'},
+          target: 'linting',
         },
       ],
     },
     runningScripts: {
-      entry: [log('running scripts...')],
+      entry: [
+        log('running scripts...'),
+        {
+          type: 'scriptsBegin',
+          params: ({context: {scripts}}) => ({scripts: scripts!}),
+        },
+      ],
       on: {
         WILL_RUN_SCRIPT: {
           actions: [{type: 'emitScriptBegin', params: ({event}) => event}],
@@ -871,43 +1016,18 @@ export const ControlMachine = setup({
         },
       },
     },
+    linting: {
+      entry: [log('linting...')],
+    },
     done: {
-      invoke: {
-        src: 'cleanup',
-        input: ({context: {pkgManagerMachines}}) => pkgManagerMachines,
-        onDone: [
-          {
-            target: 'errored',
-            guard: {type: 'hasError'},
-          },
-          {
-            target: 'complete',
-            guard: {type: 'notHasError'},
-          },
-        ],
-        onError: [
-          {
-            actions: [
-              log(
-                ({event: {error}}) =>
-                  `error cleaning up pkg manager machines: ${error}`,
-              ),
-            ],
-            target: 'errored',
-            guard: {type: 'hasError'},
-          },
-          {
-            actions: [
-              log(
-                ({event: {error}}) =>
-                  `error cleaning up pkg manager machines: ${error}`,
-              ),
-            ],
-            target: 'complete',
-            guard: {type: 'notHasError'},
-          },
-        ],
-      },
+      entry: [{type: 'emitBeforeExit'}, {type: 'cleanup'}],
+      always: [
+        {
+          guard: {type: 'notHasError'},
+          target: 'complete',
+        },
+        {guard: {type: 'hasError'}, target: 'errored'},
+      ],
     },
     errored: {
       entry: [log('error!')],
