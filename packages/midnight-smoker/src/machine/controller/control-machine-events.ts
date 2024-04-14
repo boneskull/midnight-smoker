@@ -1,55 +1,76 @@
 import {type InstallError, type PackError, type PackParseError} from '#error';
-import {
-  type InstallEvents,
-  type PackEvents,
-  type ScriptEvents,
-  type SmokerOnlyEvents,
-} from '#event';
 import {type PkgManager} from '#pkg-manager';
 import {
+  type InstallEventData,
   type InstallManifest,
-  type InstallResult,
+  type LintEventData,
+  type PackEventData,
   type PackOptions,
+  type PkgManagerLintBeginEventData,
+  type PkgManagerLintFailedEventData,
+  type PkgManagerLintOkEventData,
+  type PkgManagerRunScriptsBeginEventData,
+  type RuleBeginEventData,
+  type RuleFailedEventData,
+  type RuleOkEventData,
   type RunScriptManifest,
-  type ScriptError,
-  type StaticPkgManagerSpec,
+  type RunScriptResult,
+  type ScriptEventData,
+  type SmokerEventData,
 } from '#schema';
 import {type Simplify, type ValueOf} from 'type-fest';
-import {type PMMOutput} from '../pkg-manager/pkg-manager-machine';
+import {type InstallerMachineOutput} from '../installer/installer-machine';
+import {type PackerMachineOutput} from '../packer/packer-machine';
 import {type PluginLoaderOutput} from '../plugin-loader-machine';
-import {type RMOutput} from '../reporter-machine';
-import {
-  type SRMOutputBailed,
-  type SRMOutputError,
-  type SRMOutputResult,
-} from '../script-runner-machine';
+import {type ReporterMachineOutput} from '../reporter/reporter-machine';
+import {type RunnerMachineOutput} from '../runner/runner-machine';
 
 export type CtrlEvents =
-  | CtrlDidRunScriptBailedEvent
-  | CtrlDidRunScriptErrorEvent
-  | CtrlDidRunScriptResultEvent
-  | CtrlDidRunScriptsEvent
+  | CtrlRunScriptSkippedEvent
+  | CtrlRunScriptFailedEvent
+  | CtrlRunScriptOkEvent
+  | CtrlRunScriptsOkEvent
   | CtrlHaltEvent
   | CtrlInitEvent
   | CtrlLoadedEvent
-  | CtrlPkgManagerDoneEvent
   | CtrlPkgManagerInstallFailedEvent
   | CtrlPkgManagerInstallOkEvent
   | CtrlPkgManagerPackFailedEvent
   | CtrlPkgManagerPackOkEvent
-  | CtrlPkgManagerWillInstallEvent
-  | CtrlPkgManagerWillPackEvent
+  | CtrlPkgManagerInstallBeginEvent
+  | CtrlPkgManagerPackBeginEvent
   | CtrlPluginLoaderDoneEvent
-  | CtrlRunScriptFailedEvent
   | CtrlRunScriptsEvent
-  | CtrlWillRunScriptEvent
+  | CtrlRunScriptBeginEvent
   | CtrlReporterDoneEvent
-  | CtrlWillRunScriptsEvent;
+  | CtrlRunScriptsBeginEvent
+  | CtrlRuleFailedEvent
+  | CtrlRuleOkEvent
+  | CtrlSetupEvent
+  | CtrlInstallBeginEvent
+  | CtrlPackBeginEvent
+  | CtrlInstallerMachineDoneEvent
+  | CtrlPackerMachineDoneEvent
+  | CtrlPkgManagerRunScriptsBeginEvent
+  | CtrlPkgManagerRunScriptsOkEvent
+  | CtrlPkgManagerRunScriptsFailedEvent
+  | CtrlLintOkEvent
+  | CtrlLintFailedEvent
+  | CtrlLintBeginEvent
+  | CtrlRuleErrorEvent
+  | CtrlPkgManagerLintBeginEvent
+  | CtrlPkgManagerLintOkEvent
+  | CtrlPkgManagerLintFailedEvent
+  | CtrlRunnerMachineDoneEvent;
 
-type SourceEvents = InstallEvents &
-  PackEvents &
-  ScriptEvents &
-  Pick<SmokerOnlyEvents, 'BeforeExit'>;
+type SourceEvents = InstallEventData &
+  PackEventData &
+  ScriptEventData &
+  LintEventData &
+  Pick<
+    SmokerEventData,
+    'BeforeExit' | 'SmokeBegin' | 'SmokeOk' | 'SmokeFailed'
+  >;
 
 export type CtrlExternalEventsMap = {
   [K in keyof SourceEvents]: SourceEvents[K] & {type: K};
@@ -61,27 +82,63 @@ export type CtrlExternalEvent<K extends keyof CtrlExternalEventsMap> = Simplify<
   CtrlExternalEventsMap[K]
 >;
 
+export type ComputedPkgManagerRunScriptsFields =
+  | 'totalPkgManagers'
+  | 'totalUniqueScripts'
+  | 'totalUniquePkgs';
+
+export interface CtrlPkgManagerRunScriptsBeginEvent
+  extends Omit<
+    PkgManagerRunScriptsBeginEventData,
+    ComputedPkgManagerRunScriptsFields
+  > {
+  type: 'PKG_MANAGER_RUN_SCRIPTS_BEGIN';
+}
+
 export interface CtrlLintEvent {
   type: 'LINT';
 }
 
-export interface CtrlDidRunScriptBailedEvent {
-  output: SRMOutputBailed;
-  type: 'DID_RUN_SCRIPT_BAILED';
+export interface CtrlPackBeginEvent {
+  type: 'PACK_BEGIN';
 }
 
-export interface CtrlDidRunScriptErrorEvent {
-  output: SRMOutputError;
-  type: 'DID_RUN_SCRIPT_ERROR';
+export interface CtrlInstallBeginEvent {
+  type: 'INSTALL_BEGIN';
 }
 
-export interface CtrlDidRunScriptResultEvent {
-  output: SRMOutputResult;
-  type: 'DID_RUN_SCRIPT_RESULT';
+export interface CtrlRunScriptEventBase {
+  pkgManagerIndex: number;
+  runScriptManifest: RunScriptManifest;
+  scriptIndex: number;
+  pkgManager: PkgManager;
 }
 
-export interface CtrlDidRunScriptsEvent {
-  type: 'DID_RUN_SCRIPTS';
+export interface CtrlRunScriptSkippedEvent extends CtrlRunScriptEventBase {
+  type: 'RUN_SCRIPT_SKIPPED';
+  result: RunScriptResult;
+}
+
+export interface CtrlRunScriptFailedEvent extends CtrlRunScriptEventBase {
+  type: 'RUN_SCRIPT_FAILED';
+  result: RunScriptResult;
+}
+
+export interface CtrlRunScriptOkEvent extends CtrlRunScriptEventBase {
+  type: 'RUN_SCRIPT_OK';
+  result: RunScriptResult;
+}
+
+export interface CtrlRunScriptsBeginEvent {
+  type: 'RUN_SCRIPTS_BEGIN';
+}
+
+export interface CtrlRunScriptsOkEvent {
+  type: 'RUN_SCRIPTS_OK';
+}
+
+export interface CtrlRunScriptsFailedEvent {
+  type: 'RUN_SCRIPTS_FAILED';
 }
 
 export interface CtrlHaltEvent {
@@ -97,20 +154,15 @@ export interface CtrlLoadedEvent {
   type: 'LOADED';
 }
 
-export interface CtrlPkgManagerDoneEvent {
-  output: PMMOutput;
-  type: 'xstate.done.actor.pkgManager.*';
-}
-
 export interface CtrlReporterDoneEvent {
-  type: 'xstate.done.actor.reporter.*';
-  output: RMOutput;
+  type: 'xstate.done.actor.ReporterMachine.*';
+  output: ReporterMachineOutput;
 }
 
 export interface CtrlPkgManagerInstallOkEvent {
   index: number;
-  installResult: InstallResult;
-  pkgManager: StaticPkgManagerSpec;
+  installManifests: InstallManifest[];
+  pkgManager: PkgManager;
   type: 'PKG_MANAGER_INSTALL_OK';
   sender: string;
 }
@@ -118,51 +170,71 @@ export interface CtrlPkgManagerInstallOkEvent {
 export interface CtrlPkgManagerInstallFailedEvent {
   error: InstallError;
   index: number;
-  pkgManager: StaticPkgManagerSpec;
+  pkgManager: PkgManager;
   type: 'PKG_MANAGER_INSTALL_FAILED';
   sender: string;
+  installManifests: InstallManifest[];
 }
 
 export interface CtrlPkgManagerPackFailedEvent {
   error: PackError | PackParseError;
   index: number;
-  pkgManager: StaticPkgManagerSpec;
+  pkgManager: PkgManager;
   type: 'PKG_MANAGER_PACK_FAILED';
   sender: string;
+}
+
+export interface CtrlSetupEvent {
+  type: 'SETUP';
+  pkgManager: PkgManager;
 }
 
 export interface CtrlPkgManagerPackOkEvent {
   index: number;
   installManifests: InstallManifest[];
-  pkgManager: StaticPkgManagerSpec;
+  pkgManager: PkgManager;
   type: 'PKG_MANAGER_PACK_OK';
 
   sender: string;
 }
 
-export interface CtrlPkgManagerWillInstallEvent {
+export interface CtrlPkgManagerInstallBeginEvent {
   index: number;
-  pkgManager: StaticPkgManagerSpec;
-  type: 'PKG_MANAGER_INSTALL';
+  pkgManager: PkgManager;
+  installManifests: InstallManifest[];
+  type: 'PKG_MANAGER_INSTALL_BEGIN';
+  sender: string;
 }
 
-export interface CtrlPkgManagerWillPackEvent extends PackOptions {
+export interface CtrlPkgManagerPackBeginEvent extends PackOptions {
   index: number;
-  pkgManager: StaticPkgManagerSpec;
-  type: 'PKG_MANAGER_PACK';
+  pkgManager: PkgManager;
+  sender: string;
+  type: 'PKG_MANAGER_PACK_BEGIN';
 }
 
 export interface CtrlPluginLoaderDoneEvent {
   output: PluginLoaderOutput;
-  type: 'xstate.done.actor.pluginLoader.*';
+  type: 'xstate.done.actor.PluginLoader.*';
 }
 
-export interface CtrlRunScriptFailedEvent {
-  current: number;
-  error: ScriptError;
-  runScriptManifest: RunScriptManifest;
-  total: number;
-  type: 'RUN_SCRIPT_FAILED';
+export interface CtrlInstallerMachineDoneEvent {
+  type: 'xstate.done.actor.InstallerMachine';
+  output: InstallerMachineOutput;
+}
+
+export interface CtrlPackerMachineDoneEvent {
+  type: 'xstate.done.actor.PackerMachine';
+  output: PackerMachineOutput;
+}
+
+export interface CtrlRunnerMachineDoneEvent {
+  type: 'xstate.done.actor.RunnerMachine.*';
+  output: RunnerMachineOutput;
+}
+
+export interface CtrlRunScriptBeginEvent extends CtrlRunScriptEventBase {
+  type: 'RUN_SCRIPT_BEGIN';
 }
 
 export interface CtrlRunScriptsEvent {
@@ -170,15 +242,59 @@ export interface CtrlRunScriptsEvent {
   type: 'RUN_SCRIPTS';
 }
 
-export interface CtrlWillRunScriptEvent {
-  pkgManagerIndex: number;
-  runScriptManifest: RunScriptManifest;
-  scriptIndex: number;
-  type: 'WILL_RUN_SCRIPT';
+export interface CtrlPkgManagerRunScriptsOkEvent {
+  type: 'PKG_MANAGER_RUN_SCRIPTS_OK';
+  sender: string;
 }
 
-export interface CtrlWillRunScriptsEvent {
-  pkgManagers: PkgManager[];
-  scripts: string[];
-  type: 'WILL_RUN_SCRIPTS';
+export interface CtrlPkgManagerRunScriptsFailedEvent {
+  type: 'PKG_MANAGER_RUN_SCRIPTS_FAILED';
+  sender: string;
+}
+
+export interface CtrlRuleFailedEvent extends RuleFailedEventData {
+  type: 'RULE_FAILED';
+}
+
+export interface CtrlRuleOkEvent extends RuleOkEventData {
+  type: 'RULE_OK';
+}
+
+export interface CtrlRuleBeginEvent extends RuleBeginEventData {
+  type: 'RULE_BEGIN';
+}
+
+export interface CtrlLintOkEvent {
+  type: 'LINT_OK';
+}
+
+export type ComputedPkgManagerLintFields =
+  | 'totalPkgManagers'
+  | 'totalRules'
+  | 'totalPkgManagerChecks';
+
+export interface CtrlPkgManagerLintBeginEvent
+  extends Omit<PkgManagerLintBeginEventData, ComputedPkgManagerLintFields> {
+  type: 'PKG_MANAGER_LINT_BEGIN';
+}
+
+export interface CtrlPkgManagerLintOkEvent
+  extends Omit<PkgManagerLintOkEventData, ComputedPkgManagerLintFields> {
+  type: 'PKG_MANAGER_LINT_OK';
+}
+export interface CtrlPkgManagerLintFailedEvent
+  extends Omit<PkgManagerLintFailedEventData, ComputedPkgManagerLintFields> {
+  type: 'PKG_MANAGER_LINT_FAILED';
+}
+
+export interface CtrlLintFailedEvent {
+  type: 'LINT_FAILED';
+}
+
+export interface CtrlLintBeginEvent {
+  type: 'LINT_BEGIN';
+}
+
+export interface CtrlRuleErrorEvent {
+  type: 'RULE_ERROR';
 }

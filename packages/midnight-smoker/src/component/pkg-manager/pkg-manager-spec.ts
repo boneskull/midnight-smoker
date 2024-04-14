@@ -225,7 +225,7 @@ export class PkgManagerSpec {
    * @returns A JSON representation of this {@link PkgManagerSpec}
    */
   public toJSON(): StaticPkgManagerSpec {
-    return {...this};
+    return {...this, spec: this.toString()};
   }
 
   public toString() {

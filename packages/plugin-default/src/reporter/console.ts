@@ -9,17 +9,18 @@ import {
   white,
   yellow,
 } from 'chalk';
+import Spinnies from 'dreidels';
 import {isError} from 'lodash';
 import {error, warning} from 'log-symbols';
 import {
-  type RunRuleFailedEventData,
-  type ScriptFailedEventData,
+  type RuleFailedEventData,
+  type RunScriptFailedEventData,
 } from 'midnight-smoker/event';
 import {isBlessedPlugin} from 'midnight-smoker/plugin/blessed';
 import {type ReporterDef} from 'midnight-smoker/reporter';
 import {RuleSeverities, type StaticRuleIssue} from 'midnight-smoker/rule';
-import ora, {type Ora} from 'ora';
 import pluralize from 'pluralize';
+import {type WriteStream} from 'tty';
 
 /**
  * Mapping of single-digit integers to English words
@@ -36,6 +37,8 @@ const NUM_WORDS = new Map([
   [8, 'eight'],
   [9, 'nine'],
 ]);
+
+const ELLIPSIS = '…';
 
 /**
  * Converts a number to an English word, or returns the number as a string if it
@@ -74,18 +77,30 @@ function nameAndVersion(name: string, version?: string) {
 }
 
 type ConsoleReporterContext = {
-  spinner: Ora;
-  scriptFailedEvents: ScriptFailedEventData[];
-  ruleFailedEvents: RunRuleFailedEventData[];
+  spinnies: Spinnies;
+  scriptFailedEvents: RunScriptFailedEventData[];
+  ruleFailedEvents: RuleFailedEventData[];
 };
+
+function currentOfTotal(current: number, total: number) {
+  return `${current}/${total}`;
+}
 
 export const ConsoleReporter: ReporterDef<ConsoleReporterContext> = {
   name: 'console',
   description: 'Default console reporter (for humans)',
   setup(ctx) {
-    ctx.spinner = ora({stream: ctx.stderr});
+    ctx.spinnies = new Spinnies({
+      stream: ctx.stderr as WriteStream,
+      spinnerColor: 'blueBright',
+      succeedColor: 'white',
+      infoColor: 'white',
+    });
     ctx.scriptFailedEvents = [];
     ctx.ruleFailedEvents = [];
+  },
+  teardown(ctx) {
+    ctx.spinnies.stopAll();
   },
   onSmokeBegin(ctx, {plugins}) {
     console.error(
@@ -105,7 +120,7 @@ export const ConsoleReporter: ReporterDef<ConsoleReporterContext> = {
       );
     }
   },
-  onPackBegin({opts, spinner}) {
+  onPackBegin({opts, spinnies}) {
     let what: string;
     if (opts.workspace.length) {
       what = plural('workspace', opts.workspace.length, true);
@@ -117,89 +132,162 @@ export const ConsoleReporter: ReporterDef<ConsoleReporterContext> = {
     } else {
       what = 'current project';
     }
-    spinner.start(`Packing ${what}…`);
+    const text = `Packing ${what}${ELLIPSIS}`;
+
+    spinnies.add('pack', {text});
   },
-  onPackOk({spinner}, {uniquePkgs, pkgManagers}) {
-    let msg = `Packed ${plural('package', uniquePkgs.length, true)} using `;
-    if (pkgManagers.length > 1) {
-      msg += `${plural('package manager', pkgManagers.length, true)}`;
-    } else {
-      const pkgManager = pkgManagers[0];
-      msg += `${nameAndVersion(
-        green(pkgManager.pkgManager),
-        pkgManager.version,
-      )}`;
-    }
-    msg += '…';
-    spinner.succeed(msg);
+  onPkgManagerPackBegin(
+    {spinnies},
+    {pkgManager, currentPkgManager: current, totalPkgManagers: total},
+  ) {
+    const text = `${nameAndVersion(
+      green(pkgManager.pkgManager),
+      pkgManager.version,
+    )} (${currentOfTotal(current, total)}) packing${ELLIPSIS}`;
+
+    spinnies.add(`packing-${pkgManager.spec}`, {
+      indent: 2,
+      text,
+    });
   },
-  onPackFailed({spinner, opts}, {error: err}) {
-    spinner.fail(err.format(opts.verbose));
+  onPkgManagerPackOk(
+    {spinnies},
+    {
+      pkgManager,
+      manifests,
+      currentPkgManager: current,
+      totalPkgManagers: total,
+    },
+  ) {
+    const text = `${nameAndVersion(
+      green(pkgManager.pkgManager),
+      pkgManager.version,
+    )} (${currentOfTotal(current, total)}) packed ${plural(
+      'packages',
+      manifests.length,
+      true,
+    )}`;
+
+    spinnies.get(`packing-${pkgManager.spec}`).update({
+      text,
+      status: 'success',
+    });
   },
-  onInstallBegin({spinner}, {uniquePkgs, pkgManagers, additionalDeps}) {
-    let msg = `Installing ${plural(
+  onPkgManagerPackFailed({spinnies}, {pkgManager}) {
+    spinnies.get(`packing-${pkgManager.spec}`).update({status: 'fail'});
+  },
+  onPackOk({spinnies}, {uniquePkgs, pkgManagers}) {
+    const text = `Packing complete; ${plural(
+      'package manager',
+      pkgManagers.length,
+      true,
+    )} packed ${plural('unique package', uniquePkgs.length, true)}`;
+
+    spinnies.get('pack').update({text, status: 'success'});
+  },
+  onPackFailed({spinnies, opts}, {error: err}) {
+    const text = err.format(opts.verbose);
+
+    spinnies.get('pack').update({text, status: 'fail'});
+  },
+  onInstallBegin({spinnies}, {uniquePkgs, pkgManagers, additionalDeps}) {
+    let text = `Installing ${plural(
       'package',
       uniquePkgs.length,
       true,
     )} from tarball`;
     if (additionalDeps.length) {
-      msg += ` with ${plural(
+      text += ` with ${plural(
         'additional dependency',
         additionalDeps.length,
         true,
       )}`;
     }
-    if (pkgManagers.length > 1) {
-      msg += ` using ${plural('package manager', pkgManagers.length, true)}`;
-    } else {
-      const pkgManager = pkgManagers[0];
-      msg += ` using ${nameAndVersion(
-        green(pkgManager.pkgManager),
-        pkgManager.version,
-      )}`;
-    }
-    msg += '…';
-    spinner.start(msg);
-  },
-  onInstallFailed({spinner, opts}, {error: err}) {
-    spinner.fail(err.format(opts.verbose));
-  },
-  onInstallOk({spinner}, {uniquePkgs, pkgManagers}) {
-    let msg = `Installed ${plural(
-      'package',
-      uniquePkgs.length,
+    text += ` using ${plural(
+      'package manager',
+      pkgManagers.length,
       true,
-    )} from tarball`;
-    if (pkgManagers.length > 1) {
-      msg += ` using ${plural('package manager', pkgManagers.length, true)}`;
-    } else {
-      const pkgManager = pkgManagers[0];
-      msg += ` using ${nameAndVersion(
-        green(pkgManager.pkgManager),
-        pkgManager.version,
-      )}`;
-    }
-    spinner.succeed(msg);
+    )}${ELLIPSIS}`;
+    spinnies.add('installing', {text});
   },
-  onRunRulesBegin({spinner}, {total}) {
-    spinner.start(`Running 0/${total} rules…`);
+  onPkgManagerInstallBegin(
+    {spinnies},
+    {pkgManager, currentPkgManager: current, totalPkgManagers: total},
+  ) {
+    const text = `${nameAndVersion(
+      green(pkgManager.pkgManager),
+      pkgManager.version,
+    )} (${currentOfTotal(current, total)}) installing${ELLIPSIS}`;
+
+    spinnies.add(`installing-${pkgManager.spec}`, {
+      indent: 2,
+      text,
+    });
   },
-  onRunRuleBegin({spinner}, {current, total}) {
-    spinner.text = `Running rule ${current}/${total}…`;
+  onPkgManagerInstallFailed({spinnies}, {pkgManager}) {
+    spinnies.get(`installing-${pkgManager.spec}`).update({status: 'fail'});
   },
-  onRunRuleFailed(ctx, evt) {
+  onPkgManagerInstallOk(
+    {spinnies},
+    {
+      pkgManager,
+      currentPkgManager: current,
+      totalPkgManagers: total,
+      manifests,
+    },
+  ) {
+    const text = `${nameAndVersion(
+      green(pkgManager.pkgManager),
+      pkgManager.version,
+    )} (${currentOfTotal(current, total)}) installed ${plural(
+      'packages',
+      manifests.length,
+      true,
+    )}`;
+
+    spinnies.get(`installing-${pkgManager.spec}`).update({
+      text,
+      status: 'success',
+    });
+  },
+  onInstallFailed({spinnies, opts}, {error: err}) {
+    spinnies
+      .get('installing')
+      .update({text: err.format(opts.verbose), status: 'fail'});
+  },
+  onInstallOk({spinnies}, {uniquePkgs, pkgManagers}) {
+    const text = `Installing complete; ${plural(
+      'package manager',
+      pkgManagers.length,
+      true,
+    )} installed ${plural('unique package', uniquePkgs.length, true)}`;
+
+    spinnies.get('installing').update({text, status: 'success'});
+  },
+  onLintBegin({spinnies}, {totalRules: total}) {
+    spinnies.add('lint', {text: `Running 0/${total} rules…`});
+  },
+  onRuleBegin({spinnies}, {current, total}) {
+    spinnies.get('lint').update({text: `Running rule ${current}/${total}…`});
+  },
+  onRuleFailed(ctx, evt) {
     ctx.ruleFailedEvents.push(evt);
   },
-  onRunRulesOk({spinner}, {total}) {
-    spinner.succeed(`Successfully executed ${plural('rule', total, true)}`);
+  onLintOk({spinnies}, {totalRules: total}) {
+    spinnies.get('lint').update({
+      text: `Successfully executed ${plural('rule', total, true)}`,
+      status: 'success',
+    });
   },
-  onRunRulesFailed(
-    {spinner, ruleFailedEvents: ruleFailedEvts},
-    {total, failed},
+  onLintFailed(
+    {spinnies, ruleFailedEvents: ruleFailedEvts},
+    {totalRules: total, failed},
   ) {
-    spinner.fail(
-      `${pluralize('rule', failed.length, true)} of ${total} failed`,
-    );
+    const lintSpinnie = spinnies.get('lint');
+    lintSpinnie.update({
+      text: `${pluralize('rule', failed.length, true)} of ${total} failed`,
+      status: 'fail',
+    });
 
     // TODO move this into a format() function for these error kinds
     const failedByPackage = ruleFailedEvts
@@ -233,47 +321,62 @@ export const ConsoleReporter: ReporterDef<ConsoleReporterContext> = {
       }
       const msg = lines.join('\n');
       if (isError) {
-        spinner.fail(msg);
+        lintSpinnie.update({status: 'fail', text: msg});
       } else {
-        spinner.warn(msg);
+        lintSpinnie.update({status: 'warn', text: msg});
       }
     }
   },
-  onRuleError({spinner}, {error: err}) {
-    spinner.fail(err.message);
+  onRuleError({spinnies}, {error: err}) {
+    spinnies.get('lint').update({text: err.message, status: 'fail'});
   },
-  onRunScriptsBegin({spinner}, {total}) {
-    spinner.start(`Running 0/${total} scripts…`);
+  onRunScriptsBegin({spinnies}, {totalUniqueScripts: total}) {
+    spinnies.add('scripts', {text: `Running 0/${total} scripts${ELLIPSIS}`});
   },
-  onRunScriptBegin({spinner}, {current, total}) {
-    spinner.text = `Running script ${current}/${total}…`;
+  onRunScriptBegin(
+    {spinnies},
+    {pkgManager, currentScript: current, totalUniqueScripts: total},
+  ) {
+    const text = `${nameAndVersion(
+      green(pkgManager.pkgManager),
+      pkgManager.version,
+    )} running script ${current}/${total}${ELLIPSIS}`;
+    spinnies.get('scripts').update({text});
   },
   onRunScriptFailed(ctx, evt) {
     ctx.scriptFailedEvents.push(evt);
   },
-  onRunScriptsOk({spinner}, {total}) {
-    spinner.succeed(`Successfully ran ${plural('script', total, true)}`);
+  onRunScriptsOk({spinnies}, {totalUniqueScripts: total}) {
+    spinnies.get('scripts').update({
+      text: `Successfully ran ${plural('script', total, true)}`,
+      status: 'success',
+    });
   },
   onRunScriptsFailed(
-    {spinner, opts, scriptFailedEvents: scriptFailedEvts},
-    {total, failed: failures},
+    {spinnies, opts, scriptFailedEvents: scriptFailedEvts},
+    {totalUniqueScripts: total, failed: failures},
   ) {
-    spinner.fail(`${failures} of ${total} ${plural('script', total)} failed`);
+    const scriptSpinnie = spinnies.get('scripts');
+    scriptSpinnie.update({
+      text: `${plural('script', failures, true)} of ${total} failed`,
+      status: 'fail',
+    });
     for (const evt of scriptFailedEvts) {
       // TODO: this is not verbose enough
       const details = evt.error.format(opts.verbose);
-      spinner.warn(
-        `Script execution failure details for package ${bold(
+      scriptSpinnie.update({
+        text: `Script execution failure details for package ${bold(
           greenBright(evt.pkgName),
         )}:\n- ${details}\n`,
-      );
+        status: 'warn',
+      });
     }
   },
-  onSmokeFailed({spinner}, {error: err}) {
-    spinner.fail(err.message);
+  onSmokeFailed({spinnies}, {error: err}) {
+    // spinnies.fail(err.message);
   },
-  onSmokeOk({spinner}) {
-    spinner.succeed('Lovey-dovey! 💖');
+  onSmokeOk({spinnies}) {
+    // spinnies.succeed('Lovey-dovey! 💖');
   },
   onLingered(_, {directories: dirs}) {
     console.error(

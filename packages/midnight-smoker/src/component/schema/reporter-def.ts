@@ -6,9 +6,9 @@
  */
 import {
   InstallEvent,
+  LintEvent,
   PackEvent,
-  RuleEvent,
-  RunScriptEvent,
+  ScriptEvent,
   SmokerEvent,
 } from '#event/event-constants';
 import {BaseSmokerOptionsSchema} from '#options/options';
@@ -100,6 +100,15 @@ export const PackEventListenerSchemas = {
   [`on${PackEvent.PackOk}` as const]: eventListenerSchema(
     PackEvents.PackOkEventDataSchema,
   ),
+  [`on${PackEvent.PkgManagerPackBegin}` as const]: eventListenerSchema(
+    PackEvents.PkgManagerPackBeginEventDataSchema,
+  ),
+  [`on${PackEvent.PkgManagerPackOk}` as const]: eventListenerSchema(
+    PackEvents.PkgManagerPackOkEventDataSchema,
+  ),
+  [`on${PackEvent.PkgManagerPackFailed}` as const]: eventListenerSchema(
+    PackEvents.PkgManagerPackFailedEventDataSchema,
+  ),
 } as const;
 export const InstallEventListenerSchemas = {
   [`on${InstallEvent.InstallBegin}` as const]: eventListenerSchema(
@@ -111,49 +120,58 @@ export const InstallEventListenerSchemas = {
   [`on${InstallEvent.InstallOk}` as const]: eventListenerSchema(
     InstallEvents.InstallOkEventDataSchema,
   ),
+  [`on${InstallEvent.PkgManagerInstallBegin}` as const]: eventListenerSchema(
+    InstallEvents.PkgManagerInstallBeginEventDataSchema,
+  ),
+  [`on${InstallEvent.PkgManagerInstallOk}` as const]: eventListenerSchema(
+    InstallEvents.PkgManagerInstallOkEventDataSchema,
+  ),
+  [`on${InstallEvent.PkgManagerInstallFailed}` as const]: eventListenerSchema(
+    InstallEvents.PkgManagerInstallFailedEventDataSchema,
+  ),
 } as const;
 
 export const RuleEventListenerSchemas = {
-  [`on${RuleEvent.RunRulesBegin}` as const]: eventListenerSchema(
-    LintEvents.RunRulesBeginEventDataSchema,
+  [`on${LintEvent.LintBegin}` as const]: eventListenerSchema(
+    LintEvents.LintBeginEventDataSchema,
   ),
-  [`on${RuleEvent.RunRuleBegin}` as const]: eventListenerSchema(
+  [`on${LintEvent.RuleBegin}` as const]: eventListenerSchema(
     LintEvents.RuleBeginEventDataSchema,
   ),
-  [`on${RuleEvent.RunRuleOk}` as const]: eventListenerSchema(
+  [`on${LintEvent.RuleOk}` as const]: eventListenerSchema(
     LintEvents.RuleOkEventDataSchema,
   ),
-  [`on${RuleEvent.RunRuleFailed}` as const]: eventListenerSchema(
+  [`on${LintEvent.RuleFailed}` as const]: eventListenerSchema(
     LintEvents.RuleFailedEventDataSchema,
   ),
-  [`on${RuleEvent.RunRulesFailed}` as const]: eventListenerSchema(
-    LintEvents.RunRulesFailedEventDataSchema,
+  [`on${LintEvent.LintFailed}` as const]: eventListenerSchema(
+    LintEvents.LintFailedEventDataSchema,
   ),
-  [`on${RuleEvent.RunRulesOk}` as const]: eventListenerSchema(
-    LintEvents.RunRulesOkEventDataSchema,
+  [`on${LintEvent.LintOk}` as const]: eventListenerSchema(
+    LintEvents.LintOkEventDataSchema,
   ),
-  [`on${RuleEvent.RuleError}` as const]: eventListenerSchema(
+  [`on${LintEvent.RuleError}` as const]: eventListenerSchema(
     LintEvents.RuleErrorEventDataSchema,
   ),
 } as const;
 
 export const ScriptEventListenerSchemas = {
-  [`on${RunScriptEvent.RunScriptBegin}` as const]: eventListenerSchema(
-    ScriptEvents.ScriptBeginEventDataSchema,
+  [`on${ScriptEvent.RunScriptBegin}` as const]: eventListenerSchema(
+    ScriptEvents.PkgManagerRunScriptsBeginEventDataSchema,
   ),
-  [`on${RunScriptEvent.RunScriptOk}` as const]: eventListenerSchema(
-    ScriptEvents.ScriptOkEventDataSchema,
+  [`on${ScriptEvent.RunScriptOk}` as const]: eventListenerSchema(
+    ScriptEvents.PkgManagerRunScriptsOkEventDataSchema,
   ),
-  [`on${RunScriptEvent.RunScriptFailed}` as const]: eventListenerSchema(
-    ScriptEvents.ScriptFailedEventDataSchema,
+  [`on${ScriptEvent.RunScriptFailed}` as const]: eventListenerSchema(
+    ScriptEvents.PkgManagerRunScriptFailedEventDataSchema,
   ),
-  [`on${RunScriptEvent.RunScriptsBegin}` as const]: eventListenerSchema(
+  [`on${ScriptEvent.RunScriptsBegin}` as const]: eventListenerSchema(
     ScriptEvents.RunScriptsEventDataSchema,
   ),
-  [`on${RunScriptEvent.RunScriptsOk}` as const]: eventListenerSchema(
+  [`on${ScriptEvent.RunScriptsOk}` as const]: eventListenerSchema(
     ScriptEvents.RunScriptsEndEventDataSchema,
   ),
-  [`on${RunScriptEvent.RunScriptsFailed}` as const]: eventListenerSchema(
+  [`on${ScriptEvent.RunScriptsFailed}` as const]: eventListenerSchema(
     ScriptEvents.RunScriptsEndEventDataSchema,
   ),
 } as const;

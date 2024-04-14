@@ -7,4 +7,5 @@ export const StaticPkgManagerSpecSchema = z.object({
   pkgManager: NonEmptyStringSchema,
   version: NonEmptyStringSchema,
   isSystem: z.boolean(),
+  spec: NonEmptyStringSchema,
 });

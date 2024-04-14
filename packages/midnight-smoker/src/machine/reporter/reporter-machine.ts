@@ -4,78 +4,45 @@ import {type SomeReporter} from '#reporter/reporter';
 import {isFunction, pickBy} from 'lodash';
 import {
   assign,
-  fromPromise,
   log,
   not,
   setup,
   type ActorRef,
   type Subscription,
 } from 'xstate';
-import {type CtrlEmitted} from './controller/control-machine-events';
-import {type MachineOutputError, type MachineOutputOk} from './machine-util';
+import {type CtrlEmitted} from '../controller/control-machine-events';
+import {type MachineOutputError, type MachineOutputOk} from '../machine-util';
+import {
+  drainQueue,
+  setupReporter,
+  teardownReporter,
+} from './reporter-machine-actors';
+import {type ReporterMachineEvents} from './reporter-machine-events';
 
-export interface RMInput {
-  reporter: SomeReporter;
-  emitter: ActorRef<any, any, CtrlEmitted>;
-}
+export type ReporterMachineOutput =
+  | ReporterMachineOutputOk
+  | ReporterMachineOutputError;
+export type ReporterMachineOutputError = MachineOutputError;
+export type ReporterMachineOutputOk = MachineOutputOk;
 
-export interface RMContext extends RMInput {
-  listeners: Partial<ReporterListeners>;
-  subscriptions: Subscription[];
-  queue: CtrlEmitted[];
+export interface ReporterMachineContext extends ReporterMachineInput {
   error?: Error;
+  listeners: Partial<ReporterListeners>;
+  queue: CtrlEmitted[];
+  subscriptions: Subscription[];
 }
 
-export type RMOutputOk = MachineOutputOk;
-export type RMOutputError = MachineOutputError;
-
-export type RMOutput = RMOutputOk | RMOutputError;
-
-export const setupReporter = fromPromise<void, SomeReporter>(
-  async ({input: reporter}): Promise<void> => {
-    await reporter.setup();
-  },
-);
-
-export const teardownReporter = fromPromise<void, SomeReporter>(
-  async ({input: reporter}): Promise<void> => {
-    await reporter.teardown();
-  },
-);
-
-export const drainQueue = fromPromise<
-  void,
-  {
-    queue: CtrlEmitted[];
-    listeners: Partial<ReporterListeners>;
-    reporter: SomeReporter;
-  }
->(async ({input: {reporter, queue}}) => {
-  while (queue.length) {
-    const event = queue.shift()!;
-    const {type, ...rest} = event;
-    // @ts-expect-error fix later
-    await reporter.invokeListener({...rest, event: type});
-  }
-});
-
-export interface RMCtrlEvent {
-  type: 'EVENT';
-  event: CtrlEmitted;
+export interface ReporterMachineInput {
+  emitter: ActorRef<any, any, CtrlEmitted>;
+  reporter: SomeReporter;
 }
-
-export interface RMHaltEvent {
-  type: 'HALT';
-}
-
-export type RMEvents = RMCtrlEvent | RMHaltEvent;
 
 export const ReporterMachine = setup({
   types: {
-    context: {} as RMContext,
-    input: {} as RMInput,
-    events: {} as RMEvents,
-    output: {} as RMOutput,
+    context: {} as ReporterMachineContext,
+    input: {} as ReporterMachineInput,
+    events: {} as ReporterMachineEvents,
+    output: {} as ReporterMachineOutput,
   },
   actors: {
     teardownReporter,
@@ -90,14 +57,14 @@ export const ReporterMachine = setup({
     assignError: assign({
       error: (_, {error}: {error: unknown}) => fromUnknownError(error),
     }),
-    unsubscribe: assign({
-      subscriptions: ({context: {subscriptions}}) => {
-        subscriptions.forEach((sub) => {
-          sub.unsubscribe();
-        });
-        return [];
-      },
-    }),
+    // unsubscribe: assign({
+    //   subscriptions: ({context: {subscriptions}}) => {
+    //     subscriptions.forEach((sub) => {
+    //       sub.unsubscribe();
+    //     });
+    //     return [];
+    //   },
+    // }),
     enqueue: assign({
       queue: ({context: {queue}}, {event}: {event: CtrlEmitted}) => [
         ...queue,
@@ -117,22 +84,22 @@ export const ReporterMachine = setup({
     destroyListeners: assign({
       listeners: {},
     }),
-    subscribe: assign({
-      subscriptions: ({self, context: {emitter, listeners}}) => {
-        const listenerNames = Object.keys(listeners);
-        return listenerNames.map((methodName) => {
-          const eventName =
-            ReporterListenerEventMap[
-              methodName as keyof typeof ReporterListenerEventMap
-            ];
+    //   subscribe: assign({
+    //     subscriptions: ({self, context: {emitter, listeners}}) => {
+    //       const listenerNames = Object.keys(listeners);
+    //       return listenerNames.map((methodName) => {
+    //         const eventName =
+    //           ReporterListenerEventMap[
+    //             methodName as keyof typeof ReporterListenerEventMap
+    //           ];
 
-          // @ts-expect-error not done yet
-          return emitter.on(eventName, (event) => {
-            self.send({type: 'EVENT', event});
-          });
-        });
-      },
-    }),
+    //         // @ts-expect-error not done yet
+    //         return emitter.on(eventName, (event) => {
+    //           self.send({type: 'EVENT', event});
+    //         });
+    //       });
+    //     },
+    //   }),
   },
 }).createMachine({
   initial: 'setup',
@@ -142,12 +109,14 @@ export const ReporterMachine = setup({
     subscriptions: [],
     queue: [],
   }),
+  id: 'ReporterMachine',
   on: {
     HALT: {
       target: '.cleanup',
     },
     EVENT: {
       actions: [
+        log(({event: {event}}) => `enqueuing ${event.type}`),
         {
           type: 'enqueue',
           params: ({event: {event}}) => ({event}),
@@ -176,7 +145,7 @@ export const ReporterMachine = setup({
           actions: [
             log('binding...'),
             {type: 'createListeners'},
-            {type: 'subscribe'},
+            // {type: 'subscribe'},
           ],
         },
       },
@@ -191,6 +160,7 @@ export const ReporterMachine = setup({
       ],
     },
     draining: {
+      entry: [log(({context: {queue}}) => `draining queue: ${queue.length}`)],
       invoke: {
         src: 'drainQueue',
         input: ({context: {reporter, listeners, queue}}) => ({
@@ -211,13 +181,14 @@ export const ReporterMachine = setup({
           ],
         },
       },
+      exit: [log('drained')],
     },
     cleanup: {
       initial: 'unsubscribing',
       entry: [log('cleaning up...')],
       states: {
         unsubscribing: {
-          entry: [log('unsubscribing'), {type: 'unsubscribe'}],
+          // entry: [log('unsubscribing'), {type: 'unsubscribe'}],
           always: [
             {
               target: 'draining',
@@ -250,11 +221,10 @@ export const ReporterMachine = setup({
               ],
             },
           },
-          exit: [{type: 'destroyListeners'}],
         },
         teardown: {
-          entry: log('tearing down'),
-          type: 'final',
+          entry: [log('tearing down'), {type: 'destroyListeners'}],
+
           invoke: {
             src: 'teardownReporter',
             input: ({context: {reporter}}) => reporter,
@@ -265,8 +235,15 @@ export const ReporterMachine = setup({
                   params: ({event: {error}}) => ({error}),
                 },
               ],
+              target: '#ReporterMachine.errored',
+            },
+            onDone: {
+              target: 'done',
             },
           },
+        },
+        done: {
+          type: 'final',
         },
       },
       onDone: {

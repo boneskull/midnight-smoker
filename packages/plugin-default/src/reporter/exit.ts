@@ -31,7 +31,7 @@ export const ExitListener: ReporterDef = {
   onPackFailed: nonZeroExitListener,
   onInstallFailed: nonZeroExitListener,
   onRuleError: nonZeroExitListener,
-  onRunRuleFailed: (_, {config}) => {
+  onRuleFailed: (_, {config}) => {
     if (config.severity === RuleSeverities.Error) {
       nonZeroExitListener();
     }

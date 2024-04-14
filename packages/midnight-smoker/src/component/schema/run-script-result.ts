@@ -25,7 +25,7 @@ export const ScriptResultRawResultSchema = ExecResultSchema.describe(
 export const RunScriptResultSchema = z
   .object({
     rawResult: ScriptResultRawResultSchema.optional(),
-    skipped: z.boolean(),
+    skipped: z.boolean().optional(),
     error: ScriptResultErrorSchema.optional(),
   })
   .describe('The result of running a single custom script');

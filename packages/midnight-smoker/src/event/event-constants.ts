@@ -62,7 +62,7 @@ export const PackEvent = {
   PkgManagerPackOk: 'PkgManagerPackOk',
 } as const;
 
-export const RunScriptEvent = {
+export const ScriptEvent = {
   /**
    * {@inheritDoc SmokerEvents.RunScriptBegin}
    */
@@ -97,43 +97,51 @@ export const RunScriptEvent = {
    * {@inheritDoc SmokerEvents.RunScriptSkipped}
    */
   RunScriptSkipped: 'RunScriptSkipped',
+
+  PkgManagerRunScriptsBegin: 'PkgManagerRunScriptsBegin',
+  PkgManagerRunScriptsFailed: 'PkgManagerRunScriptsFailed',
+  PkgManagerRunScriptsOk: 'PkgManagerRunScriptsOk',
 } as const;
 
-export const RuleEvent = {
+export const LintEvent = {
   /**
    * {@inheritDoc SmokerEvents.RuleError}
    */
   RuleError: 'RuleError',
 
   /**
-   * {@inheritDoc SmokerEvents.RunRuleBegin}
+   * {@inheritDoc SmokerEvents.RuleBegin}
    */
-  RunRuleBegin: 'RunRuleBegin',
+  RuleBegin: 'RuleBegin',
 
   /**
-   * {@inheritDoc SmokerEvents.RunRuleFailed}
+   * {@inheritDoc SmokerEvents.RuleFailed}
    */
-  RunRuleFailed: 'RunRuleFailed',
+  RuleFailed: 'RuleFailed',
 
   /**
-   * {@inheritDoc SmokerEvents.RunRuleOk}
+   * {@inheritDoc SmokerEvents.RuleOk}
    */
-  RunRuleOk: 'RunRuleOk',
+  RuleOk: 'RuleOk',
+
+  PkgManagerLintBegin: 'PkgManagerLintBegin',
+  PkgManagerLintFailed: 'PkgManagerLintFailed',
+  PkgManagerLintOk: 'PkgManagerLintOk',
 
   /**
-   * {@inheritDoc SmokerEvents.RunRulesBegin}
+   * {@inheritDoc SmokerEvents.LintBegin}
    */
-  RunRulesBegin: 'RunRulesBegin',
+  LintBegin: 'LintBegin',
 
   /**
-   * {@inheritDoc SmokerEvents.RunRulesFailed}
+   * {@inheritDoc SmokerEvents.LintFailed}
    */
-  RunRulesFailed: 'RunRulesFailed',
+  LintFailed: 'LintFailed',
 
   /**
-   * {@inheritDoc SmokerEvents.RunRulesOk}
+   * {@inheritDoc SmokerEvents.LintOk}
    */
-  RunRulesOk: 'RunRulesOk',
+  LintOk: 'LintOk',
 } as const;
 
 /**
@@ -142,8 +150,8 @@ export const RuleEvent = {
 export const SmokerEvent = {
   ...InstallEvent,
   ...PackEvent,
-  ...RunScriptEvent,
-  ...RuleEvent,
+  ...ScriptEvent,
+  ...LintEvent,
 
   /**
    * {@inheritDoc SmokerEvents.BeforeExit}

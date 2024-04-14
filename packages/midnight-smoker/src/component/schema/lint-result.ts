@@ -1,11 +1,11 @@
-import {RuleIssueSchema} from '#schema/rule-issue';
+import {StaticRuleIssueSchema} from '#schema';
 import {RuleOkSchema} from '#schema/rule-result';
 import {z} from 'zod';
 
 export const LintResultSchema = z
   .object({
     issues: z
-      .array(RuleIssueSchema)
+      .array(StaticRuleIssueSchema)
       .describe('Flattened array of issues found in rules'),
     passed: z
       .array(RuleOkSchema)

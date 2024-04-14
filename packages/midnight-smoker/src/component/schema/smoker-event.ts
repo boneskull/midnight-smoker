@@ -1,5 +1,5 @@
 import {SmokeFailedError} from '#error/smoker-error';
-import {type SmokerEvents} from '#event';
+import {type SmokerEvent, type SmokerEvents} from '#event';
 import {BaseSmokerOptionsSchema} from '#options/options';
 import {LintResultSchema} from '#schema/lint-result';
 import {RunScriptResultSchema} from '#schema/run-script-result';
@@ -11,32 +11,51 @@ import {
 import {z} from 'zod';
 
 /**
- * {@inheritDoc BeforeExitEventDataSchema}
+ * Emitted after all other events have been emitted, and just before exit.
+ *
+ * This implies that {@link SmokerEvents.UnknownError} will _not_ be emitted if
+ * it has not been emitted already.
+ *
+ * @event
  */
 export type BeforeExitEventData = z.infer<typeof BeforeExitEventDataSchema>;
 
 /**
- * {@inheritDoc LingeredEventDataSchema}
+ * Emitted only if the `--linger` option was provided; a list of temp
+ * directories used by `midnight-smoker` and left on disk at user behest.
+ *
+ * @event
  */
 export type LingeredEventData = z.infer<typeof LingeredEventDataSchema>;
 
 /**
- * {@inheritDoc SmokeBeginEventDataSchema}
+ * Emitted just before the initial "pack" phase begins.
+ *
+ * @event
  */
 export type SmokeBeginEventData = z.infer<typeof SmokeBeginEventDataSchema>;
 
 /**
- * {@inheritDoc SmokeFailedEventDataSchema}
+ * Emitted at the end of execution if any script or automated check failed.
+ *
+ * @event
  */
 export type SmokeFailedEventData = z.infer<typeof SmokeFailedEventDataSchema>;
 
 /**
- * {@inheritDoc SmokeOkEventDataSchema}
+ * Emitted at the end of execution if no script or automated check failed.
+ *
+ * @event
  */
 export type SmokeOkEventData = z.infer<typeof SmokeOkEventDataSchema>;
 
 /**
- * {@inheritDoc UnknownErrorEventDataSchema}
+ * Emitted if `smoker.smoke()` rejects, which should not happen under normal
+ * operation.
+ *
+ * I think.
+ *
+ * @event
  */
 export type UnknownErrorEventData = z.infer<typeof UnknownErrorEventDataSchema>;
 
@@ -100,3 +119,12 @@ export type EventKind = keyof SmokerEvents;
 export type EventData<T extends EventKind = EventKind> = {
   [K in T]: {event: K} & SmokerEvents[K];
 }[T];
+
+export type SmokerEventData = {
+  [SmokerEvent.BeforeExit]: BeforeExitEventData;
+  [SmokerEvent.Lingered]: LingeredEventData;
+  [SmokerEvent.SmokeBegin]: SmokeBeginEventData;
+  [SmokerEvent.SmokeFailed]: SmokeFailedEventData;
+  [SmokerEvent.SmokeOk]: SmokeOkEventData;
+  [SmokerEvent.UnknownError]: UnknownErrorEventData;
+};

@@ -26,6 +26,8 @@ export type BaseNormalizedRuleOptions = z.infer<
   typeof BaseNormalizedRuleOptionsSchema
 >;
 
+export type SomeRuleConfig = BaseNormalizedRuleOptions;
+
 export type BaseNormalizedRuleOptionsRecord = z.infer<
   typeof BaseNormalizedRuleOptionsRecordSchema
 >;

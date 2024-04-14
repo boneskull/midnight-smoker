@@ -1,15 +1,15 @@
 import {NonEmptyStringSchema} from '#util/schema-util';
 import {z} from 'zod';
 
-export type RunRuleManifest = z.infer<typeof RunRuleManifestSchema>;
-export type RunRulesManifest = z.infer<typeof RunRulesManifestSchema>;
+export type LintManifest = z.infer<typeof LintManifestSchema>;
+export type LintManifests = z.infer<typeof LintManifestsSchema>;
 
-export const RunRuleManifestSchema = z.object({
+export const LintManifestSchema = z.object({
   pkgName: NonEmptyStringSchema.describe('Name of package being checked'),
   installPath: NonEmptyStringSchema.describe(
     'Install path of package being checked',
   ),
 });
-export const RunRulesManifestSchema = z
-  .array(RunRuleManifestSchema)
+export const LintManifestsSchema = z
+  .array(LintManifestSchema)
   .describe('Installation paths to check');

@@ -30,6 +30,7 @@ describe('midnight-smoker', function () {
           url: 'https://example.com/rules/example-rule',
         };
         const exampleStaticRuleContext: StaticRuleContext = {
+          pkgName: 'example-package',
           pkgJson: {
             name: 'example-package',
             version: '1.0.0',

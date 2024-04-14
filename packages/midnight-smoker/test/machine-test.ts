@@ -1,45 +1,38 @@
 import {BaseSmokerOptionsSchema} from '#options/options';
 import {PluginRegistry} from '#plugin';
-import {
-  ConsoleReporter,
-  JSONReporter,
-} from '@midnight-smoker/plugin-default/reporter';
+import {ConsoleReporter} from '@midnight-smoker/plugin-default/reporter';
 import {
   nullExecutor,
   nullPmDef,
   registerPlugin,
 } from '@midnight-smoker/test-util';
 import Debug from 'debug';
-import {createActor, fromPromise} from 'xstate';
-import {type PkgManagerDefSpec} from '../src/component';
+import {createActor} from 'xstate';
 import {SmokerEvent} from '../src/event';
 import {ControlMachine} from '../src/machine/controller/control-machine';
 import {type CtrlEmitted} from '../src/machine/controller/control-machine-events';
-import {
-  PluginLoaderMachine,
-  type LoadPkgManagersInput,
-} from '../src/machine/plugin-loader-machine';
 
 const debugComplete = Debug('testMachine:complete');
 const debugError = Debug('testMachine:error');
 const debugEvent = Debug('testMachine:event');
 const debugEmit = Debug('testMachine:emit');
+const debugOther = Debug('testMachine:inspection');
 
-const failingPluginLoaderMachine = PluginLoaderMachine.provide({
-  actors: {
-    loadPkgManagers: fromPromise<PkgManagerDefSpec[], LoadPkgManagersInput>(
-      async () => {
-        throw new Error('broken');
-      },
-    ),
-  },
-});
+// const failingPluginLoaderMachine = PluginLoaderMachine.provide({
+//   actors: {
+//     loadPkgManagers: fromPromise<PkgManagerDefSpec[], LoadPkgManagersInput>(
+//       async () => {
+//         throw new Error('broken');
+//       },
+//     ),
+//   },
+// });
 
-const failingMachine = ControlMachine.provide({
-  actors: {
-    pluginLoader: failingPluginLoaderMachine,
-  },
-});
+// const failingMachine = ControlMachine.provide({
+//   actors: {
+//     pluginLoader: failingPluginLoaderMachine,
+//   },
+// });
 
 async function main() {
   const pluginRegistry = PluginRegistry.create();
@@ -50,7 +43,7 @@ async function main() {
       api.defineExecutor(nullExecutor.bind({}), 'system');
       api.definePackageManager(nullPmDef, 'nullpm');
       api.defineReporter(ConsoleReporter);
-      api.defineReporter(JSONReporter);
+      // api.defineReporter(JSONReporter);
     },
     name: '@midnight-smoker/plugin-default',
   });
@@ -65,7 +58,7 @@ async function main() {
         allWorkspaces: true,
       },
       smokerOptions: BaseSmokerOptionsSchema.parse({
-        reporter: ['console', 'json'],
+        reporter: ['console'],
       }),
     },
     id: 'main',
@@ -73,6 +66,8 @@ async function main() {
     inspect: (evt) => {
       if (evt.type === '@xstate.event') {
         debugEvent(`${evt.actorRef.id}: %s`, evt.event.type);
+      } else if (evt.actorRef.id.startsWith('InstallMachine.')) {
+        // debugOther(evt);
       }
     },
   });
@@ -100,22 +95,22 @@ async function main() {
     error: (err) => {
       debugError(err);
     },
-    // next(value) {
-    //   if (value.matches('ready') && !runningScripts) {
-    //     m.send({type: 'RUN_SCRIPTS', scripts: ['build']});
-    //     runningScripts = true;
-    //     setTimeout(() => {
-    //       m.send({type: 'HALT'});
-    //     }, 2000);
-    //   }
-    // },
+    next(value) {
+      // if (value.matches('ready') && !runningScripts) {
+      //   m.send({type: 'RUN_SCRIPTS', scripts: ['build']});
+      //   runningScripts = true;
+      //   setTimeout(() => {
+      //     m.send({type: 'HALT'});
+      //   }, 2000);
+      // }
+    },
   });
 
   m.send({type: 'INIT'});
   m.send({type: 'RUN_SCRIPTS', scripts: ['build']});
   setTimeout(() => {
     m.send({type: 'HALT'});
-  }, 2000);
+  }, 10000);
 }
 
 main().catch((err) => {

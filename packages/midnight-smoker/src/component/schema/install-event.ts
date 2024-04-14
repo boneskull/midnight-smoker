@@ -8,6 +8,7 @@ import {
   instanceofSchema,
 } from '#util/schema-util';
 import {z} from 'zod';
+import {PkgManagerEventBaseSchema} from './pkg-manager-event';
 import {StaticPkgManagerSpecSchema} from './static-pkg-manager-spec';
 
 export type InstallBeginEventData = z.infer<typeof InstallBeginEventDataSchema>;
@@ -121,11 +122,10 @@ export const InstallOkEventDataSchema = InstallEventBaseDataSchema;
 export const InstallFailedEventDataSchema = InstallOkEventDataSchema.extend({
   error: instanceofSchema(InstallError),
 });
-export const PkgManagerInstallBeginEventDataSchema = z.object({
-  current: NonNegativeIntSchema,
-  total: NonNegativeIntSchema,
-  pkgManager: StaticPkgManagerSpecSchema,
-});
+export const PkgManagerInstallBeginEventDataSchema =
+  PkgManagerEventBaseSchema.extend({
+    manifests: z.array(InstallManifestSchema),
+  });
 export const PkgManagerInstallOkEventDataSchema =
   PkgManagerInstallBeginEventDataSchema;
 export const PkgManagerInstallFailedEventDataSchema =

@@ -138,7 +138,8 @@ export class PkgManagerControllerEventHelper {
         }),
       );
 
-      return {manifest, total};
+      // @ts-expect-error stuff
+      return {manifests: manifest, totalUniqueScripts: total};
     },
     (scripts, pkgManagers) => {
       return `${scripts.sort().join(',')}-${pkgManagers
@@ -235,11 +236,11 @@ export class PkgManagerControllerEventHelper {
   }: PkgManagerInstallBeginData): Promise<void> {
     const {total} =
       PkgManagerControllerEventHelper.buildInstallEventData(pkgManagers);
-    await this.bus.emit(SmokerEvent.PkgManagerInstallBegin, {
-      total,
-      current,
-      pkgManager: pkgManager.spec.toJSON(),
-    });
+    // await this.bus.emit(SmokerEvent.PkgManagerInstallBegin, {
+    //   total,
+    //   current,
+    //   pkgManager: pkgManager.spec.toJSON(),
+    // });
   }
 
   public async pkgManagerInstallFailed({
@@ -250,12 +251,12 @@ export class PkgManagerControllerEventHelper {
   }: PkgManagerInstallFailedData): Promise<void> {
     const {total} =
       PkgManagerControllerEventHelper.buildInstallEventData(pkgManagers);
-    await this.bus.emit(SmokerEvent.PkgManagerInstallFailed, {
-      total,
-      current,
-      pkgManager: pkgManager.spec.toJSON(),
-      error,
-    });
+    // await this.bus.emit(SmokerEvent.PkgManagerInstallFailed, {
+    //   total,
+    //   current,
+    //   pkgManager: pkgManager.spec.toJSON(),
+    //   error,
+    // });
   }
 
   public async pkgManagerInstallOk({
@@ -265,11 +266,11 @@ export class PkgManagerControllerEventHelper {
   }: PkgManagerInstallOkData): Promise<void> {
     const {total} =
       PkgManagerControllerEventHelper.buildInstallEventData(pkgManagers);
-    await this.bus.emit(SmokerEvent.PkgManagerInstallOk, {
-      total,
-      current,
-      pkgManager: pkgManager.spec.toJSON(),
-    });
+    // await this.bus.emit(SmokerEvent.PkgManagerInstallOk, {
+    //   total,
+    //   current,
+    //   pkgManager: pkgManager.spec.toJSON(),
+    // });
   }
 
   public async runScriptsBegin({pkgManagers, scripts}: RunScriptsBeginData) {

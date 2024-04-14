@@ -1,4 +1,5 @@
 import {type PkgManagerDef} from 'midnight-smoker/pkg-manager';
+import {scheduler} from 'node:timers/promises';
 import {TEST_TMPDIR} from './constants';
 
 export const nullPmDef: PkgManagerDef = {
@@ -8,15 +9,20 @@ export const nullPmDef: PkgManagerDef = {
   },
   lockfile: 'nullpm.lock',
   async install() {
-    return {
-      stdout: '',
-      stderr: '',
-      command: 'something',
-      exitCode: 0,
-      failed: false,
-    };
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({
+          stdout: '',
+          stderr: '',
+          command: 'something',
+          exitCode: 0,
+          failed: false,
+        });
+      }, 500);
+    });
   },
   async pack() {
+    await scheduler.wait(1500);
     return [
       {
         pkgSpec: `${TEST_TMPDIR}/bar.tgz`,
@@ -27,6 +33,7 @@ export const nullPmDef: PkgManagerDef = {
     ];
   },
   async runScript() {
+    await scheduler.wait(1500);
     return {
       rawResult: {
         stdout: '',

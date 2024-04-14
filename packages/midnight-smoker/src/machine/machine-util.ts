@@ -1,4 +1,5 @@
 import Debug from 'debug';
+import {map, memoize, uniqBy} from 'lodash';
 import {AssertionError} from 'node:assert';
 import {type AnyActorRef} from 'xstate';
 
@@ -17,16 +18,24 @@ export function monkeypatchActorLogger<T extends AnyActorRef>(
   return actor;
 }
 
-export type MachineOutputOk<Ok extends object = object> = {
+export interface MachineOutputLike {
+  id: string;
+  type: string;
+}
+
+export type MachineOutputOk<Ctx extends object = object> = {
   type: 'OK';
   id: string;
-} & Ok;
+} & Ctx;
 
-export interface MachineOutputError<Err extends Error = Error> {
+export type MachineOutputError<
+  Err extends Error = Error,
+  Ctx extends object = object,
+> = {
   id: string;
   type: 'ERROR';
   error: Err;
-}
+} & Ctx;
 
 export type MachineOutput<
   Ok extends object = object,
@@ -70,3 +79,7 @@ export function assertMachineOutputNotOk<
     });
   }
 }
+export const uniquePkgNames = memoize(
+  (manifests: {pkgName: string}[]): string[] =>
+    map(uniqBy(manifests, 'pkgName'), 'pkgName'),
+);

@@ -62,17 +62,43 @@ export interface ReporterListeners<Ctx = unknown> {
   onPackFailed: ReporterListener<typeof SmokerEvent.PackFailed, Ctx>;
   onPackOk: ReporterListener<typeof SmokerEvent.PackOk, Ctx>;
 
+  onPkgManagerPackBegin: ReporterListener<
+    typeof SmokerEvent.PkgManagerPackBegin,
+    Ctx
+  >;
+  onPkgManagerPackFailed: ReporterListener<
+    typeof SmokerEvent.PkgManagerPackFailed,
+    Ctx
+  >;
+  onPkgManagerPackOk: ReporterListener<
+    typeof SmokerEvent.PkgManagerPackOk,
+    Ctx
+  >;
+
   onInstallBegin: ReporterListener<typeof SmokerEvent.InstallBegin, Ctx>;
   onInstallFailed: ReporterListener<typeof SmokerEvent.InstallFailed, Ctx>;
   onInstallOk: ReporterListener<typeof SmokerEvent.InstallOk, Ctx>;
 
-  onRunRuleBegin: ReporterListener<typeof SmokerEvent.RunRuleBegin, Ctx>;
+  onPkgManagerInstallBegin: ReporterListener<
+    typeof SmokerEvent.PkgManagerInstallBegin,
+    Ctx
+  >;
+  onPkgManagerInstallFailed: ReporterListener<
+    typeof SmokerEvent.PkgManagerInstallFailed,
+    Ctx
+  >;
+  onPkgManagerInstallOk: ReporterListener<
+    typeof SmokerEvent.PkgManagerInstallOk,
+    Ctx
+  >;
+
+  onRuleBegin: ReporterListener<typeof SmokerEvent.RuleBegin, Ctx>;
   onRuleError: ReporterListener<typeof SmokerEvent.RuleError, Ctx>;
-  onRunRuleFailed: ReporterListener<typeof SmokerEvent.RunRuleFailed, Ctx>;
-  onRunRuleOk: ReporterListener<typeof SmokerEvent.RunRuleOk, Ctx>;
-  onRunRulesBegin: ReporterListener<typeof SmokerEvent.RunRulesBegin, Ctx>;
-  onRunRulesFailed: ReporterListener<typeof SmokerEvent.RunRulesFailed, Ctx>;
-  onRunRulesOk: ReporterListener<typeof SmokerEvent.RunRulesOk, Ctx>;
+  onRuleFailed: ReporterListener<typeof SmokerEvent.RuleFailed, Ctx>;
+  onRuleOk: ReporterListener<typeof SmokerEvent.RuleOk, Ctx>;
+  onLintBegin: ReporterListener<typeof SmokerEvent.LintBegin, Ctx>;
+  onLintFailed: ReporterListener<typeof SmokerEvent.LintFailed, Ctx>;
+  onLintOk: ReporterListener<typeof SmokerEvent.LintOk, Ctx>;
 
   onRunScriptBegin: ReporterListener<typeof SmokerEvent.RunScriptBegin, Ctx>;
   onRunScriptFailed: ReporterListener<typeof SmokerEvent.RunScriptFailed, Ctx>;
@@ -152,31 +178,42 @@ export interface ReporterDef<Ctx = unknown>
  * {@link SmokerEvent events}.
  */
 export const ReporterListenerEventMap = {
-  onPackBegin: SmokerEvent.PackBegin,
-  onPackFailed: SmokerEvent.PackFailed,
-  onPackOk: SmokerEvent.PackOk,
-  onInstallBegin: SmokerEvent.InstallBegin,
-  onInstallFailed: SmokerEvent.InstallFailed,
-  onInstallOk: SmokerEvent.InstallOk,
-  onRunRuleBegin: SmokerEvent.RunRuleBegin,
-  onRuleError: SmokerEvent.RuleError,
-  onRunRuleFailed: SmokerEvent.RunRuleFailed,
-  onRunRuleOk: SmokerEvent.RunRuleOk,
-  onRunRulesBegin: SmokerEvent.RunRulesBegin,
-  onRunRulesFailed: SmokerEvent.RunRulesFailed,
-  onRunRulesOk: SmokerEvent.RunRulesOk,
-  onRunScriptBegin: SmokerEvent.RunScriptBegin,
-  onRunScriptFailed: SmokerEvent.RunScriptFailed,
-  onRunScriptOk: SmokerEvent.RunScriptOk,
-  onRunScriptsBegin: SmokerEvent.RunScriptsBegin,
-  onRunScriptsFailed: SmokerEvent.RunScriptsFailed,
-  onRunScriptsOk: SmokerEvent.RunScriptsOk,
-  onBeforeExit: SmokerEvent.BeforeExit,
-  onLingered: SmokerEvent.Lingered,
-  onSmokeBegin: SmokerEvent.SmokeBegin,
-  onSmokeFailed: SmokerEvent.SmokeFailed,
-  onSmokeOk: SmokerEvent.SmokeOk,
-  onUnknownError: SmokerEvent.UnknownError,
+  [`on${SmokerEvent.PackBegin}` as const]: SmokerEvent.PackBegin,
+  [`on${SmokerEvent.PackFailed}` as const]: SmokerEvent.PackFailed,
+  [`on${SmokerEvent.PackOk}` as const]: SmokerEvent.PackOk,
+  [`on${SmokerEvent.PkgManagerPackBegin}` as const]:
+    SmokerEvent.PkgManagerPackBegin,
+  [`on${SmokerEvent.PkgManagerPackFailed}` as const]:
+    SmokerEvent.PkgManagerPackFailed,
+  [`on${SmokerEvent.PkgManagerPackOk}` as const]: SmokerEvent.PkgManagerPackOk,
+  [`on${SmokerEvent.InstallBegin}` as const]: SmokerEvent.InstallBegin,
+  [`on${SmokerEvent.InstallFailed}` as const]: SmokerEvent.InstallFailed,
+  [`on${SmokerEvent.InstallOk}` as const]: SmokerEvent.InstallOk,
+  [`on${SmokerEvent.PkgManagerInstallBegin}` as const]:
+    SmokerEvent.PkgManagerInstallBegin,
+  [`on${SmokerEvent.PkgManagerInstallFailed}` as const]:
+    SmokerEvent.PkgManagerInstallFailed,
+  [`on${SmokerEvent.PkgManagerInstallOk}` as const]:
+    SmokerEvent.PkgManagerInstallOk,
+  [`on${SmokerEvent.RuleBegin}` as const]: SmokerEvent.RuleBegin,
+  [`on${SmokerEvent.RuleError}` as const]: SmokerEvent.RuleError,
+  [`on${SmokerEvent.RuleFailed}` as const]: SmokerEvent.RuleFailed,
+  [`on${SmokerEvent.RuleOk}` as const]: SmokerEvent.RuleOk,
+  [`on${SmokerEvent.LintBegin}` as const]: SmokerEvent.LintBegin,
+  [`on${SmokerEvent.LintFailed}` as const]: SmokerEvent.LintFailed,
+  [`on${SmokerEvent.LintOk}` as const]: SmokerEvent.LintOk,
+  [`on${SmokerEvent.RunScriptBegin}` as const]: SmokerEvent.RunScriptBegin,
+  [`on${SmokerEvent.RunScriptFailed}` as const]: SmokerEvent.RunScriptFailed,
+  [`on${SmokerEvent.RunScriptOk}` as const]: SmokerEvent.RunScriptOk,
+  [`on${SmokerEvent.RunScriptsBegin}` as const]: SmokerEvent.RunScriptsBegin,
+  [`on${SmokerEvent.RunScriptsFailed}` as const]: SmokerEvent.RunScriptsFailed,
+  [`on${SmokerEvent.RunScriptsOk}` as const]: SmokerEvent.RunScriptsOk,
+  [`on${SmokerEvent.BeforeExit}` as const]: SmokerEvent.BeforeExit,
+  [`on${SmokerEvent.Lingered}` as const]: SmokerEvent.Lingered,
+  [`on${SmokerEvent.SmokeBegin}` as const]: SmokerEvent.SmokeBegin,
+  [`on${SmokerEvent.SmokeFailed}` as const]: SmokerEvent.SmokeFailed,
+  [`on${SmokerEvent.SmokeOk}` as const]: SmokerEvent.SmokeOk,
+  [`on${SmokerEvent.UnknownError}` as const]: SmokerEvent.UnknownError,
 } as const satisfies Record<keyof ReporterListeners, EventKind>;
 
 export type ReporterListenerName = keyof typeof ReporterListenerEventMap;

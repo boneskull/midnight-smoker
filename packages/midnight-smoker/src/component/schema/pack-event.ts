@@ -1,10 +1,10 @@
 import {PackError, PackParseError} from '#error';
 import {type PackEvent} from '#event/event-constants';
 import {InstallEventBaseDataSchema} from '#schema/install-event';
-import {NonNegativeIntSchema, instanceofSchema} from '#util/schema-util';
+import {instanceofSchema} from '#util/schema-util';
 import {z} from 'zod';
 import {PackOptionsSchema} from './pack-options';
-import {StaticPkgManagerSpecSchema} from './static-pkg-manager-spec';
+import {PkgManagerEventBaseSchema} from './pkg-manager-event';
 
 /**
  * {@inheritDoc PackBeginEventDataSchema}
@@ -81,8 +81,10 @@ export const PackingErrorSchema = instanceofSchema(PackError).or(
 /**
  * Data for the `PackOk` event
  */
-export const PackOkEventDataSchema = InstallEventBaseDataSchema.extend({
-  packOptions: PackOptionsSchema.optional(),
+export const PackOkEventDataSchema = PackBeginEventDataSchema.extend({
+  uniquePkgs: InstallEventBaseDataSchema.shape.uniquePkgs,
+  manifests: InstallEventBaseDataSchema.shape.manifests,
+  total: InstallEventBaseDataSchema.shape.total,
 });
 
 /**
@@ -91,12 +93,12 @@ export const PackOkEventDataSchema = InstallEventBaseDataSchema.extend({
 export const PackFailedEventDataSchema = PackBeginEventDataSchema.extend({
   error: PackingErrorSchema,
 });
-export const PkgManagerPackBeginEventDataSchema = z.object({
-  pkgManager: StaticPkgManagerSpecSchema,
-  packOptions: PackOptionsSchema.optional(),
-  current: NonNegativeIntSchema.describe('Current pkg manager index'),
-  total: NonNegativeIntSchema.describe('Total number of pkg managers'),
-});
+
+export const PkgManagerPackBeginEventDataSchema =
+  PkgManagerEventBaseSchema.extend({
+    packOptions: PackOptionsSchema.optional(),
+  });
+
 export const PkgManagerPackFailedEventDataSchema =
   PkgManagerPackBeginEventDataSchema.extend({
     error: PackingErrorSchema,

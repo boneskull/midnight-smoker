@@ -25,8 +25,6 @@ import {uniqBy} from 'lodash';
 import {ComponentKinds} from '../constants';
 import {type Controller} from './controller';
 
-const debug = Debug('midnight-smoker:controller:lint-controller');
-
 export type PluginRuleDef = [
   plugin: Readonly<PluginMetadata>,
   def: SomeRuleDef,
@@ -43,30 +41,21 @@ export class LintController implements Controller {
     protected readonly rulesConfig: BaseNormalizedRuleOptionsRecord,
   ) {}
 
-  @once
-  public async init() {
-    this.rules = LintController.loadRules(
-      this.pluginRegistry,
-      this.pluginRuleDefs,
-    );
-  }
-
-  public static loadRules(
+  public static create(
     this: void,
     pluginRegistry: PluginRegistry,
+    eventBus: SmokerEventBus,
+    pkgManagers: SomePkgManager[],
     pluginRuleDefs: PluginRuleDef[],
-  ): SomeRule[] {
-    return pluginRuleDefs.map(([plugin, def]) => {
-      const {id, componentName} = pluginRegistry.getComponent(def);
-      const rule = Rule.create(id, def, plugin);
-      pluginRegistry.registerComponent(
-        plugin,
-        ComponentKinds.Rule,
-        rule,
-        rule.name ?? componentName,
-      );
-      return rule;
-    });
+    rulesConfig: BaseNormalizedRuleOptionsRecord,
+  ) {
+    return new LintController(
+      pluginRegistry,
+      eventBus,
+      pkgManagers,
+      pluginRuleDefs,
+      rulesConfig,
+    );
   }
 
   /**
@@ -98,21 +87,20 @@ export class LintController implements Controller {
     return RuleContext.create(rule, staticCtx);
   }
 
-  public static create(
+  /**
+   * Creates a RuleOk result object.
+   *
+   * @param rule - The rule object.
+   * @param context - The context object.
+   * @returns The RuleOk result.
+   * @internal
+   */
+  public static createRuleOkResult(
     this: void,
-    pluginRegistry: PluginRegistry,
-    eventBus: SmokerEventBus,
-    pkgManagers: SomePkgManager[],
-    pluginRuleDefs: PluginRuleDef[],
-    rulesConfig: BaseNormalizedRuleOptionsRecord,
-  ) {
-    return new LintController(
-      pluginRegistry,
-      eventBus,
-      pkgManagers,
-      pluginRuleDefs,
-      rulesConfig,
-    );
+    rule: SomeRule,
+    context: Readonly<RuleContext>,
+  ): RuleOk {
+    return {rule: rule.toJSON(), context: context.toJSON()};
   }
 
   /**
@@ -139,150 +127,26 @@ export class LintController implements Controller {
       pkgJsonPath,
       installPath,
       severity,
+      pkgName: 'dooop',
     };
   }
 
-  /**
-   * Retrieves the configuration for a specific rule.
-   *
-   * @template Schema - The schema type of the rule, if any.
-   * @param rule - The rule component.
-   * @returns The readonly configuration for the rule.
-   * @internal
-   */
-  public getConfigForRule<Schema extends RuleDefSchemaValue | void = void>(
-    rule: Rule<Schema>,
-  ): Readonly<RuleConfig<Schema>> {
-    return Object.freeze({...this.rulesConfig[rule.id]}) as Readonly<
-      RuleConfig<Schema>
-    >;
-  }
-
-  /**
-   * Creates a RuleOk result object.
-   *
-   * @param rule - The rule object.
-   * @param context - The context object.
-   * @returns The RuleOk result.
-   * @internal
-   */
-  public static createRuleOkResult(
+  public static loadRules(
     this: void,
-    rule: SomeRule,
-    context: Readonly<RuleContext>,
-  ): RuleOk {
-    return {rule: rule.toJSON(), context: context.toJSON()};
-  }
-
-  /**
-   * /** Given the {@link RunRulesManifest} object, run all rules as configured
-   * against each installed package in the results.
-   */
-  public async lint() // runRulesManifest: RunRulesManifest,
-  : Promise<LintResult> {
-    const allIssues: RuleIssue[] = [];
-    const allOk: RuleOk[] = [];
-    const rulesConfig = this.rulesConfig;
-    const runnableRules = this.rules;
-    const total = runnableRules.length;
-
-    await this.eventBus.emit(SmokerEvent.RunRulesBegin, {
-      config: rulesConfig,
-      total,
+    pluginRegistry: PluginRegistry,
+    pluginRuleDefs: PluginRuleDef[],
+  ): SomeRule[] {
+    return pluginRuleDefs.map(([plugin, def]) => {
+      const {id, componentName} = pluginRegistry.getComponent(def);
+      const rule = Rule.create(id, def, plugin);
+      pluginRegistry.registerComponent(
+        plugin,
+        ComponentKinds.Rule,
+        rule,
+        rule.name ?? componentName,
+      );
+      return rule;
     });
-
-    const lintManifests = uniqBy(
-      this.pkgManagers.flatMap((pkgManager) => pkgManager.pkgInstallManifests),
-      'pkgName',
-    );
-
-    await Promise.all(
-      runnableRules.map(async (rule, current) => {
-        const config = this.getConfigForRule(rule);
-
-        // XXX: this needs to be in the loop, but the installPath has to be in the object
-
-        for (const {installPath, pkgName} of lintManifests) {
-          await this.eventBus.emit(SmokerEvent.RunRuleBegin, {
-            rule: rule.id,
-            config,
-            current,
-            total,
-            installPath,
-            pkgName,
-          });
-          // TODO: create a `withContext()` helper that performs the next 3 operations
-          const context = await LintController.createRuleContext(
-            rule,
-            installPath,
-            config,
-          );
-          await LintController.runRule(context, rule, config);
-          const issues = context.finalize();
-
-          if (issues?.length) {
-            // XXX: unsure if it's kosher to do this synchronously..
-            // this was in run() but moved it here because I wanted run() to be
-            // static.
-            // also consider combining multiple errors per rule into an AggregateError
-            for (const issue of issues) {
-              if (issue.error) {
-                await this.eventBus.emit(SmokerEvent.RuleError, {
-                  error: issue.error,
-                });
-              }
-            }
-
-            await this.eventBus.emit(SmokerEvent.RunRuleFailed, {
-              rule: rule.id,
-              config,
-              current,
-              total,
-              failed: issues.map((issue) => issue.toJSON()),
-              installPath,
-              pkgName,
-            });
-            allIssues.push(...issues);
-          } else {
-            await this.eventBus.emit(SmokerEvent.RunRuleOk, {
-              rule: rule.id,
-              config,
-              current,
-              total,
-              installPath,
-              pkgName,
-            });
-            allOk.push(LintController.createRuleOkResult(rule, context));
-          }
-        }
-      }),
-    );
-
-    const passed = allOk;
-    const issues = allIssues;
-    const config = rulesConfig;
-
-    const evtData = {
-      config,
-      total,
-      passed,
-    };
-
-    if (issues.length) {
-      await this.eventBus.emit(SmokerEvent.RunRulesFailed, {
-        ...evtData,
-        failed: allIssues.map((issue) => issue.toJSON()),
-      });
-    } else {
-      await this.eventBus.emit(SmokerEvent.RunRulesOk, evtData);
-    }
-
-    debug('Finished running %d rules', this.rules.length);
-
-    return {
-      issues,
-      passed,
-    };
   }
 
   /**
@@ -323,4 +187,148 @@ export class LintController implements Controller {
       }
     }
   }
+
+  /**
+   * Retrieves the configuration for a specific rule.
+   *
+   * @template Schema - The schema type of the rule, if any.
+   * @param rule - The rule component.
+   * @returns The readonly configuration for the rule.
+   * @internal
+   */
+  public getConfigForRule<Schema extends RuleDefSchemaValue | void = void>(
+    rule: Rule<Schema>,
+  ): Readonly<RuleConfig<Schema>> {
+    return Object.freeze({...this.rulesConfig[rule.id]}) as Readonly<
+      RuleConfig<Schema>
+    >;
+  }
+
+  @once
+  public async init() {
+    this.rules = LintController.loadRules(
+      this.pluginRegistry,
+      this.pluginRuleDefs,
+    );
+  }
+
+  /**
+   * /** Given the {@link LintManifest} object, run all rules as configured
+   * against each installed package in the results.
+   */
+  public async lint() // runRulesManifest: LintManifest,
+  : Promise<LintResult> {
+    const allIssues: RuleIssue[] = [];
+    const allOk: RuleOk[] = [];
+    const rulesConfig = this.rulesConfig;
+    const runnableRules = this.rules;
+    const total = runnableRules.length;
+
+    await this.eventBus.emit(SmokerEvent.LintBegin, {
+      config: rulesConfig,
+      totalRules: total,
+      totalChecks: 0,
+    });
+
+    const lintManifests = uniqBy(
+      this.pkgManagers.flatMap((pkgManager) => pkgManager.pkgInstallManifests),
+      'pkgName',
+    );
+
+    await Promise.all(
+      runnableRules.map(async (rule, current) => {
+        const config = this.getConfigForRule(rule);
+
+        // XXX: this needs to be in the loop, but the installPath has to be in the object
+
+        for (const {installPath, pkgName} of lintManifests) {
+          await this.eventBus.emit(SmokerEvent.RuleBegin, {
+            rule: rule.id,
+            config,
+            current,
+            total,
+            installPath,
+            pkgName,
+          });
+          // TODO: create a `withContext()` helper that performs the next 3 operations
+          const context = await LintController.createRuleContext(
+            rule,
+            installPath,
+            config,
+          );
+          await LintController.runRule(context, rule, config);
+          const issues = context.finalize();
+
+          if (issues?.length) {
+            // XXX: unsure if it's kosher to do this synchronously..
+            // this was in run() but moved it here because I wanted run() to be
+            // static.
+            // also consider combining multiple errors per rule into an AggregateError
+            for (const issue of issues) {
+              if (issue.error) {
+                await this.eventBus.emit(SmokerEvent.RuleError, {
+                  error: issue.error,
+                });
+              }
+            }
+
+            await this.eventBus.emit(SmokerEvent.RuleFailed, {
+              rule: rule.id,
+              config,
+              current,
+              total,
+              failed: issues.map((issue) => issue.toJSON()),
+              installPath,
+              pkgName,
+            });
+            allIssues.push(...issues);
+          } else {
+            await this.eventBus.emit(SmokerEvent.RuleOk, {
+              rule: rule.id,
+              config,
+              current,
+              total,
+              installPath,
+              pkgName,
+            });
+            allOk.push(LintController.createRuleOkResult(rule, context));
+          }
+        }
+      }),
+    );
+
+    const passed = allOk;
+    const issues = allIssues;
+    const config = rulesConfig;
+
+    const evtData = {
+      config,
+      total,
+      passed,
+    };
+
+    if (issues.length) {
+      // @ts-expect-error derp
+      await this.eventBus.emit(SmokerEvent.LintFailed, {
+        ...evtData,
+        totalChecks: 0,
+        failed: allIssues.map((issue) => issue.toJSON()),
+      });
+    } else {
+      // @ts-expect-error derp
+      await this.eventBus.emit(SmokerEvent.LintOk, {
+        ...evtData,
+        totalChecks: 0,
+      });
+    }
+
+    debug('Finished running %d rules', this.rules.length);
+
+    return {
+      issues,
+      passed,
+    };
+  }
 }
+
+const debug = Debug('midnight-smoker:controller:lint-controller');

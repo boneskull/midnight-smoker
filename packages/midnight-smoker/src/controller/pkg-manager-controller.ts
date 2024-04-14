@@ -450,6 +450,7 @@ export class PkgManagerController implements Controller {
           if (ac.signal.aborted) {
             break PKG_MANAGERS;
           }
+          //@ts-expect-error stuff
           await this.eventBus.emit(SmokerEvent.RunScriptBegin, eventData);
           let result: RunScriptResult;
           try {
@@ -475,6 +476,7 @@ export class PkgManagerController implements Controller {
               pkgName,
               result,
             );
+            // @ts-expect-error stuff
             await this.eventBus.emit(SmokerEvent.RunScriptFailed, {
               ...eventData,
               error: result.error,
@@ -484,11 +486,13 @@ export class PkgManagerController implements Controller {
               ac.abort();
             }
           } else if (result.skipped) {
+            // @ts-expect-error stuff
             await this.eventBus.emit(SmokerEvent.RunScriptSkipped, {
               ...eventData,
               skipped: true,
             });
           } else {
+            // @ts-expect-error stuff
             await this.eventBus.emit(SmokerEvent.RunScriptOk, {
               ...eventData,
               // TODO: fix

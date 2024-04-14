@@ -37,7 +37,7 @@ export const JSONReporter: ReporterDef<JSONReporterContext> = {
     ctx.stats.totalPackages = uniquePkgs.length;
     ctx.stats.totalPackageManagers = pkgManagers.length;
   },
-  onRunScriptsBegin(ctx, {total}) {
+  onRunScriptsBegin(ctx, {totalUniqueScripts: total}) {
     ctx.stats.totalScripts = total;
   },
   onRunScriptsFailed(ctx, {failed, passed}) {
@@ -48,14 +48,14 @@ export const JSONReporter: ReporterDef<JSONReporterContext> = {
     ctx.stats.passedScripts = passed;
     ctx.stats.failedScripts = 0;
   },
-  onRunRulesBegin(ctx, {total}) {
+  onLintBegin(ctx, {totalRules: total}) {
     ctx.stats.totalRules = total;
   },
-  onRunRulesFailed(ctx, {failed, passed}) {
+  onLintFailed(ctx, {failed, passed}) {
     ctx.stats.failedRules = failed.length;
     ctx.stats.passedRules = passed.length;
   },
-  onRunRulesOk(ctx, {passed}) {
+  onLintOk(ctx, {passed}) {
     ctx.stats.passedRules = passed.length;
     ctx.stats.failedRules = 0;
   },

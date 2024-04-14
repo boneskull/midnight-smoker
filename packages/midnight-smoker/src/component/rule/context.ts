@@ -1,3 +1,4 @@
+import {fromUnknownError} from '#error';
 import {RuleError} from '#error/rule-error';
 import {type StaticRule, type StaticRuleContext} from '#schema/rule-static';
 import {serialize} from '#util/util';
@@ -83,7 +84,7 @@ export class RuleContext implements StaticRuleContext {
   }
 
   public get pkgName() {
-    return this.staticCtx.pkgJson.name;
+    return this.staticCtx.pkgName;
   }
 
   /**
@@ -103,12 +104,12 @@ export class RuleContext implements StaticRuleContext {
    *
    * @param err - Error to add as an issue
    */
-  public addIssueFromError(err: Error): void {
+  public addIssueFromError(err: unknown): void {
     const error = new RuleError(
       `Rule "${this.rule.id}" threw an exception`,
       this.toJSON(),
       this.rule.id,
-      err,
+      fromUnknownError(err),
     );
 
     const {message} = error;
