@@ -59,6 +59,7 @@ export interface PluginRegistryOpts {
 
 export class PluginRegistry {
   private pluginMap: Map<string, Readonly<PluginMetadata>>;
+
   private seenRawPlugins: Map<unknown, string>;
 
   private blessedMetadata?: Readonly<Record<BlessedPlugin, PluginMetadata>>;

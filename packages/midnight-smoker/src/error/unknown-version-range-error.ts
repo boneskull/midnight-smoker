@@ -8,6 +8,7 @@ export class UnknownVersionRangeError extends BaseSmokerError<{
   versionRange: string;
 }> {
   public readonly id = 'UnknownVersionRangeError';
+
   constructor(message: string, pm: string, versionRange: string) {
     super(message, {pm, versionRange});
   }

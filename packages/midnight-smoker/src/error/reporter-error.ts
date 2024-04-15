@@ -12,6 +12,7 @@ export class ReporterError<Ctx = unknown> extends BaseSmokerError<
   Error
 > {
   public readonly id = 'ReporterError';
+
   constructor(error: Error, reporter: ReporterDef<Ctx>) {
     super(
       `Reporter ${reporter.name} threw while initializing: ${error.message}`,

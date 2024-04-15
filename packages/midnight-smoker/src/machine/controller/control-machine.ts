@@ -15,7 +15,7 @@ import {
   type SomeRule,
 } from '#schema';
 import {FileManager, type FileManagerOpts} from '#util/filemanager';
-import {isEmpty, map, partition} from 'lodash';
+import {isEmpty, map, partition, sumBy} from 'lodash';
 import {type SetRequired} from 'type-fest';
 import {
   and,
@@ -70,6 +70,7 @@ export interface CtrlInput {
 
   systemExecutorId?: string;
 }
+
 export type CtrlContext = Omit<
   SetRequired<CtrlInput, 'cwd' | 'linger'>,
   'defaultExecutorId' | 'systemExecutorId' | 'fileManagerOpts'
@@ -86,7 +87,7 @@ export type CtrlContext = Omit<
   reporterMachineRefs: Record<string, ActorRefFrom<typeof ReporterMachine>>;
   runnerMachineRefs: Record<string, ActorRefFrom<typeof RunnerMachine>>;
   runScriptManifests: WeakMap<PkgManager, RunScriptManifest[]>;
-
+  lintManifests: WeakMap<PkgManager, LintManifest[]>;
   reporters: Reporter[];
   rules: SomeRule[];
   shouldLint: boolean;
@@ -94,13 +95,14 @@ export type CtrlContext = Omit<
   error?: Error;
   runScriptResults?: RunScriptResult[];
   lintResults?: LintResult[];
-  lintManifests?: LintManifest[];
+  totalChecks: number;
 
   packerMachineRef?: ActorRefFrom<typeof PackerMachine>;
   installerMachineRef?: ActorRefFrom<typeof InstallerMachine>;
 };
 
 export type CtrlOutputOk = MachineUtil.MachineOutputOk;
+
 export type CtrlOutputError = MachineUtil.MachineOutputError;
 
 export type CtrlOutput = CtrlOutputOk | CtrlOutputError;
@@ -133,7 +135,8 @@ export const ControlMachine = setup({
     InstallerMachine,
   },
   guards: {
-    didLint: ({context: {lintResults}}) => !lintResults,
+    hasRules: ({context: {rules}}) => Boolean(rules.length),
+    didLint: ({context: {lintResults}}) => Boolean(lintResults),
     didNotLint: not('didLint'),
     shouldLint: ({context: {shouldLint}}) => shouldLint,
     isPackingComplete: ({context: {packerMachineRef}}) => !packerMachineRef,
@@ -201,6 +204,33 @@ export const ControlMachine = setup({
           ]),
         ),
     }),
+
+    assignTotalChecks: assign({
+      totalChecks: ({context: {pkgManagers, rules}}) => {
+        return (
+          rules.length *
+          sumBy(
+            pkgManagers,
+            (pkgManager) => pkgManager.pkgInstallManifests.length,
+          )
+        );
+      },
+    }),
+
+    assignLintManifests: assign({
+      lintManifests: ({context: {pkgManagers}}) => {
+        return new WeakMap(
+          pkgManagers.map((pkgManager) => [
+            pkgManager,
+            pkgManager.pkgInstallManifests.map(({installPath, pkgName}) => ({
+              installPath,
+              pkgName,
+            })),
+          ]),
+        );
+      },
+    }),
+
     spawnRunnerMachines: assign({
       runnerMachineRefs: ({
         context: {scripts, pkgManagers, runScriptManifests},
@@ -390,6 +420,8 @@ export const ControlMachine = setup({
     rules: [],
     scripts: [],
     runScriptManifests: new WeakMap(),
+    lintManifests: new WeakMap(),
+    totalChecks: 0,
   }),
   initial: 'loading',
   on: {
@@ -401,15 +433,21 @@ export const ControlMachine = setup({
       ],
     },
 
+    LINT: [
+      {
+        guard: and(['didNotLint', 'hasRules']),
+        actions: [assign({shouldLint: true}), log('will lint')],
+      },
+      {
+        guard: and(['didNotLint', not('hasRules')]),
+        actions: [log('no rules to lint')], // TODO better warning
+      },
+    ],
+
     HALT: {
       actions: [log('stopping...')],
       target: '.done',
     },
-
-    // LINT: {
-    //   guard: {type: 'didNotLint'},
-    //   actions: [assign({shouldLint: true}), log('will lint')],
-    // },
 
     'xstate.done.actor.ReporterMachine.*': [
       {
@@ -1213,22 +1251,28 @@ export const ControlMachine = setup({
     },
     linting: {
       entry: [
+        {
+          type: 'assignLintManifests',
+        },
+        {
+          type: 'assignTotalChecks',
+        },
         log('linting...'),
         {
           type: 'report',
           params: ({
             context: {
-              lintManifests = [],
-              pkgManagers,
-              rules,
+              rules: {length: totalRules},
               smokerOptions: {rules: config},
+              pkgManagers: {length: totalPkgManagers},
+              totalChecks,
             },
           }): Event.CtrlExternalEvent<typeof SmokerEvent.LintBegin> => ({
             type: SmokerEvent.LintBegin,
             config,
-            totalChecks:
-              pkgManagers.length * rules.length * lintManifests.length,
-            totalRules: rules.length,
+            totalPkgManagers,
+            totalRules,
+            totalUniquePkgs: totalChecks / totalRules,
           }),
         },
       ],
@@ -1238,10 +1282,14 @@ export const ControlMachine = setup({
             {
               type: 'report',
               params: ({
+                context: {
+                  rules: {length: totalRules},
+                },
                 event,
               }): Event.CtrlExternalEvent<typeof SmokerEvent.RuleFailed> => {
                 return {
                   ...event,
+                  totalRules,
                   type: SmokerEvent.RuleFailed,
                 };
               },
@@ -1253,10 +1301,14 @@ export const ControlMachine = setup({
             {
               type: 'report',
               params: ({
+                context: {
+                  rules: {length: totalRules},
+                },
                 event,
               }): Event.CtrlExternalEvent<typeof SmokerEvent.RuleOk> => {
                 return {
                   ...event,
+                  totalRules,
                   type: SmokerEvent.RuleOk,
                 };
               },
@@ -1271,7 +1323,7 @@ export const ControlMachine = setup({
                 context: {
                   pkgManagers: {length: totalPkgManagers},
                   rules: {length: totalRules},
-                  lintManifests = [],
+                  totalChecks,
                 },
                 event,
               }): Event.CtrlExternalEvent<
@@ -1281,7 +1333,8 @@ export const ControlMachine = setup({
                 type: SmokerEvent.PkgManagerLintBegin,
                 totalPkgManagers,
                 totalRules,
-                totalPkgManagerChecks: totalRules * lintManifests.length,
+                totalPkgManagerChecks:
+                  totalRules > 0 ? totalChecks / totalRules : 0,
               }),
             },
           ],
@@ -1294,7 +1347,7 @@ export const ControlMachine = setup({
                 context: {
                   pkgManagers: {length: totalPkgManagers},
                   rules: {length: totalRules},
-                  lintManifests = [],
+                  totalChecks,
                 },
                 event,
               }): Event.CtrlExternalEvent<
@@ -1304,7 +1357,8 @@ export const ControlMachine = setup({
                 type: SmokerEvent.PkgManagerLintOk,
                 totalPkgManagers,
                 totalRules,
-                totalPkgManagerChecks: totalRules * lintManifests.length,
+                totalPkgManagerChecks:
+                  totalRules > 0 ? totalChecks / totalRules : 0,
               }),
             },
           ],
@@ -1317,7 +1371,7 @@ export const ControlMachine = setup({
                 context: {
                   pkgManagers: {length: totalPkgManagers},
                   rules: {length: totalRules},
-                  lintManifests = [],
+                  totalChecks,
                 },
                 event,
               }): Event.CtrlExternalEvent<
@@ -1327,7 +1381,8 @@ export const ControlMachine = setup({
                 type: SmokerEvent.PkgManagerLintFailed,
                 totalPkgManagers,
                 totalRules,
-                totalPkgManagerChecks: totalRules * lintManifests.length,
+                totalPkgManagerChecks:
+                  totalRules > 0 ? totalChecks / totalRules : 0,
               }),
             },
           ],

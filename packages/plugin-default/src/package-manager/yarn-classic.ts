@@ -29,8 +29,11 @@ interface WorkspaceInfo {
 
 export class YarnClassic implements PkgManagerDef {
   protected debug = Debug(`midnight-smoker:pm:yarn1`);
+
   public readonly bin = 'yarn';
+
   public readonly lockfile = 'yarn.lock';
+
   public readonly supportedVersionRange = new Range('^1.0.0');
 
   public readonly name = 'yarn';

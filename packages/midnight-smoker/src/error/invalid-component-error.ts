@@ -6,6 +6,7 @@ export class InvalidComponentError extends BaseSmokerError<{
   kind: ComponentKind;
 }> {
   public readonly id = 'InvalidComponentError';
+
   constructor(message: string, kind: ComponentKind, id: string) {
     super(message, {id, kind});
   }

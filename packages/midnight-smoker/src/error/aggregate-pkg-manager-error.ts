@@ -7,6 +7,7 @@ import {type UnsupportedPackageManagerError} from './unsupported-pkg-manager-err
  */
 export class AggregateUnsupportedPkgManagerError extends AggregateSmokerError {
   public readonly id = 'AggregateUnsupportedPkgManagerError';
+
   constructor(errors: UnsupportedPackageManagerError[]) {
     const specs = errors.map(({context}) => {
       if (!context) {

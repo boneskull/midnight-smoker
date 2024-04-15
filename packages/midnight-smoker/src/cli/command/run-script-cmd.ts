@@ -18,7 +18,9 @@ type RunScriptOptionTypes = GlobalOptionTypes &
 
 export class RunScriptCommand extends BaseCommand<RunScriptOptionTypes> {
   public override aliases = ['run'];
+
   public override command = 'run-script <script..>';
+
   public override describe = 'Run custom script(s) against package artifacts';
 
   public override builder(

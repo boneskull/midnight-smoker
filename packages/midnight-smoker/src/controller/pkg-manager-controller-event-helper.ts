@@ -16,10 +16,15 @@ import {
 } from '../event';
 
 export type InstallBeginData = DataWithPkgManagers;
+
 export type InstallOkData = DataWithPkgManagers;
+
 export type PackBeginData = DataWithPkgManagers;
+
 export type PackOkData = DataWithPkgManagers;
+
 export type PkgManagerInstallOkData = PkgManagerInstallBeginData;
+
 export type RunScriptsFailedData = RunScriptsOkData;
 
 export interface DataWithError<T extends Error> {
@@ -172,9 +177,11 @@ export class PkgManagerControllerEventHelper {
 
     return {...beginEventData, results, failed, passed, skipped};
   };
+
   private static pkgManagerSpecs = memoize((pkgManagers: SomePkgManager[]) =>
     pkgManagers.map(({spec}) => spec.toJSON()),
   );
+
   private static uniquePkgs = memoize((manifests: InstallManifest[]) => {
     return uniq(manifests.flatMap(({pkgName}) => pkgName));
   });

@@ -25,7 +25,9 @@ import {z} from 'zod';
 export type PkgManagerAcceptsResult = z.infer<
   typeof PkgManagerAcceptsResultSchema
 >;
+
 export type PkgManagerContext = z.infer<typeof BasePkgManagerContextSchema>;
+
 export type PkgManagerInstallContext = z.infer<
   typeof PkgManagerInstallContextSchema
 >;
@@ -34,7 +36,9 @@ export type PkgManagerInstallContext = z.infer<
  * Options for a {@link PkgManagerFactory}
  */
 export type PkgManagerOpts = z.infer<typeof PkgManagerOptsSchema>;
+
 export type PkgManagerPackContext = z.infer<typeof PkgManagerPackContextSchema>;
+
 export type PkgManagerRunScriptContext = z.infer<
   typeof PkgManagerRunScriptContextSchema
 >;
@@ -42,12 +46,17 @@ export type PkgManagerRunScriptContext = z.infer<
 export type PkgManagerRunScriptFn = (
   ctx: SomePkgManagerRunScriptContext,
 ) => Promise<RunScriptResult>;
+
 export type PkgManagerRunScriptFnOpts = z.infer<
   typeof PkgManagerRunScriptFnOptsSchema
 >;
+
 export type SomePkgManagerInstallContext = PkgManagerInstallContext;
+
 export type SomePkgManagerPackContext = PkgManagerPackContext;
+
 export type SomePkgManagerRunScriptContext = PkgManagerRunScriptContext;
+
 export type SupportedVersionRange = z.infer<
   typeof PkgManagerSupportedVersionRangeSchema
 >;
@@ -69,6 +78,7 @@ export const PkgManagerOptsSchema = z
   })
   .partial()
   .describe('Options for package manager factory function');
+
 export const BasePkgManagerContextSchema = z
   .object({
     spec: PkgManagerSpecSchema.readonly(),
@@ -78,6 +88,7 @@ export const BasePkgManagerContextSchema = z
     verbose: z.boolean().optional(),
   })
   .passthrough();
+
 export const PkgManagerPackContextSchema = BasePkgManagerContextSchema.extend({
   allWorkspaces: z.boolean().optional(),
   includeWorkspaceRoot: z.boolean().optional(),
@@ -106,6 +117,7 @@ export const PkgManagerInstallSchema = z
     z.promise(ExecResultSchema).describe('Result of installation attempt'),
   )
   .describe('Installs packages from tarballs as specified in the manifest');
+
 export const PkgManagerPackSchema = z
   .function(
     z.tuple([PkgManagerPackContextSchema] as [
@@ -114,11 +126,13 @@ export const PkgManagerPackSchema = z
     z.promise(z.array(InstallManifestSchema)),
   )
   .describe('Packs one or more packages into tarballs');
+
 export const PkgManagerRunScriptFnOptsSchema = z
   .object({
     signal: AbortSignalSchema.optional(),
   })
   .optional();
+
 export const PkgManagerRunScriptSchema = z
   .function(
     z.tuple([PkgManagerRunScriptContextSchema] as [
@@ -129,12 +143,14 @@ export const PkgManagerRunScriptSchema = z
   .describe(
     'Runs one or more scripts against packages installed from tarballs',
   );
+
 export const PkgManagerSetupSchema = z.function(
   z.tuple([BasePkgManagerContextSchema] as [
     context: typeof BasePkgManagerContextSchema,
   ]),
   VoidOrPromiseVoidSchema,
 );
+
 export const PkgManagerTeardownSchema = z.function(
   z.tuple([BasePkgManagerContextSchema] as [
     context: typeof BasePkgManagerContextSchema,

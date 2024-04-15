@@ -7,6 +7,9 @@
  */
 
 export * from './controller';
+
 export * from './lint-controller';
+
 export * from './pkg-manager-controller';
+
 export * from './reporter-controller';

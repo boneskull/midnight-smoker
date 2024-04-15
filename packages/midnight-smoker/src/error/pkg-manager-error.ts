@@ -12,6 +12,7 @@ export class PackageManagerError extends BaseSmokerError<
   Error
 > {
   public readonly id = 'PackageManagerError';
+
   constructor(message: string, spec: string | PkgManagerSpec, error: Error) {
     super(message, {pkgManager: `${spec}`}, error);
   }

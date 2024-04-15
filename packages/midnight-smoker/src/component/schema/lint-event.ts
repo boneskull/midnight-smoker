@@ -17,6 +17,7 @@ import {LintManifestSchema} from './lint-manifest';
 import {PkgManagerEventBaseSchema} from './pkg-manager-event';
 
 export type LintBeginEventData = z.infer<typeof LintBeginEventDataSchema>;
+
 export type LintEventData = {
   [LintEvent.PkgManagerLintBegin]: PkgManagerLintBeginEventData;
   [LintEvent.PkgManagerLintOk]: PkgManagerLintOkEventData;
@@ -61,27 +62,29 @@ export const RuleEventDataBaseSchema = LintManifestSchema.extend({
   config: BaseNormalizedRuleOptionsSchema.describe(
     'Specific rule configuration',
   ),
-  current: NonNegativeIntSchema.describe('Current rule position in the total'),
-  total: NonNegativeIntSchema.describe('Total count of unique rules'),
+  currentRule: NonNegativeIntSchema.describe(
+    'Current rule position in the total',
+  ),
+  totalRules: NonNegativeIntSchema.describe('Total count of unique rules'),
 }).describe('Base object for RunRule* events');
 
 export const RuleBeginEventDataSchema = RuleEventDataBaseSchema;
 
 export const RuleOkEventDataSchema = RuleEventDataBaseSchema;
 
-export const RuleFailedEventDataSchema = RuleEventDataBaseSchema.setKey(
-  'failed',
-  z
+export const RuleFailedEventDataSchema = RuleEventDataBaseSchema.extend({
+  issues: z
     .array(serializeObject(StaticRuleIssueSchema))
     .describe('List of issues raised by a single rule exection'),
-);
+});
 
 export const LintBeginEventDataSchema = z.object({
   config: BaseNormalizedRuleOptionsRecordSchema.describe(
     'The entire rule configuration, as defined by the user and default values',
   ),
-  totalChecks: NonNegativeIntSchema.describe('Total count of rule checks'),
   totalRules: NonNegativeIntSchema.describe('Total count of unique rules'),
+  totalPkgManagers: NonNegativeIntSchema,
+  totalUniquePkgs: NonNegativeIntSchema,
 });
 
 export const LintOkEventDataSchema = LintBeginEventDataSchema.extend({
@@ -90,9 +93,8 @@ export const LintOkEventDataSchema = LintBeginEventDataSchema.extend({
     .describe('List of rules which ran without issue'),
 });
 
-// FIXME: "failed" should be "issues" since some may be warnings
 export const LintFailedEventDataSchema = LintOkEventDataSchema.extend({
-  failed: z
+  issues: z
     .array(StaticRuleIssueSchema)
     .describe('List of issues raised by all rules'),
 });
@@ -118,6 +120,7 @@ export const PkgManagerLintOkEventDataSchema =
       .array(RuleOkSchema)
       .describe('List of rules which ran without issue'),
   });
+
 export const PkgManagerLintFailedEventDataSchema =
   PkgManagerLintOkEventDataSchema.extend({
     failed: z

@@ -36,6 +36,7 @@ export function createCommandTest(cwd: string, extraArgs: string[] = []) {
     });
   };
 }
+
 export function createBehaviorTest(cwd: string, extraArgs: string[] = []) {
   return (spec: string, actual: any) => {
     describe(`requested: ${spec}`, function () {

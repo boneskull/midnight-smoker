@@ -51,10 +51,12 @@ import {PkgManagerControllerEventHelper} from './pkg-manager-controller-event-he
  * All events emitted by the {@link PkgManagerController} class.
  */
 export type PkgManagerEvents = InstallEvents & ScriptEvents & PackEvents;
+
 export type PluginPkgManagerDef = [
   plugin: Readonly<PluginMetadata>,
   def: PkgManagerDef,
 ];
+
 export type RunScriptManifestWithPkgMgr = RunScriptManifest & {
   pkgManager: PkgManager;
 };
@@ -96,8 +98,11 @@ export class PkgManagerController implements Controller {
   #pkgManagers: SomePkgManager[] = [];
 
   public readonly cwd: string;
+
   public readonly defaultExecutor: Executor;
+
   public readonly pkgManagerOpts: PkgManagerOpts;
+
   public readonly systemExecutor: Executor;
 
   public readonly linger: boolean;

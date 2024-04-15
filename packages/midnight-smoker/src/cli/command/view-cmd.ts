@@ -26,7 +26,9 @@ type ViewOptionTypes = GlobalOptionTypes &
 
 export class ViewCommand extends BaseCommand {
   public override aliases = ['show'];
+
   public override command = 'view <item>';
+
   public override describe = 'View information about stuff';
 
   public static async viewConfig(opts: ArgumentsCamelCase<ViewOptionTypes>) {

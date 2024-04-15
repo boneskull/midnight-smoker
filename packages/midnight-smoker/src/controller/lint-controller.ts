@@ -227,6 +227,7 @@ export class LintController implements Controller {
     await this.eventBus.emit(SmokerEvent.LintBegin, {
       config: rulesConfig,
       totalRules: total,
+      // @ts-expect-error ugh
       totalChecks: 0,
     });
 
@@ -245,8 +246,8 @@ export class LintController implements Controller {
           await this.eventBus.emit(SmokerEvent.RuleBegin, {
             rule: rule.id,
             config,
-            current,
-            total,
+            currentRule: current,
+            totalRules: total,
             installPath,
             pkgName,
           });
@@ -275,9 +276,9 @@ export class LintController implements Controller {
             await this.eventBus.emit(SmokerEvent.RuleFailed, {
               rule: rule.id,
               config,
-              current,
-              total,
-              failed: issues.map((issue) => issue.toJSON()),
+              currentRule: current,
+              totalRules: total,
+              issues: issues.map((issue) => issue.toJSON()),
               installPath,
               pkgName,
             });
@@ -286,8 +287,8 @@ export class LintController implements Controller {
             await this.eventBus.emit(SmokerEvent.RuleOk, {
               rule: rule.id,
               config,
-              current,
-              total,
+              currentRule: current,
+              totalRules: total,
               installPath,
               pkgName,
             });
@@ -308,16 +309,16 @@ export class LintController implements Controller {
     };
 
     if (issues.length) {
-      // @ts-expect-error derp
       await this.eventBus.emit(SmokerEvent.LintFailed, {
         ...evtData,
+        // @ts-expect-error derp
         totalChecks: 0,
-        failed: allIssues.map((issue) => issue.toJSON()),
+        issues: allIssues.map((issue) => issue.toJSON()),
       });
     } else {
-      // @ts-expect-error derp
       await this.eventBus.emit(SmokerEvent.LintOk, {
         ...evtData,
+        // @ts-expect-error derp
         totalChecks: 0,
       });
     }

@@ -22,7 +22,9 @@ import {type ReporterMachineEvents} from './reporter-machine-events';
 export type ReporterMachineOutput =
   | ReporterMachineOutputOk
   | ReporterMachineOutputError;
+
 export type ReporterMachineOutputError = MachineOutputError;
+
 export type ReporterMachineOutputOk = MachineOutputOk;
 
 export interface ReporterMachineContext extends ReporterMachineInput {

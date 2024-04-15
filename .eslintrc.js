@@ -147,6 +147,13 @@ module.exports = {
         ],
 
         '@stylistic/ts/semi': ['error', 'always'],
+
+        '@stylistic/ts/padding-line-between-statements': [
+          'error',
+          {blankLine: 'always', prev: '*', next: 'export'},
+        ],
+
+        '@stylistic/ts/lines-between-class-members': 'error',
       },
 
       parser: '@typescript-eslint/parser',

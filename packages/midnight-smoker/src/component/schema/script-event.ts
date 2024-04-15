@@ -13,29 +13,41 @@ import {PkgManagerEventBaseSchema} from './pkg-manager-event';
 export type PkgManagerRunScriptsBeginEventData = z.infer<
   typeof PkgManagerRunScriptsBeginEventDataSchema
 >;
+
 export type PkgManagerRunScriptsFailedEventData = z.infer<
   typeof PkgManagerRunScriptFailedEventDataSchema
 >;
+
 export type PkgManagerRunScriptsOkEventData = z.infer<
   typeof PkgManagerRunScriptsOkEventDataSchema
 >;
+
 export type RunScriptBeginEventData = z.infer<
   typeof RunScriptBeginEventDataSchema
 >;
+
 export type RunScriptFailedEventData = z.infer<
   typeof RunScriptFailedEventDataSchema
 >;
+
 export type RunScriptOkEventData = z.infer<typeof RunScriptOkEventDataSchema>;
+
 export type RunScriptSkippedEventData = z.infer<
   typeof RunScriptSkippedEventDataSchema
 >;
+
 export type RunScriptsBeginEventData = RunScriptsEventData;
+
 export type RunScriptsEndEventData = z.infer<
   typeof RunScriptsEndEventDataSchema
 >;
+
 export type RunScriptsEventData = z.infer<typeof RunScriptsEventDataSchema>;
+
 export type RunScriptsFailedEventData = RunScriptsEndEventData;
+
 export type RunScriptsOkEventData = RunScriptsEndEventData;
+
 export type ScriptEventData = {
   [ScriptEvent.PkgManagerRunScriptsBegin]: PkgManagerRunScriptsBeginEventData;
   [ScriptEvent.PkgManagerRunScriptsFailed]: PkgManagerRunScriptsFailedEventData;
@@ -108,6 +120,7 @@ export const RunScriptsEventDataSchema = z.object({
   totalUniquePkgs: NonNegativeIntSchema,
   totalPkgManagers: NonNegativeIntSchema,
 });
+
 export const RunScriptsEndEventDataSchema = RunScriptsEventDataSchema.extend({
   results: z
     .array(RunScriptResultSchema)
@@ -122,21 +135,27 @@ export const RunScriptsEndEventDataSchema = RunScriptsEventDataSchema.extend({
     'Count of scripts which were skipped',
   ),
 });
+
 export const RunScriptEventDataSchema = RunScriptManifestSchema.extend({
   currentScript: NonNegativeIntSchema,
   totalUniqueScripts: NonNegativeIntSchema,
   pkgManager: StaticPkgManagerSpecSchema,
 });
+
 export const RunScriptBeginEventDataSchema = RunScriptEventDataSchema;
+
 export const RunScriptOkEventDataSchema = RunScriptEventDataSchema.extend({
   rawResult: ScriptResultRawResultSchema,
 });
+
 export const RunScriptFailedEventDataSchema = RunScriptEventDataSchema.extend({
   error: ScriptResultErrorSchema,
 });
+
 export const RunScriptSkippedEventDataSchema = RunScriptEventDataSchema.extend({
   skipped: z.literal(true),
 });
+
 export const PkgManagerRunScriptsEventBaseDataSchema =
   PkgManagerEventBaseSchema.extend({
     manifests: z.array(RunScriptManifestSchema),
@@ -145,11 +164,14 @@ export const PkgManagerRunScriptsEventBaseDataSchema =
     ),
     totalUniquePkgs: NonNegativeIntSchema,
   });
+
 export const PkgManagerRunScriptsBeginEventDataSchema =
   PkgManagerRunScriptsEventBaseDataSchema;
+
 export const PkgManagerRunScriptsOkEventDataSchema =
   PkgManagerRunScriptsEventBaseDataSchema.extend({
     results: z.array(RunScriptResultSchema),
   });
+
 export const PkgManagerRunScriptFailedEventDataSchema =
   PkgManagerRunScriptsOkEventDataSchema;

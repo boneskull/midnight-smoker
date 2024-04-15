@@ -6,8 +6,11 @@ export abstract class BaseCommand<
 > implements CommandModule<GlobalOptionTypes, T>
 {
   public aliases?: string | readonly string[];
+
   public command?: string | readonly string[];
+
   public deprecated?: boolean | string = false;
+
   public describe?: string | false;
 
   public builder?(argv: Argv<GlobalOptionTypes>): Argv<T>;

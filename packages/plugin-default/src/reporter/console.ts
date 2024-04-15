@@ -1,6 +1,5 @@
 import {
   blueBright,
-  bold,
   dim,
   green,
   greenBright,
@@ -138,12 +137,15 @@ export const ConsoleReporter: ReporterDef<ConsoleReporterContext> = {
   },
   onPkgManagerPackBegin(
     {spinnies},
-    {pkgManager, currentPkgManager: current, totalPkgManagers: total},
+    {pkgManager, currentPkgManager, totalPkgManagers},
   ) {
     const text = `${nameAndVersion(
       green(pkgManager.pkgManager),
       pkgManager.version,
-    )} (${currentOfTotal(current, total)}) packing${ELLIPSIS}`;
+    )} (${currentOfTotal(
+      currentPkgManager,
+      totalPkgManagers,
+    )}) packing${ELLIPSIS}`;
 
     spinnies.add(`packing-${pkgManager.spec}`, {
       indent: 2,
@@ -155,14 +157,14 @@ export const ConsoleReporter: ReporterDef<ConsoleReporterContext> = {
     {
       pkgManager,
       manifests,
-      currentPkgManager: current,
-      totalPkgManagers: total,
+      currentPkgManager: currentPkgManager,
+      totalPkgManagers: totalPkgManagers,
     },
   ) {
     const text = `${nameAndVersion(
       green(pkgManager.pkgManager),
       pkgManager.version,
-    )} (${currentOfTotal(current, total)}) packed ${plural(
+    )} (${currentOfTotal(currentPkgManager, totalPkgManagers)}) packed ${plural(
       'packages',
       manifests.length,
       true,
@@ -181,7 +183,7 @@ export const ConsoleReporter: ReporterDef<ConsoleReporterContext> = {
       'package manager',
       pkgManagers.length,
       true,
-    )} packed ${plural('unique package', uniquePkgs.length, true)}`;
+    )} packed ${plural('package', uniquePkgs.length, true)}`;
 
     spinnies.get('pack').update({text, status: 'success'});
   },
@@ -264,34 +266,46 @@ export const ConsoleReporter: ReporterDef<ConsoleReporterContext> = {
 
     spinnies.get('installing').update({text, status: 'success'});
   },
-  onLintBegin({spinnies}, {totalRules: total}) {
-    spinnies.add('lint', {text: `Running 0/${total} rules…`});
-  },
-  onRuleBegin({spinnies}, {current, total}) {
+  onRuleBegin({spinnies}, {currentRule: current, totalRules: total}) {
     spinnies.get('lint').update({text: `Running rule ${current}/${total}…`});
   },
   onRuleFailed(ctx, evt) {
     ctx.ruleFailedEvents.push(evt);
   },
-  onLintOk({spinnies}, {totalRules: total}) {
+  onLintBegin({spinnies}, {totalUniquePkgs, totalRules, totalPkgManagers}) {
+    const text = `Running ${plural('rule', totalRules, true)} across ${plural(
+      'package',
+      totalUniquePkgs,
+      true,
+    )} using ${plural('package manager', totalPkgManagers, true)}${ELLIPSIS}`;
+
+    spinnies.add('lint', {text});
+  },
+  onLintOk({spinnies}, {totalRules, totalPkgManagers, totalUniquePkgs}) {
+    const text = `Applied ${plural('rule', totalRules, true)} to ${plural(
+      'package',
+      totalUniquePkgs,
+      true,
+    )} using ${plural('package manager', totalPkgManagers, true)}${ELLIPSIS}`;
+
     spinnies.get('lint').update({
-      text: `Successfully executed ${plural('rule', total, true)}`,
+      text,
       status: 'success',
     });
   },
   onLintFailed(
     {spinnies, ruleFailedEvents: ruleFailedEvts},
-    {totalRules: total, failed},
+    {totalRules: total, issues},
   ) {
     const lintSpinnie = spinnies.get('lint');
     lintSpinnie.update({
-      text: `${pluralize('rule', failed.length, true)} of ${total} failed`,
+      text: `${pluralize('rule', issues.length, true)} of ${total} failed`,
       status: 'fail',
     });
 
     // TODO move this into a format() function for these error kinds
     const failedByPackage = ruleFailedEvts
-      .map((evt) => evt.failed)
+      .map((evt) => evt.issues)
       .flat()
       .reduce<Record<string, StaticRuleIssue[]>>((acc, failed) => {
         const pkgName =
@@ -330,48 +344,106 @@ export const ConsoleReporter: ReporterDef<ConsoleReporterContext> = {
   onRuleError({spinnies}, {error: err}) {
     spinnies.get('lint').update({text: err.message, status: 'fail'});
   },
-  onRunScriptsBegin({spinnies}, {totalUniqueScripts: total}) {
-    spinnies.add('scripts', {text: `Running 0/${total} scripts${ELLIPSIS}`});
+  onRunScriptsBegin(
+    {spinnies},
+    {totalUniqueScripts, totalUniquePkgs, totalPkgManagers},
+  ) {
+    const text = `Running ${plural(
+      'script',
+      totalUniqueScripts,
+      true,
+    )} across ${plural('package', totalUniquePkgs, true)} using ${plural(
+      'package manager',
+      totalPkgManagers,
+      true,
+    )}${ELLIPSIS}`;
+
+    spinnies.add('scripts', {text});
+  },
+  onRunScriptsOk(
+    {spinnies},
+    {totalUniqueScripts, totalUniquePkgs, totalPkgManagers},
+  ) {
+    const text = `Scripts completed successfully; executed ${plural(
+      'script',
+      totalUniqueScripts,
+      true,
+    )} across ${plural('package', totalUniquePkgs, true)} using ${plural(
+      'package manager',
+      totalPkgManagers,
+      true,
+    )}`;
+    spinnies.get('scripts').update({status: 'success', text});
+  },
+  onRunScriptsFailed(
+    {spinnies},
+    {failed, totalUniqueScripts, totalUniquePkgs, totalPkgManagers},
+  ) {
+    const text = `Scripts completed with ${plural(
+      'failure',
+      failed,
+      true,
+    )}; executed ${plural('script', totalUniqueScripts, true)} across ${plural(
+      'package',
+      totalUniquePkgs,
+      true,
+    )} using ${plural('package manager', totalPkgManagers, true)}`;
+    spinnies.get('scripts').update({status: 'fail', text});
+  },
+  onPkgManagerRunScriptsBegin({spinnies}, {pkgManager, totalUniqueScripts}) {
+    const text = `${nameAndVersion(
+      green(pkgManager.pkgManager),
+      pkgManager.version,
+    )} running 0/${totalUniqueScripts} ${plural(
+      'script',
+      totalUniqueScripts,
+    )}${ELLIPSIS}`;
+
+    spinnies.add(`scripts-${pkgManager.spec}`, {text, indent: 2});
+  },
+  onPkgManagerRunScriptsOk({spinnies}, {pkgManager, totalUniqueScripts}) {
+    const text = `${nameAndVersion(
+      green(pkgManager.pkgManager),
+      pkgManager.version,
+    )} ran ${plural('script', totalUniqueScripts, true)}`;
+    spinnies
+      .get(`scripts-${pkgManager.spec}`)
+      .update({status: 'success', text});
+  },
+  onPkgManagerRunScriptsFailed({spinnies}, {pkgManager, totalUniqueScripts}) {
+    const text = `${nameAndVersion(
+      green(pkgManager.pkgManager),
+      pkgManager.version,
+    )} ran ${plural('script', totalUniqueScripts, true)}`;
+    spinnies.get(`scripts-${pkgManager.spec}`).update({status: 'fail', text});
   },
   onRunScriptBegin(
     {spinnies},
-    {pkgManager, currentScript: current, totalUniqueScripts: total},
+    {pkgManager, currentScript, totalUniqueScripts},
   ) {
     const text = `${nameAndVersion(
       green(pkgManager.pkgManager),
       pkgManager.version,
-    )} running script ${current}/${total}${ELLIPSIS}`;
-    spinnies.get('scripts').update({text});
+    )} running ${currentScript}/${totalUniqueScripts} ${plural(
+      'script',
+      totalUniqueScripts,
+    )}${ELLIPSIS}`;
+
+    spinnies.get(`scripts-${pkgManager.spec}`).update({text});
+
+    // const text = `${nameAndVersion(
+    //   green(pkgManager.pkgManager),
+    //   pkgManager.version,
+    // )} running ${currentScript}/${totalUniqueScripts} ${plural(
+    //   'script',
+    //   totalUniqueScripts,
+    // )}${ELLIPSIS}`;
+    // spinnies.get(`scripts-${pkgManager.spec}`).update({text});
   },
   onRunScriptFailed(ctx, evt) {
     ctx.scriptFailedEvents.push(evt);
   },
-  onRunScriptsOk({spinnies}, {totalUniqueScripts: total}) {
-    spinnies.get('scripts').update({
-      text: `Successfully ran ${plural('script', total, true)}`,
-      status: 'success',
-    });
-  },
-  onRunScriptsFailed(
-    {spinnies, opts, scriptFailedEvents: scriptFailedEvts},
-    {totalUniqueScripts: total, failed: failures},
-  ) {
-    const scriptSpinnie = spinnies.get('scripts');
-    scriptSpinnie.update({
-      text: `${plural('script', failures, true)} of ${total} failed`,
-      status: 'fail',
-    });
-    for (const evt of scriptFailedEvts) {
-      // TODO: this is not verbose enough
-      const details = evt.error.format(opts.verbose);
-      scriptSpinnie.update({
-        text: `Script execution failure details for package ${bold(
-          greenBright(evt.pkgName),
-        )}:\n- ${details}\n`,
-        status: 'warn',
-      });
-    }
-  },
+  onRunScriptOk({spinnies}) {},
   onSmokeFailed({spinnies}, {error: err}) {
     // spinnies.fail(err.message);
   },

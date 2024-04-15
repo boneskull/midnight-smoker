@@ -86,6 +86,7 @@ export class EventContext<
     keyof AsyncEvents,
     Set<AsyncHandler<AsyncEvents[any]>>
   >();
+
   #syncListeners = new Map<keyof SyncEvents, Set<Handler<SyncEvents[any]>>>();
 
   public constructor(

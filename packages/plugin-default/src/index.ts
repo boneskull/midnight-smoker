@@ -9,6 +9,7 @@ import {loadReporters} from './reporter';
 
 import {loadRules} from './rules';
 import {systemExecutor} from './system-executor';
+
 export function plugin(api: PluginAPI) {
   api.defineExecutor(corepackExecutor);
   api.defineExecutor(systemExecutor, 'system');

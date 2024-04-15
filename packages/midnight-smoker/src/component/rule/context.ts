@@ -31,6 +31,7 @@ export class RuleContext implements StaticRuleContext {
    * List of any issues which were raised by the execution of this {@link rule}.
    */
   readonly #issues: RuleIssue[] = [];
+
   protected constructor(
     private readonly rule: StaticRule,
     staticCtx: StaticRuleContext,

@@ -30,7 +30,9 @@ type ListOptionTypes = GlobalOptionTypes &
 
 export class ListCommand extends BaseCommand {
   public override aliases = ['ls'];
+
   public override command = 'list <component>';
+
   public override describe = 'List available components';
 
   public override builder(

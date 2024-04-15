@@ -13,7 +13,9 @@ const debug = Debug('midnight-smoker:cli:lint');
 
 export class LintCommand extends BaseCommand<CommonOptionTypes> {
   override aliases = ['lint'];
+
   override command = '*';
+
   override describe = 'Lint package artifacts';
 
   override async handler(

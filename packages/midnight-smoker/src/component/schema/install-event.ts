@@ -12,7 +12,9 @@ import {PkgManagerEventBaseSchema} from './pkg-manager-event';
 import {StaticPkgManagerSpecSchema} from './static-pkg-manager-spec';
 
 export type InstallBeginEventData = z.infer<typeof InstallBeginEventDataSchema>;
+
 export type InstallEventBaseData = z.infer<typeof InstallEventBaseDataSchema>;
+
 export type InstallEventData = {
   /**
    * Emitted when the installation of packages begins
@@ -62,13 +64,17 @@ export type InstallEventData = {
 export type InstallFailedEventData = z.infer<
   typeof InstallFailedEventDataSchema
 >;
+
 export type InstallOkEventData = z.infer<typeof InstallOkEventDataSchema>;
+
 export type PkgManagerInstallBeginEventData = z.infer<
   typeof PkgManagerInstallBeginEventDataSchema
 >;
+
 export type PkgManagerInstallFailedEventData = z.infer<
   typeof PkgManagerInstallFailedEventDataSchema
 >;
+
 export type PkgManagerInstallOkEventData = z.infer<
   typeof PkgManagerInstallOkEventDataSchema
 >;
@@ -122,12 +128,15 @@ export const InstallOkEventDataSchema = InstallEventBaseDataSchema;
 export const InstallFailedEventDataSchema = InstallOkEventDataSchema.extend({
   error: instanceofSchema(InstallError),
 });
+
 export const PkgManagerInstallBeginEventDataSchema =
   PkgManagerEventBaseSchema.extend({
     manifests: z.array(InstallManifestSchema),
   });
+
 export const PkgManagerInstallOkEventDataSchema =
   PkgManagerInstallBeginEventDataSchema;
+
 export const PkgManagerInstallFailedEventDataSchema =
   PkgManagerInstallBeginEventDataSchema.extend({
     error: instanceofSchema(InstallError),

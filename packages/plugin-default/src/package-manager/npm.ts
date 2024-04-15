@@ -83,6 +83,7 @@ export abstract class BaseNpmPackageManager implements PkgManagerDef {
   protected abstract debug: Debug.Debugger;
 
   public readonly bin = 'npm';
+
   public readonly lockfile = 'package-lock.json';
 
   public abstract supportedVersionRange: Range;

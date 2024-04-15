@@ -21,6 +21,7 @@ export type InstallerMachineEvents =
   | InstallerMachinePackingCompleteEvent
   | InstallerMachinePkgManagerInstallBeginEvent
   | InstallerMachineInstallDoneEvent;
+
 export interface InstallerMachinePkgManagerInstallBeginEvent {
   type: 'PKG_MANAGER_INSTALL_BEGIN';
   index: number;

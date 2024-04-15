@@ -13,6 +13,7 @@ export class RuleError extends BaseSmokerError<
   Error
 > {
   public readonly id = 'RuleError';
+
   constructor(
     message: string,
     context: StaticRuleContext,

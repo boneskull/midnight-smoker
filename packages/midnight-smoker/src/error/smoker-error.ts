@@ -18,6 +18,7 @@ export class CleanupError extends BaseSmokerError<
   NodeJS.ErrnoException
 > {
   public readonly id = 'CleanupError';
+
   constructor(message: string, dir: string, error: NodeJS.ErrnoException) {
     super(message, {dir}, error);
   }
@@ -32,6 +33,7 @@ export class SmokeFailedError<T> extends AggregateSmokerError<{
   results?: T;
 }> {
   public readonly id = 'SmokeFailedError';
+
   constructor(
     message: string,
     errors: Error[] | Error,

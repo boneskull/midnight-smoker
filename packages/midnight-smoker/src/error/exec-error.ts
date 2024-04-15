@@ -10,9 +10,13 @@ export class ExecError extends BaseSmokerError<{command: string}, ExecaError> {
   public readonly id = 'ExecError';
 
   public readonly command: string;
+
   public readonly exitCode: number;
+
   public readonly all?: string;
+
   public readonly stderr: string;
+
   public readonly stdout: string;
 
   public readonly failed: boolean;

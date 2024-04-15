@@ -7,6 +7,7 @@ import {isBoolean, isInteger, isObject, isString} from 'lodash';
 import type unexpected from 'unexpected';
 
 const {packageJson} = readPackageJsonSync({cwd: __dirname, strict: true});
+
 export default {
   name: 'unexpected-midnight-smoker-internal',
   version: packageJson.version,

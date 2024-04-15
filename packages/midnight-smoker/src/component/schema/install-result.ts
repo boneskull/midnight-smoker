@@ -6,4 +6,5 @@ export const InstallResultSchema = z.object({
   installManifests: InstallManifestsSchema,
   rawResult: ExecResultSchema,
 });
+
 export type InstallResult = z.infer<typeof InstallResultSchema>;

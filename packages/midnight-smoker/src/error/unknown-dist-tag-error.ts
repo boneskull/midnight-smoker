@@ -8,6 +8,7 @@ export class UnknownDistTagError extends BaseSmokerError<{
   tag: string;
 }> {
   public readonly id = 'UnknownDistTagError';
+
   constructor(message: string, pkgName: string, tag: string) {
     super(message, {pkgName, tag});
   }

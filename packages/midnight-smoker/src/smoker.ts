@@ -55,6 +55,7 @@ type SetupResult =
       error: Error;
     }
   | undefined;
+
 export type SmokerEmitter = StrictEmitter<SmokerEvents>;
 
 /**
@@ -91,6 +92,7 @@ export class Smoker {
    * Whether to bail on the first script failure
    */
   private readonly bail: boolean;
+
   private readonly eventBus: SmokerEventBus;
 
   /**
@@ -113,8 +115,11 @@ export class Smoker {
    * contain a collection of rules and other stuff (in the future)
    */
   private readonly pluginRegistry: PluginRegistry;
+
   private readonly reporterController: ReporterController;
+
   private readonly lintController?: LintController;
+
   private readonly reporters: Set<string>;
 
   /**

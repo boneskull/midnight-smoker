@@ -278,11 +278,13 @@ const Publish = {
         (
           await Promise.all(
             dirents.map(
+
               /**
                * Given a dirent object from `glob`, returns the package name if
                * it hasn't already been published
                */
               async (dirent) => {
+
                 /**
                  * Parsed contents of `package.json` for the package in the dir
                  * represented by `dirent`
@@ -355,6 +357,7 @@ const Publish = {
                     // when called with `--json`, you get a JSON error.
                     // this could also be handled in a catch() chained to the `exec` promise
                     if ('stdout' in err) {
+
                       /**
                        * @type {{
                        *   error: {
@@ -379,6 +382,7 @@ const Publish = {
                 }
 
                 if (versionContents !== undefined) {
+
                   /**
                    * List of published versions for this pkg
                    *

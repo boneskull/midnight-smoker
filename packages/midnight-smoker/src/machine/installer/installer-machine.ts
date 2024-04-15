@@ -55,6 +55,7 @@ export interface InstallerMachineContext extends InstallerMachineInput {
 }
 
 export type InstallerMachineOutputError = MachineOutputError<InstallError>;
+
 export type InstallerMachineOutputOk = MachineOutputOk<{
   manifests: InstallManifest[];
 }>;

@@ -8,6 +8,7 @@ import {
   type RawSmokerOptions,
   type SmokerOptions,
 } from './options';
+
 export const debug = Debug('midnight-smoker:options');
 
 /**

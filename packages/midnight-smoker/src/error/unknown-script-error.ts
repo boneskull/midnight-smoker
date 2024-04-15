@@ -8,6 +8,7 @@ export class UnknownScriptError extends BaseSmokerError<{
   pkgName: string;
 }> {
   public readonly id = 'UnknownScriptError';
+
   constructor(message: string, script: string, pkgName: string) {
     super(message, {script, pkgName});
   }

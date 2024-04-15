@@ -142,6 +142,7 @@ export class FileManager {
       );
     }
   }
+
   public async findPkgUp(
     cwd: string,
     options: ReadPkgJsonOpts & {normalize: true; strict: true},

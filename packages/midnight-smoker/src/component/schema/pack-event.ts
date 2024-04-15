@@ -10,6 +10,7 @@ import {PkgManagerEventBaseSchema} from './pkg-manager-event';
  * {@inheritDoc PackBeginEventDataSchema}
  */
 export type PackBeginEventData = z.infer<typeof PackBeginEventDataSchema>;
+
 export type PackEventData = {
   /**
    * Emitted whenever a package is about to be packed into a tarball.
@@ -51,12 +52,15 @@ export type PackFailedEventData = z.infer<typeof PackFailedEventDataSchema>;
  * {@inheritDoc PackOkEventDataSchema}
  */
 export type PackOkEventData = z.infer<typeof PackOkEventDataSchema>;
+
 export type PkgManagerPackBeginEventData = z.infer<
   typeof PkgManagerPackBeginEventDataSchema
 >;
+
 export type PkgManagerPackFailedEventData = z.infer<
   typeof PkgManagerPackFailedEventDataSchema
 >;
+
 export type PkgManagerPackOkEventData = z.infer<
   typeof PkgManagerPackOkEventDataSchema
 >;
@@ -103,6 +107,7 @@ export const PkgManagerPackFailedEventDataSchema =
   PkgManagerPackBeginEventDataSchema.extend({
     error: PackingErrorSchema,
   });
+
 export const PkgManagerPackOkEventDataSchema =
   PkgManagerPackBeginEventDataSchema.extend({
     manifests: InstallEventBaseDataSchema.shape.manifests,

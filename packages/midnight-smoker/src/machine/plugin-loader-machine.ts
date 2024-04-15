@@ -48,6 +48,7 @@ export interface PluginLoaderContext extends PluginLoaderInput {
   ruleDefsWithCtx?: RuleDefWithCtx[];
   rules?: SomeRule[];
 }
+
 export type PluginLoaderOutputOk = MachineOutputOk<{
   pkgManagers: PkgManager[];
   reporters: SomeReporter[];

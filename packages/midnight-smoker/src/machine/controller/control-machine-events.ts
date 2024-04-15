@@ -33,6 +33,7 @@ export type CtrlEvents =
   | CtrlHaltEvent
   | CtrlInitEvent
   | CtrlLoadedEvent
+  | CtrlLintEvent
   | CtrlPkgManagerInstallFailedEvent
   | CtrlPkgManagerInstallOkEvent
   | CtrlPkgManagerPackFailedEvent
@@ -252,15 +253,20 @@ export interface CtrlPkgManagerRunScriptsFailedEvent {
   sender: string;
 }
 
-export interface CtrlRuleFailedEvent extends RuleFailedEventData {
+export type ComputedRuleEventFields = 'totalRules';
+
+export interface CtrlRuleFailedEvent
+  extends Omit<RuleFailedEventData, ComputedRuleEventFields> {
   type: 'RULE_FAILED';
 }
 
-export interface CtrlRuleOkEvent extends RuleOkEventData {
+export interface CtrlRuleOkEvent
+  extends Omit<RuleOkEventData, ComputedRuleEventFields> {
   type: 'RULE_OK';
 }
 
-export interface CtrlRuleBeginEvent extends RuleBeginEventData {
+export interface CtrlRuleBeginEvent
+  extends Omit<RuleBeginEventData, ComputedRuleEventFields> {
   type: 'RULE_BEGIN';
 }
 
@@ -282,6 +288,7 @@ export interface CtrlPkgManagerLintOkEvent
   extends Omit<PkgManagerLintOkEventData, ComputedPkgManagerLintFields> {
   type: 'PKG_MANAGER_LINT_OK';
 }
+
 export interface CtrlPkgManagerLintFailedEvent
   extends Omit<PkgManagerLintFailedEventData, ComputedPkgManagerLintFields> {
   type: 'PKG_MANAGER_LINT_FAILED';

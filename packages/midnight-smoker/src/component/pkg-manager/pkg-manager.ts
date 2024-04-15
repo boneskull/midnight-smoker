@@ -25,7 +25,9 @@ export type SomePkgManager = PkgManager;
 
 export class PkgManager extends ReifiedComponent<PkgManagerDef> {
   private installManifestMap: Map<string, InstallManifest> = new Map();
+
   private _installManifests: InstallManifest[] = [];
+
   private _installResult?: InstallResult;
 
   constructor(

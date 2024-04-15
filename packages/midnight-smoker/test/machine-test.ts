@@ -76,7 +76,7 @@ async function main() {
 
   const emitted = new Set<string>();
   const listener = (evt: CtrlEmitted) => {
-    debugEmit(evt.type);
+    // debugEmit(evt.type);
     emitted.add(evt.type);
   };
 
@@ -88,7 +88,7 @@ async function main() {
   const runningScripts = false;
   m.subscribe({
     complete() {
-      debugComplete(m.getSnapshot().output);
+      // debugComplete(m.getSnapshot().output);
 
       debugComplete(emitted);
     },
@@ -106,8 +106,8 @@ async function main() {
     },
   });
 
-  m.send({type: 'INIT'});
   m.send({type: 'RUN_SCRIPTS', scripts: ['build']});
+  m.send({type: 'LINT'});
   setTimeout(() => {
     m.send({type: 'HALT'});
   }, 10000);

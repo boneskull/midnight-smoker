@@ -2,6 +2,7 @@ import {NonEmptyStringSchema, NonNegativeIntSchema} from '#util/schema-util';
 import {z} from 'zod';
 
 export type PackOptions = z.infer<typeof PackOptionsSchema>;
+
 export const PackOptionsSchema = z
   .object({
     cwd: NonEmptyStringSchema.optional().describe(

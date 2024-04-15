@@ -82,15 +82,19 @@ const _readPkgJson = memoize(__readPkgJson);
 export async function readPackageJson(
   opts: ReadPackageJsonOpts & {strict: true; normalize: true},
 ): Promise<ReadPackageJsonNormalizedResult>;
+
 export async function readPackageJson(
   opts: ReadPackageJsonOpts & {strict: true},
 ): Promise<ReadPackageJsonResult>;
+
 export async function readPackageJson(
   opts?: ReadPackageJsonOpts,
 ): Promise<ReadPackageJsonResult | undefined>;
+
 export async function readPackageJson(
   opts: ReadPackageJsonOpts & {normalize: true; strict?: false},
 ): Promise<ReadPackageJsonNormalizedResult | undefined>;
+
 export async function readPackageJson({
   cwd,
   normalize,
@@ -144,9 +148,11 @@ const _readPkgJsonSync = memoize(__readPkgJsonSync);
 export function readPackageJsonSync(
   opts: ReadPackageJsonOpts & {strict: true},
 ): readPkgUp.ReadResult;
+
 export function readPackageJsonSync(
   opts?: ReadPackageJsonOpts,
 ): readPkgUp.ReadResult | undefined;
+
 export function readPackageJsonSync({
   cwd,
   normalize,

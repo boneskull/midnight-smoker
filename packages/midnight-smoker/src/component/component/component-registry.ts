@@ -29,6 +29,7 @@ export type ComponentObject<T extends ComponentKind> =
 export class ComponentRegistry {
   private componentsByKind: Map<ComponentKind, Map<string, Component>> =
     new Map();
+
   private componentMap: WeakMap<object, Component> = new WeakMap();
 
   public static create(): ComponentRegistry {

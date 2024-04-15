@@ -16,14 +16,21 @@
  */
 
 import {Smoker} from './smoker';
+
 export type {SmokeResults} from '#schema/smoker-event';
+
 export type * from './controller';
+
 export {
   BaseSmokerOptionsSchema as zBaseSmokerOptions,
   type RawSmokerOptions,
   type SmokerOptions,
 } from './options';
+
 export type * from './plugin/plugin-registry';
+
 export type {SmokerCapabilities} from './smoker';
+
 export {Smoker};
+
 export const {smoke} = Smoker;

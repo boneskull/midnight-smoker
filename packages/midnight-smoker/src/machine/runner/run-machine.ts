@@ -45,6 +45,7 @@ export type RunMachineOutputOk = MachineOutputOk<{
 }>;
 
 export type RunMachineOutputError = MachineOutputError<ScriptError>;
+
 export type RunMachineOutput = RunMachineOutputOk | RunMachineOutputError;
 
 export type RunMachineRunScriptInput = Omit<

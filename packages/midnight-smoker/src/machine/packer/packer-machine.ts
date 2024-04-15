@@ -66,6 +66,7 @@ export interface PackResult {
 export type PackerMachineOutputError = MachineOutputError<
   PackError | PackParseError
 >;
+
 export type PackerMachineOutputOk = MachineOutputOk<{
   manifests: InstallManifest[];
 }>;

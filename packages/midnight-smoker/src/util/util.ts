@@ -68,6 +68,7 @@ export function serialize<T>(value: T): T;
  *   value.
  */
 export function serialize<T extends Serializable<U>, U = unknown>(value: T): U;
+
 export function serialize<T>(value: T) {
   if (isSerializable(value)) {
     return value.toJSON();

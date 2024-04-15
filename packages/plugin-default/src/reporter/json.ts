@@ -51,7 +51,7 @@ export const JSONReporter: ReporterDef<JSONReporterContext> = {
   onLintBegin(ctx, {totalRules: total}) {
     ctx.stats.totalRules = total;
   },
-  onLintFailed(ctx, {failed, passed}) {
+  onLintFailed(ctx, {issues: failed, passed}) {
     ctx.stats.failedRules = failed.length;
     ctx.stats.passedRules = passed.length;
   },

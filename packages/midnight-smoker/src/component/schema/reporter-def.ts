@@ -110,6 +110,7 @@ export const PackEventListenerSchemas = {
     PackEvents.PkgManagerPackFailedEventDataSchema,
   ),
 } as const;
+
 export const InstallEventListenerSchemas = {
   [`on${InstallEvent.InstallBegin}` as const]: eventListenerSchema(
     InstallEvents.InstallBeginEventDataSchema,

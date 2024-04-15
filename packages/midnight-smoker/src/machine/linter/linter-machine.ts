@@ -22,12 +22,15 @@ import {
   type AnyActorRef,
 } from 'xstate';
 import {
+  type CtrlRuleFailedEvent,
+  type CtrlRuleOkEvent,
+} from '../controller/control-machine-events';
+import {
   makeId,
   monkeypatchActorLogger,
   type MachineOutputError,
   type MachineOutputOk,
 } from '../machine-util';
-import type * as PMMEvents from '../pkg-manager/pkg-manager-machine-events';
 import {LintMachine, type LMOutput} from './lint-machine';
 
 export interface LinterMachineInput {
@@ -152,14 +155,20 @@ export const LinterMachine = setup({
     sendRuleFailed: sendTo(
       ({context: {parentRef}}) => parentRef,
       (
-        {context: {ruleConfig: config, staticRule, index}},
+        {
+          context: {
+            ruleConfig: config,
+            staticRule: {name: rule},
+            index: currentRule,
+          },
+        },
         {issues, ctx: {pkgName, installPath}}: LMOutput,
-      ): PMMEvents.PMMRuleFailedEvent => ({
+      ): CtrlRuleFailedEvent => ({
         pkgName,
         installPath,
         config,
-        rule: staticRule,
-        current: index,
+        rule,
+        currentRule,
         type: 'RULE_FAILED',
         issues,
       }),
@@ -167,14 +176,20 @@ export const LinterMachine = setup({
     sendRuleOk: sendTo(
       ({context: {parentRef}}) => parentRef,
       (
-        {context: {ruleConfig: config, staticRule, index}},
+        {
+          context: {
+            ruleConfig: config,
+            staticRule: {name: rule},
+            index: currentRule,
+          },
+        },
         {ctx: {pkgName, installPath}}: LMOutput,
-      ): PMMEvents.PMMRuleOkEvent => ({
+      ): CtrlRuleOkEvent => ({
         pkgName,
         installPath,
         config,
-        rule: staticRule,
-        current: index,
+        rule,
+        currentRule,
         type: 'RULE_OK',
       }),
     ),

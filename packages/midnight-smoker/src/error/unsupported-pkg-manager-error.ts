@@ -8,6 +8,7 @@ export class UnsupportedPackageManagerError extends BaseSmokerError<{
   version: string;
 }> {
   public readonly id = 'UnsupportedPackageManagerError';
+
   constructor(message: string, name: string, version: string) {
     super(message, {name, version});
   }
