@@ -19,8 +19,6 @@ import {Smoker} from './smoker';
 
 export type {SmokeResults} from '#schema/smoker-event';
 
-export type * from './controller';
-
 export {
   BaseSmokerOptionsSchema as zBaseSmokerOptions,
   type RawSmokerOptions,

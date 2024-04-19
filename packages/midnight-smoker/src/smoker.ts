@@ -9,29 +9,14 @@
 /* eslint-disable no-labels */
 import {RuleSeverities} from '#constants';
 import {
-  LintController,
-  PkgManagerController,
-  ReporterController,
-  type PluginReporterDef,
-  type PluginRuleDef,
-} from '#controller';
-import {
   InvalidArgError,
-  SmokeFailedError,
-  fromUnknownError,
   type InstallError,
   type PackError,
   type PackParseError,
   type RuleError,
   type ScriptError,
 } from '#error';
-import {
-  EventBus,
-  SmokerEvent,
-  type SmokerEventBus,
-  type SmokerEvents,
-  type StrictEmitter,
-} from '#event';
+import {type SmokerEvents, type StrictEmitter} from '#event';
 import type {RawSmokerOptions, SmokerOptions} from '#options/options';
 import {OptionParser} from '#options/parser';
 import {
@@ -40,15 +25,24 @@ import {
   isBlessedPlugin,
   type StaticPluginMetadata,
 } from '#plugin';
-import {type SomeReporter} from '#reporter/reporter';
 import {type LintResult} from '#schema/lint-result';
-import {type SomeRule} from '#schema/rule';
 import type {RunScriptResult} from '#schema/run-script-result';
 import {type SmokeResults} from '#schema/smoker-event';
 import {castArray} from '#util/schema-util';
 import Debug from 'debug';
-import {isFunction} from 'lodash';
-import {type SomePkgManager} from './component';
+import {createActor, toPromise} from 'xstate';
+import {
+  type Component,
+  type PkgManagerDef,
+  type ReporterDef,
+  type SomeRuleDef,
+} from './component';
+import {
+  ControlMachine,
+  type CtrlMachineOutput,
+} from './machine/controller/control-machine';
+import {isMachineOutputOk} from './machine/machine-util';
+import {FileManager} from './util/filemanager';
 
 type SetupResult =
   | {
@@ -66,12 +60,8 @@ export type SmokerEmitter = StrictEmitter<SmokerEvents>;
  * {@link Smoker} instance.
  */
 export interface SmokerCapabilities {
-  eventBus?: SmokerEventBus;
-  pkgManagerController?: PkgManagerController;
   pluginRegistry?: PluginRegistry;
-  reporterController?: ReporterController;
-
-  lintController?: LintController;
+  fileManager?: FileManager;
 }
 
 /**
@@ -93,8 +83,6 @@ export class Smoker {
    */
   private readonly bail: boolean;
 
-  private readonly eventBus: SmokerEventBus;
-
   /**
    * Whether to include the workspace root
    */
@@ -108,17 +96,12 @@ export class Smoker {
   /**
    * @internal
    */
-  private readonly pkgManagerController: PkgManagerController;
 
   /**
    * Mapping of plugin identifiers (names) to plugin "instances", which can
    * contain a collection of rules and other stuff (in the future)
    */
   private readonly pluginRegistry: PluginRegistry;
-
-  private readonly reporterController: ReporterController;
-
-  private readonly lintController?: LintController;
 
   private readonly reporters: Set<string>;
 
@@ -143,14 +126,13 @@ export class Smoker {
    */
   public readonly scripts: string[];
 
+  private readonly fileManager: FileManager;
+
   private constructor(
     opts: SmokerOptions,
     {
-      eventBus = EventBus.create(),
       pluginRegistry = PluginRegistry.create(),
-      pkgManagerController,
-      reporterController,
-      lintController,
+      fileManager = FileManager.create(),
     }: SmokerCapabilities = {},
   ) {
     const {
@@ -174,6 +156,7 @@ export class Smoker {
     this.workspaces = workspace;
     this.shouldLint = lint;
     this.reporters = new Set(reporter);
+    this.fileManager = fileManager;
 
     /**
      * Normally, the CLI will intercept this before we get here
@@ -184,35 +167,12 @@ export class Smoker {
       );
     }
 
-    this.eventBus = eventBus;
     this.pluginRegistry = pluginRegistry;
-
-    this.pkgManagerController =
-      pkgManagerController ??
-      PkgManagerController.create(pluginRegistry, eventBus, opts.pkgManager, {
-        verbose: opts.verbose,
-        loose: opts.loose,
-        defaultExecutorId: opts.executor,
-      });
-
-    this.reporterController =
-      reporterController ??
-      ReporterController.create(
-        this.pluginRegistry,
-        this.getEnabledReportersByPlugin(),
-        this.opts,
-        this.eventBus,
-      );
-
-    this.lintController = lintController;
 
     debug(`Smoker instantiated with registry: ${this.pluginRegistry}`);
   }
 
-  public [Symbol.dispose]() {
-    this.reporterController[Symbol.dispose]();
-    this.eventBus[Symbol.dispose]();
-  }
+  public [Symbol.dispose]() {}
 
   /**
    * Initializes a {@link Smoker} instance.
@@ -247,7 +207,7 @@ export class Smoker {
   public static async getPkgManagers(
     this: void,
     opts?: RawSmokerOptions,
-  ): Promise<SomePkgManager[]> {
+  ): Promise<(PkgManagerDef & Component)[]> {
     const smoker = await Smoker.create(opts);
     return smoker.getAllPkgManagers();
   }
@@ -269,7 +229,7 @@ export class Smoker {
   public static async getReporters(
     this: void,
     opts?: RawSmokerOptions,
-  ): Promise<SomeReporter[]> {
+  ): Promise<(ReporterDef & Component)[]> {
     const smoker = await Smoker.create(opts);
     return smoker.getAllReporters();
   }
@@ -283,7 +243,7 @@ export class Smoker {
   public static async getRules(
     this: void,
     opts?: RawSmokerOptions,
-  ): Promise<SomeRule[]> {
+  ): Promise<(SomeRuleDef & Component)[]> {
     const smoker = await Smoker.create(opts);
     return smoker.getAllRules();
   }
@@ -301,19 +261,12 @@ export class Smoker {
     return smoker.smoke();
   }
 
-  public getComponentId(def: object) {
-    return this.pluginRegistry.getComponentId(def);
+  private getComponent(def: object) {
+    return this.pluginRegistry.getComponent(def);
   }
 
   public getPkgManagerDefs() {
     return this.pluginRegistry.pkgManagerDefs;
-  }
-
-  /**
-   * Installs from tarball in a temp dir
-   */
-  public async install(): Promise<void> {
-    await this.pkgManagerController.install(this.add);
   }
 
   public async lint(): Promise<SmokeResults | undefined> {
@@ -326,66 +279,65 @@ export class Smoker {
     try {
       let ruleResults: LintResult | undefined;
       const runScriptResults: RunScriptResult[] = [];
-      await this.runLint();
+      // await this.runLint();
 
       return await this.postRun(undefined, ruleResults, runScriptResults);
     } catch (err) {
-      await this.eventBus.emit(SmokerEvent.UnknownError, {
-        error: fromUnknownError(err),
-      });
+      // await this.eventBus.emit(SmokerEvent.UnknownError, {
+      //   error: fromUnknownError(err),
+      // });
     } finally {
-      await this.cleanup();
+      // await this.cleanup();
     }
   }
 
-  private async cleanup() {
-    await this.pkgManagerController.destroy();
-    await this.eventBus.emit(SmokerEvent.BeforeExit, {});
-  }
+  // private async cleanup() {
+  //   await this.pkgManagerController.destroy();
+  //   await this.eventBus.emit(SmokerEvent.BeforeExit, {});
+  // }
 
-  /**
-   * For each package manager, creates a tarball for one or more packages
-   */
-  public async pack(): Promise<void> {
-    await this.pkgManagerController.pack({
-      allWorkspaces: this.allWorkspaces,
-      workspaces: this.workspaces,
-      includeWorkspaceRoot: this.includeWorkspaceRoot,
-    });
-  }
+  // /**
+  //  * For each package manager, creates a tarball for one or more packages
+  //  */
+  // public async pack(): Promise<void> {
+  //   await this.pkgManagerController.pack({
+  //     allWorkspaces: this.allWorkspaces,
+  //     workspaces: this.workspaces,
+  //     includeWorkspaceRoot: this.includeWorkspaceRoot,
+  //   });
+  // }
 
-  /**
-   * Runs automated checks against the installed packages
-   *
-   * @param installResults - The result of {@link Smoker.install}
-   * @returns Result of running all enabled rules on all installed packages
-   */
-  public async runLint(): Promise<LintResult> {
-    const lintController =
-      this.lintController ??
-      LintController.create(
-        this.pluginRegistry,
-        this.eventBus,
-        this.pkgManagerController.pkgManagers,
-        this.getEnabledRules(),
-        this.opts.rules,
-      );
-    debug(
-      'Running enabled rules: %s',
-      lintController.rules.map((rule) => rule.id).join(', '),
-    );
+  // /**
+  //  * Runs automated checks against the installed packages
+  //  *
+  //  * @param installResults - The result of {@link Smoker.install}
+  //  * @returns Result of running all enabled rules on all installed packages
+  //  */
+  // public async runLint(): Promise<LintResult> {
+  //   const lintController =
+  //     this.lintController ??
+  //     LintController.create(
+  //       this.pluginRegistry,
+  //       this.eventBus,
+  //       this.pkgManagerController.pkgManagers,
+  //       this.getEnabledRules(),
+  //       this.opts.rules,
+  //     );
+  //   debug(
+  //     'Running enabled rules: %s',
+  //     lintController.rules.map((rule) => rule.id).join(', '),
+  //   );
+  //   return lintController.lint();
+  // }
 
-    return lintController.lint();
-  }
-
-  /**
-   * Runs the script for each package in `packItems`
-   */
-  public async runScripts(): Promise<RunScriptResult[]> {
-    return this.pkgManagerController.runScripts(this.scripts, {
-      bail: this.bail,
-    });
-  }
+  // /**
+  //  * Runs the script for each package in `packItems`
+  //  */
+  // public async runScripts(): Promise<RunScriptResult[]> {
+  //   return this.pkgManagerController.runScripts(this.scripts, {
+  //     bail: this.bail,
+  //   });
+  // }
 
   /**
    * Pack, install, run checks (optionally), and run scripts (optionally)
@@ -393,29 +345,37 @@ export class Smoker {
    * @returns Results
    */
   public async smoke(): Promise<SmokeResults | undefined> {
-    try {
-      await this.preRun();
+    const controller = createActor(ControlMachine, {
+      id: 'smoke',
+      input: {
+        fileManager: this.fileManager,
+        smokerOptions: this.opts,
+        pluginRegistry: this.pluginRegistry,
+      },
+      logger: Debug('midnight-smoker:controller'),
+    });
 
-      let ruleResults: LintResult | undefined;
-      let runScriptResults: RunScriptResult[] = [];
+    controller.start();
 
-      // RUN CHECKS
-      if (this.shouldLint) {
-        ruleResults = await this.runLint();
-      }
+    if (this.shouldLint) {
+      controller.send({type: 'LINT'});
+    }
 
-      // RUN SCRIPTS
-      if (this.scripts.length) {
-        runScriptResults = await this.runScripts();
-      }
+    if (this.scripts.length) {
+      controller.send({type: 'RUN_SCRIPTS', scripts: this.scripts});
+    }
 
-      return await this.postRun(undefined, ruleResults, runScriptResults);
-    } catch (err) {
-      await this.eventBus.emit(SmokerEvent.UnknownError, {
-        error: fromUnknownError(err),
-      });
-    } finally {
-      await this.cleanup();
+    controller.send({type: 'HALT'});
+
+    const output = (await toPromise(controller)) as CtrlMachineOutput;
+
+    if (isMachineOutputOk(output)) {
+      return {
+        scripts: output.runScriptResults,
+        lint: output.lintResult,
+        plugins: this.pluginRegistry.plugins,
+        opts: this.opts,
+      };
     }
   }
 
@@ -464,61 +424,31 @@ export class Smoker {
     };
   }
 
-  private async getAllPkgManagers(): Promise<SomePkgManager[]> {
-    await this.pkgManagerController.init();
-    return this.pkgManagerController.pkgManagers;
+  private getAllPkgManagers(): (PkgManagerDef & Component)[] {
+    return this.pluginRegistry.plugins.flatMap((plugin) => {
+      return plugin.pkgManagerDefs.map((def) => ({
+        ...def,
+        ...this.getComponent(def),
+      }));
+    });
   }
 
-  private async getAllReporters() {
-    const pluginReporters = this.pluginRegistry.plugins.flatMap((plugin) =>
-      [...plugin.reporterDefMap.values()]
-        .filter((def) => def.isHidden !== true)
-        .map(
-          (def) => [plugin, def] as [plugin: typeof plugin, def: typeof def],
-        ),
-    );
-
-    return ReporterController.loadReporters(
-      this.pluginRegistry,
-      pluginReporters,
-      this.opts,
-    );
+  private getAllReporters(): (ReporterDef & Component)[] {
+    return this.pluginRegistry.plugins.flatMap((plugin) => {
+      return plugin.reporterDefs.map((def) => ({
+        ...def,
+        ...this.getComponent(def),
+      }));
+    });
   }
 
-  private getAllRules() {
-    const pluginRules = this.pluginRegistry.plugins.flatMap((plugin) =>
-      [...plugin.ruleDefMap.values()].map(
-        (def) => [plugin, def] as [plugin: typeof plugin, def: typeof def],
-      ),
-    );
-    return LintController.loadRules(this.pluginRegistry, pluginRules);
-  }
-
-  private getEnabledReportersByPlugin(): PluginReporterDef[] {
-    return this.pluginRegistry.plugins.flatMap((plugin) =>
-      [...plugin.reporterDefMap.values()]
-        .filter(
-          (def) =>
-            this.reporters.has(this.getComponentId(def)) ||
-            (isFunction(def.when) && def.when(this.opts)),
-        )
-        .map(
-          (def) => [plugin, def] as [plugin: typeof plugin, def: typeof def],
-        ),
-    );
-  }
-
-  private getEnabledRules(): PluginRuleDef[] {
-    return this.pluginRegistry.plugins.flatMap((plugin) =>
-      [...plugin.ruleDefMap.values()]
-        .filter((def) => {
-          const id = this.getComponentId(def);
-          return this.opts.rules[id].severity !== RuleSeverities.Off;
-        })
-        .map(
-          (def) => [plugin, def] as [plugin: typeof plugin, def: typeof def],
-        ),
-    );
+  private getAllRules(): (SomeRuleDef & Component)[] {
+    return this.pluginRegistry.plugins.flatMap((plugin) => {
+      return plugin.ruleDefs.map((def) => ({
+        ...def,
+        ...this.getComponent(def),
+      }));
+    });
   }
 
   /**
@@ -571,43 +501,43 @@ export class Smoker {
     const errors = aggregateErrors();
 
     if (errors.length) {
-      await this.eventBus.emit(SmokerEvent.SmokeFailed, {
-        plugins: this.pluginRegistry.plugins,
-        opts: this.opts,
-        error: new SmokeFailedError('🤮 Maurice!', errors, {
-          results: smokeResults,
-        }),
-      });
+      // await this.eventBus.emit(SmokerEvent.SmokeFailed, {
+      //   plugins: this.pluginRegistry.plugins,
+      //   opts: this.opts,
+      //   error: new SmokeFailedError('🤮 Maurice!', errors, {
+      //     results: smokeResults,
+      //   }),
+      // });
     } else {
-      await this.eventBus.emit(SmokerEvent.SmokeOk, smokeResults);
+      // await this.eventBus.emit(SmokerEvent.SmokeOk, smokeResults);
     }
 
     return smokeResults;
   }
 
   private async preRun(): Promise<void> {
-    await Promise.all([
-      this.reporterController.init().then(() => {
-        debug('Reporters initialized');
-      }),
-      this.pkgManagerController.init().then(() => {
-        debug('Package managers initialized');
-      }),
-    ]);
+    // await Promise.all([
+    //   this.reporterController.init().then(() => {
+    //     debug('Reporters initialized');
+    //   }),
+    //   this.pkgManagerController.init().then(() => {
+    //     debug('Package managers initialized');
+    //   }),
+    // ]);
 
-    await this.eventBus.emit(SmokerEvent.SmokeBegin, {
-      plugins: this.pluginRegistry.plugins,
-      opts: this.opts,
-    });
+    // await this.eventBus.emit(SmokerEvent.SmokeBegin, {
+    //   plugins: this.pluginRegistry.plugins,
+    //   opts: this.opts,
+    // });
 
     debug('Beginning packing phase');
 
     // PACK
-    await this.pack();
+    // await this.pack();
     debug('Beginning installation phase');
 
     // INSTALL
-    await this.install();
+    // await this.install();
   }
 }
 

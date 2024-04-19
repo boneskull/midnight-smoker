@@ -1,30 +1,10 @@
-import {type ComponentKind, type ComponentKinds} from '#constants';
+import {type ComponentKind} from '#constants';
 import {ComponentCollisionError} from '#error';
-import {type SomePkgManager} from '#pkg-manager/pkg-manager';
 import {isBlessedPlugin} from '#plugin/blessed';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
-import {type Executor} from '#schema/executor';
-import {type SomePkgManagerDef} from '#schema/pkg-manager-def';
-import {type ReporterDef} from '#schema/reporter-def';
-import {type SomeRule} from '#schema/rule';
-import {type SomeRuleDef} from '#schema/rule-def';
-import {inspect} from 'util';
-import {ComponentData, type Component} from './component';
 
-export type ComponentObject<T extends ComponentKind> =
-  T extends typeof ComponentKinds.Rule
-    ? SomeRule
-    : T extends typeof ComponentKinds.RuleDef
-      ? SomeRuleDef
-      : T extends typeof ComponentKinds.PkgManagerDef
-        ? SomePkgManagerDef
-        : T extends typeof ComponentKinds.PkgManager
-          ? SomePkgManager
-          : T extends typeof ComponentKinds.ReporterDef
-            ? ReporterDef
-            : T extends typeof ComponentKinds.Executor
-              ? Executor
-              : never;
+import {inspect} from 'util';
+import {ComponentData, type Component, type ComponentObject} from './component';
 
 export class ComponentRegistry {
   private componentsByKind: Map<ComponentKind, Map<string, Component>> =
@@ -81,10 +61,8 @@ export class ComponentRegistry {
   public getComponentByKind<T extends ComponentKind>(
     kind: T,
     id: string,
-  ): ComponentObject<T> | undefined {
-    return this.componentsByKind.get(kind)?.get(id) as
-      | ComponentObject<T>
-      | undefined;
+  ): Component<T> | undefined {
+    return this.componentsByKind.get(kind)?.get(id);
   }
 
   public getPlugin(def: object): Readonly<PluginMetadata> {
@@ -95,11 +73,11 @@ export class ComponentRegistry {
     return Boolean(this.componentsByKind.get(kind)?.has(id));
   }
 
-  public registerComponent(
-    kind: ComponentKind,
+  public registerComponent<T extends ComponentKind>(
+    kind: T,
     plugin: Readonly<PluginMetadata>,
     componentName: string,
-    def: object,
+    def: ComponentObject<T>,
   ): Component {
     if (!this.componentMap.has(def)) {
       const id = this.toId(plugin.id, componentName);
@@ -110,7 +88,7 @@ export class ComponentRegistry {
           componentName,
         );
       }
-      const component = new ComponentData(kind, plugin, componentName, id);
+      const component = new ComponentData(kind, plugin, componentName, id, def);
       this.retain(kind, id, component);
       this.componentMap.set(def, component);
       return component;
@@ -118,7 +96,11 @@ export class ComponentRegistry {
     return this.componentMap.get(def)!;
   }
 
-  public retain(kind: ComponentKind, id: string, component: Component): void {
+  public retain<T extends ComponentKind>(
+    kind: T,
+    id: string,
+    component: Component<T>,
+  ): void {
     const componentsForKind =
       this.componentsByKind.get(kind) ?? new Map<string, Component>();
     componentsForKind.set(id, component);

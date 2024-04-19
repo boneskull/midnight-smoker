@@ -117,7 +117,7 @@ export type EventKind = keyof SmokerEvents;
  * @template T - The event
  */
 export type EventData<T extends EventKind = EventKind> = {
-  [K in T]: {event: K} & SmokerEvents[K];
+  [K in T]: {type: K} & SmokerEvents[K];
 }[T];
 
 export type SmokerEventData = {

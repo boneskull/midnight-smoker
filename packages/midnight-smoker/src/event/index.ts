@@ -8,8 +8,6 @@ export * from '#schema/lint-event';
 
 export * from '#schema/script-event';
 
-export * from './bus';
-
 export * from './event-constants';
 
 export * from './install-events';

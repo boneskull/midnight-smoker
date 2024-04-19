@@ -23,7 +23,7 @@ export class LintCommand extends BaseCommand<CommonOptionTypes> {
   ): Promise<void> {
     const smoker = await Smoker.create(opts);
     debug('Running lint...');
-    await smoker.lint();
+    await smoker.smoke();
   }
 
   override builder(argv: Argv<GlobalOptionTypes>): Argv<CommonOptionTypes> {

@@ -9,6 +9,10 @@ export const StaticRuleContextSchema = z
     pkgJsonPath: NonEmptyStringSchema,
     installPath: NonEmptyStringSchema,
     severity: RuleSeveritySchema,
+    ruleName: NonEmptyStringSchema,
+    pkgManager: NonEmptyStringSchema.describe(
+      'Package manager name w/ version',
+    ),
   })
   .describe(
     'Static representation of a RuleContext, suitable for serialization',

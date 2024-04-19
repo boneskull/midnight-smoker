@@ -1,10 +1,21 @@
-import {ReporterController} from '#controller';
 import {type SmokerOptions} from '#options';
 import {type PluginRegistry} from '#plugin';
 import {Reporter, type SomeReporter} from '#reporter/reporter';
 import {Rule} from '#rule/rule';
-import {type SomeRule, type SomeRuleDef} from '#schema';
-import {type PackageJson} from 'type-fest';
+import {
+  PkgManagerContextSchema,
+  type SomeRule,
+  type SomeRuleDef,
+} from '#schema';
+import {isFunction} from 'lodash';
+import {Console} from 'node:console';
+import {
+  type PackageJson,
+  type SetFieldType,
+  type SetOptional,
+  type SetRequired,
+  type Simplify,
+} from 'type-fest';
 import {and, assign, fromPromise, log, not, setup} from 'xstate';
 import {
   PkgManager,
@@ -15,57 +26,95 @@ import {
   type ReporterContext,
   type ReporterDef,
   type RuleContext,
-} from '../component';
-import {ComponentKinds, RuleSeverities} from '../constants';
-import {fromUnknownError} from '../error';
-import {type PluginMetadata} from '../plugin';
-import {readSmokerPkgJson, type FileManager} from '../util';
-import {type MachineOutputError, type MachineOutputOk} from './machine-util';
+} from '../../component';
+import {
+  ComponentKinds,
+  DEFAULT_EXECUTOR_ID,
+  RuleSeverities,
+  SYSTEM_EXECUTOR_ID,
+} from '../../constants';
+import {fromUnknownError} from '../../error';
+import {type PluginMetadata} from '../../plugin';
+import {readSmokerPkgJson, type FileManager} from '../../util';
+import {type MachineOutputError, type MachineOutputOk} from '../machine-util';
 
-export interface PluginLoaderInput {
-  plugin: Readonly<PluginMetadata>;
-  cwd: string;
-  desiredPkgManagers: string[];
+export const LoadableComponents = {
+  All: 'all',
+  PkgManagers: 'pkgManagers',
+  Reporters: 'reporters',
+  Rules: 'rules',
+} as const;
+
+export type LoadableComponent =
+  (typeof LoadableComponents)[keyof typeof LoadableComponents];
+
+export interface ComponentReifierPkgManagerParams {
   fm: FileManager;
-  systemExecutor: Executor;
-  defaultExecutor: Executor;
+  cwd?: string;
+  defaultExecutor?: Executor;
+  systemExecutor?: Executor;
   pkgManagerOpts?: PkgManagerOpts;
-  smokerOpts: SmokerOptions;
-  pluginRegistry: PluginRegistry;
 }
 
-export interface PluginLoaderContext extends PluginLoaderInput {
+export interface BaseComponentReifierInput {
+  plugin: Readonly<PluginMetadata>;
+  pluginRegistry: PluginRegistry;
+  smokerOpts: SmokerOptions;
+  pkgManager?: ComponentReifierPkgManagerParams;
+  component?: LoadableComponent;
+}
+
+export type ComponentReifierInputForPkgManagers = Simplify<
+  SetOptional<
+    SetRequired<
+      SetFieldType<
+        BaseComponentReifierInput,
+        'component',
+        Extract<LoadableComponent, 'pkgManagers' | 'all'>
+      >,
+      'pkgManager'
+    >,
+    'component'
+  >
+>;
+
+export type ComponentReifierInput =
+  | BaseComponentReifierInput
+  | ComponentReifierInputForPkgManagers;
+
+export type ComponentReifierContext = ComponentReifierInput & {
+  enabledReporterDefs: ReporterDef[];
+  enabledRuleDefs: SomeRuleDef[];
   pkgManagerDefSpecs?: PkgManagerDefSpec[];
   pkgManagers?: PkgManager[];
   error?: Error;
   pkgManagerDefSpecsWithCtx?: PkgManagerDefSpecsWithCtx[];
-
-  enabledReporters: ReporterDef[];
   smokerPkgJson?: PackageJson;
   reporterDefsWithCtx?: ReporterDefWithCtx[];
   reporters?: SomeReporter[];
-  ruleDefs: SomeRuleDef[];
   ruleDefsWithCtx?: RuleDefWithCtx[];
   rules?: SomeRule[];
-}
+};
 
-export type PluginLoaderOutputOk = MachineOutputOk<{
+export type ComponentReifierOutputOk = MachineOutputOk<{
   pkgManagers: PkgManager[];
   reporters: SomeReporter[];
   rules: SomeRule[];
 }>;
 
-export type PluginLoaderOutputError = MachineOutputError;
+export type ComponentReifierOutputError = MachineOutputError;
 
-export type PluginLoaderOutput = PluginLoaderOutputOk | PluginLoaderOutputError;
+export type ComponentReifierOutput =
+  | ComponentReifierOutputOk
+  | ComponentReifierOutputError;
 
-export type CreatePkgManagerContextsInput = Pick<
-  PluginLoaderContext,
-  | 'pkgManagerDefSpecs'
-  | 'fm'
-  | 'systemExecutor'
-  | 'defaultExecutor'
-  | 'pkgManagerOpts'
+export type CreatePkgManagerContextsInput = SetRequired<
+  Pick<
+    ComponentReifierPkgManagerParams,
+    'fm' | 'systemExecutor' | 'defaultExecutor' | 'pkgManagerOpts'
+  > &
+    Pick<ComponentReifierContext, 'pkgManagerDefSpecs'>,
+  'systemExecutor' | 'defaultExecutor'
 >;
 
 export interface LoadReportersInput {
@@ -78,9 +127,10 @@ export type PkgManagerDefSpecsWithCtx = PkgManagerDefSpec & {
 };
 
 export type LoadPkgManagersInput = Pick<
-  PluginLoaderContext,
-  'plugin' | 'cwd' | 'desiredPkgManagers'
->;
+  ComponentReifierPkgManagerParams,
+  'cwd'
+> &
+  Pick<ComponentReifierContext, 'plugin' | 'smokerOpts'>;
 
 export interface CreateReporterContextsInput {
   reporterDefs: ReporterDef[];
@@ -98,11 +148,30 @@ export interface RuleDefWithCtx {
   ctx: RuleContext;
 }
 
-export const PluginLoaderMachine = setup({
+export type ReporterStreams = {
+  stderr: NodeJS.WritableStream;
+  stdout: NodeJS.WritableStream;
+};
+
+async function getStreams<Ctx = unknown>(
+  def: ReporterDef<Ctx>,
+): Promise<ReporterStreams> {
+  let stdout: NodeJS.WritableStream = process.stdout;
+  let stderr: NodeJS.WritableStream = process.stderr;
+  if (def.stdout) {
+    stdout = isFunction(def.stdout) ? await def.stdout() : def.stdout;
+  }
+  if (def.stderr) {
+    stderr = isFunction(def.stderr) ? await def.stderr() : def.stderr;
+  }
+  return {stdout, stderr};
+}
+
+export const ComponentReifierMachine = setup({
   types: {
-    input: {} as PluginLoaderInput,
-    context: {} as PluginLoaderContext,
-    output: {} as PluginLoaderOutput,
+    input: {} as ComponentReifierInput,
+    context: {} as ComponentReifierContext,
+    output: {} as ComponentReifierOutput,
   },
   actions: {
     assignError: assign({
@@ -110,19 +179,24 @@ export const PluginLoaderMachine = setup({
     }),
     assignPkgManagers: assign({
       // TODO: maybe move side effects elsewhere
-      pkgManagers: ({
-        context: {pkgManagerDefSpecsWithCtx = [], pluginRegistry, plugin},
-      }) =>
-        pkgManagerDefSpecsWithCtx.map(({def, ctx}) => {
+      pkgManagers: ({context}) => {
+        const {
+          plugin,
+          pluginRegistry,
+          pkgManagerDefSpecsWithCtx = [],
+        } = context;
+        return pkgManagerDefSpecsWithCtx.map(({def, ctx}) => {
           const {id, componentName} = pluginRegistry.getComponent(def);
+          const pkgManager = PkgManager.create(id, def, plugin, ctx);
           pluginRegistry.registerComponent(
             plugin,
             ComponentKinds.PkgManager,
-            def,
+            pkgManager,
             componentName,
           );
-          return PkgManager.create(id, def, plugin, ctx);
-        }),
+          return pkgManager;
+        });
+      },
     }),
 
     /**
@@ -145,15 +219,18 @@ export const PluginLoaderMachine = setup({
     }),
 
     assignEnabledReporterDefs: assign({
-      enabledReporters: ({context: {smokerOpts, pluginRegistry, plugin}}) =>
-        plugin.getEnabledReporters(
+      enabledReporterDefs: ({context}) => {
+        const {plugin, pluginRegistry, smokerOpts} = context;
+        return plugin.getEnabledReporterDefs(
           smokerOpts,
           pluginRegistry.getComponentId.bind(pluginRegistry),
-        ),
+        );
+      },
     }),
 
     assignEnabledRuleDefs: assign({
-      ruleDefs: ({context: {plugin, pluginRegistry, smokerOpts}}) => {
+      enabledRuleDefs: ({context}) => {
+        const {plugin, smokerOpts, pluginRegistry} = context;
         return [...plugin.ruleDefMap.values()].filter((def) => {
           const id = pluginRegistry.getComponentId(def);
           return smokerOpts.rules[id].severity !== RuleSeverities.Off;
@@ -171,23 +248,29 @@ export const PluginLoaderMachine = setup({
     }),
 
     assignReporters: assign({
-      reporters: ({
-        context: {reporterDefsWithCtx = [], pluginRegistry, plugin},
-      }) =>
-        reporterDefsWithCtx.map(({def, ctx}) => {
+      reporters: ({context}) => {
+        const {plugin, pluginRegistry, reporterDefsWithCtx = []} = context;
+        return reporterDefsWithCtx.map(({def, ctx}) => {
           const {id, componentName} = pluginRegistry.getComponent(def);
+          const reporter = Reporter.create(id, def, plugin, ctx);
           pluginRegistry.registerComponent(
             plugin,
             ComponentKinds.Reporter,
-            def,
+            reporter,
             componentName,
           );
-          return Reporter.create(id, def, plugin, ctx);
-        }),
+          return reporter;
+        });
+      },
     }),
     createRules: assign({
-      rules: ({context: {plugin, pluginRegistry, ruleDefs = []}}) =>
-        ruleDefs.map((def) => {
+      rules: ({context}) => {
+        const {
+          plugin,
+          pluginRegistry,
+          enabledRuleDefs: ruleDefs = [],
+        } = context;
+        return ruleDefs.map((def) => {
           const {id, componentName} = pluginRegistry.getComponent(def);
           const rule = Rule.create(id, def, plugin);
           pluginRegistry.registerComponent(
@@ -197,17 +280,19 @@ export const PluginLoaderMachine = setup({
             rule.name ?? componentName,
           );
           return rule;
-        }),
+        });
+      },
     }),
   },
   actors: {
     readSmokerPkgJson: fromPromise<PackageJson, void>(readSmokerPkgJson),
     loadPkgManagers: fromPromise<PkgManagerDefSpec[], LoadPkgManagersInput>(
-      async ({input: {plugin, cwd, desiredPkgManagers}}) =>
-        plugin.loadPkgManagers({
+      async ({input: {plugin, cwd, smokerOpts}}) => {
+        return plugin.loadPkgManagers({
           cwd,
-          desiredPkgManagers,
-        }),
+          desiredPkgManagers: smokerOpts.pkgManager,
+        });
+      },
     ),
     createReporterContexts: fromPromise<
       ReporterDefWithCtx[],
@@ -215,26 +300,20 @@ export const PluginLoaderMachine = setup({
     >(async ({input: {smokerOpts, reporterDefs, pkgJson}}) => {
       return Promise.all(
         reporterDefs.map(async (def) => {
-          const ctx: ReporterContext =
-            await ReporterController.createReporterContext(
-              def,
-              smokerOpts,
-              pkgJson,
-            );
+          const {stdout, stderr} = await getStreams(def);
+          const console = new Console({stdout, stderr});
+
+          const ctx: ReporterContext = {
+            opts: smokerOpts,
+            pkgJson,
+            console,
+            stdout,
+            stderr,
+          };
           return {def, ctx};
         }),
       );
     }),
-    // createRuleContexts: fromPromise<
-    //   RuleDefWithCtx[],
-    //   {smokerOpts: SmokerOptions, ruleDefs: SomeRuleDef[]}
-    // >(async ({input: {smokerOpts, ruleDefs}}) => {
-    //   return Promise.all(
-    //     ruleDefs.map(async (def) => {
-    //       const ctx: RuleContext = await RuleController.createRuleContext(
-    //     })
-    //   )
-    // }),
     createPkgManagerContexts: fromPromise<
       PkgManagerDefSpecsWithCtx[],
       CreatePkgManagerContextsInput
@@ -255,12 +334,12 @@ export const PluginLoaderMachine = setup({
                 `${spec.pkgManager}-${spec.version}`,
               );
               const executor = spec.isSystem ? systemExecutor : defaultExecutor;
-              const ctx: PkgManagerContext = {
+              const ctx = PkgManagerContextSchema.parse({
                 spec,
                 tmpdir,
                 executor,
                 ...opts,
-              };
+              });
               return {spec, def, ctx};
             }),
           );
@@ -281,85 +360,127 @@ export const PluginLoaderMachine = setup({
     notHasPkgManagerDefSpecsWithCtx: not('hasPkgManagerDefSpecsWithCtx'),
     succeeded: and(['hasPkgManagers', not('hasError'), 'hasReporters']),
     hasReporters: ({context: {reporters}}) => Boolean(reporters?.length),
+    shouldProcessPkgManagers: ({context: {component}}) =>
+      component === LoadableComponents.All ||
+      component === LoadableComponents.PkgManagers,
+    shouldProcessReporters: ({context: {component}}) =>
+      component === LoadableComponents.All ||
+      component === LoadableComponents.Reporters,
+    shouldProcessRules: ({context: {component}}) =>
+      component === LoadableComponents.All ||
+      component === LoadableComponents.Rules,
   },
 }).createMachine({
-  /**
-   * @xstate-layout N4IgpgJg5mDOIC5QAcDWUCyBDAdlmATgAoA2ArlAJY4AyA9lhGAQMQBUA2gAwC6iKdWJQAulOjn4gAHogCcAZgBsAOgCMAFgAc6xZq6qA7AFYDm1QBoQAT0Sql85Yq4LNmxatXbNAX2+W0mLj4zKQU1PSMzMokDBDUUCwQ4mDK1ABudKgpAdh4hKFUtLFRMYzxCOl0AMZYouLcPA2SyIIiYhJI0ogATLKaymbdRpY2CGbKRlxTdu6eWqpGvv7oucHE5IURTATRsfEszAR0O8gktQBmxwC2yjlB+RvhxTulcThQFTgZNXU4DU2dFpCX6SGQIVSKAzKdTdZzydRcRTqWQLWQGEa2KayZQGFHdboeIyKeFGbpLEB3PIhR5FSI7NJYEiUCC1eIAETA5wAysgwFVYCwAQJge1QT1NFD5EYFMYMQgDAtlCjcZpuko5mZyZS1gUnnTlAymSzRO8OdzefzBao+IDWiDOmDuhLlFKZcNrIgDO4lYY+mr3F5VFqVvdqWFadtlFdasxKIzKAAvfZJHApWDCGO3ENU9bhrZRaPCWPxpPvIUUu2ih2ISFy1RO7oDaXyVyzLzBwI53URgsxghxpmlqDKKoEMCs94AYXERakwgFKZSlSyWc7Opp+Z2heLg-iI7HE6g05ws-nn2+rPqvHLQLa4jFY2RSqM8nr7tGkK4EyU6gVsnURieAsHarA8ebPFGfYDome6juOJpHjOYBzgKhzHLcZzCJcBA3NqYGbBB279iWsEHghx6nrA57VJefzXrwzSVve1aPtisgvm+cpmP0voGPoHgakGfgUtm67gfqRHQUOBrxsa8REKJhACjeTEdKAYL1qYEymJ4ThSgsijdHKxKqDiXCvi2bbzCBoa5gRElQSR7wyUah4KWuSlWjawp3mpXTgt0WkmNxemAUSRkeggkJQnxFluB4ga+MJOB0Ew8CAopYb2dsjEisx6lyHKAC0RhKrI5WuN06jyASiiyN0ig2V2G4Qa88S5b5D4mHWXBQrCcVWWYizCXhWV6pGhrMoeZo8ny6U+faBUIPVcoGLCEzaEishcE6gFaE1YnZb2RbEbu7wdYt-kmCo+jhe+iCATF5mqHCqqmPoB34eNx07jBzlwYeFHIfOF1VkthnqMot2GfdYw7Wo4XEoNQnLB5Y09lujlncOk1ye87mgcw80VnlfkaVwL5Nm6xn1coDXyOZ6hM4BQ2fejm6QSdUl7mhY4QKD+X+RCNUuk6unmWFhlcQzSqaOxsh1QBQHyGzdnfZjXNOcOAMIQTtnE7el0acSjY1SFEsGRFH4U3Tz2WQl1kjZlasY8oi4C2TtjjJCniypF9Z6I4r3xRqqvdhzvOQB7D6-lChIKC9qgonV6L+4n0JVTCLa9ciEJJd4QA
-   */
-  context: ({input}): PluginLoaderContext => ({
-    ...input,
-    enabledReporters: [],
-    ruleDefs: [],
-  }),
-  initial: 'loading',
+  entry: [
+    log(
+      ({context: {component}}) =>
+        `ComponentReifier loading component(s): ${component}`,
+    ),
+  ],
+  context: ({
+    input: {
+      component = LoadableComponents.All,
+      plugin,
+      pluginRegistry,
+      smokerOpts,
+      ...input
+    },
+  }): ComponentReifierContext => {
+    const enabledReporterDefs = plugin.getEnabledReporterDefs(
+      smokerOpts,
+      pluginRegistry.getComponentId.bind(pluginRegistry),
+    );
+    // TODO make plugin.getEnabledRuleDefs
+    const enabledRuleDefs = [...plugin.ruleDefMap.values()].filter((def) => {
+      const id = pluginRegistry.getComponentId(def);
+      return smokerOpts.rules[id].severity !== RuleSeverities.Off;
+    });
+    return {
+      component,
+      plugin,
+      pluginRegistry,
+      smokerOpts,
+      ...input,
+      enabledReporterDefs,
+      enabledRuleDefs,
+    };
+  },
+  initial: 'materializing',
   states: {
-    loading: {
-      entry: [
-        {type: 'assignEnabledReporterDefs'},
-        {type: 'assignEnabledRuleDefs'},
-        log('getting enabled reporters'),
-      ],
-      invoke: {
-        src: 'loadPkgManagers',
-        input: ({
-          context: {cwd, plugin, desiredPkgManagers},
-        }): LoadPkgManagersInput => ({cwd, plugin, desiredPkgManagers}),
-        onDone: {
-          target: 'validatingDefSpecs',
-          actions: [
-            {
-              type: 'assignPkgManagerDefSpecs',
-              params: ({event: {output: pkgManagerDefSpecs}}) =>
-                pkgManagerDefSpecs,
-            },
-          ],
-        },
-        onError: {
-          actions: [
-            {type: 'assignError', params: ({event: {error}}) => ({error})},
-          ],
-          target: 'errored',
-        },
-      },
-    },
-    validatingDefSpecs: {
-      always: [
-        {
-          target: 'materializing',
-          guard: {type: 'hasPkgManagerDefSpecs'},
-        },
-        {
-          target: 'errored',
-          guard: 'notHasPkgManagerDefSpecs',
-          actions: [{type: 'creatingMissingPkgManagersError'}],
-        },
-      ],
-    },
     materializing: {
       type: 'parallel',
-      entry: log('materializing'),
       states: {
         materializePkgManagers: {
-          initial: 'creatingPkgManagerContexts',
+          initial: 'gate',
           states: {
+            gate: {
+              always: [
+                {
+                  guard: 'shouldProcessPkgManagers',
+                  target: 'loadingPkgManagers',
+                },
+                {guard: not('shouldProcessPkgManagers'), target: 'skipped'},
+              ],
+            },
+            loadingPkgManagers: {
+              invoke: {
+                src: 'loadPkgManagers',
+                input: ({context}): LoadPkgManagersInput => {
+                  const {plugin, smokerOpts} = context;
+                  const {cwd} = context.pkgManager!;
+                  return {
+                    cwd,
+                    plugin,
+                    smokerOpts,
+                  };
+                },
+                onDone: {
+                  target: 'creatingPkgManagerContexts',
+                  actions: [
+                    {
+                      type: 'assignPkgManagerDefSpecs',
+                      params: ({event: {output: pkgManagerDefSpecs}}) =>
+                        pkgManagerDefSpecs,
+                    },
+                  ],
+                },
+                onError: {
+                  actions: [
+                    {
+                      type: 'creatingMissingPkgManagersError',
+                    },
+                    {
+                      type: 'assignError',
+                      params: ({event: {error}}) => ({error}),
+                    },
+                  ],
+                  target: '#ComponentReifier.errored',
+                },
+              },
+            },
             creatingPkgManagerContexts: {
               invoke: {
                 src: 'createPkgManagerContexts',
-                input: ({
-                  context: {
+                input: ({context}): CreatePkgManagerContextsInput => {
+                  const {pkgManagerDefSpecs, pluginRegistry} = context;
+                  const {
+                    fm,
+                    systemExecutor = pluginRegistry.getExecutor(
+                      SYSTEM_EXECUTOR_ID,
+                    ),
+                    defaultExecutor = pluginRegistry.getExecutor(
+                      DEFAULT_EXECUTOR_ID,
+                    ),
+                    pkgManagerOpts,
+                  } = context.pkgManager!;
+                  return {
                     pkgManagerDefSpecs,
                     fm,
                     systemExecutor,
                     defaultExecutor,
                     pkgManagerOpts,
-                  },
-                }): CreatePkgManagerContextsInput => ({
-                  pkgManagerDefSpecs,
-                  fm,
-                  systemExecutor,
-                  defaultExecutor,
-                  pkgManagerOpts,
-                }),
+                  };
+                },
                 onDone: {
                   actions: [
                     {
@@ -377,7 +498,7 @@ export const PluginLoaderMachine = setup({
                       params: ({event: {error}}) => ({error}),
                     },
                   ],
-                  target: '#pluginLoader.errored',
+                  target: '#ComponentReifier.errored',
                 },
               },
             },
@@ -390,7 +511,7 @@ export const PluginLoaderMachine = setup({
                 {
                   guard: 'notHasPkgManagerDefSpecsWithCtx',
                   actions: ['creatingMissingPkgManagersError'],
-                  target: '#pluginLoader.errored',
+                  target: '#ComponentReifier.errored',
                 },
               ],
             },
@@ -398,11 +519,23 @@ export const PluginLoaderMachine = setup({
               type: 'final',
               entry: ['assignPkgManagers', log('created pkg managers')],
             },
+            skipped: {
+              type: 'final',
+            },
           },
         },
         materializeReporters: {
-          initial: 'readingSmokerPkgJson',
+          initial: 'gate',
           states: {
+            gate: {
+              always: [
+                {
+                  guard: 'shouldProcessReporters',
+                  target: 'readingSmokerPkgJson',
+                },
+                {guard: not('shouldProcessReporters'), target: 'skipped'},
+              ],
+            },
             readingSmokerPkgJson: {
               invoke: {
                 src: 'readSmokerPkgJson',
@@ -424,7 +557,7 @@ export const PluginLoaderMachine = setup({
                       params: ({event: {error}}) => ({error}),
                     },
                   ],
-                  target: '#pluginLoader.errored',
+                  target: '#ComponentReifier.errored',
                 },
               },
             },
@@ -432,9 +565,9 @@ export const PluginLoaderMachine = setup({
               invoke: {
                 src: 'createReporterContexts',
                 input: ({
-                  context: {smokerOpts, enabledReporters, smokerPkgJson},
+                  context: {smokerOpts, enabledReporterDefs, smokerPkgJson},
                 }): CreateReporterContextsInput => ({
-                  reporterDefs: enabledReporters,
+                  reporterDefs: enabledReporterDefs,
                   smokerOpts,
                   pkgJson: smokerPkgJson!,
                 }),
@@ -455,7 +588,7 @@ export const PluginLoaderMachine = setup({
                       params: ({event: {error}}) => ({error}),
                     },
                   ],
-                  target: '#pluginLoader.errored',
+                  target: '#ComponentReifier.errored',
                 },
               },
             },
@@ -464,13 +597,30 @@ export const PluginLoaderMachine = setup({
               entry: [log('creating reporters'), {type: 'assignReporters'}],
               type: 'final',
             },
+            skipped: {
+              entry: log('skipping reporter creation'),
+              type: 'final',
+            },
           },
         },
         materializeRules: {
-          initial: 'createRules',
+          initial: 'gate',
           states: {
+            gate: {
+              always: [
+                {
+                  guard: 'shouldProcessRules',
+                  target: 'createRules',
+                },
+                {guard: not('shouldProcessRules'), target: 'skipped'},
+              ],
+            },
             createRules: {
               entry: [{type: 'createRules'}],
+              type: 'final',
+            },
+            skipped: {
+              entry: log('skipping rule creation'),
               type: 'final',
             },
           },
@@ -478,12 +628,12 @@ export const PluginLoaderMachine = setup({
       },
       onDone: [
         {
+          guard: not('hasError'),
           target: 'done',
-          guard: {type: 'succeeded'},
         },
         {
+          guard: 'hasError',
           target: 'errored',
-          guard: {type: 'hasError'},
         },
       ],
     },
@@ -505,5 +655,5 @@ export const PluginLoaderMachine = setup({
     }
     return {reporters, pkgManagers, rules, type: 'OK', id};
   },
-  id: 'pluginLoader',
+  id: 'ComponentReifier',
 });

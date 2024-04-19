@@ -14,8 +14,6 @@ export * from '#schema/rule-def';
 
 export * from '#schema/rule-issue';
 
-export * from '#schema/rule-issue-static';
-
 export * from '#schema/rule-options';
 
 export * from '#schema/rule-result';

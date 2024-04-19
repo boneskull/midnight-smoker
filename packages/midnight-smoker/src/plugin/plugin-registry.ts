@@ -1,4 +1,4 @@
-import {ComponentRegistry} from '#component';
+import {ComponentRegistry, type ComponentObject} from '#component';
 import {
   ComponentKinds,
   DEFAULT_COMPONENT_ID,
@@ -34,6 +34,7 @@ import util from 'node:util';
 import {type PackageJson} from 'type-fest';
 import {z} from 'zod';
 import {fromZodError} from 'zod-validation-error';
+import {getDefaultRuleOptions} from '../component/rule/create-rule-options';
 import {isBlessedPlugin, type BlessedPlugin} from './blessed';
 import {createPluginAPI} from './create-plugin-api';
 import {zPlugin, type Plugin} from './plugin';
@@ -102,8 +103,9 @@ export class PluginRegistry {
   }
 
   public buildRuleOptions() {
-    const zMergedSchemas = this.mergeRuleSchemas();
-    return zMergedSchemas.default(this.mergeRuleDefaults());
+    const MergedRuleOptionSchema = this.mergeRuleSchemas();
+    const defaults = this.mergeRuleDefaults();
+    return MergedRuleOptionSchema.default(defaults);
   }
 
   /**
@@ -124,7 +126,7 @@ export class PluginRegistry {
     const value = this.componentRegistry.getComponentByKind(
       ComponentKinds.Executor,
       componentId,
-    );
+    )?.def;
     if (!value) {
       throw new InvalidComponentError(
         `Executor with component ID ${componentId} not found`,
@@ -206,16 +208,20 @@ export class PluginRegistry {
    *
    * @internal
    */
-  public mergeRuleDefaults(): Record<string, any> {
+  public mergeRuleDefaults(): Record<string, unknown> {
     return [...this.pluginMap.values()].reduce(
       (defaults, metadata) =>
-        [...metadata.ruleMap.values()].reduce(
-          (acc, anyRule) => ({
+        [...metadata.ruleDefMap.values()].reduce((acc, anyRule) => {
+          const id = this.getComponentId(anyRule);
+          const defaultOptions =
+            'schema' in anyRule && anyRule.schema
+              ? getDefaultRuleOptions(anyRule.schema)
+              : {};
+          return {
             ...acc,
-            [anyRule.id]: anyRule.defaultOptions,
-          }),
-          defaults,
-        ),
+            [id]: defaultOptions,
+          };
+        }, defaults),
       {},
     );
   }
@@ -235,11 +241,10 @@ export class PluginRegistry {
   public mergeRuleSchemas() {
     return [...this.pluginMap.values()]
       .reduce(
-        (zPluginRuleSchema, metadata) =>
-          zPluginRuleSchema.merge(
+        (pluginRuleSchema, metadata) =>
+          pluginRuleSchema.merge(
             [...metadata.ruleMap.values()].reduce(
-              (zRuleSchema, rule) =>
-                zRuleSchema.setKey(rule.id, rule.zRuleSchema),
+              (ruleSchema, rule) => ruleSchema.setKey(rule.id, rule.ruleSchema),
               z.object({}).catchall(BaseRuleOptionsSchema),
             ),
           ),
@@ -313,10 +318,10 @@ export class PluginRegistry {
     return this.pluginMap.has(metadata.id);
   }
 
-  public registerComponent(
+  public registerComponent<T extends ComponentKind>(
     plugin: Readonly<PluginMetadata>,
-    kind: ComponentKind,
-    def: object,
+    kind: T,
+    def: ComponentObject<T>,
     name?: string,
   ) {
     this.componentRegistry.registerComponent(

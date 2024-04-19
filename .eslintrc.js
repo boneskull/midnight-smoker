@@ -17,6 +17,7 @@ module.exports = {
     'n/no-missing-require': 'off',
     'n/no-extraneous-require': 'off',
     'n/no-unsupported-features/es-syntax': 'off',
+    'no-useless-rename': 'error',
 
     'no-empty': [
       'error',

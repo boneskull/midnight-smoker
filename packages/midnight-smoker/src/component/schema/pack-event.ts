@@ -88,7 +88,7 @@ export const PackingErrorSchema = instanceofSchema(PackError).or(
 export const PackOkEventDataSchema = PackBeginEventDataSchema.extend({
   uniquePkgs: InstallEventBaseDataSchema.shape.uniquePkgs,
   manifests: InstallEventBaseDataSchema.shape.manifests,
-  total: InstallEventBaseDataSchema.shape.total,
+  totalPkgs: InstallEventBaseDataSchema.shape.totalPkgs,
 });
 
 /**

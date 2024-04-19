@@ -89,7 +89,7 @@ export default function noBannedFiles({
 
       while (queue.length) {
         const dir = queue.pop()!;
-        debug('Reading directory %s', dir);
+        // debug('Reading directory %s', dir);
         const dirents = await fs.readdir(dir, {withFileTypes: true});
         for (const dirent of dirents) {
           if (dirent.isDirectory()) {

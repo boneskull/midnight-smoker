@@ -1,11 +1,12 @@
 import {fromUnknownError} from '#error';
+import {type PkgManager} from '#pkg-manager';
 import {
   RuleContext,
-  type RuleOk,
+  type BaseNormalizedRuleOptionsRecord,
+  type RuleResultFailed,
+  type RuleResultOk,
   type SomeRule,
-  type SomeRuleConfig,
-  type StaticRule,
-  type StaticRuleIssue,
+  type StaticRuleContext,
 } from '#rule';
 import {type LintManifest, type LintManifests, type LintResult} from '#schema';
 import {type FileManager} from '#util/filemanager';
@@ -22,6 +23,8 @@ import {
   type AnyActorRef,
 } from 'xstate';
 import {
+  type CtrlPkgManagerLintBeginEvent,
+  type CtrlRuleBeginEvent,
   type CtrlRuleFailedEvent,
   type CtrlRuleOkEvent,
 } from '../controller/control-machine-events';
@@ -31,12 +34,12 @@ import {
   type MachineOutputError,
   type MachineOutputOk,
 } from '../machine-util';
-import {LintMachine, type LMOutput} from './lint-machine';
+import {RuleMachine, type RuleMachineOutput} from './rule-machine';
 
 export interface LinterMachineInput {
-  ruleConfig: SomeRuleConfig;
-  rule: SomeRule;
-
+  ruleConfigs: BaseNormalizedRuleOptionsRecord;
+  rules: SomeRule[];
+  pkgManager: PkgManager;
   lintManifests: LintManifests;
   parentRef: AnyActorRef;
 
@@ -48,11 +51,10 @@ export interface LinterMachineInput {
 export interface LinterMachineContext extends LinterMachineInput {
   lintManifestsWithPkgs: LintManifestWithPkg[];
   ruleContexts: Readonly<RuleContext>[];
-  staticRule: StaticRule;
-  passed: RuleOk[];
-  issues: StaticRuleIssue[];
+  passed: RuleResultOk[];
+  issues: RuleResultFailed[];
 
-  lintMachines: Record<string, ActorRefFrom<typeof LintMachine>>;
+  ruleMachines: Record<string, ActorRefFrom<typeof RuleMachine>>;
   error?: Error;
 }
 
@@ -67,15 +69,34 @@ export interface LintManifestWithPkg extends LintManifest {
 }
 
 export interface LinterMachineLintDoneEvent {
-  type: 'xstate.done.actor.lintMachine.*';
-  output: LMOutput;
+  type: 'xstate.done.actor.RuleMachine.*';
+  output: RuleMachineOutput;
 }
 
-export type LinterMachineEvents = LinterMachineLintDoneEvent;
+export interface LinterMachineRuleBeginEvent {
+  type: 'RULE_BEGIN';
+  index: number;
+  ctx: StaticRuleContext;
+  sender: string;
+}
 
-export type LinterMachineOutputOk = MachineOutputOk<LintResult>;
+export type LinterMachineEvents =
+  | LinterMachineLintDoneEvent
+  | LinterMachineRuleBeginEvent;
 
-export type LinterMachineOutputError = MachineOutputError;
+export type LinterMachineOutputOk = MachineOutputOk<{
+  lintResult: LintResult;
+  pkgManagerIndex: number;
+  pkgManager: PkgManager;
+  didFail: boolean;
+}>;
+
+export type LinterMachineOutputError = MachineOutputError<
+  Error,
+  {
+    pkgManager: PkgManager;
+  }
+>;
 
 export type LinterMachineOutput =
   | LinterMachineOutputOk
@@ -90,13 +111,16 @@ export const LinterMachine = setup({
   },
   actions: {
     assignResult: assign({
-      issues: ({context: {issues}}, output: LMOutput): StaticRuleIssue[] => [
-        ...issues,
-        ...output.issues,
-      ],
-      passed: ({context: {passed, staticRule}}, {ctx}: LMOutput): RuleOk[] => {
-        const ruleOk: RuleOk = {
-          rule: staticRule,
+      issues: (
+        {context: {issues}},
+        output: RuleMachineOutput,
+      ): RuleResultFailed[] => [...issues, ...output.issues],
+      passed: (
+        {context: {passed}},
+        {ctx, rule}: RuleMachineOutput,
+      ): RuleResultOk[] => {
+        const ruleOk: RuleResultOk = {
+          rule,
           context: ctx,
         };
         return [...passed, ruleOk];
@@ -113,38 +137,40 @@ export const LinterMachine = setup({
     }),
     createRuleContexts: assign({
       ruleContexts: ({
-        context: {
-          rule,
-          ruleConfig: {severity},
-          lintManifestsWithPkgs,
-        },
+        context: {rules, ruleConfigs, lintManifestsWithPkgs, pkgManager},
       }): Readonly<RuleContext>[] =>
-        lintManifestsWithPkgs.map(
+        lintManifestsWithPkgs.flatMap(
           ({pkgName, installPath, pkgJson, pkgJsonPath}) =>
-            RuleContext.create(rule, {
-              pkgName,
-              severity,
-              installPath,
-              pkgJson,
-              pkgJsonPath,
+            rules.map((rule) => {
+              const {severity} = ruleConfigs[rule.name];
+              return RuleContext.create(rule, {
+                pkgName,
+                severity,
+                installPath,
+                pkgJson,
+                pkgJsonPath,
+                pkgManager: `${pkgManager.spec}`,
+              });
             }),
         ),
     }),
-    spawnLintMachines: assign({
-      lintMachines: ({
-        context: {ruleContexts, rule, ruleConfig, index: ruleIndex},
+    spawnRuleMachines: assign({
+      ruleMachines: ({
+        self,
+        context: {ruleContexts, ruleConfigs, index: pkgManagerIndex},
         spawn,
-      }): Record<string, ActorRefFrom<typeof LintMachine>> =>
+      }): Record<string, ActorRefFrom<typeof RuleMachine>> =>
         Object.fromEntries(
-          ruleContexts.map((ruleContext, lintIndex) => {
-            const id = `lintMachine.${makeId()}`;
-            const actor = spawn('lintMachine', {
+          ruleContexts.map((ruleContext, ruleIndex) => {
+            const id = `RuleMachine.${makeId()}`;
+            const actor = spawn('RuleMachine', {
               id,
               input: {
+                parentRef: self,
                 ctx: ruleContext,
-                rule,
-                config: ruleConfig,
-                index: ruleIndex * (lintIndex + 1),
+                rule: ruleContext.rule,
+                config: ruleConfigs[ruleContext.ruleName],
+                index: pkgManagerIndex * (ruleIndex + 1),
               },
             });
 
@@ -155,57 +181,87 @@ export const LinterMachine = setup({
     sendRuleFailed: sendTo(
       ({context: {parentRef}}) => parentRef,
       (
+        {self, context: {pkgManager, ruleConfigs}},
         {
-          context: {
-            ruleConfig: config,
-            staticRule: {name: rule},
-            index: currentRule,
-          },
-        },
-        {issues, ctx: {pkgName, installPath}}: LMOutput,
+          issues,
+          ctx: {ruleName, pkgName, installPath},
+          index: currentRule,
+        }: RuleMachineOutput,
       ): CtrlRuleFailedEvent => ({
+        pkgManager: pkgManager.staticSpec,
         pkgName,
         installPath,
-        config,
-        rule,
+        config: ruleConfigs[ruleName],
+        rule: ruleName,
         currentRule,
         type: 'RULE_FAILED',
+        sender: self.id,
         issues,
       }),
     ),
     sendRuleOk: sendTo(
       ({context: {parentRef}}) => parentRef,
       (
+        {self, context: {pkgManager, ruleConfigs}},
         {
-          context: {
-            ruleConfig: config,
-            staticRule: {name: rule},
-            index: currentRule,
-          },
-        },
-        {ctx: {pkgName, installPath}}: LMOutput,
+          ctx: {ruleName, pkgName, installPath},
+          index: currentRule,
+        }: RuleMachineOutput,
       ): CtrlRuleOkEvent => ({
         pkgName,
+        pkgManager: pkgManager.staticSpec,
         installPath,
-        config,
-        rule,
+        config: ruleConfigs[ruleName],
+        rule: ruleName,
         currentRule,
         type: 'RULE_OK',
+        sender: self.id,
       }),
     ),
-    stopLintMachine: enqueueActions(
-      ({enqueue, context: {lintMachines}}, {id}: LMOutput) => {
+    sendRuleBegin: sendTo(
+      ({context: {parentRef}}) => parentRef,
+      (
+        {self, context: {pkgManager, ruleConfigs}},
+        {
+          currentRule,
+          ctx: {pkgName, installPath, ruleName},
+        }: {currentRule: number; ctx: StaticRuleContext},
+      ): CtrlRuleBeginEvent => ({
+        pkgName,
+        pkgManager: pkgManager.staticSpec,
+        installPath,
+        config: ruleConfigs[ruleName],
+        rule: ruleName,
+        currentRule,
+        type: 'RULE_BEGIN',
+        sender: self.id,
+      }),
+    ),
+    sendPkgManagerLintBegin: sendTo(
+      ({context: {parentRef}}) => parentRef,
+      ({
+        context: {index: currentPkgManager, pkgManager},
+        self,
+      }): CtrlPkgManagerLintBeginEvent => ({
+        type: 'PKG_MANAGER_LINT_BEGIN',
+        currentPkgManager,
+        pkgManager: pkgManager.staticSpec,
+        sender: self.id,
+      }),
+    ),
+    stopRuleMachine: enqueueActions(
+      ({enqueue, context: {ruleMachines}}, {id}: RuleMachineOutput) => {
         enqueue.stopChild(id);
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const {[id]: _, ...rest} = lintMachines;
+        const {[id]: _, ...rest} = ruleMachines;
         enqueue.assign({
-          lintMachines: rest,
+          ruleMachines: rest,
         });
       },
     ),
   },
   actors: {
-    lintMachine: LintMachine,
+    RuleMachine,
 
     /**
      * For each {@link LintManifest}, find a `package.json` in its `installPath`,
@@ -226,9 +282,9 @@ export const LinterMachine = setup({
     ),
   },
   guards: {
-    didRuleCheckFail: (_, {issues = []}: {issues: StaticRuleIssue[]}) =>
+    didRuleCheckFail: (_, {issues = []}: {issues: RuleResultFailed[]}) =>
       !isEmpty(issues),
-    didRuleCheckPass: (_, {issues = []}: {issues: StaticRuleIssue[]}) =>
+    didRuleCheckPass: (_, {issues = []}: {issues: RuleResultFailed[]}) =>
       isEmpty(issues),
   },
 }).createMachine({
@@ -238,14 +294,18 @@ export const LinterMachine = setup({
     lintManifestsWithPkgs: [],
     passed: [],
     issues: [],
-    staticRule: input.rule.toJSON(),
-    lintMachines: {},
+    ruleMachines: {},
   }),
   initial: 'setup',
-  id: 'RuleMachine',
+  id: 'LinterMachine',
   states: {
     setup: {
       initial: 'readingPackages',
+      entry: [
+        {
+          type: 'sendPkgManagerLintBegin',
+        },
+      ],
       states: {
         readingPackages: {
           invoke: {
@@ -271,7 +331,7 @@ export const LinterMachine = setup({
                   error: ({event: {error}}) => fromUnknownError(error),
                 }),
               ],
-              target: '#RuleMachine.errored',
+              target: '#LinterMachine.errored',
             },
           },
         },
@@ -285,9 +345,15 @@ export const LinterMachine = setup({
       },
     },
     lint: {
+      entry: [
+        log(
+          ({context: {ruleContexts}}) =>
+            `Spawning ${ruleContexts.length} RuleMachine(s)`,
+        ),
+        {type: 'spawnRuleMachines'},
+      ],
       on: {
-        entry: [{type: 'spawnLintMachines'}],
-        'xstate.done.actor.lintMachine.*': [
+        'xstate.done.actor.RuleMachine.*': [
           {
             actions: [
               {
@@ -295,7 +361,7 @@ export const LinterMachine = setup({
                 params: ({event}) => event.output,
               },
               {
-                type: 'stopLintMachine',
+                type: 'stopRuleMachine',
                 params: ({event}) => event.output,
               },
             ],
@@ -333,26 +399,48 @@ export const LinterMachine = setup({
             ],
           },
         ],
+
+        RULE_BEGIN: {
+          actions: [
+            {
+              type: 'sendRuleBegin',
+              params: ({event: {index, ctx}}) => ({currentRule: index, ctx}),
+            },
+          ],
+        },
       },
+      always: [
+        {
+          guard: ({context: {error}}) => Boolean(error),
+          target: 'errored',
+        },
+        {
+          guard: ({context: {ruleMachines}}) => isEmpty(ruleMachines),
+          target: 'done',
+        },
+      ],
     },
     errored: {
       type: 'final',
       entry: [log('errored out')],
     },
     done: {
+      entry: log('linting complete'),
       type: 'final',
     },
   },
   output: ({
-    context: {passed, issues, error},
+    context: {passed, issues, error, pkgManager, index},
     self: {id},
   }): LinterMachineOutput =>
     error
-      ? {type: 'ERROR', id, error}
+      ? {type: 'ERROR', id, error, pkgManager}
       : {
           type: 'OK',
           id,
-          passed,
-          issues,
+          pkgManagerIndex: index,
+          pkgManager,
+          lintResult: {passed, issues},
+          didFail: Boolean(issues.length),
         },
 });

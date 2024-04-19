@@ -35,7 +35,7 @@ export class OptionParser {
     if (this.parseResultCache.has(opts as SmokerOptions)) {
       return opts as SmokerOptions;
     }
-    const zSmokerOpts = OptionParser.buildSmokerOptions(this.registry);
+    const zSmokerOpts = OptionParser.buildSmokerOptionsSchema(this.registry);
     let result: SmokerOptions;
     try {
       result = zSmokerOpts.parse(opts ?? {});
@@ -48,7 +48,7 @@ export class OptionParser {
     return result;
   }
 
-  static buildSmokerOptions(registry: PluginRegistry) {
+  static buildSmokerOptionsSchema(registry: PluginRegistry) {
     const RuleOptionsSchema = registry.buildRuleOptions();
     return BaseSmokerOptionsSchema.extend({rules: RuleOptionsSchema}).transform(
       (cfg, ctx) => {

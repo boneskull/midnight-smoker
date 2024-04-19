@@ -1,8 +1,9 @@
 import {fromUnknownError} from '#error';
 import {RuleError} from '#error/rule-error';
-import {type StaticRule, type StaticRuleContext} from '#schema/rule-static';
+import {type StaticRuleContext} from '#schema/rule-static';
 import {serialize} from '#util/util';
-import {type PackageJson} from 'type-fest';
+import {type PackageJson, type SetOptional} from 'type-fest';
+import {type SomeRule} from '.';
 import {RuleIssue} from './issue';
 
 /**
@@ -33,12 +34,16 @@ export class RuleContext implements StaticRuleContext {
   readonly #issues: RuleIssue[] = [];
 
   protected constructor(
-    private readonly rule: StaticRule,
+    public readonly rule: SomeRule,
     staticCtx: StaticRuleContext,
   ) {
     this.staticCtx = Object.freeze({...staticCtx});
     this.addIssue = this.addIssue.bind(this);
     this.addIssueFromError = this.addIssueFromError.bind(this);
+  }
+
+  public get ruleName() {
+    return this.staticCtx.ruleName;
   }
 
   /**
@@ -88,14 +93,26 @@ export class RuleContext implements StaticRuleContext {
     return this.staticCtx.pkgName;
   }
 
+  public get pkgManager() {
+    return this.staticCtx.pkgManager;
+  }
+
   /**
    * Creates a {@link RuleContext}.
    */
   public static create(
-    rule: StaticRule,
-    staticCtx: StaticRuleContext,
+    rule: SomeRule,
+    staticCtx: SetOptional<StaticRuleContext, 'ruleName'>,
   ): Readonly<RuleContext> {
-    return Object.freeze(new RuleContext(rule, serialize(staticCtx)));
+    return Object.freeze(
+      new RuleContext(
+        rule,
+        serialize({
+          ...staticCtx,
+          ruleName: staticCtx.ruleName ?? rule.name,
+        }),
+      ),
+    );
   }
 
   /**

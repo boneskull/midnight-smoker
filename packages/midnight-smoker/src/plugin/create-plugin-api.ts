@@ -22,8 +22,12 @@ import {ReporterDefSchema} from '#schema/reporter-def';
 import {RuleDefSchema, type RuleDef} from '#schema/rule-def';
 import {type RuleDefSchemaValue} from '#schema/rule-options';
 import * as SchemaUtils from '#util/schema-util';
+// import Debug from 'debug';
 import {z} from 'zod';
+import {type ComponentObject} from '../component';
 import {Helpers} from './helpers';
+
+// const debug = Debug('midnight-smoker:plugin:api');
 
 /**
  * Creates a {@link PluginAPI} object for use by a specific plugin.
@@ -32,7 +36,11 @@ import {Helpers} from './helpers';
  * @returns A {@link PluginAPI} object for use by a specific plugin
  */
 export const createPluginAPI = (
-  registerComponent: (kind: ComponentKind, def: object, name: string) => void,
+  registerComponent: <T extends ComponentKind>(
+    kind: T,
+    def: ComponentObject<T>,
+    name: string,
+  ) => void,
   getPlugins: () => StaticPluginMetadata[],
   metadata: Readonly<PluginMetadata>,
 ): Readonly<PluginAPI> => {
@@ -41,7 +49,8 @@ export const createPluginAPI = (
   >(
     ruleDef: RuleDef<Schema>,
   ) => {
-    metadata.addRuleDef(RuleDefSchema.parse(ruleDef));
+    RuleDefSchema.parse(ruleDef);
+    metadata.addRuleDef(ruleDef);
     registerComponent(ComponentKinds.RuleDef, ruleDef, ruleDef.name);
     return pluginApi;
   };
@@ -50,7 +59,8 @@ export const createPluginAPI = (
     pkgManagerDef,
     name = DEFAULT_COMPONENT_ID,
   ) => {
-    metadata.addPkgManagerDef(name, PkgManagerDefSchema.parse(pkgManagerDef));
+    PkgManagerDefSchema.parse(pkgManagerDef);
+    metadata.addPkgManagerDef(name, pkgManagerDef);
     registerComponent(ComponentKinds.PkgManagerDef, pkgManagerDef, name);
     return pluginApi;
   };
@@ -65,9 +75,10 @@ export const createPluginAPI = (
   };
 
   const defineReporter: DefineReporterFn = (reporterDef) => {
-    metadata.addReporterDef(ReporterDefSchema.parse(reporterDef));
+    ReporterDefSchema.parse(reporterDef);
+    metadata.addReporterDef(reporterDef);
     registerComponent(
-      ComponentKinds.PkgManagerDef,
+      ComponentKinds.ReporterDef,
       reporterDef,
       reporterDef.name,
     );

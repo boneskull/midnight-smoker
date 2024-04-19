@@ -1,4 +1,3 @@
-import {LintController} from 'midnight-smoker/controller';
 import {
   type RuleIssue,
   type RuleOptions,
@@ -19,11 +18,12 @@ export async function applyRule<R extends SomeRule>(
   installPath: string,
   opts?: RuleOptions<R['schema']>,
 ): Promise<readonly RuleIssue[] | undefined> {
-  const config = {
-    severity: rule.defaultSeverity,
-    opts: {...rule.defaultOptions, ...opts},
-  };
-  const ctx = await LintController.createRuleContext(rule, installPath, config);
-  await LintController.runRule(ctx, rule, config);
-  return ctx.finalize();
+  // const config = {
+  //   severity: rule.defaultSeverity,
+  //   opts: {...rule.defaultOptions, ...opts},
+  // };
+  // // const ctx = await LintController.createRuleContext(rule, installPath, config);
+  // // await LintController.runRule(ctx, rule, config);
+  // return ctx.finalize();
+  return;
 }

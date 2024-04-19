@@ -1,7 +1,7 @@
 import {RuleSeverities} from '#constants';
 import {RuleError} from '#error/rule-error';
 import type * as I from '#rule/issue';
-import * as IS from '#schema/rule-issue-static';
+import * as IS from '#schema/rule-result';
 import type {StaticRuleContext, StaticRuleDef} from '#schema/rule-static';
 import rewiremock from 'rewiremock/node';
 import unexpected from 'unexpected';
@@ -38,6 +38,8 @@ describe('midnight-smoker', function () {
           pkgJsonPath: '/path/to/example-package/package.json',
           installPath: '/path/to/example-package',
           severity: 'error',
+          ruleName: exampleStaticRule.name,
+          pkgManager: 'bebebebebee',
         };
         let issue: I.RuleIssue;
 
@@ -120,7 +122,7 @@ describe('midnight-smoker', function () {
         describe('instance method', function () {
           describe('toJSON()', function () {
             it('should return a StaticRuleIssue', function () {
-              const expected: IS.StaticRuleIssue = {
+              const expected: IS.RuleResultFailed = {
                 rule: params.rule,
                 context: params.context,
                 message: params.message,
@@ -129,10 +131,11 @@ describe('midnight-smoker', function () {
                 id: issue.id,
                 failed: issue.failed,
                 severity: issue.severity,
+                pkgManager: issue.pkgManager,
               };
               expect(issue.toJSON(), 'to equal', expected).and(
                 'when passed as parameter to',
-                IS.StaticRuleIssueSchema.parse,
+                IS.RuleResultFailedSchema.parse,
                 'to equal',
                 expected,
               );

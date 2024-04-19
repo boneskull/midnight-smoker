@@ -38,8 +38,6 @@ export * from './rule-def';
 
 export * from './rule-issue';
 
-export * from './rule-issue-static';
-
 export * from './rule-options';
 
 export * from './rule-result';

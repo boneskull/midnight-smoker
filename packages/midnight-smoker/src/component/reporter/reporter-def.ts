@@ -99,6 +99,18 @@ export interface ReporterListeners<Ctx = unknown> {
   onLintBegin: ReporterListener<typeof SmokerEvent.LintBegin, Ctx>;
   onLintFailed: ReporterListener<typeof SmokerEvent.LintFailed, Ctx>;
   onLintOk: ReporterListener<typeof SmokerEvent.LintOk, Ctx>;
+  onPkgManagerLintBegin: ReporterListener<
+    typeof SmokerEvent.PkgManagerLintBegin,
+    Ctx
+  >;
+  onPkgManagerLintFailed: ReporterListener<
+    typeof SmokerEvent.PkgManagerLintFailed,
+    Ctx
+  >;
+  onPkgManagerLintOk: ReporterListener<
+    typeof SmokerEvent.PkgManagerLintOk,
+    Ctx
+  >;
 
   onRunScriptBegin: ReporterListener<typeof SmokerEvent.RunScriptBegin, Ctx>;
   onRunScriptFailed: ReporterListener<typeof SmokerEvent.RunScriptFailed, Ctx>;
@@ -214,6 +226,11 @@ export const ReporterListenerEventMap = {
   [`on${SmokerEvent.LintBegin}` as const]: SmokerEvent.LintBegin,
   [`on${SmokerEvent.LintFailed}` as const]: SmokerEvent.LintFailed,
   [`on${SmokerEvent.LintOk}` as const]: SmokerEvent.LintOk,
+  [`on${SmokerEvent.PkgManagerLintBegin}` as const]:
+    SmokerEvent.PkgManagerLintBegin,
+  [`on${SmokerEvent.PkgManagerLintFailed}` as const]:
+    SmokerEvent.PkgManagerLintFailed,
+  [`on${SmokerEvent.PkgManagerLintOk}` as const]: SmokerEvent.PkgManagerLintOk,
   [`on${SmokerEvent.RunScriptBegin}` as const]: SmokerEvent.RunScriptBegin,
   [`on${SmokerEvent.RunScriptFailed}` as const]: SmokerEvent.RunScriptFailed,
   [`on${SmokerEvent.RunScriptOk}` as const]: SmokerEvent.RunScriptOk,

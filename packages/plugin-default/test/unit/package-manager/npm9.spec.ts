@@ -7,7 +7,7 @@ import rewiremock from 'rewiremock/node';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
-import type * as NPM9 from '../../../src/package-manager/npm9';
+import type NPM9 from '../../../src/package-manager/npm9';
 import type {ConsoleMock, DebugMock} from '../../mocks';
 import {mockConsole, mockDebug} from '../../mocks';
 
@@ -25,7 +25,7 @@ describe('@midnight-smoker/plugin-default', function () {
   let executor: sinon.SinonStubbedMember<typeof nullExecutor>;
   let mocks: Npm9SpecMocks;
 
-  let Npm9: typeof NPM9.Npm9;
+  let Npm9: typeof NPM9;
   beforeEach(function () {
     sandbox = createSandbox();
 
@@ -58,27 +58,21 @@ describe('@midnight-smoker/plugin-default', function () {
       let spec: Readonly<PkgManagerSpec>;
 
       before(async function () {
-        spec = await PkgManagerSpec.from('npm@9.8.1');
+        spec = await PkgManagerSpec.from('Npm9@9.8.1');
       });
 
       describe('instance method', function () {
-        let npm: NPM9.Npm9;
-
-        beforeEach(async function () {
-          npm = new Npm9();
-        });
-
         describe('accepts', function () {
           it('should return false for versions < 9.0.0', function () {
-            expect(npm.accepts('8.0.0'), 'to be false');
+            expect(Npm9.accepts('8.0.0'), 'to be false');
           });
 
           it('should return true for versions >= 9.0.0', function () {
-            expect(npm.accepts('9.0.0'), 'to be true');
+            expect(Npm9.accepts('9.0.0'), 'to be true');
           });
 
           it('should return true for versions >= 10.0.0', function () {
-            expect(npm.accepts('10.0.0'), 'to be true');
+            expect(Npm9.accepts('10.0.0'), 'to be true');
           });
         });
 
@@ -109,8 +103,8 @@ describe('@midnight-smoker/plugin-default', function () {
             executor.resolves({stdout: 'stuff', exitCode: 0} as any);
           });
 
-          it('should call npm with "--install-strategy=shallow"', async function () {
-            await npm.install(ctx);
+          it('should call Npm9 with "--install-strategy=shallow"', async function () {
+            await Npm9.install(ctx);
             expect(executor, 'to have a call satisfying', [
               spec,
               [

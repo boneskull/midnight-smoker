@@ -54,19 +54,13 @@ export const ReporterMachine = setup({
   guards: {
     hasEvents: ({context: {queue}}) => Boolean(queue.length),
     isQueueEmpty: not('hasEvents'),
+    hasError: ({context: {error}}) => Boolean(error),
+    notHasError: not('hasError'),
   },
   actions: {
     assignError: assign({
       error: (_, {error}: {error: unknown}) => fromUnknownError(error),
     }),
-    // unsubscribe: assign({
-    //   subscriptions: ({context: {subscriptions}}) => {
-    //     subscriptions.forEach((sub) => {
-    //       sub.unsubscribe();
-    //     });
-    //     return [];
-    //   },
-    // }),
     enqueue: assign({
       queue: ({context: {queue}}, {event}: {event: CtrlEmitted}) => [
         ...queue,
@@ -86,22 +80,6 @@ export const ReporterMachine = setup({
     destroyListeners: assign({
       listeners: {},
     }),
-    //   subscribe: assign({
-    //     subscriptions: ({self, context: {emitter, listeners}}) => {
-    //       const listenerNames = Object.keys(listeners);
-    //       return listenerNames.map((methodName) => {
-    //         const eventName =
-    //           ReporterListenerEventMap[
-    //             methodName as keyof typeof ReporterListenerEventMap
-    //           ];
-
-    //         // @ts-expect-error not done yet
-    //         return emitter.on(eventName, (event) => {
-    //           self.send({type: 'EVENT', event});
-    //         });
-    //       });
-    //     },
-    //   }),
   },
 }).createMachine({
   initial: 'setup',
@@ -118,7 +96,6 @@ export const ReporterMachine = setup({
     },
     EVENT: {
       actions: [
-        log(({event: {event}}) => `enqueuing ${event.type}`),
         {
           type: 'enqueue',
           params: ({event: {event}}) => ({event}),
@@ -128,7 +105,7 @@ export const ReporterMachine = setup({
   },
   states: {
     setup: {
-      entry: [log('setting up reporter')],
+      entry: [log(({context: {reporter}}) => `setting up ${reporter}`)],
       invoke: {
         src: 'setupReporter',
         input: ({context: {reporter}}) => reporter,
@@ -144,11 +121,7 @@ export const ReporterMachine = setup({
         },
         onDone: {
           target: 'listening',
-          actions: [
-            log('binding...'),
-            {type: 'createListeners'},
-            // {type: 'subscribe'},
-          ],
+          actions: [log('binding...'), {type: 'createListeners'}],
         },
       },
       exit: [log('setup complete')],
@@ -162,7 +135,6 @@ export const ReporterMachine = setup({
       ],
     },
     draining: {
-      entry: [log(({context: {queue}}) => `draining queue: ${queue.length}`)],
       invoke: {
         src: 'drainQueue',
         input: ({context: {reporter, listeners, queue}}) => ({
@@ -174,7 +146,7 @@ export const ReporterMachine = setup({
           target: 'listening',
         },
         onError: {
-          target: 'listening',
+          target: '#ReporterMachine.errored',
           actions: [
             {
               type: 'assignError',
@@ -183,7 +155,6 @@ export const ReporterMachine = setup({
           ],
         },
       },
-      exit: [log('drained')],
     },
     cleanup: {
       initial: 'unsubscribing',
@@ -225,8 +196,12 @@ export const ReporterMachine = setup({
           },
         },
         teardown: {
-          entry: [log('tearing down'), {type: 'destroyListeners'}],
-
+          entry: [
+            log('tearing down'),
+            {
+              type: 'destroyListeners',
+            },
+          ],
           invoke: {
             src: 'teardownReporter',
             input: ({context: {reporter}}) => reporter,
@@ -248,9 +223,16 @@ export const ReporterMachine = setup({
           type: 'final',
         },
       },
-      onDone: {
-        target: 'done',
-      },
+      onDone: [
+        {
+          guard: {type: 'hasError'},
+          target: 'errored',
+        },
+        {
+          guard: {type: 'notHasError'},
+          target: 'done',
+        },
+      ],
     },
     done: {
       type: 'final',

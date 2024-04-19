@@ -1,5 +1,6 @@
 import {MIDNIGHT_SMOKER, PACKAGE_JSON, UNKNOWN_TMPDIR_PREFIX} from '#constants';
 import {DirCreationError} from '#error/create-dir-error';
+import Debug from 'debug';
 import type nodeFsPromises from 'node:fs/promises';
 import path from 'node:path';
 import normalizePkgData from 'normalize-package-data';
@@ -7,6 +8,8 @@ import {type PackageJson} from 'type-fest';
 import {justImport, resolveFrom} from '.';
 import {MissingPackageJsonError, fromUnknownError} from '../error';
 import {UnreadablePackageJsonError} from '../error/unreadable-pkg-json-error';
+
+const debug = Debug('midnight-smoker:filemanager');
 
 export type FsApi = {
   promises: Pick<
@@ -118,18 +121,21 @@ export class FileManager {
     return this.#importer(specifier);
   }
 
-  public readPkgJson(filepath: string): PackageJson;
-  public readPkgJson(
+  public async readPkgJson(filepath: string): Promise<PackageJson>;
+  public async readPkgJson(
     filepath: string,
     options: {normalize: true},
-  ): NormalizedPackageJson;
-  public readPkgJson(
+  ): Promise<NormalizedPackageJson>;
+  public async readPkgJson(
     filepath: string,
     options: {normalize?: boolean} = {},
-  ): PackageJson | NormalizedPackageJson {
+  ): Promise<PackageJson | NormalizedPackageJson> {
     try {
-      const packageJson = JSON.parse(filepath) as PackageJson;
+      debug('Attempting to read JSON at %s', filepath);
+      const file = await this.fs.promises.readFile(filepath, 'utf8');
+      const packageJson = JSON.parse(file) as PackageJson;
       if (options.normalize) {
+        debug('Attempting to normalize JSON at %s', filepath);
         normalizePkgData(packageJson);
         return packageJson as NormalizedPackageJson;
       }
@@ -173,9 +179,9 @@ export class FileManager {
       }
       return;
     }
-    const pkgJson = options.normalize
+    const pkgJson = await (options.normalize
       ? this.readPkgJson(filepath, {normalize: true})
-      : this.readPkgJson(filepath);
+      : this.readPkgJson(filepath));
     return {
       packageJson: pkgJson,
       path: filepath,

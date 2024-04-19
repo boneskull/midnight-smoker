@@ -1,24 +1,32 @@
-import Debug from 'debug';
 import {type ExecResult} from 'midnight-smoker/executor';
-import {type PkgManagerInstallContext} from 'midnight-smoker/pkg-manager';
+import {
+  normalizeVersion,
+  type PkgManagerAcceptsResult,
+  type PkgManagerDef,
+  type PkgManagerInstallContext,
+} from 'midnight-smoker/pkg-manager';
 import {Range} from 'semver';
-import {Npm7} from './npm7';
+import {npmVersionData} from './data';
+import Npm7 from './npm7';
 
-export class Npm9 extends Npm7 {
-  protected override debug = Debug(`midnight-smoker:pm:npm9`);
+const Npm9 = {
+  ...Npm7,
+  supportedVersionRange: new Range('>=9.0.0'),
 
-  public override readonly supportedVersionRange = new Range('>=9.0.0');
-
-  public override async install(
-    ctx: PkgManagerInstallContext,
-  ): Promise<ExecResult> {
-    return this._install(ctx, [
+  accepts(value: string): PkgManagerAcceptsResult {
+    const version = normalizeVersion(npmVersionData, value);
+    if (version && Npm9.supportedVersionRange.test(version)) {
+      return version;
+    }
+  },
+  async install(ctx: PkgManagerInstallContext): Promise<ExecResult> {
+    return Npm7._install(ctx, [
       '--no-audit',
       '--no-package-lock',
       '--install-strategy=shallow',
       '--json',
     ]);
-  }
-}
+  },
+} as const satisfies PkgManagerDef;
 
 export default Npm9;

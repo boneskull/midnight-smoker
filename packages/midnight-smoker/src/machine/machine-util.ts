@@ -2,6 +2,7 @@ import Debug from 'debug';
 import {map, memoize, uniqBy} from 'lodash';
 import {AssertionError} from 'node:assert';
 import {type AnyActorRef} from 'xstate';
+import {MIDNIGHT_SMOKER} from '../constants';
 
 export function makeId() {
   return Math.random().toString(36).substring(7);
@@ -14,7 +15,9 @@ export function monkeypatchActorLogger<T extends AnyActorRef>(
   // https://github.com/statelyai/xstate/issues/4634
   // @ts-expect-error private
   // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-  actor.logger = actor._actorScope.logger = Debug(namespace);
+  actor.logger = actor._actorScope.logger = Debug(
+    `${MIDNIGHT_SMOKER}:${namespace}`,
+  );
   return actor;
 }
 

@@ -1,4 +1,8 @@
 import {
+  type MachineOutputError,
+  type MachineOutputOk,
+} from '#machine/machine-util';
+import {
   type PackError,
   type PackOptions,
   type PackParseError,
@@ -13,7 +17,6 @@ import {
   setup,
   type AnyActorRef,
 } from 'xstate';
-import {type MachineOutputError, type MachineOutputOk} from '../machine-util';
 import {type PackResult} from './packer-machine';
 import {type PackerMachinePkgManagerPackBeginEvent} from './packer-machine-events';
 
@@ -28,7 +31,7 @@ export interface PackMachineInput {
 export type PackActorInput = PackMachineInput;
 
 export interface PackMachineContext extends PackMachineInput {
-  result?: InstallManifest[];
+  installManifests?: InstallManifest[];
   error?: PackError | PackParseError;
 }
 
@@ -50,13 +53,14 @@ export const PackMachine = setup({
   actions: {
     sendPackBegin: sendTo(
       ({context: {parentRef}}) => parentRef,
-      ({
-        context: {pkgManager, index},
-      }): PackerMachinePkgManagerPackBeginEvent => ({
-        type: 'PKG_MANAGER_PACK_BEGIN',
-        pkgManager,
-        index,
-      }),
+      ({context}): PackerMachinePkgManagerPackBeginEvent => {
+        const {pkgManager, index} = context;
+        return {
+          type: 'PKG_MANAGER_PACK_BEGIN',
+          pkgManager,
+          index,
+        };
+      },
     ),
   },
   actors: {
@@ -82,7 +86,7 @@ export const PackMachine = setup({
                 `successfully packed for ${context.pkgManager.spec}`,
             ),
             assign({
-              result: ({event: {output}}) => output,
+              installManifests: ({event: {output}}) => output,
             }),
           ],
           target: 'done',
@@ -102,8 +106,11 @@ export const PackMachine = setup({
       type: 'final',
     },
   },
-  output: ({self: {id}, context: {pkgManager, result, error, index}}) =>
+  output: ({
+    self: {id},
+    context: {pkgManager, installManifests = [], error, index},
+  }) =>
     error
       ? {type: 'ERROR', error, id, pkgManager, index}
-      : {type: 'OK', installManifests: result!, id, pkgManager, index},
+      : {type: 'OK', installManifests, id, pkgManager, index},
 });

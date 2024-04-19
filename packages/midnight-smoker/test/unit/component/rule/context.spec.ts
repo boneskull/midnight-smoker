@@ -38,6 +38,8 @@ describe('midnight-smoker', function () {
           },
           pkgJsonPath: '/path/to/example-package/package.json',
           installPath: '/path/to/example-package',
+          ruleName: rule.name,
+          pkgManager: 'smthing',
           severity: 'error',
         };
 

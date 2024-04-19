@@ -1,11 +1,11 @@
 import {RuleError} from '#error/rule-error';
 import {type LintEvent} from '#event';
-import {StaticRuleIssueSchema} from '#schema/rule-issue-static';
+import {LintResultSchema} from '#schema/lint-result';
 import {
   BaseNormalizedRuleOptionsRecordSchema,
   BaseNormalizedRuleOptionsSchema,
 } from '#schema/rule-options';
-import {RuleOkSchema} from '#schema/rule-result';
+import {RuleResultSchema} from '#schema/rule-result';
 import {
   NonEmptyStringSchema,
   NonNegativeIntSchema,
@@ -13,8 +13,10 @@ import {
   serializeObject,
 } from '#util/schema-util';
 import {z} from 'zod';
+import {StaticPkgManagerSpecSchema} from '.';
 import {LintManifestSchema} from './lint-manifest';
 import {PkgManagerEventBaseSchema} from './pkg-manager-event';
+import {RuleResultFailedSchema} from './rule-result';
 
 export type LintBeginEventData = z.infer<typeof LintBeginEventDataSchema>;
 
@@ -66,6 +68,7 @@ export const RuleEventDataBaseSchema = LintManifestSchema.extend({
     'Current rule position in the total',
   ),
   totalRules: NonNegativeIntSchema.describe('Total count of unique rules'),
+  pkgManager: StaticPkgManagerSpecSchema,
 }).describe('Base object for RunRule* events');
 
 export const RuleBeginEventDataSchema = RuleEventDataBaseSchema;
@@ -74,7 +77,7 @@ export const RuleOkEventDataSchema = RuleEventDataBaseSchema;
 
 export const RuleFailedEventDataSchema = RuleEventDataBaseSchema.extend({
   issues: z
-    .array(serializeObject(StaticRuleIssueSchema))
+    .array(serializeObject(RuleResultFailedSchema))
     .describe('List of issues raised by a single rule exection'),
 });
 
@@ -87,17 +90,13 @@ export const LintBeginEventDataSchema = z.object({
   totalUniquePkgs: NonNegativeIntSchema,
 });
 
-export const LintOkEventDataSchema = LintBeginEventDataSchema.extend({
-  passed: z
-    .array(RuleOkSchema)
-    .describe('List of rules which ran without issue'),
+export const LintEndEventDataSchema = LintBeginEventDataSchema.extend({
+  result: LintResultSchema,
 });
 
-export const LintFailedEventDataSchema = LintOkEventDataSchema.extend({
-  issues: z
-    .array(StaticRuleIssueSchema)
-    .describe('List of issues raised by all rules'),
-});
+export const LintOkEventDataSchema = LintEndEventDataSchema;
+
+export const LintFailedEventDataSchema = LintEndEventDataSchema;
 
 export const RuleErrorEventDataSchema = z.object({
   error: instanceofSchema(RuleError),
@@ -105,25 +104,23 @@ export const RuleErrorEventDataSchema = z.object({
 
 export const PkgManagerLintBeginEventDataSchema =
   PkgManagerEventBaseSchema.extend({
-    config: BaseNormalizedRuleOptionsRecordSchema.describe(
-      'The entire rule configuration, as defined by the user and default values',
-    ),
     totalPkgManagerChecks: NonNegativeIntSchema.describe(
       'Total count of rule checks within package manager context',
     ),
     totalRules: NonNegativeIntSchema.describe('Total count of unique rules'),
   });
 
-export const PkgManagerLintOkEventDataSchema =
+export const PkgManagerLintEndEventDataSchema =
   PkgManagerLintBeginEventDataSchema.extend({
+    issues: z
+      .array(RuleResultFailedSchema)
+      .describe('List of issues raised by all rules'),
     passed: z
-      .array(RuleOkSchema)
+      .array(RuleResultSchema)
       .describe('List of rules which ran without issue'),
   });
 
+export const PkgManagerLintOkEventDataSchema = PkgManagerLintEndEventDataSchema;
+
 export const PkgManagerLintFailedEventDataSchema =
-  PkgManagerLintOkEventDataSchema.extend({
-    failed: z
-      .array(StaticRuleIssueSchema)
-      .describe('List of issues raised by all rules'),
-  });
+  PkgManagerLintEndEventDataSchema;

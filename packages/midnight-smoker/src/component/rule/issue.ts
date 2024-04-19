@@ -6,7 +6,7 @@
 
 import {RuleSeverities} from '#constants';
 import type {RuleError} from '#error/rule-error';
-import {type StaticRuleIssue} from '#schema/rule-issue-static';
+import {type RuleResultFailed} from '#schema/rule-result';
 import {type StaticRuleContext, type StaticRuleDef} from '#schema/rule-static';
 import {uniqueIdFactoryFactory} from '#util/util';
 
@@ -49,7 +49,7 @@ export interface RuleIssueParams<
 /**
  * An issue raised by a {@link RuleCheckFn}
  */
-export class RuleIssue implements StaticRuleIssue {
+export class RuleIssue implements RuleResultFailed {
   /**
    * Generates a unique ID for each issue
    *
@@ -102,6 +102,10 @@ export class RuleIssue implements StaticRuleIssue {
     this.id = RuleIssue.generateId();
   }
 
+  public get pkgManager() {
+    return this.context.pkgManager;
+  }
+
   /**
    * This will be `true` if {@link severity} is {@link RuleSeverities.Error}.
    */
@@ -140,10 +144,21 @@ export class RuleIssue implements StaticRuleIssue {
    *
    * @returns The JSON representation of the {@link RuleIssue} object.
    */
-  public toJSON(): StaticRuleIssue {
-    const {rule, context, message, data, error, id, failed, severity} = this;
+  public toJSON(): RuleResultFailed {
+    const {
+      rule,
+      pkgManager,
+      context,
+      message,
+      data,
+      error,
+      id,
+      failed,
+      severity,
+    } = this;
     return {
       rule,
+      pkgManager,
       context,
       message,
       data,
@@ -164,8 +179,8 @@ export class RuleIssue implements StaticRuleIssue {
    */
   public static compare(
     this: void,
-    a: StaticRuleIssue,
-    b: StaticRuleIssue,
+    a: RuleResultFailed,
+    b: RuleResultFailed,
   ): number {
     return a.id.localeCompare(b.id, 'en');
   }

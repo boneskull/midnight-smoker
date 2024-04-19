@@ -1,4 +1,4 @@
-import type Debug from 'debug';
+import Debug from 'debug';
 import {isError, pickBy} from 'lodash';
 import {type ScriptError} from 'midnight-smoker/error';
 import {
@@ -10,11 +10,8 @@ import {
   RunScriptError,
   ScriptFailedError,
   UnknownScriptError,
-  normalizeVersion,
   type ExecResult,
   type InstallManifest,
-  type PkgManagerAcceptsResult,
-  type PkgManagerDef,
   type PkgManagerInstallContext,
   type PkgManagerPackContext,
   type PkgManagerRunScriptContext,
@@ -22,8 +19,6 @@ import {
 } from 'midnight-smoker/pkg-manager';
 import {isSmokerError} from 'midnight-smoker/util';
 import path from 'node:path';
-import {type Range} from 'semver';
-import {npmVersionData} from './data';
 
 /**
  * When `npm` fails when run with `--json`, the error output is also in JSON.
@@ -76,26 +71,74 @@ export interface NpmPackItemFileEntry {
   path: string;
 }
 
+const debug = Debug('midnight-smoker:pkg-manager:base-npm');
+
 /**
- * Intended to provide whatever we can that's common to all versions of `npm`.
+ * When run with `--json`, `npm` will output an error a JSON blob on `stdout`
+ * when it fails. Extract whatever we can from it.
+ *
+ * @param json - JSON string to parse (typically `stdout` of a child process)
+ * @returns Parsed error object, or `undefined` if parsing failed
  */
-export abstract class BaseNpmPackageManager implements PkgManagerDef {
-  protected abstract debug: Debug.Debugger;
+export function parseNpmError(json: string): NpmJsonOutput['error'] {
+  const parsed = JSON.parse(json) as NpmJsonOutput;
+  // trim falsy values, which seems to happen a lot.
+  return pickBy(parsed.error, Boolean) as NpmJsonOutput['error'];
+}
 
-  public readonly bin = 'npm';
-
-  public readonly lockfile = 'package-lock.json';
-
-  public abstract supportedVersionRange: Range;
-
-  public accepts(value: string): PkgManagerAcceptsResult {
-    const version = normalizeVersion(npmVersionData, value);
-    if (version && this.supportedVersionRange.test(version)) {
-      return version;
+export function handleInstallError(
+  {tmpdir, spec}: PkgManagerInstallContext,
+  errOrResult: ExecError | ExecResult,
+  installSpecs: string[],
+): InstallError | undefined {
+  if (isSmokerError(ExecError, errOrResult)) {
+    try {
+      const parsedError = parseNpmError(errOrResult.stdout);
+      return new InstallError(
+        parsedError.summary,
+        `${spec}`,
+        installSpecs,
+        tmpdir,
+        {
+          error: parsedError,
+          output: errOrResult.all || errOrResult.stderr || errOrResult.stdout,
+          exitCode: errOrResult.exitCode,
+        },
+        errOrResult,
+      );
+    } catch (e) {
+      return new InstallError(
+        `Unable to parse npm output. Use --verbose for more information`,
+        `${spec}`,
+        installSpecs,
+        tmpdir,
+        {
+          output: errOrResult.all || errOrResult.stderr || errOrResult.stdout,
+          exitCode: errOrResult.exitCode,
+        },
+        errOrResult,
+      );
     }
+  } else if (errOrResult.exitCode > 0 || errOrResult instanceof Error) {
+    return new InstallError(
+      `Use --verbose for more information`,
+      `${spec}`,
+      installSpecs,
+      tmpdir,
+      {
+        output: errOrResult.all || errOrResult.stderr || errOrResult.stdout,
+        exitCode: errOrResult.exitCode,
+      },
+    );
   }
+}
 
-  public async pack(ctx: PkgManagerPackContext): Promise<InstallManifest[]> {
+export const BaseNpmPackageManager = {
+  bin: 'npm',
+
+  lockfile: 'package-lock.json',
+
+  async pack(ctx: PkgManagerPackContext): Promise<InstallManifest[]> {
     let packArgs = [
       'pack',
       '--json',
@@ -119,11 +162,11 @@ export abstract class BaseNpmPackageManager implements PkgManagerDef {
     try {
       packResult = await ctx.executor(ctx.spec, packArgs);
     } catch (e) {
-      this.debug('(pack) Failed: %O', e);
+      debug('(pack) Failed: %O', e);
       const err = e as ExecError;
       if (err.id === 'ExecError') {
         // in some cases we can get something more user-friendly via the JSON output
-        const parsedError = this.parseNpmError(err.stdout);
+        const parsedError = parseNpmError(err.stdout);
 
         if (parsedError) {
           throw new PackError(parsedError.summary, `${ctx.spec}`, ctx.tmpdir, {
@@ -148,7 +191,7 @@ export abstract class BaseNpmPackageManager implements PkgManagerDef {
     const {stdout: packOutput} = packResult;
     try {
       parsed = JSON.parse(packOutput) as NpmPackItem[];
-      this.debug(
+      debug(
         '(pack) Packed: %O',
         parsed.map(({filename, name, files}) => ({
           filename,
@@ -157,7 +200,7 @@ export abstract class BaseNpmPackageManager implements PkgManagerDef {
         })),
       );
     } catch (err) {
-      this.debug('(pack) Failed to parse JSON: %s', packOutput);
+      debug('(pack) Failed to parse JSON: %s', packOutput);
       throw isError(err)
         ? new PackParseError(
             `Failed to parse JSON result of "npm pack"`,
@@ -178,12 +221,12 @@ export abstract class BaseNpmPackageManager implements PkgManagerDef {
         pkgName: name,
       };
     });
-    this.debug('(pack) Packed %d packages', installManifest.length);
+    debug('(pack) Packed %d packages', installManifest.length);
 
     return installManifest;
-  }
+  },
 
-  public async runScript({
+  async runScript({
     executor,
     loose,
     spec,
@@ -249,31 +292,24 @@ export abstract class BaseNpmPackageManager implements PkgManagerDef {
     const result: RunScriptResult = {rawResult, error, skipped};
 
     if (result.error) {
-      this.debug(
+      debug(
         `Script "%s" in package "%s" failed; continuing...`,
         script,
         pkgName,
       );
     } else if (result.skipped) {
-      this.debug(
+      debug(
         'Skipped script %s in package %s; script not found',
         script,
         pkgName,
       );
     } else {
-      this.debug(
-        'Successfully executed script %s in package %s',
-        script,
-        pkgName,
-      );
+      debug('Successfully executed script %s in package %s', script, pkgName);
     }
 
     return result;
-  }
-
-  public abstract install(ctx: PkgManagerInstallContext): Promise<ExecResult>;
-
-  protected async _install(
+  },
+  async _install(
     ctx: PkgManagerInstallContext,
     args: string[],
   ): Promise<ExecResult> {
@@ -291,10 +327,10 @@ export abstract class BaseNpmPackageManager implements PkgManagerDef {
     let installResult: ExecResult;
     try {
       installResult = await executor(spec, installArgs, {}, {cwd: tmpdir});
-      err = this.handleInstallError(ctx, installResult, installSpecs);
+      err = handleInstallError(ctx, installResult, installSpecs);
     } catch (e) {
       if (isSmokerError(ExecError, e)) {
-        err = this.handleInstallError(ctx, e, installSpecs);
+        err = handleInstallError(ctx, e, installSpecs);
       } else {
         throw e;
       }
@@ -302,67 +338,7 @@ export abstract class BaseNpmPackageManager implements PkgManagerDef {
     if (err) {
       throw err;
     }
-    this.debug('(install) Installed %d packages', installSpecs.length);
+    debug('(install) Installed %d packages', installSpecs.length);
     return installResult!;
-  }
-
-  protected handleInstallError(
-    {tmpdir, spec}: PkgManagerInstallContext,
-    errOrResult: ExecError | ExecResult,
-    installSpecs: string[],
-  ): InstallError | undefined {
-    if (isSmokerError(ExecError, errOrResult)) {
-      try {
-        const parsedError = this.parseNpmError(errOrResult.stdout);
-        return new InstallError(
-          parsedError.summary,
-          `${spec}`,
-          installSpecs,
-          tmpdir,
-          {
-            error: parsedError,
-            output: errOrResult.all || errOrResult.stderr || errOrResult.stdout,
-            exitCode: errOrResult.exitCode,
-          },
-          errOrResult,
-        );
-      } catch (e) {
-        return new InstallError(
-          `Unable to parse npm output. Use --verbose for more information`,
-          `${spec}`,
-          installSpecs,
-          tmpdir,
-          {
-            output: errOrResult.all || errOrResult.stderr || errOrResult.stdout,
-            exitCode: errOrResult.exitCode,
-          },
-          errOrResult,
-        );
-      }
-    } else if (errOrResult.exitCode > 0 || errOrResult instanceof Error) {
-      return new InstallError(
-        `Use --verbose for more information`,
-        `${spec}`,
-        installSpecs,
-        tmpdir,
-        {
-          output: errOrResult.all || errOrResult.stderr || errOrResult.stdout,
-          exitCode: errOrResult.exitCode,
-        },
-      );
-    }
-  }
-
-  /**
-   * When run with `--json`, `npm` will output an error a JSON blob on `stdout`
-   * when it fails. Extract whatever we can from it.
-   *
-   * @param json - JSON string to parse (typically `stdout` of a child process)
-   * @returns Parsed error object, or `undefined` if parsing failed
-   */
-  protected parseNpmError(json: string): NpmJsonOutput['error'] {
-    const parsed = JSON.parse(json) as NpmJsonOutput;
-    // trim falsy values, which seems to happen a lot.
-    return pickBy(parsed.error, Boolean) as NpmJsonOutput['error'];
-  }
-}
+  },
+};

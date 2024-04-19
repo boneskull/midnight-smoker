@@ -75,11 +75,11 @@ export class Rule<Schema extends RuleDefSchemaValue | void = void>
    * Returns the entire schema for the value of this rule in the `RuleConfig`
    * object.
    */
-  public get zRuleSchema() {
-    const {schema: zSchema} = this;
+  public get ruleSchema() {
+    const {schema} = this;
 
-    const result = zSchema
-      ? createRuleOptionsSchema(zSchema, this.defaultSeverity)
+    const result = schema
+      ? createRuleOptionsSchema(schema, this.defaultSeverity)
       : createRuleOptionsSchema(EmptyObjectSchema, this.defaultSeverity);
 
     return result;

@@ -1,4 +1,3 @@
-import {BaseSmokerOptionsSchema} from '#options/options';
 import {PluginRegistry} from '#plugin';
 import {ConsoleReporter} from '@midnight-smoker/plugin-default/reporter';
 import {
@@ -11,14 +10,16 @@ import {createActor} from 'xstate';
 import {SmokerEvent} from '../src/event';
 import {ControlMachine} from '../src/machine/controller/control-machine';
 import {type CtrlEmitted} from '../src/machine/controller/control-machine-events';
-
+import {OptionParser} from '../src/options';
+import {FileManager} from '../src/util';
+import {plugin} from './e2e/fixture/plugin/plugin-rule/index.js';
 const debugComplete = Debug('testMachine:complete');
 const debugError = Debug('testMachine:error');
 const debugEvent = Debug('testMachine:event');
 const debugEmit = Debug('testMachine:emit');
 const debugOther = Debug('testMachine:inspection');
 
-// const failingPluginLoaderMachine = PluginLoaderMachine.provide({
+// const failingComponentReifierMachine = ComponentReifierMachine.provide({
 //   actors: {
 //     loadPkgManagers: fromPromise<PkgManagerDefSpec[], LoadPkgManagersInput>(
 //       async () => {
@@ -30,7 +31,7 @@ const debugOther = Debug('testMachine:inspection');
 
 // const failingMachine = ControlMachine.provide({
 //   actors: {
-//     pluginLoader: failingPluginLoaderMachine,
+//     pluginLoader: failingComponentReifierMachine,
 //   },
 // });
 
@@ -43,6 +44,7 @@ async function main() {
       api.defineExecutor(nullExecutor.bind({}), 'system');
       api.definePackageManager(nullPmDef, 'nullpm');
       api.defineReporter(ConsoleReporter);
+      plugin(api);
       // api.defineReporter(JSONReporter);
     },
     name: '@midnight-smoker/plugin-default',
@@ -53,13 +55,12 @@ async function main() {
   const m = createActor(ControlMachine, {
     input: {
       pluginRegistry,
-      desiredPkgManagers: ['nullpm@1.0.0'],
-      packOptions: {
-        allWorkspaces: true,
-      },
-      smokerOptions: BaseSmokerOptionsSchema.parse({
+      smokerOptions: OptionParser.create(pluginRegistry).parse({
+        all: true,
+        pkgManager: ['nullpm@1.0.0'],
         reporter: ['console'],
       }),
+      fileManager: FileManager.create(),
     },
     id: 'main',
     logger: debug,
@@ -85,7 +86,6 @@ async function main() {
     m.on(event, listener);
   }
 
-  const runningScripts = false;
   m.subscribe({
     complete() {
       // debugComplete(m.getSnapshot().output);
@@ -95,15 +95,15 @@ async function main() {
     error: (err) => {
       debugError(err);
     },
-    next(value) {
-      // if (value.matches('ready') && !runningScripts) {
-      //   m.send({type: 'RUN_SCRIPTS', scripts: ['build']});
-      //   runningScripts = true;
-      //   setTimeout(() => {
-      //     m.send({type: 'HALT'});
-      //   }, 2000);
-      // }
-    },
+    // next(value) {
+    // if (value.matches('ready') && !runningScripts) {
+    //   m.send({type: 'RUN_SCRIPTS', scripts: ['build']});
+    //   runningScripts = true;
+    //   setTimeout(() => {
+    //     m.send({type: 'HALT'});
+    //   }, 2000);
+    // }
+    // },
   });
 
   m.send({type: 'RUN_SCRIPTS', scripts: ['build']});

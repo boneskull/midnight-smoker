@@ -34,33 +34,34 @@ export class Reporter<Ctx = unknown> extends ReifiedComponent<
     super(id, def, plugin);
   }
 
-  public get name() {
+  public get name(): string {
     return this.def.name;
   }
 
-  public get description() {
+  public get description(): string {
     return this.def.description;
   }
 
   public async invokeListener<T extends EventKind>(data: EventData<T>) {
-    await Promise.resolve();
+    // await Promise.resolve();
     // XXX don't like these casts
-    const listenerName = `on${data.event}` as keyof ReporterListeners<Ctx>;
-    if (listenerName in this.def) {
+    if (this.hasListener(data.type)) {
+      const listenerName = `on${data.type}` as keyof ReporterListeners<Ctx>;
       const listener = this.def[listenerName] as ReporterListener<T, Ctx>;
       try {
-        debug('%s - invoking listener for %s', this, data.event);
         await listener(this.ctx, data);
-        debug('%s - listener %s invoked', this, listenerName);
+        debug('%s - invoked %s', this, listenerName);
       } catch (err) {
         throw new ReporterError(err as Error, this.def);
       }
-    } else {
-      debug('%s - no listener for %s', this, data.event);
     }
   }
 
-  public async setup() {
+  public hasListener<T extends EventKind>(type: T): boolean {
+    return `on${type}` in this.def;
+  }
+
+  public async setup(): Promise<void> {
     await Promise.resolve();
     if (isFunction(this.def.setup)) {
       try {
@@ -71,7 +72,7 @@ export class Reporter<Ctx = unknown> extends ReifiedComponent<
     }
   }
 
-  public async teardown() {
+  public async teardown(): Promise<void> {
     await Promise.resolve();
     if (isFunction(this.def.teardown)) {
       try {
@@ -91,8 +92,8 @@ export class Reporter<Ctx = unknown> extends ReifiedComponent<
     return new Reporter(id, def, plugin, ctx);
   }
 
-  public override toString() {
-    return `[Reporter] ${this.def.name}`;
+  public override toString(): string {
+    return `[Reporter ${this.pluginName}.${this.name}]`;
   }
 }
 

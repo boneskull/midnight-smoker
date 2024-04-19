@@ -19,6 +19,10 @@ export * from '#schema/run-script-manifest';
 
 export * from '#schema/run-script-result';
 
+export * from '#schema/pkg-manager-spec';
+
+export * from '#schema/static-pkg-manager-spec';
+
 export * as Util from 'midnight-smoker/util';
 
 export {SemVer} from 'semver';

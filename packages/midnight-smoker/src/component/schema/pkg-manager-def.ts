@@ -1,9 +1,8 @@
-import {ExecResultSchema, type ExecResult} from '#schema/exec-result';
+import {ExecResultSchema} from '#schema/exec-result';
 import {ExecutorSchema} from '#schema/executor';
 import {
   InstallManifestSchema,
   InstallManifestsSchema,
-  type InstallManifest,
 } from '#schema/install-manifest';
 import {PkgManagerSpecSchema} from '#schema/pkg-manager-spec';
 import {RunScriptManifestSchema} from '#schema/run-script-manifest';
@@ -17,7 +16,6 @@ import {
   SemVerRangeSchema,
   SemVerSchema,
   VoidOrPromiseVoidSchema,
-  customSchema,
   fancyObjectSchema,
 } from '#util/schema-util';
 import {z} from 'zod';
@@ -26,7 +24,7 @@ export type PkgManagerAcceptsResult = z.infer<
   typeof PkgManagerAcceptsResultSchema
 >;
 
-export type PkgManagerContext = z.infer<typeof BasePkgManagerContextSchema>;
+export type PkgManagerContext = z.infer<typeof PkgManagerContextSchema>;
 
 export type PkgManagerInstallContext = z.infer<
   typeof PkgManagerInstallContextSchema
@@ -79,7 +77,7 @@ export const PkgManagerOptsSchema = z
   .partial()
   .describe('Options for package manager factory function');
 
-export const BasePkgManagerContextSchema = z
+export const PkgManagerContextSchema = z
   .object({
     spec: PkgManagerSpecSchema.readonly(),
     tmpdir: NonEmptyStringSchema.readonly(),
@@ -89,7 +87,7 @@ export const BasePkgManagerContextSchema = z
   })
   .passthrough();
 
-export const PkgManagerPackContextSchema = BasePkgManagerContextSchema.extend({
+export const PkgManagerPackContextSchema = PkgManagerContextSchema.extend({
   allWorkspaces: z.boolean().optional(),
   includeWorkspaceRoot: z.boolean().optional(),
   workspaces: z.array(NonEmptyStringSchema).optional(),
@@ -97,17 +95,15 @@ export const PkgManagerPackContextSchema = BasePkgManagerContextSchema.extend({
   signal: AbortSignalSchema,
 });
 
-export const PkgManagerInstallContextSchema =
-  BasePkgManagerContextSchema.extend({
-    installManifests: InstallManifestsSchema,
-    signal: AbortSignalSchema,
-  });
+export const PkgManagerInstallContextSchema = PkgManagerContextSchema.extend({
+  installManifests: InstallManifestsSchema,
+  signal: AbortSignalSchema,
+});
 
-export const PkgManagerRunScriptContextSchema =
-  BasePkgManagerContextSchema.extend({
-    runScriptManifest: RunScriptManifestSchema,
-    signal: AbortSignalSchema,
-  });
+export const PkgManagerRunScriptContextSchema = PkgManagerContextSchema.extend({
+  runScriptManifest: RunScriptManifestSchema,
+  signal: AbortSignalSchema,
+});
 
 export const PkgManagerInstallSchema = z
   .function(
@@ -145,15 +141,15 @@ export const PkgManagerRunScriptSchema = z
   );
 
 export const PkgManagerSetupSchema = z.function(
-  z.tuple([BasePkgManagerContextSchema] as [
-    context: typeof BasePkgManagerContextSchema,
+  z.tuple([PkgManagerContextSchema] as [
+    context: typeof PkgManagerContextSchema,
   ]),
   VoidOrPromiseVoidSchema,
 );
 
 export const PkgManagerTeardownSchema = z.function(
-  z.tuple([BasePkgManagerContextSchema] as [
-    context: typeof BasePkgManagerContextSchema,
+  z.tuple([PkgManagerContextSchema] as [
+    context: typeof PkgManagerContextSchema,
   ]),
   VoidOrPromiseVoidSchema,
 );
@@ -181,72 +177,70 @@ export type PkgManagerSupportedVersionRange = z.infer<
   typeof PkgManagerSupportedVersionRangeSchema
 >;
 
-export type SomePkgManagerDef = PkgManagerDef;
-
 /**
  * Schema for a package manager definition
  */
-export const PkgManagerDefSchema = customSchema<SomePkgManagerDef>(
-  fancyObjectSchema(
-    z.object({
-      /**
-       * The name of the package manager's executable.
-       */
-      bin: NonEmptyStringSchema,
+export const PkgManagerDefSchema = fancyObjectSchema(
+  z.object({
+    /**
+     * The name of the package manager's executable.
+     */
+    bin: NonEmptyStringSchema,
 
-      /**
-       * {@inheritDoc PkgManagerAcceptsFnSchema}
-       */
-      accepts: PkgManagerAcceptsSchema,
+    /**
+     * {@inheritDoc PkgManagerAcceptsFnSchema}
+     */
+    accepts: PkgManagerAcceptsSchema,
 
-      /**
-       * {@inheritDoc PkgManagerSupportedVersionRangeSchema}
-       */
-      supportedVersionRange: PkgManagerSupportedVersionRangeSchema.optional(),
+    /**
+     * {@inheritDoc PkgManagerSupportedVersionRangeSchema}
+     */
+    supportedVersionRange: PkgManagerSupportedVersionRangeSchema.optional(),
 
-      /**
-       * Name of the lockfile for this package manager.
-       *
-       * Used for guessing package manager based on presence of this file
-       */
-      lockfile: NonEmptyStringSchema.optional(),
+    /**
+     * Name of the lockfile for this package manager.
+     *
+     * Used for guessing package manager based on presence of this file
+     */
+    lockfile: NonEmptyStringSchema.optional(),
 
-      /**
-       * {@inheritDoc PkgManagerSetupFn}
-       */
-      setup: PkgManagerSetupSchema.optional(),
+    /**
+     * {@inheritDoc PkgManagerSetupFn}
+     */
+    setup: PkgManagerSetupSchema.optional(),
 
-      /**
-       * Optional teardown function to run after all operations
-       */
-      teardown: PkgManagerTeardownSchema.optional(),
+    /**
+     * Optional teardown function to run after all operations
+     */
+    teardown: PkgManagerTeardownSchema.optional(),
 
-      /**
-       * {@inheritDoc PkgManagerInstallFnSchema}
-       */
-      install: PkgManagerInstallSchema,
+    /**
+     * {@inheritDoc PkgManagerInstallFnSchema}
+     */
+    install: PkgManagerInstallSchema,
 
-      /**
-       * {@inheritDoc PkgManagerPackFnSchema}
-       */
-      pack: PkgManagerPackSchema,
+    /**
+     * {@inheritDoc PkgManagerPackFnSchema}
+     */
+    pack: PkgManagerPackSchema,
 
-      /**
-       * {@inheritDoc PkgManagerRunScriptFnSchema}
-       */
-      runScript: PkgManagerRunScriptSchema,
-    }),
-  ),
+    /**
+     * {@inheritDoc PkgManagerRunScriptFnSchema}
+     */
+    runScript: PkgManagerRunScriptSchema,
+  }),
 );
 
-export interface PkgManagerDef {
-  bin: string;
-  accepts: PkgManagerAccepts;
-  supportedVersionRange?: PkgManagerSupportedVersionRange;
-  lockfile?: string;
-  setup?(ctx: PkgManagerContext): void | Promise<void>;
-  teardown?(ctx: PkgManagerContext): void | Promise<void>;
-  install(ctx: PkgManagerInstallContext): Promise<ExecResult>;
-  pack(ctx: PkgManagerPackContext): Promise<InstallManifest[]>;
-  runScript(ctx: PkgManagerRunScriptContext): Promise<RunScriptResult>;
-}
+// export interface PkgManagerDef {
+//   bin: string;
+//   accepts: PkgManagerAccepts;
+//   supportedVersionRange?: PkgManagerSupportedVersionRange;
+//   lockfile?: string;
+//   setup?(ctx: PkgManagerContext): void | Promise<void>;
+//   teardown?(ctx: PkgManagerContext): void | Promise<void>;
+//   install(ctx: PkgManagerInstallContext): Promise<ExecResult>;
+//   pack(ctx: PkgManagerPackContext): Promise<InstallManifest[]>;
+//   runScript(ctx: PkgManagerRunScriptContext): Promise<RunScriptResult>;
+// }
+
+export type PkgManagerDef = z.infer<typeof PkgManagerDefSchema>;

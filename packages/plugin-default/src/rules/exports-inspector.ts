@@ -262,7 +262,7 @@ export class ExportsInspector<Schema extends Rule.RuleDefSchemaValue> {
 
     // use glob only if there's a glob pattern.  premature optimization?
     if (this.isGlobPattern(relPath)) {
-      debug('Checking export %s as glob', relPath);
+      // debug('Checking export %s as glob', relPath);
 
       if (!this.shouldAllowGlobs) {
         this.addIssue(`Export ${fullName} contains a glob pattern`);
@@ -280,7 +280,7 @@ export class ExportsInspector<Schema extends Rule.RuleDefSchemaValue> {
 
     const absPath = path.resolve(this.installPath, relPath);
 
-    debug('Checking export %s', relPath);
+    // debug('Checking export %s', relPath);
 
     const missing = await this.isFileMissing(absPath);
     if (missing) {

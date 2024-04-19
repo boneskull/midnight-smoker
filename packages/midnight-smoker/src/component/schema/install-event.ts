@@ -109,7 +109,7 @@ export const InstallEventBaseDataSchema = z.object({
   /**
    * Total number of packages to install
    */
-  total: NonNegativeIntSchema,
+  totalPkgs: NonNegativeIntSchema,
 });
 
 /**

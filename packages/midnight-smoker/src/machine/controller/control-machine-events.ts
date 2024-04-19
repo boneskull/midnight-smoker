@@ -20,8 +20,9 @@ import {
 } from '#schema';
 import {type Simplify, type ValueOf} from 'type-fest';
 import {type InstallerMachineOutput} from '../installer/installer-machine';
+import {type LinterMachineOutput} from '../linter/linter-machine';
 import {type PackerMachineOutput} from '../packer/packer-machine';
-import {type PluginLoaderOutput} from '../plugin-loader-machine';
+import {type ComponentReifierOutput} from '../reifier/component-reifier-machine';
 import {type ReporterMachineOutput} from '../reporter/reporter-machine';
 import {type RunnerMachineOutput} from '../runner/runner-machine';
 
@@ -40,7 +41,7 @@ export type CtrlEvents =
   | CtrlPkgManagerPackOkEvent
   | CtrlPkgManagerInstallBeginEvent
   | CtrlPkgManagerPackBeginEvent
-  | CtrlPluginLoaderDoneEvent
+  | CtrlComponentReifierDoneEvent
   | CtrlRunScriptsEvent
   | CtrlRunScriptBeginEvent
   | CtrlReporterDoneEvent
@@ -51,6 +52,7 @@ export type CtrlEvents =
   | CtrlInstallBeginEvent
   | CtrlPackBeginEvent
   | CtrlInstallerMachineDoneEvent
+  | CtrlLinterMachineDoneEvent
   | CtrlPackerMachineDoneEvent
   | CtrlPkgManagerRunScriptsBeginEvent
   | CtrlPkgManagerRunScriptsOkEvent
@@ -59,6 +61,7 @@ export type CtrlEvents =
   | CtrlLintFailedEvent
   | CtrlLintBeginEvent
   | CtrlRuleErrorEvent
+  | CtrlRuleBeginEvent
   | CtrlPkgManagerLintBeginEvent
   | CtrlPkgManagerLintOkEvent
   | CtrlPkgManagerLintFailedEvent
@@ -214,9 +217,9 @@ export interface CtrlPkgManagerPackBeginEvent extends PackOptions {
   type: 'PKG_MANAGER_PACK_BEGIN';
 }
 
-export interface CtrlPluginLoaderDoneEvent {
-  output: PluginLoaderOutput;
-  type: 'xstate.done.actor.PluginLoader.*';
+export interface CtrlComponentReifierDoneEvent {
+  output: ComponentReifierOutput;
+  type: 'xstate.done.actor.ComponentReifier.*';
 }
 
 export interface CtrlInstallerMachineDoneEvent {
@@ -227,6 +230,11 @@ export interface CtrlInstallerMachineDoneEvent {
 export interface CtrlPackerMachineDoneEvent {
   type: 'xstate.done.actor.PackerMachine';
   output: PackerMachineOutput;
+}
+
+export interface CtrlLinterMachineDoneEvent {
+  type: 'xstate.done.actor.LinterMachine.*';
+  output: LinterMachineOutput;
 }
 
 export interface CtrlRunnerMachineDoneEvent {
@@ -258,16 +266,19 @@ export type ComputedRuleEventFields = 'totalRules';
 export interface CtrlRuleFailedEvent
   extends Omit<RuleFailedEventData, ComputedRuleEventFields> {
   type: 'RULE_FAILED';
+  sender: string;
 }
 
 export interface CtrlRuleOkEvent
   extends Omit<RuleOkEventData, ComputedRuleEventFields> {
   type: 'RULE_OK';
+  sender: string;
 }
 
 export interface CtrlRuleBeginEvent
   extends Omit<RuleBeginEventData, ComputedRuleEventFields> {
   type: 'RULE_BEGIN';
+  sender: string;
 }
 
 export interface CtrlLintOkEvent {
@@ -282,16 +293,19 @@ export type ComputedPkgManagerLintFields =
 export interface CtrlPkgManagerLintBeginEvent
   extends Omit<PkgManagerLintBeginEventData, ComputedPkgManagerLintFields> {
   type: 'PKG_MANAGER_LINT_BEGIN';
+  sender: string;
 }
 
 export interface CtrlPkgManagerLintOkEvent
   extends Omit<PkgManagerLintOkEventData, ComputedPkgManagerLintFields> {
   type: 'PKG_MANAGER_LINT_OK';
+  sender: string;
 }
 
 export interface CtrlPkgManagerLintFailedEvent
   extends Omit<PkgManagerLintFailedEventData, ComputedPkgManagerLintFields> {
   type: 'PKG_MANAGER_LINT_FAILED';
+  sender: string;
 }
 
 export interface CtrlLintFailedEvent {

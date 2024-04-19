@@ -1,37 +1,47 @@
 import {
   type RuleContext,
   type RuleIssue,
+  type RuleResultFailed,
   type SomeRule,
   type SomeRuleConfig,
   type StaticRuleContext,
-  type StaticRuleIssue,
 } from '#rule';
-import {assign, fromPromise, setup} from 'xstate';
+import {
+  assign,
+  fromPromise,
+  log,
+  sendTo,
+  setup,
+  type AnyActorRef,
+} from 'xstate';
+import {type LinterMachineRuleBeginEvent} from '.';
 import {type MachineOutputOk} from '../machine-util';
 
-export interface LMInput {
+export interface RuleMachineInput {
   ctx: Readonly<RuleContext>;
   rule: SomeRule;
   config: SomeRuleConfig;
   index: number;
+  parentRef: AnyActorRef;
 }
 
-export interface LMContext extends LMInput {
+export interface RuleMachineContext extends RuleMachineInput {
   issues?: readonly RuleIssue[];
 }
 
 // this machine does not exit with an error
-export type LMOutput = MachineOutputOk<{
-  issues: StaticRuleIssue[];
+export type RuleMachineOutput = MachineOutputOk<{
+  issues: RuleResultFailed[];
   index: number;
   ctx: StaticRuleContext;
+  rule: SomeRule;
 }>;
 
-export const LintMachine = setup({
+export const RuleMachine = setup({
   types: {
-    input: {} as LMInput,
-    context: {} as LMContext,
-    output: {} as LMOutput,
+    input: {} as RuleMachineInput,
+    context: {} as RuleMachineContext,
+    output: {} as RuleMachineOutput,
   },
   actions: {
     // XXX: should this be an assign action?
@@ -57,16 +67,38 @@ export const LintMachine = setup({
     ),
   },
 }).createMachine({
+  id: 'RuleMachine',
   context: ({input}) => input,
   initial: 'linting',
   states: {
     linting: {
+      entry: [
+        sendTo(
+          ({context: {parentRef}}) => parentRef,
+          ({context, self}): LinterMachineRuleBeginEvent => ({
+            type: 'RULE_BEGIN',
+            index: context.index,
+            sender: self.id,
+            ctx: context.ctx.toJSON(),
+          }),
+        ),
+      ],
       invoke: {
         src: 'check',
         input: ({context: {ctx, rule, config}}) => ({ctx, rule, config}),
         onDone: {
           target: 'done',
-          actions: [{type: 'finalizeRuleContext'}],
+          actions: [
+            {type: 'finalizeRuleContext'},
+            log(
+              ({
+                context: {
+                  rule,
+                  ctx: {pkgName},
+                },
+              }) => `${pkgName}: rule "${rule.name}" ok`,
+            ),
+          ],
         },
         onError: {
           target: 'errored',
@@ -75,6 +107,14 @@ export const LintMachine = setup({
               type: 'addErrorToRuleContext',
               params: ({event: {error}}) => ({error}),
             },
+            log(
+              ({
+                context: {
+                  rule,
+                  ctx: {pkgName},
+                },
+              }) => `${pkgName}: rule "${rule.name}" failed`,
+            ),
           ],
         },
       },
@@ -86,11 +126,15 @@ export const LintMachine = setup({
       type: 'final',
     },
   },
-  output: ({context: {issues = [], index, ctx}, self: {id}}): LMOutput => ({
+  output: ({
+    context: {rule, issues = [], index, ctx},
+    self: {id},
+  }): RuleMachineOutput => ({
     type: 'OK',
     issues: issues.map((issue) => issue.toJSON()),
     id,
     index,
+    rule,
     ctx: ctx.toJSON(),
   }),
 });

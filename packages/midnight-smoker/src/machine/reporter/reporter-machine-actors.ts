@@ -15,7 +15,7 @@ export const drainQueue = fromPromise<void, DrainQueueInput>(
       const event = queue.shift()!;
       const {type, ...rest} = event;
       // @ts-expect-error fix later
-      await reporter.invokeListener({...rest, event: type});
+      await reporter.invokeListener({...rest, type});
     }
   },
 );

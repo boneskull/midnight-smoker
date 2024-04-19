@@ -332,6 +332,18 @@ export class PluginMetadata implements StaticPluginMetadata {
     return [...this.ruleMap.values()];
   }
 
+  public get reporterDefs() {
+    return [...this.reporterDefMap.values()];
+  }
+
+  public get ruleDefs() {
+    return [...this.ruleDefMap.values()];
+  }
+
+  public get pkgManagerDefs() {
+    return [...this.pkgManagerDefMap.values()];
+  }
+
   /**
    * Creates a _transient_ {@link PluginMetadata} object, which is considered to
    * be an in-memory plugin.
@@ -413,7 +425,7 @@ export class PluginMetadata implements StaticPluginMetadata {
     return loadPackageManagers(pkgManagerDefs, opts);
   }
 
-  public getEnabledReporters(
+  public getEnabledReporterDefs(
     opts: SmokerOptions,
     getComponentId: (def: object) => string,
   ) {
