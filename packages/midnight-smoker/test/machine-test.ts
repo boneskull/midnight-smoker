@@ -19,7 +19,7 @@ const debugEvent = Debug('testMachine:event');
 const debugEmit = Debug('testMachine:emit');
 const debugOther = Debug('testMachine:inspection');
 
-// const failingComponentReifierMachine = ComponentReifierMachine.provide({
+// const failingReifierMachine = ReifierMachine.provide({
 //   actors: {
 //     loadPkgManagers: fromPromise<PkgManagerDefSpec[], LoadPkgManagersInput>(
 //       async () => {
@@ -31,7 +31,7 @@ const debugOther = Debug('testMachine:inspection');
 
 // const failingMachine = ControlMachine.provide({
 //   actors: {
-//     pluginLoader: failingComponentReifierMachine,
+//     pluginLoader: failingReifierMachine,
 //   },
 // });
 

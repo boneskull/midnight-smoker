@@ -46,7 +46,7 @@ import {
 
 export interface PackerMachineInput {
   signal: AbortSignal;
-  opts?: PackOptions;
+  opts: PackOptions;
   parentRef: AnyActorRef;
   pkgManagers: PkgManager[];
 }
@@ -139,9 +139,10 @@ export const PackerMachine = setup({
     sendPkgManagerPackBeginEvent: sendTo(
       ({context: {parentRef}}) => parentRef,
       (
-        {self},
+        {self, context: {opts}},
         {pkgManager, index}: PackerMachinePkgManagerPackBeginEvent,
       ): CtrlPkgManagerPackBeginEvent => ({
+        ...opts,
         type: 'PKG_MANAGER_PACK_BEGIN',
         index,
         pkgManager,

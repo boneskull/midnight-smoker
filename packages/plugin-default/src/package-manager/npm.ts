@@ -1,5 +1,5 @@
 import Debug from 'debug';
-import {isError, pickBy} from 'lodash';
+import {isError, map, pickBy} from 'lodash';
 import {type ScriptError} from 'midnight-smoker/error';
 import {
   ExecError,
@@ -196,7 +196,7 @@ export const BaseNpmPackageManager = {
         parsed.map(({filename, name, files}) => ({
           filename,
           name,
-          files: files.map((file) => file.path),
+          files: map(files, 'path'),
         })),
       );
     } catch (err) {
@@ -214,7 +214,10 @@ export const BaseNpmPackageManager = {
     const installManifest = parsed.map<InstallManifest>(({filename, name}) => {
       // workaround for https://github.com/npm/cli/issues/3405
       filename = filename.replace(/^@(.+?)\//, '$1-');
+
+      const localPath = ctx.workspaceInfo[name];
       return {
+        localPath,
         pkgSpec: path.join(ctx.tmpdir, filename),
         installPath: path.join(ctx.tmpdir, 'node_modules', name),
         cwd: ctx.tmpdir,

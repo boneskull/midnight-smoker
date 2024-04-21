@@ -36,8 +36,6 @@ export * from './rule';
 
 export * from './rule-def';
 
-export * from './rule-issue';
-
 export * from './rule-options';
 
 export * from './rule-result';
@@ -59,3 +57,5 @@ export * from './smoker-event';
 export * from './static-pkg-manager-spec';
 
 export * from './static-plugin-metadata';
+
+export * from './workspaces';

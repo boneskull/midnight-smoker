@@ -23,6 +23,11 @@ export const debug = Debug('midnight-smoker:plugin-default:exports-inspector');
 export const EXPORTS_FIELD = 'exports';
 
 /**
+ * An ESM package must provide `main` if it does not contain `exports`.
+ */
+export const MAIN_FIELD = 'main';
+
+/**
  * The name of the `default` export in a conditional export
  */
 export const CONDITIONAL_EXPORT_DEFAULT = 'default';
@@ -180,6 +185,10 @@ export class ExportsInspector<Schema extends Rule.RuleDefSchemaValue> {
     return this.ctx.pkgJson;
   }
 
+  protected get pkgJsonPath(): string {
+    return this.ctx.pkgJsonPath;
+  }
+
   /**
    * {@inheritdoc CheckContext.installPath}
    */
@@ -256,7 +265,7 @@ export class ExportsInspector<Schema extends Rule.RuleDefSchemaValue> {
 
     // seems wrong to have an empty string for a path!
     if (isString(relPath) && !relPath) {
-      this.addIssue(`Export ${fullName} contains an empty string`);
+      this.addIssue(`Export field ${fullName} contains an empty string`);
       return;
     }
 
@@ -284,7 +293,7 @@ export class ExportsInspector<Schema extends Rule.RuleDefSchemaValue> {
 
     const missing = await this.isFileMissing(absPath);
     if (missing) {
-      this.addIssue(`Export ${fullName} unreadable at path: ${relPath}`);
+      this.addIssue(`Filepath ${relPath} unreadable at field ${fullName}`);
       return;
     }
 
@@ -294,7 +303,7 @@ export class ExportsInspector<Schema extends Rule.RuleDefSchemaValue> {
       case CONDITIONAL_EXPORT_IMPORT: {
         if (await this.conditionalExportIsNotModule(absPath)) {
           this.addIssue(
-            `Expected ${fullName} to be an ESM module at path: ${relPath}`,
+            `Filepath ${relPath} is not a ES module at field ${fullName}`,
           );
         }
         break;
@@ -302,7 +311,7 @@ export class ExportsInspector<Schema extends Rule.RuleDefSchemaValue> {
       case CONDITIONAL_EXPORT_REQUIRE: {
         if (await this.conditionalExportIsNotScript(absPath)) {
           this.addIssue(
-            `Expected ${fullName} to be a CJS script at path: ${relPath}`,
+            `Filepath ${relPath} is not a CJS script at field ${fullName}`,
           );
         }
         break;
@@ -310,7 +319,7 @@ export class ExportsInspector<Schema extends Rule.RuleDefSchemaValue> {
       case CONDITIONAL_EXPORT_TYPES: {
         if (this.conditionalExportIsNotTsDeclaration(absPath)) {
           this.addIssue(
-            `Expected ${fullName} to be a .d.ts file at path: ${relPath}`,
+            `Filepath ${relPath} is not a .d.ts file at field ${fullName}`,
           );
         }
         break;
@@ -319,12 +328,14 @@ export class ExportsInspector<Schema extends Rule.RuleDefSchemaValue> {
   }
 
   protected checkNullExportsField() {
-    this.addIssue(`${EXPORTS_FIELD} field cannot be null`);
+    this.addIssue(`Field ${EXPORTS_FIELD} cannot be a null literal`);
   }
 
   protected checkUndefinedExportsField() {
-    if (isESMPkg(this.pkgJson)) {
-      this.addIssue(`${EXPORTS_FIELD} field not found in ESM package`);
+    if (isESMPkg(this.pkgJson) && !this.pkgJson.main) {
+      this.addIssue(
+        `No "${EXPORTS_FIELD}" nor "${MAIN_FIELD}" fields found in ES package`,
+      );
     }
   }
 
@@ -454,7 +465,7 @@ export class ExportsInspector<Schema extends Rule.RuleDefSchemaValue> {
 
       case 'array': {
         (exportsValue as string[]).forEach((value, idx) => {
-          this.traverseExports(value, [...keypath, `[${idx}]`] as Keypath);
+          this.traverseExports(value, [...keypath, `${idx}`] as Keypath);
         });
         break;
       }
@@ -506,6 +517,13 @@ export class ExportsInspector<Schema extends Rule.RuleDefSchemaValue> {
    * Converts a keypath array to a string for display purposes
    */
   protected static keypathToString(this: void, keypath: Keypath) {
-    return `<${keypath.join(' » ')}>`;
+    const [identifier, ...rest] = keypath;
+    return `${identifier}${rest
+      .map((k) => (isNumeric(k) ? `['${k}']` : `[${k}]`))
+      .join('')}`;
   }
+}
+
+function isNumeric(value: unknown): boolean {
+  return Number.isNaN(Number(value));
 }

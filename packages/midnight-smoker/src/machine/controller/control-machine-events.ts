@@ -22,7 +22,7 @@ import {type Simplify, type ValueOf} from 'type-fest';
 import {type InstallerMachineOutput} from '../installer/installer-machine';
 import {type LinterMachineOutput} from '../linter/linter-machine';
 import {type PackerMachineOutput} from '../packer/packer-machine';
-import {type ComponentReifierOutput} from '../reifier/component-reifier-machine';
+import {type ReifierOutput} from '../reifier/reifier-machine';
 import {type ReporterMachineOutput} from '../reporter/reporter-machine';
 import {type RunnerMachineOutput} from '../runner/runner-machine';
 
@@ -41,7 +41,7 @@ export type CtrlEvents =
   | CtrlPkgManagerPackOkEvent
   | CtrlPkgManagerInstallBeginEvent
   | CtrlPkgManagerPackBeginEvent
-  | CtrlComponentReifierDoneEvent
+  | CtrlReifierDoneEvent
   | CtrlRunScriptsEvent
   | CtrlRunScriptBeginEvent
   | CtrlReporterDoneEvent
@@ -217,9 +217,9 @@ export interface CtrlPkgManagerPackBeginEvent extends PackOptions {
   type: 'PKG_MANAGER_PACK_BEGIN';
 }
 
-export interface CtrlComponentReifierDoneEvent {
-  output: ComponentReifierOutput;
-  type: 'xstate.done.actor.ComponentReifier.*';
+export interface CtrlReifierDoneEvent {
+  output: ReifierOutput;
+  type: 'xstate.done.actor.Reifier.*';
 }
 
 export interface CtrlInstallerMachineDoneEvent {

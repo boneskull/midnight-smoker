@@ -27,7 +27,7 @@ import {
   assertNonEmptyArray,
   NonEmptyStringSchema,
   PackageJsonSchema,
-  readPackageJson,
+  type FileManager,
   type NonEmptyArray,
 } from '#util';
 import Debug from 'debug';
@@ -459,13 +459,15 @@ export type {LiteralUnion};
  *   `PluginRegistry` instance gets the same one. That isn't the same as "this
  *   should only run once"--it should run once per `PluginRegistry` instance.
  */
-export async function initBlessedMetadata() {
+export async function initBlessedMetadata(fm: FileManager) {
   const entries = await Promise.all(
     BLESSED_PLUGINS.map(async (id) => {
-      const {packageJson: pkgJson} = await readPackageJson({
-        cwd: require.resolve(id),
-        strict: true,
-      });
+      const {packageJson: pkgJson} = await fm.findPkgUp(
+        path.dirname(require.resolve(id)),
+        {
+          strict: true,
+        },
+      );
       return [
         id,
         PluginMetadata.create({

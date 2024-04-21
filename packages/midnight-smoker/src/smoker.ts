@@ -128,6 +128,8 @@ export class Smoker {
 
   private readonly fileManager: FileManager;
 
+  public readonly cwd: string;
+
   private constructor(
     opts: SmokerOptions,
     {
@@ -145,9 +147,11 @@ export class Smoker {
       workspace,
       lint,
       reporter,
+      cwd,
     } = opts;
     this.opts = Object.freeze(opts);
     this.scripts = script;
+    this.cwd = cwd;
     this.linger = linger;
     this.includeWorkspaceRoot = includeRoot;
     this.add = add;

@@ -31,6 +31,10 @@ const smokerOptionsShape = {
    */
   bail: DefaultFalseSchema.describe('Fail on first script failure'),
 
+  cwd: NonEmptyStringSchema.describe('Path to workspace root').default(
+    process.cwd(),
+  ),
+
   /**
    * If `false`, do not lint when running custom scripts
    */

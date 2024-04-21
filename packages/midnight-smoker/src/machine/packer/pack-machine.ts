@@ -23,7 +23,7 @@ import {type PackerMachinePkgManagerPackBeginEvent} from './packer-machine-event
 export interface PackMachineInput {
   signal: AbortSignal;
   pkgManager: PkgManager;
-  opts?: PackOptions;
+  opts: PackOptions;
   parentRef: AnyActorRef;
   index: number;
 }

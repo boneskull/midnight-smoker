@@ -84,6 +84,7 @@ export const PkgManagerContextSchema = z
     executor: ExecutorSchema,
     loose: z.boolean().optional(),
     verbose: z.boolean().optional(),
+    workspaceInfo: z.record(NonEmptyStringSchema),
   })
   .passthrough();
 

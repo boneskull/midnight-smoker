@@ -1,1 +1,1 @@
-export * from './component-reifier-machine';
+export * from './reifier-machine';

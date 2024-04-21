@@ -9,7 +9,7 @@ import {
   yellow,
 } from 'chalk';
 import Spinnies from 'dreidels';
-import {isError} from 'lodash';
+import {groupBy, isError, pick} from 'lodash';
 import {error, warning} from 'log-symbols';
 import {
   type RuleFailedEventData,
@@ -18,6 +18,7 @@ import {
 import {type StaticPkgManagerSpec} from 'midnight-smoker/pkg-manager';
 import {isBlessedPlugin} from 'midnight-smoker/plugin/blessed';
 import {type ReporterDef} from 'midnight-smoker/reporter';
+import {RuleSeverities} from 'midnight-smoker/rule';
 import pluralize from 'pluralize';
 import {type WriteStream} from 'tty';
 
@@ -368,45 +369,59 @@ export const ConsoleReporter: ReporterDef<ConsoleReporterContext> = {
       text += plur` using ${['package manager', totalPkgManagers, true]}`;
     }
 
-    text += `${issues.length} failed`;
+    text += `; ${issues.length} failed`;
 
-    spinner.update({
-      text,
-      status: 'fail',
-    });
+    // spinner.update({
+    //   text,
+    //   status: 'fail',
+    // });
 
+    let hasError = false;
     // TODO move this into a format() function for these error kinds
-    // const failedByPackage = issues
-    //   .flatMap((evt) => evt.issues)
-    //   .reduce<Record<string, StaticRuleIssue[]>>((acc, failed) => {
+
+    const failedByPackage = groupBy(
+      issues.map((issue) =>
+        pick(issue, ['rule', 'severity', 'message', 'context']),
+      ),
+      'context.pkgJson.name',
+    );
+    // const failedByPackage = issues.reduce<Record<string, RuleResultFailed[]>>(
+    //   (acc, failed) => {
     //     const pkgName =
     //       failed.context.pkgJson.name ?? failed.context.installPath;
     //     acc[pkgName] = [...(acc[pkgName] ?? []), failed];
     //     return acc;
-    //   }, {});
+    //   },
+    //   {},
+    // );
 
-    // for (const [pkgName, failed] of Object.entries(failedByPackage)) {
-    //   const lines = [`Issues found in package ${green(pkgName)}:`];
-    //   const isError = failed.some(
-    //     ({severity}) => severity === RuleSeverities.Error,
-    //   );
+    for (const [pkgName, failed] of Object.entries(failedByPackage)) {
+      // const relPkgJsonPath = path.relative(
+      //   process.cwd(),
+      //   // @ts-expect-error wtf
+      //   failed.context.pkgJsonPath,
+      // );
+      const lines = [`Issues found in package ${green(pkgName)}:`];
 
-    //   for (const {message, severity, rule} of failed) {
-    //     if (severity === RuleSeverities.Error) {
-    //       lines.push(
-    //         `│ ${error} ${message} ${dim('[')}${red(rule.name)}${dim(']')}`,
-    //       );
-    //     } else {
-    //       lines.push(
-    //         `│ ${warning} ${message} ${dim('[')}${yellow(rule.name)}${dim(
-    //           ']',
-    //         )}`,
-    //       );
-    //     }
-    //   }
-    //   const msg = lines.join('\n');
-    //   spinner.update({status: isError ? 'fail' : 'warn', text: msg});
-    // }
+      for (const {message, severity, rule} of failed) {
+        if (severity === RuleSeverities.Error) {
+          hasError = true;
+          lines.push(
+            `│ ${error} ${message} ${dim('[')}${red(rule.name)}${dim(']')}`,
+          );
+        } else {
+          lines.push(
+            `│ ${warning} ${message} ${dim('[')}${yellow(rule.name)}${dim(
+              ']',
+            )}`,
+          );
+        }
+      }
+      const msg = lines.join('\n');
+      spinner.addLog(msg);
+    }
+
+    spinner.update({text, status: hasError ? 'fail' : 'warn'});
   },
   onRuleError() {
     // TODO
@@ -559,6 +574,9 @@ export const ConsoleReporter: ReporterDef<ConsoleReporterContext> = {
     for (const dir of dirs) {
       console.error(yellow(dir));
     }
+  },
+  onBeforeExit({spinners}) {
+    spinners.log(console.error);
   },
   onUnknownError({opts}, {error: err}) {
     console.error(

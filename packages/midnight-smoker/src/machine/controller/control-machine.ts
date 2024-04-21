@@ -17,7 +17,6 @@ import {
 } from '#schema';
 import {type FileManager} from '#util/filemanager';
 import {filter, isEmpty, map, memoize, partition, sumBy, uniq} from 'lodash';
-import {type SetRequired} from 'type-fest';
 import {
   and,
   assign,
@@ -42,10 +41,10 @@ import * as MachineUtil from '../machine-util';
 import {uniquePkgNames} from '../machine-util';
 import {PackerMachine, type PackerMachineInput} from '../packer/packer-machine';
 import {
-  ComponentReifierMachine,
   LoadableComponents,
-  type ComponentReifierOutput,
-} from '../reifier/component-reifier-machine';
+  ReifierMachine,
+  type ReifierOutput,
+} from '../reifier/reifier-machine';
 import {
   ReporterMachine,
   type ReporterMachineOutput,
@@ -57,8 +56,6 @@ import {
 import type * as Event from './control-machine-events';
 
 export interface CtrlMachineInput {
-  cwd?: string;
-
   defaultExecutorId?: string;
 
   fileManager: FileManager;
@@ -71,16 +68,13 @@ export interface CtrlMachineInput {
 }
 
 export type CtrlMachineContext = Omit<
-  SetRequired<CtrlMachineInput, 'cwd'>,
+  CtrlMachineInput,
   'defaultExecutorId' | 'systemExecutorId' | 'fileManagerOpts'
 > & {
   pkgManagers: PkgManager[];
   defaultExecutor: Executor;
   systemExecutor: Executor;
-  reifierMachineRefs: Record<
-    string,
-    ActorRefFrom<typeof ComponentReifierMachine>
-  >;
+  reifierMachineRefs: Record<string, ActorRefFrom<typeof ReifierMachine>>;
   reporterMachineRefs: Record<string, ActorRefFrom<typeof ReporterMachine>>;
   runnerMachineRefs: Record<string, ActorRefFrom<typeof RunnerMachine>>;
   linterMachineRefs: Record<string, ActorRefFrom<typeof LinterMachine>>;
@@ -132,7 +126,7 @@ export const ControlMachine = setup({
     ),
     ReporterMachine,
     RunnerMachine,
-    ComponentReifierMachine,
+    ReifierMachine,
     PackerMachine,
     InstallerMachine,
     LinterMachine,
@@ -146,7 +140,7 @@ export const ControlMachine = setup({
     /**
      * If `true`, then the machine has performed a lint operation.
      */
-    didLint: ({context: {lintResult: lintResults}}) => !isEmpty(lintResults),
+    didLint: ({context: {lintResult}}) => !isEmpty(lintResult),
 
     /**
      * If `true`, then the machine has not performed a lint operation.
@@ -250,8 +244,8 @@ export const ControlMachine = setup({
         newLintResult: LintResult,
       ) => {
         return {
-          passed: {...lintResult.passed, ...newLintResult.passed},
-          issues: {...lintResult.issues, ...newLintResult.issues},
+          passed: [...lintResult.passed, ...newLintResult.passed],
+          issues: [...lintResult.issues, ...newLintResult.issues],
         };
       },
     }),
@@ -269,14 +263,12 @@ export const ControlMachine = setup({
         error ? fromUnknownError(error) : context.error,
     }),
 
-    stopComponentReifiers: enqueueActions(
-      ({enqueue, context: {reifierMachineRefs}}) => {
-        for (const machine of Object.values(reifierMachineRefs)) {
-          enqueue.stopChild(machine);
-        }
-        enqueue.assign({reifierMachineRefs: {}});
-      },
-    ),
+    stopReifiers: enqueueActions(({enqueue, context: {reifierMachineRefs}}) => {
+      for (const machine of Object.values(reifierMachineRefs)) {
+        enqueue.stopChild(machine);
+      }
+      enqueue.assign({reifierMachineRefs: {}});
+    }),
 
     assignRunScriptManifests: assign({
       runScriptManifests: ({context: {pkgManagers, scripts}}) =>
@@ -407,28 +399,24 @@ export const ControlMachine = setup({
           }),
         ),
     }),
-    assignComponentReifierResults: assign({
-      pkgManagers: (
-        {context: {pkgManagers}},
-        output: ComponentReifierOutput,
-      ) => {
+    assignReifierResults: assign({
+      pkgManagers: ({context: {pkgManagers}}, output: ReifierOutput) => {
         MachineUtil.assertMachineOutputOk(output);
         return [...pkgManagers, ...output.pkgManagers];
       },
-      reporters: ({context: {reporters}}, output: ComponentReifierOutput) => {
+      reporters: ({context: {reporters}}, output: ReifierOutput) => {
         MachineUtil.assertMachineOutputOk(output);
         return [...reporters, ...output.reporters];
       },
-      rules: ({context: {rules}}, output: ComponentReifierOutput) => {
+      rules: ({context: {rules}}, output: ReifierOutput) => {
         MachineUtil.assertMachineOutputOk(output);
         return [...rules, ...output.rules];
       },
     }),
-    spawnComponentReifiers: assign({
+    spawnReifiers: assign({
       reifierMachineRefs: ({
         context: {
           pluginRegistry,
-          cwd,
           fileManager: fm,
           systemExecutor,
           defaultExecutor,
@@ -438,15 +426,15 @@ export const ControlMachine = setup({
       }) =>
         Object.fromEntries(
           pluginRegistry.plugins.map((plugin) => {
-            const id = `ComponentReifier.${MachineUtil.makeId()}`;
-            const actor = spawn('ComponentReifierMachine', {
+            const id = `Reifier.${MachineUtil.makeId()}`;
+            const actor = spawn('ReifierMachine', {
               id,
               input: {
                 plugin,
                 pluginRegistry,
                 pkgManager: {
                   fm,
-                  cwd,
+                  cwd: smokerOpts.cwd,
                   systemExecutor,
                   defaultExecutor,
                 },
@@ -545,12 +533,13 @@ export const ControlMachine = setup({
             all: allWorkspaces,
             includeRoot: includeWorkspaceRoot,
             workspace: workspaces,
+            cwd,
           },
           pkgManagers,
         },
       }) => {
         const input: PackerMachineInput = {
-          opts: {allWorkspaces, includeWorkspaceRoot, workspaces},
+          opts: {allWorkspaces, includeWorkspaceRoot, workspaces, cwd},
           pkgManagers,
           signal: new AbortController().signal,
           parentRef: self,
@@ -583,19 +572,17 @@ export const ControlMachine = setup({
     ),
   },
 }).createMachine({
-  id: 'PkgManagerControl',
+  id: 'ControlMachine',
   context: ({
     input: {
       pluginRegistry,
       defaultExecutorId = DEFAULT_EXECUTOR_ID,
       systemExecutorId = SYSTEM_EXECUTOR_ID,
-      cwd = process.cwd(),
       smokerOptions,
       fileManager,
     },
   }): CtrlMachineContext => ({
     pluginRegistry,
-    cwd,
     smokerOptions,
 
     defaultExecutor: pluginRegistry.getExecutor(defaultExecutorId),
@@ -660,7 +647,7 @@ export const ControlMachine = setup({
             },
           },
         ],
-        target: '.errored',
+        target: '#ControlMachine.done',
       },
       {
         guard: {
@@ -686,9 +673,9 @@ export const ControlMachine = setup({
       initial: 'loadingPlugins',
       states: {
         loadingPlugins: {
-          entry: [{type: 'spawnComponentReifiers'}],
+          entry: [{type: 'spawnReifiers'}],
           on: {
-            'xstate.done.actor.ComponentReifier.*': [
+            'xstate.done.actor.Reifier.*': [
               {
                 guard: {
                   type: 'isMachineOutputNotOk',
@@ -703,7 +690,7 @@ export const ControlMachine = setup({
                     },
                   },
                 ],
-                target: 'errored',
+                target: '#ControlMachine.done',
               },
               {
                 guard: {
@@ -712,29 +699,21 @@ export const ControlMachine = setup({
                 },
                 actions: [
                   {
-                    type: 'assignComponentReifierResults',
+                    type: 'assignReifierResults',
                     params: ({event: {output}}) => output,
                   },
                 ],
-                target: 'loadedPlugins',
+                target: '#ControlMachine.loading.loadedPlugins',
               },
             ],
           },
-        },
-        errored: {
-          entry: [
-            ({context: {error}}) => {
-              throw error!;
-            },
-          ],
-          type: 'final',
         },
         loadedPlugins: {
           invoke: {
             src: 'setupPkgManagers',
             input: ({context: {pkgManagers}}) => pkgManagers,
             onDone: {
-              target: 'done',
+              target: '#ControlMachine.loading.done',
             },
             onError: {
               actions: [
@@ -743,7 +722,7 @@ export const ControlMachine = setup({
                   params: ({event: {error}}) => ({error}),
                 },
               ],
-              target: '#PkgManagerControl.errored',
+              target: '#ControlMachine.done',
             },
           },
           entry: [
@@ -819,6 +798,7 @@ export const ControlMachine = setup({
                   context: {
                     pkgManagers,
                     smokerOptions: {
+                      cwd,
                       all: allWorkspaces,
                       includeRoot: includeWorkspaceRoot,
                       workspace: workspaces,
@@ -831,6 +811,7 @@ export const ControlMachine = setup({
                     error: output.error,
                     type: SmokerEvent.PackFailed,
                     packOptions: {
+                      cwd,
                       allWorkspaces,
                       includeWorkspaceRoot,
                       workspaces,
@@ -850,7 +831,7 @@ export const ControlMachine = setup({
                 type: 'stopPackerMachine',
               },
             ],
-            // target: 'errored',
+            target: '#ControlMachine.done',
           },
         ],
         'xstate.done.actor.InstallerMachine': [
@@ -887,7 +868,7 @@ export const ControlMachine = setup({
                 type: 'stopInstallerMachine',
               },
             ],
-            target: 'errored',
+            target: '#ControlMachine.done',
           },
           {
             guard: {
@@ -933,6 +914,7 @@ export const ControlMachine = setup({
               params: ({
                 context: {
                   smokerOptions: {
+                    cwd,
                     all: allWorkspaces,
                     includeRoot: includeWorkspaceRoot,
                     workspace: workspaces,
@@ -941,7 +923,12 @@ export const ControlMachine = setup({
                 },
               }): Event.CtrlExternalEvent<typeof SmokerEvent.PackBegin> => ({
                 type: SmokerEvent.PackBegin,
-                packOptions: {allWorkspaces, includeWorkspaceRoot, workspaces},
+                packOptions: {
+                  cwd,
+                  allWorkspaces,
+                  includeWorkspaceRoot,
+                  workspaces,
+                },
                 pkgManagers: map(pkgManagers, 'staticSpec'),
               }),
             },
@@ -968,6 +955,7 @@ export const ControlMachine = setup({
                 context: {
                   pkgManagers,
                   smokerOptions: {
+                    cwd,
                     all: allWorkspaces,
                     includeRoot: includeWorkspaceRoot,
                     workspace: workspaces,
@@ -982,6 +970,7 @@ export const ControlMachine = setup({
                   currentPkgManager: index,
                   pkgManager: pkgManager.staticSpec,
                   packOptions: {
+                    cwd,
                     allWorkspaces,
                     includeWorkspaceRoot,
                     workspaces,
@@ -1022,6 +1011,7 @@ export const ControlMachine = setup({
                   context: {
                     pkgManagers,
                     smokerOptions: {
+                      cwd,
                       all: allWorkspaces,
                       includeRoot: includeWorkspaceRoot,
                       workspace: workspaces,
@@ -1036,6 +1026,7 @@ export const ControlMachine = setup({
                   pkgManager: pkgManager.staticSpec,
                   packOptions: {
                     allWorkspaces,
+                    cwd,
                     includeWorkspaceRoot,
                     workspaces,
                   },
@@ -1061,6 +1052,7 @@ export const ControlMachine = setup({
                 context: {
                   pkgManagers,
                   smokerOptions: {
+                    cwd,
                     all: allWorkspaces,
                     includeRoot: includeWorkspaceRoot,
                     workspace: workspaces,
@@ -1073,7 +1065,12 @@ export const ControlMachine = setup({
                 type: SmokerEvent.PkgManagerPackFailed,
                 currentPkgManager: index,
                 pkgManager: pkgManager.staticSpec,
-                packOptions: {allWorkspaces, includeWorkspaceRoot, workspaces},
+                packOptions: {
+                  cwd,
+                  allWorkspaces,
+                  includeWorkspaceRoot,
+                  workspaces,
+                },
                 error,
                 totalPkgManagers: pkgManagers.length,
               }),
@@ -1083,7 +1080,7 @@ export const ControlMachine = setup({
               params: ({event: {error}}) => ({error}),
             },
           ],
-          // target: 'errored',
+          target: '#ControlMachine.done',
         },
         PKG_MANAGER_INSTALL_OK: [
           {
@@ -1129,12 +1126,12 @@ export const ControlMachine = setup({
               params: ({event: {error}}) => ({error}),
             },
           ],
-          target: 'errored',
+          target: '#ControlMachine.done',
         },
       },
       always: [
         {
-          target: 'ready',
+          target: '#ControlMachine.ready',
           guard: {type: 'isReady'},
           actions: [log('all pkg manager machines in ready state')],
         },
@@ -1145,11 +1142,11 @@ export const ControlMachine = setup({
       always: [
         {
           guard: {type: 'canRunScripts'},
-          target: 'runningScripts',
+          target: '#ControlMachine.runningScripts',
         },
         {
           guard: {type: 'canLint'},
-          target: 'linting',
+          target: '#ControlMachine.linting',
         },
         {
           guard: {type: 'cannotLint'},
@@ -1157,14 +1154,14 @@ export const ControlMachine = setup({
         },
         {
           guard: {type: 'shouldHalt'},
-          target: 'done',
+          target: '#ControlMachine.done',
         },
       ],
     },
     runningScripts: {
-      initial: 'running',
+      initial: 'working',
       states: {
-        running: {
+        working: {
           entry: [
             log('running scripts...'),
             {
@@ -1453,7 +1450,7 @@ export const ControlMachine = setup({
                   },
                 },
               ],
-              target: 'done',
+              target: '#ControlMachine.runningScripts.done',
             },
           ],
         },
@@ -1462,234 +1459,264 @@ export const ControlMachine = setup({
         },
       },
       onDone: {
-        target: 'ready',
+        target: '#ControlMachine.ready',
       },
     },
     linting: {
-      entry: [
-        {
-          type: 'assignLintManifests',
-        },
-        {
-          type: 'assignTotalChecks',
-        },
-        log('linting...'),
-        {
-          type: 'report',
-          params: ({
-            context: {
-              rules: {length: totalRules},
-              smokerOptions: {rules: config},
-              pkgManagers: {length: totalPkgManagers},
-              totalChecks,
+      initial: 'working',
+      states: {
+        working: {
+          entry: [
+            {
+              type: 'assignLintManifests',
             },
-          }): Event.CtrlExternalEvent<typeof SmokerEvent.LintBegin> => ({
-            type: SmokerEvent.LintBegin,
-            config,
-            totalPkgManagers,
-            totalRules,
-            totalUniquePkgs: totalChecks / totalRules,
-          }),
-        },
-        {
-          type: 'spawnLinterMachines',
-        },
-      ],
-      on: {
-        'xstate.done.actor.LinterMachine.*': [
-          {
-            guard: {
-              type: 'isMachineOutputOk',
-              params: ({event: {output}}) => output,
+            {
+              type: 'assignTotalChecks',
             },
-            actions: [
-              {
-                type: 'assignLintResult',
-                params: ({event: {output}}) => {
-                  MachineUtil.assertMachineOutputOk(output);
-                  return output.lintResult;
-                },
-              },
-              {
-                type: 'report',
-                params: ({
-                  context: {pkgManagers, rules, totalChecks},
-                  event: {output},
-                }): Event.CtrlExternalEvent<
-                  | typeof SmokerEvent.PkgManagerLintOk
-                  | typeof SmokerEvent.PkgManagerLintFailed
-                > => {
-                  MachineUtil.assertMachineOutputOk(output);
-                  const {
-                    pkgManager,
-                    pkgManagerIndex,
-                    lintResult: {passed, issues},
-                    didFail,
-                  } = output;
-                  const type = didFail
-                    ? SmokerEvent.PkgManagerLintFailed
-                    : SmokerEvent.PkgManagerLintOk;
-                  return {
-                    type,
-                    pkgManager: pkgManager.staticSpec,
-                    totalPkgManagers: pkgManagers.length,
-                    totalRules: rules.length,
-                    passed,
-                    issues,
-                    totalPkgManagerChecks: totalChecks / rules.length,
-                    currentPkgManager: pkgManagerIndex,
-                  };
-                },
-              },
-              {
-                type: 'stopLinterMachine',
-                params: ({event}) => event,
-              },
-            ],
-          },
-        ],
-        RULE_BEGIN: {
-          actions: [
-            log(({event}) => `rule begin: ${event.rule} from ${event.sender}`),
+            log('linting...'),
             {
               type: 'report',
               params: ({
                 context: {
                   rules: {length: totalRules},
-                },
-                event,
-              }): Event.CtrlExternalEvent<typeof SmokerEvent.RuleBegin> => {
-                return {
-                  ...event,
-                  totalRules,
-                  type: SmokerEvent.RuleBegin,
-                };
-              },
-            },
-          ],
-        },
-        RULE_FAILED: {
-          actions: [
-            log(({event}) => `rule failed: ${event.rule} from ${event.sender}`),
-            {
-              type: 'report',
-              params: ({
-                context: {
-                  rules: {length: totalRules},
-                },
-                event,
-              }): Event.CtrlExternalEvent<typeof SmokerEvent.RuleFailed> => {
-                return {
-                  ...event,
-                  totalRules,
-                  type: SmokerEvent.RuleFailed,
-                };
-              },
-            },
-          ],
-        },
-        RULE_OK: {
-          actions: [
-            {
-              type: 'report',
-              params: ({
-                context: {
-                  rules: {length: totalRules},
-                },
-                event,
-              }): Event.CtrlExternalEvent<typeof SmokerEvent.RuleOk> => {
-                return {
-                  ...event,
-                  totalRules,
-                  type: SmokerEvent.RuleOk,
-                };
-              },
-            },
-          ],
-        },
-        PKG_MANAGER_LINT_BEGIN: {
-          actions: [
-            {
-              type: 'report',
-              params: ({
-                context: {
+                  smokerOptions: {rules: config},
                   pkgManagers: {length: totalPkgManagers},
-                  rules: {length: totalRules},
                   totalChecks,
                 },
-                event,
-              }): Event.CtrlExternalEvent<
-                typeof SmokerEvent.PkgManagerLintBegin
-              > => ({
-                ...event,
-                type: SmokerEvent.PkgManagerLintBegin,
+              }): Event.CtrlExternalEvent<typeof SmokerEvent.LintBegin> => ({
+                type: SmokerEvent.LintBegin,
+                config,
                 totalPkgManagers,
                 totalRules,
-                totalPkgManagerChecks:
-                  totalRules > 0 ? totalChecks / totalRules : 0,
+                totalUniquePkgs: totalChecks / totalRules,
               }),
             },
-          ],
-        },
-      },
-      always: [
-        {
-          guard: {type: 'didLint'},
-          actions: [
             {
-              type: 'report',
-              params: ({
-                context: {
-                  smokerOptions,
-                  rules: {length: totalRules},
-                  lintResult,
-                  pkgManagers,
-                  totalChecks,
+              type: 'spawnLinterMachines',
+            },
+          ],
+          on: {
+            'xstate.done.actor.LinterMachine.*': [
+              {
+                guard: {
+                  type: 'isMachineOutputOk',
+                  params: ({event: {output}}) => output,
                 },
-              }): Event.CtrlExternalEvent<
-                typeof SmokerEvent.LintOk | typeof SmokerEvent.LintFailed
-              > => {
-                const type = isEmpty(lintResult!.issues)
-                  ? SmokerEvent.LintOk
-                  : SmokerEvent.LintFailed;
-
-                return {
-                  type,
-                  result: lintResult!,
-                  totalPkgManagers: pkgManagers.length,
-                  config: smokerOptions.rules,
-                  totalRules,
-                  totalUniquePkgs: totalChecks / totalRules,
-                };
+                actions: [
+                  {
+                    type: 'assignLintResult',
+                    params: ({event: {output}}) => {
+                      MachineUtil.assertMachineOutputOk(output);
+                      return output.lintResult;
+                    },
+                  },
+                  {
+                    type: 'report',
+                    params: ({
+                      context: {pkgManagers, rules, totalChecks},
+                      event: {output},
+                    }): Event.CtrlExternalEvent<
+                      | typeof SmokerEvent.PkgManagerLintOk
+                      | typeof SmokerEvent.PkgManagerLintFailed
+                    > => {
+                      MachineUtil.assertMachineOutputOk(output);
+                      const {
+                        pkgManager,
+                        pkgManagerIndex,
+                        lintResult: {passed, issues},
+                        didFail,
+                      } = output;
+                      const type = didFail
+                        ? SmokerEvent.PkgManagerLintFailed
+                        : SmokerEvent.PkgManagerLintOk;
+                      return {
+                        type,
+                        pkgManager: pkgManager.staticSpec,
+                        totalPkgManagers: pkgManagers.length,
+                        totalRules: rules.length,
+                        passed,
+                        issues,
+                        totalPkgManagerChecks: totalChecks / rules.length,
+                        currentPkgManager: pkgManagerIndex,
+                      };
+                    },
+                  },
+                  {
+                    type: 'stopLinterMachine',
+                    params: ({event}) => event,
+                  },
+                ],
               },
+            ],
+            RULE_BEGIN: {
+              actions: [
+                log(
+                  ({event}) => `rule begin: ${event.rule} from ${event.sender}`,
+                ),
+                {
+                  type: 'report',
+                  params: ({
+                    context: {
+                      rules: {length: totalRules},
+                    },
+                    event,
+                  }): Event.CtrlExternalEvent<typeof SmokerEvent.RuleBegin> => {
+                    return {
+                      ...event,
+                      totalRules,
+                      type: SmokerEvent.RuleBegin,
+                    };
+                  },
+                },
+              ],
+            },
+            RULE_FAILED: {
+              actions: [
+                log(
+                  ({event}) =>
+                    `rule failed: ${event.rule} from ${event.sender}`,
+                ),
+                {
+                  type: 'report',
+                  params: ({
+                    context: {
+                      rules: {length: totalRules},
+                    },
+                    event,
+                  }): Event.CtrlExternalEvent<
+                    typeof SmokerEvent.RuleFailed
+                  > => {
+                    return {
+                      ...event,
+                      totalRules,
+                      type: SmokerEvent.RuleFailed,
+                    };
+                  },
+                },
+              ],
+            },
+            RULE_OK: {
+              actions: [
+                {
+                  type: 'report',
+                  params: ({
+                    context: {
+                      rules: {length: totalRules},
+                    },
+                    event,
+                  }): Event.CtrlExternalEvent<typeof SmokerEvent.RuleOk> => {
+                    return {
+                      ...event,
+                      totalRules,
+                      type: SmokerEvent.RuleOk,
+                    };
+                  },
+                },
+              ],
+            },
+            PKG_MANAGER_LINT_BEGIN: {
+              actions: [
+                {
+                  type: 'report',
+                  params: ({
+                    context: {
+                      pkgManagers: {length: totalPkgManagers},
+                      rules: {length: totalRules},
+                      totalChecks,
+                    },
+                    event,
+                  }): Event.CtrlExternalEvent<
+                    typeof SmokerEvent.PkgManagerLintBegin
+                  > => ({
+                    ...event,
+                    type: SmokerEvent.PkgManagerLintBegin,
+                    totalPkgManagers,
+                    totalRules,
+                    totalPkgManagerChecks:
+                      totalRules > 0 ? totalChecks / totalRules : 0,
+                  }),
+                },
+              ],
+            },
+          },
+          always: [
+            {
+              guard: {type: 'didLint'},
+              actions: [
+                {
+                  type: 'report',
+                  params: ({
+                    context: {
+                      smokerOptions,
+                      rules: {length: totalRules},
+                      lintResult,
+                      pkgManagers,
+                      totalChecks,
+                    },
+                  }): Event.CtrlExternalEvent<
+                    typeof SmokerEvent.LintOk | typeof SmokerEvent.LintFailed
+                  > => {
+                    const type = isEmpty(lintResult!.issues)
+                      ? SmokerEvent.LintOk
+                      : SmokerEvent.LintFailed;
+
+                    return {
+                      type,
+                      result: lintResult!,
+                      totalPkgManagers: pkgManagers.length,
+                      config: smokerOptions.rules,
+                      totalRules,
+                      totalUniquePkgs: totalChecks / totalRules,
+                    };
+                  },
+                },
+              ],
+              target: '#ControlMachine.linting.done',
             },
           ],
         },
-      ],
+        done: {
+          type: 'final',
+        },
+      },
+      onDone: {
+        target: '#ControlMachine.ready',
+      },
     },
     done: {
-      entry: [
-        {
-          type: 'report',
-          params: {type: SmokerEvent.BeforeExit},
+      initial: 'cleanup',
+      states: {
+        cleanup: {
+          entry: [
+            log('cleaning up...'),
+            {
+              type: 'report',
+              params: {type: SmokerEvent.BeforeExit},
+            },
+            {
+              type: 'cleanup',
+            },
+          ],
+          always: [
+            {
+              guard: {type: 'notHasError'},
+              target: '#ControlMachine.done.complete',
+            },
+            {
+              guard: {type: 'hasError'},
+              target: '#ControlMachine.done.errored',
+            },
+          ],
         },
-        {type: 'cleanup'},
-      ],
-      always: [
-        {
-          guard: {type: 'notHasError'},
-          target: 'complete',
+        errored: {
+          entry: [log('error!')],
+          type: 'final',
         },
-        {guard: {type: 'hasError'}, target: 'errored'},
-      ],
-    },
-    errored: {
-      entry: [log('error!')],
-      type: 'final',
-    },
-    complete: {
-      entry: [log('complete')],
-      type: 'final',
+        complete: {
+          entry: [log('complete')],
+          type: 'final',
+        },
+      },
     },
   },
   output: ({

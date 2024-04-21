@@ -98,7 +98,7 @@ export class PluginRegistry {
     if (this.blessedMetadata) {
       return this.blessedMetadata;
     }
-    this.blessedMetadata = await initBlessedMetadata();
+    this.blessedMetadata = await initBlessedMetadata(this._fm);
     return this.blessedMetadata;
   }
 

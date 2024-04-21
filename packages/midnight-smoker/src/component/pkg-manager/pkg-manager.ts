@@ -136,7 +136,7 @@ export class PkgManager extends ReifiedComponent<PkgManagerDef> {
 
   public async pack(
     signal: AbortSignal,
-    opts: PackOptions = {},
+    opts: PackOptions,
   ): Promise<InstallManifest[]> {
     const ctx: PkgManagerPackContext = {...this.ctx, ...opts, signal};
     this._installManifests = await this.def.pack(ctx);

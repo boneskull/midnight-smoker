@@ -3,6 +3,9 @@ import {z} from 'zod';
 
 export const InstallManifestSchema = z
   .object({
+    localPath: NonEmptyStringSchema.optional().describe(
+      'Path to local package workspace; not applicable if this is an extra dep',
+    ),
     cwd: NonEmptyStringSchema.describe('The working directory for the install'),
     installPath: NonEmptyStringSchema.optional().describe(
       'The path to install the package to; only applicable if spec is a tarball',
@@ -10,7 +13,9 @@ export const InstallManifestSchema = z
     pkgName: NonEmptyStringSchema.describe(
       'The name of the package to install',
     ),
-    pkgSpec: NonEmptyStringSchema.describe('The package spec to install'),
+    pkgSpec: NonEmptyStringSchema.describe(
+      'The package spec to install; either a tarball or a name[@version] for additional deps',
+    ),
     isAdditional: z
       .boolean()
       .optional()
