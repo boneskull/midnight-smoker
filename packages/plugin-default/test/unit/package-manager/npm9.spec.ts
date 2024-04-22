@@ -81,6 +81,7 @@ describe('@midnight-smoker/plugin-default', function () {
 
           beforeEach(function () {
             ctx = {
+              workspaceInfo: {},
               signal: new AbortController().signal,
               spec,
               tmpdir: MOCK_TMPDIR,

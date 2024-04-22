@@ -1,4 +1,22 @@
 import {
+  type CtrlInstallBeginEvent,
+  type CtrlPackBeginEvent,
+  type CtrlPkgManagerPackBeginEvent,
+  type CtrlPkgManagerPackFailedEvent,
+  type CtrlPkgManagerPackOkEvent,
+} from '#machine/controller';
+import {
+  assertMachineOutputNotOk,
+  assertMachineOutputOk,
+  isMachineOutputNotOk,
+  isMachineOutputOk,
+  makeId,
+  monkeypatchActorLogger,
+  type MachineOutputError,
+  type MachineOutputLike,
+  type MachineOutputOk,
+} from '#machine/util';
+import {
   type PackError,
   type PackOptions,
   type PackParseError,
@@ -15,24 +33,6 @@ import {
   type ActorRefFrom,
   type AnyActorRef,
 } from 'xstate';
-import {
-  type CtrlInstallBeginEvent,
-  type CtrlPackBeginEvent,
-  type CtrlPkgManagerPackBeginEvent,
-  type CtrlPkgManagerPackFailedEvent,
-  type CtrlPkgManagerPackOkEvent,
-} from '../controller/control-machine-events';
-import {
-  assertMachineOutputNotOk,
-  assertMachineOutputOk,
-  isMachineOutputNotOk,
-  isMachineOutputOk,
-  makeId,
-  monkeypatchActorLogger,
-  type MachineOutputError,
-  type MachineOutputLike,
-  type MachineOutputOk,
-} from '../machine-util';
 import {
   PackMachine,
   type PackMachineOutputError,

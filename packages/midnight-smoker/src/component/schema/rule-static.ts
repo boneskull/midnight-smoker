@@ -5,6 +5,7 @@ import {z} from 'zod';
 export const StaticRuleContextSchema = z
   .object({
     pkgName: NonEmptyStringSchema,
+    localPath: NonEmptyStringSchema,
     pkgJson: PackageJsonSchema,
     pkgJsonPath: NonEmptyStringSchema,
     installPath: NonEmptyStringSchema,

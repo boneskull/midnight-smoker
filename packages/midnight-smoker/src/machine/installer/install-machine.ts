@@ -1,3 +1,4 @@
+import {type MachineOutputError, type MachineOutputOk} from '#machine/util';
 import {type InstallError, type PkgManager} from '#pkg-manager';
 import {
   type ExecResult,
@@ -12,7 +13,6 @@ import {
   setup,
   type AnyActorRef,
 } from 'xstate';
-import {type MachineOutputError, type MachineOutputOk} from '../machine-util';
 import {type InstallerMachinePkgManagerInstallBeginEvent} from './installer-machine-events';
 
 export interface InstallMachineInput {
@@ -47,14 +47,10 @@ export type InstallActorParams = Pick<
 
 export type InstallMachineOutput = InstallMachineOk | InstallMachineError;
 
-const installActor = fromPromise<InstallResult, InstallActorParams>(
+export const installActor = fromPromise<InstallResult, InstallActorParams>(
   async ({
     input: {signal, pkgManager, installManifests},
-  }): Promise<InstallResult> => {
-    const result = await pkgManager.install(installManifests, signal);
-
-    return result;
-  },
+  }): Promise<InstallResult> => pkgManager.install(installManifests, signal),
 );
 
 export const InstallMachine = setup({
@@ -67,9 +63,6 @@ export const InstallMachine = setup({
     installOk: assign({
       rawResult: (_, rawResult: ExecResult) => rawResult,
     }),
-    // installFailed: assign({
-    //   error: (_, error: unknown) => error as InstallError,
-    // }),
     sendInstallBegin: sendTo(
       ({context: {parentRef}}) => parentRef,
       ({context}): InstallerMachinePkgManagerInstallBeginEvent => {

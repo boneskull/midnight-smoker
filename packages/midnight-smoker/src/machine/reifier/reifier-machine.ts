@@ -1,33 +1,26 @@
 import {
   ComponentKinds,
   DEFAULT_EXECUTOR_ID,
-  PACKAGE_JSON,
   RuleSeverities,
   SYSTEM_EXECUTOR_ID,
 } from '#constants';
 import {fromUnknownError} from '#error';
+import {type MachineOutputError, type MachineOutputOk} from '#machine/util';
 import {type SmokerOptions} from '#options';
 import {PkgManager} from '#pkg-manager';
 import {type PluginMetadata, type PluginRegistry} from '#plugin';
 import {Reporter, type SomeReporter} from '#reporter';
 import {Rule, type RuleContext} from '#rule';
 import {
-  PkgManagerContextSchema,
-  WorkspacesConfigSchema,
   type Executor,
-  type PkgManagerContext,
   type PkgManagerDefSpec,
   type PkgManagerOpts,
-  type ReporterContext,
   type ReporterDef,
   type SomeRule,
   type SomeRuleDef,
 } from '#schema';
-import {readSmokerPkgJson, type FileManager} from '#util';
-import {glob} from 'glob';
-import {isFunction} from 'lodash';
-import {Console} from 'node:console';
-import path from 'node:path';
+import {type FileManager} from '#util';
+import assert from 'node:assert';
 import {
   type PackageJson,
   type SetFieldType,
@@ -35,8 +28,19 @@ import {
   type SetRequired,
   type Simplify,
 } from 'type-fest';
-import {and, assign, fromPromise, log, not, setup} from 'xstate';
-import {type MachineOutputError, type MachineOutputOk} from '../machine-util';
+import {and, assign, log, not, setup} from 'xstate';
+import {
+  createPkgManagerContexts,
+  createReporterContexts,
+  loadPkgManagers,
+  queryWorkspaces,
+  readSmokerPackageJson,
+  type CreatePkgManagerContextsInput,
+  type CreateReporterContextsInput,
+  type LoadPkgManagersInput,
+  type PkgManagerDefSpecsWithCtx,
+  type ReporterDefWithCtx,
+} from './reifier-machine-actors';
 
 export const LoadableComponents = {
   All: 'all',
@@ -105,60 +109,14 @@ export type ReifierOutputError = MachineOutputError;
 
 export type ReifierOutput = ReifierOutputOk | ReifierOutputError;
 
-export type CreatePkgManagerContextsInput = SetRequired<
-  Pick<
-    ReifierPkgManagerParams,
-    'fm' | 'systemExecutor' | 'defaultExecutor' | 'pkgManagerOpts'
-  > &
-    Pick<ReifierContext, 'pkgManagerDefSpecs' | 'workspaces'>,
-  'systemExecutor' | 'defaultExecutor'
->;
-
 export interface LoadReportersInput {
   opts: SmokerOptions;
   pluginRegistry: PluginRegistry;
 }
 
-export type PkgManagerDefSpecsWithCtx = PkgManagerDefSpec & {
-  ctx: PkgManagerContext;
-};
-
-export type LoadPkgManagersInput = Pick<ReifierPkgManagerParams, 'cwd'> &
-  Pick<ReifierContext, 'plugin' | 'smokerOpts'>;
-
-export interface CreateReporterContextsInput {
-  reporterDefs: ReporterDef[];
-  pkgJson: PackageJson;
-  smokerOpts: SmokerOptions;
-}
-
-export interface ReporterDefWithCtx {
-  def: ReporterDef;
-  ctx: ReporterContext;
-}
-
 export interface RuleDefWithCtx {
   def: SomeRuleDef;
   ctx: RuleContext;
-}
-
-export type ReporterStreams = {
-  stderr: NodeJS.WritableStream;
-  stdout: NodeJS.WritableStream;
-};
-
-async function getStreams<Ctx = unknown>(
-  def: ReporterDef<Ctx>,
-): Promise<ReporterStreams> {
-  let stdout: NodeJS.WritableStream = process.stdout;
-  let stderr: NodeJS.WritableStream = process.stderr;
-  if (def.stdout) {
-    stdout = isFunction(def.stdout) ? await def.stdout() : def.stdout;
-  }
-  if (def.stderr) {
-    stderr = isFunction(def.stderr) ? await def.stderr() : def.stderr;
-  }
-  return {stdout, stderr};
 }
 
 export const ReifierMachine = setup({
@@ -282,120 +240,11 @@ export const ReifierMachine = setup({
     }),
   },
   actors: {
-    // TODO this is gonna need a test or two
-    queryWorkspaces: fromPromise<
-      Record<string, string>,
-      {cwd: string; fm: FileManager; includeRoot?: boolean}
-    >(
-      async ({
-        input: {cwd, fm, includeRoot = false},
-      }): Promise<Record<string, string>> => {
-        const {packageJson: rootPkgJson} = await fm.findPkgUp(cwd, {
-          strict: true,
-          normalize: true,
-        });
-
-        const getWorkspaceInfo = async (
-          paths: string[],
-        ): Promise<Record<string, string>> => {
-          const workspaces = await glob(paths, {
-            cwd,
-            withFileTypes: true,
-          });
-          const entries = await Promise.all(
-            workspaces
-              .filter((workspace) => workspace.isDirectory())
-              .map(async (workspace) => {
-                const fullpath = workspace.fullpath();
-                const workspacePkgJson = await fm.readPkgJson(
-                  path.join(fullpath, PACKAGE_JSON),
-                );
-                return [workspacePkgJson.name ?? '(unknown)', fullpath] as [
-                  pkgName: string,
-                  path: string,
-                ];
-              }),
-          );
-          return Object.fromEntries(entries);
-        };
-
-        const result = WorkspacesConfigSchema.safeParse(rootPkgJson.workspaces);
-        let workspaces: string[] = [];
-        if (result.success) {
-          workspaces = result.data;
-          if (includeRoot) {
-            workspaces = [cwd, ...workspaces];
-          }
-        } else {
-          workspaces = [cwd];
-        }
-        return getWorkspaceInfo(workspaces);
-      },
-    ),
-    readSmokerPkgJson: fromPromise<PackageJson, void>(readSmokerPkgJson),
-    loadPkgManagers: fromPromise<PkgManagerDefSpec[], LoadPkgManagersInput>(
-      async ({input: {plugin, cwd, smokerOpts}}) => {
-        return plugin.loadPkgManagers({
-          cwd,
-          desiredPkgManagers: smokerOpts.pkgManager,
-        });
-      },
-    ),
-    createReporterContexts: fromPromise<
-      ReporterDefWithCtx[],
-      CreateReporterContextsInput
-    >(async ({input: {smokerOpts, reporterDefs, pkgJson}}) => {
-      return Promise.all(
-        reporterDefs.map(async (def) => {
-          const {stdout, stderr} = await getStreams(def);
-          const console = new Console({stdout, stderr});
-
-          const ctx: ReporterContext = {
-            opts: smokerOpts,
-            pkgJson,
-            console,
-            stdout,
-            stderr,
-          };
-          return {def, ctx};
-        }),
-      );
-    }),
-    createPkgManagerContexts: fromPromise<
-      PkgManagerDefSpecsWithCtx[],
-      CreatePkgManagerContextsInput
-    >(
-      async ({
-        input: {
-          pkgManagerDefSpecs,
-          fm,
-          systemExecutor,
-          defaultExecutor,
-          pkgManagerOpts: opts,
-          workspaces,
-        },
-      }) => {
-        if (pkgManagerDefSpecs?.length) {
-          return Promise.all(
-            pkgManagerDefSpecs.map(async ({spec, def}) => {
-              const tmpdir = await fm.createTempDir(
-                `${spec.pkgManager}-${spec.version}`,
-              );
-              const executor = spec.isSystem ? systemExecutor : defaultExecutor;
-              const ctx = PkgManagerContextSchema.parse({
-                spec,
-                tmpdir,
-                executor,
-                workspaceInfo: workspaces,
-                ...opts,
-              });
-              return {spec, def, ctx};
-            }),
-          );
-        }
-        throw new Error('No pkgManagerDefSpecs');
-      },
-    ),
+    queryWorkspaces,
+    readSmokerPkgJson: readSmokerPackageJson,
+    loadPkgManagers,
+    createReporterContexts,
+    createPkgManagerContexts,
   },
   guards: {
     hasError: ({context: {error}}) => Boolean(error),
@@ -434,15 +283,14 @@ export const ReifierMachine = setup({
       ...input
     },
   }): ReifierContext => {
+    const getId = pluginRegistry.getComponentId.bind(pluginRegistry);
+
     const enabledReporterDefs = plugin.getEnabledReporterDefs(
       smokerOpts,
-      pluginRegistry.getComponentId.bind(pluginRegistry),
+      getId,
     );
-    // TODO make plugin.getEnabledRuleDefs
-    const enabledRuleDefs = [...plugin.ruleDefMap.values()].filter((def) => {
-      const id = pluginRegistry.getComponentId(def);
-      return smokerOpts.rules[id].severity !== RuleSeverities.Off;
-    });
+    const enabledRuleDefs = plugin.getEnabledRuleDefs(smokerOpts, getId);
+
     return {
       component,
       plugin,
@@ -475,8 +323,9 @@ export const ReifierMachine = setup({
               invoke: {
                 src: 'loadPkgManagers',
                 input: ({context}): LoadPkgManagersInput => {
-                  const {plugin, smokerOpts} = context;
-                  const {cwd} = context.pkgManager!;
+                  const {plugin, smokerOpts, pkgManager} = context;
+                  assert.ok(pkgManager);
+                  const {cwd} = pkgManager;
                   return {
                     cwd,
                     plugin,
@@ -510,11 +359,14 @@ export const ReifierMachine = setup({
             queryWorkspaces: {
               invoke: {
                 src: 'queryWorkspaces',
-                input: ({context}) => ({
-                  cwd: context.smokerOpts.cwd,
-                  fm: context.pkgManager!.fm,
-                  includeRoot: context.smokerOpts.includeRoot,
-                }),
+                input: ({context: {smokerOpts, pkgManager}}) => {
+                  assert.ok(pkgManager);
+                  return {
+                    cwd: smokerOpts.cwd,
+                    fm: pkgManager.fm,
+                    includeRoot: smokerOpts.includeRoot,
+                  };
+                },
                 onDone: {
                   actions: [
                     {
@@ -539,8 +391,14 @@ export const ReifierMachine = setup({
               invoke: {
                 src: 'createPkgManagerContexts',
                 input: ({context}): CreatePkgManagerContextsInput => {
-                  const {pkgManagerDefSpecs, pluginRegistry, workspaces} =
-                    context;
+                  const {
+                    pkgManager,
+                    pkgManagerDefSpecs,
+                    pluginRegistry,
+                    workspaces,
+                  } = context;
+                  assert.ok(pkgManager);
+                  assert.ok(pkgManagerDefSpecs);
                   const {
                     fm,
                     systemExecutor = pluginRegistry.getExecutor(
@@ -550,7 +408,7 @@ export const ReifierMachine = setup({
                       DEFAULT_EXECUTOR_ID,
                     ),
                     pkgManagerOpts,
-                  } = context.pkgManager!;
+                  } = pkgManager;
                   return {
                     pkgManagerDefSpecs,
                     fm,
@@ -645,11 +503,14 @@ export const ReifierMachine = setup({
                 src: 'createReporterContexts',
                 input: ({
                   context: {smokerOpts, enabledReporterDefs, smokerPkgJson},
-                }): CreateReporterContextsInput => ({
-                  reporterDefs: enabledReporterDefs,
-                  smokerOpts,
-                  pkgJson: smokerPkgJson!,
-                }),
+                }): CreateReporterContextsInput => {
+                  assert.ok(smokerPkgJson);
+                  return {
+                    reporterDefs: enabledReporterDefs,
+                    smokerOpts,
+                    pkgJson: smokerPkgJson,
+                  };
+                },
                 onDone: {
                   actions: [
                     {

@@ -108,6 +108,7 @@ describe('@midnight-smoker/plugin-default', function () {
               stdout: JSON.stringify(npmPackItems),
             } as any);
             ctx = {
+              workspaceInfo: {},
               spec,
               tmpdir: MOCK_TMPDIR,
               executor,
@@ -259,6 +260,7 @@ describe('@midnight-smoker/plugin-default', function () {
           beforeEach(function () {
             executor.resolves({stdout: 'stuff', exitCode: 0} as any);
             ctx = {
+              workspaceInfo: {},
               spec,
               tmpdir: MOCK_TMPDIR,
               executor,
@@ -332,6 +334,7 @@ describe('@midnight-smoker/plugin-default', function () {
           beforeEach(function () {
             executor.resolves({failed: false, stdout: 'stuff'} as any);
             ctx = {
+              workspaceInfo: {},
               signal: new AbortController().signal,
               spec,
               executor,

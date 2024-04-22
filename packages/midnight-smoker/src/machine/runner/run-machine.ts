@@ -1,10 +1,12 @@
-import {fromUnknownError, ScriptBailed} from '#error';
+import {ScriptBailed} from '#error';
+import {type MachineOutputError, type MachineOutputOk} from '#machine/util';
 import {type PkgManager} from '#pkg-manager';
 import {
   type RunScriptManifest,
   type RunScriptResult,
   type ScriptError,
 } from '#schema';
+import assert from 'node:assert';
 import {
   assign,
   fromPromise,
@@ -14,7 +16,6 @@ import {
   setup,
   type AnyActorRef,
 } from 'xstate';
-import {type MachineOutputError, type MachineOutputOk} from '../machine-util';
 import {type RunMachineRunScriptBeginEvent} from './runner-machine-events';
 
 export interface RunMachineInput {
@@ -71,6 +72,12 @@ export const RunMachine = setup({
         };
       },
     ),
+    assignResult: assign({
+      result: (_, result: RunScriptResult) => result,
+    }),
+    assignError: assign({
+      error: (_, error: ScriptError) => error,
+    }),
   },
   actors: {
     runScript: fromPromise<RunScriptResult, RunMachineRunScriptInput>(
@@ -112,9 +119,10 @@ export const RunMachine = setup({
         }),
         onDone: {
           actions: [
-            assign({
-              result: ({event: {output: result}}) => result,
-            }),
+            {
+              type: 'assignResult',
+              params: ({event: {output: result}}) => result,
+            },
           ],
           target: 'done',
         },
@@ -122,19 +130,20 @@ export const RunMachine = setup({
           {
             guard: {type: 'isBailed'},
             actions: [
-              assign({
-                result: {skipped: true},
-              }),
+              {
+                type: 'assignResult',
+                params: {skipped: true},
+              },
             ],
             target: 'aborted',
           },
           {
             guard: {type: 'isNotBailed'},
             actions: [
-              assign({
-                error: ({event: {error}}) =>
-                  fromUnknownError(error) as ScriptError,
-              }),
+              {
+                type: 'assignError',
+                params: ({event: {error}}) => error as ScriptError,
+              },
             ],
             target: 'errored',
           },
@@ -165,11 +174,12 @@ export const RunMachine = setup({
         error,
       };
     }
+    assert.ok(result);
     return {
       type: 'OK',
       id,
       manifest: runScriptManifest,
-      result: result!,
+      result,
       scriptIndex: index,
     };
   },

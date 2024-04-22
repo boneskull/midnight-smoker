@@ -78,7 +78,7 @@ module.exports = {
         '@typescript-eslint/require-await': 'off',
 
         // unfortunately required when using Sets and Maps
-        '@typescript-eslint/no-non-null-assertion': 'off',
+        '@typescript-eslint/no-non-null-assertion': 'warn',
 
         // this rule seems broken
         '@typescript-eslint/no-invalid-void-type': 'off',

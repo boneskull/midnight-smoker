@@ -46,9 +46,10 @@ export class Reporter<Ctx = unknown> extends ReifiedComponent<
     // await Promise.resolve();
     // XXX don't like these casts
     if (this.hasListener(data.type)) {
-      const listenerName = `on${data.type}` as keyof ReporterListeners<Ctx>;
-      const listener = this.def[listenerName] as ReporterListener<T, Ctx>;
       try {
+        const listenerName = `on${data.type}` as keyof ReporterListeners<Ctx>;
+        const listener = this.def[listenerName] as ReporterListener<T, Ctx>;
+        debug('%s - invoking %s', this, listenerName);
         await listener(this.ctx, data);
         debug('%s - invoked %s', this, listenerName);
       } catch (err) {

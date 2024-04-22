@@ -5,6 +5,7 @@ import {InstallManifestSchema} from './install-manifest';
 export const PkgInstallManifest = InstallManifestSchema.extend({
   isAdditional: z.literal(false).optional(),
   installPath: NonEmptyStringSchema,
+  localPath: NonEmptyStringSchema,
 });
 
 export type PkgInstallManifest = z.infer<typeof PkgInstallManifest>;

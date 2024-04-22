@@ -36,6 +36,7 @@ import path from 'node:path';
 import type {LiteralUnion, PackageJson} from 'type-fest';
 import {z} from 'zod';
 import {fromZodError} from 'zod-validation-error';
+import {RuleSeverities} from '../constants';
 
 const debug = Debug('midnight-smoker:plugin:metadata');
 
@@ -439,6 +440,16 @@ export class PluginMetadata implements StaticPluginMetadata {
     const enabledReporters = reporterDefs.filter(shouldEnable);
 
     return enabledReporters;
+  }
+
+  public getEnabledRuleDefs(
+    opts: SmokerOptions,
+    getComponentId: (def: object) => string,
+  ) {
+    return [...this.ruleDefMap.values()].filter((def) => {
+      const id = getComponentId(def);
+      return opts.rules[id].severity !== RuleSeverities.Off;
+    });
   }
 }
 

@@ -1,4 +1,10 @@
 import {
+  type CtrlInstallBeginEvent,
+  type CtrlPkgManagerInstallBeginEvent,
+  type CtrlPkgManagerInstallFailedEvent,
+  type CtrlPkgManagerInstallOkEvent,
+} from '#machine/controller';
+import {
   type InstallError,
   type InstallManifest,
   type PkgManager,
@@ -15,12 +21,7 @@ import {
   type ActorRefFrom,
   type AnyActorRef,
 } from 'xstate';
-import {
-  type CtrlInstallBeginEvent,
-  type CtrlPkgManagerInstallBeginEvent,
-  type CtrlPkgManagerInstallFailedEvent,
-  type CtrlPkgManagerInstallOkEvent,
-} from '../controller/control-machine-events';
+import {type PackResult} from '../packer/packer-machine';
 import {
   assertMachineOutputNotOk,
   assertMachineOutputOk,
@@ -31,8 +32,7 @@ import {
   type MachineOutputError,
   type MachineOutputLike,
   type MachineOutputOk,
-} from '../machine-util';
-import {type PackResult} from '../packer/packer-machine';
+} from '../util';
 import {
   InstallMachine,
   type InstallMachineError,

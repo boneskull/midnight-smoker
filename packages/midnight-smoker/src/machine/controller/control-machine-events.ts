@@ -19,10 +19,11 @@ import {
   type SmokerEventData,
 } from '#schema';
 import {type Simplify, type ValueOf} from 'type-fest';
+import {type SomeReporter, type SomeRule} from '../../component';
 import {type InstallerMachineOutput} from '../installer/installer-machine';
 import {type LinterMachineOutput} from '../linter/linter-machine';
 import {type PackerMachineOutput} from '../packer/packer-machine';
-import {type ReifierOutput} from '../reifier/reifier-machine';
+import {type PluginLoaderMachineOutput} from '../plugin-loader/plugin-loader-machine';
 import {type ReporterMachineOutput} from '../reporter/reporter-machine';
 import {type RunnerMachineOutput} from '../runner/runner-machine';
 
@@ -41,7 +42,6 @@ export type CtrlEvents =
   | CtrlPkgManagerPackOkEvent
   | CtrlPkgManagerInstallBeginEvent
   | CtrlPkgManagerPackBeginEvent
-  | CtrlReifierDoneEvent
   | CtrlRunScriptsEvent
   | CtrlRunScriptBeginEvent
   | CtrlReporterDoneEvent
@@ -65,6 +65,12 @@ export type CtrlEvents =
   | CtrlPkgManagerLintBeginEvent
   | CtrlPkgManagerLintOkEvent
   | CtrlPkgManagerLintFailedEvent
+  | CtrlComponentsEvent
+  | CtrlPluginLoaderDoneEvent
+  | CtrlPackFailedEvent
+  | CtrlPackOkEvent
+  | CtrlInstallOkEvent
+  | CtrlInstallFailedEvent
   | CtrlRunnerMachineDoneEvent;
 
 type SourceEvents = InstallEventData &
@@ -217,9 +223,29 @@ export interface CtrlPkgManagerPackBeginEvent extends PackOptions {
   type: 'PKG_MANAGER_PACK_BEGIN';
 }
 
-export interface CtrlReifierDoneEvent {
-  output: ReifierOutput;
-  type: 'xstate.done.actor.Reifier.*';
+export interface CtrlPluginLoaderDoneEvent {
+  output: PluginLoaderMachineOutput;
+  type: 'xstate.done.actor.PluginLoaderMachine';
+}
+
+export interface CtrlPackFailedEvent {
+  type: 'PACK_FAILED';
+  error: PackError | PackParseError;
+}
+
+export interface CtrlPackOkEvent {
+  type: 'PACK_OK';
+  manifests: InstallManifest[];
+}
+
+export interface CtrlInstallOkEvent {
+  type: 'INSTALL_OK';
+  manifests: InstallManifest[];
+}
+
+export interface CtrlInstallFailedEvent {
+  type: 'INSTALL_FAILED';
+  error: InstallError;
 }
 
 export interface CtrlInstallerMachineDoneEvent {
@@ -318,4 +344,12 @@ export interface CtrlLintBeginEvent {
 
 export interface CtrlRuleErrorEvent {
   type: 'RULE_ERROR';
+}
+
+export interface CtrlComponentsEvent {
+  type: 'COMPONENTS';
+  sender: string;
+  pkgManagers: PkgManager[];
+  reporters: SomeReporter[];
+  rules: SomeRule[];
 }

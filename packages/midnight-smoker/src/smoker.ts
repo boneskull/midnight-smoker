@@ -41,7 +41,7 @@ import {
   ControlMachine,
   type CtrlMachineOutput,
 } from './machine/controller/control-machine';
-import {isMachineOutputOk} from './machine/machine-util';
+import {isMachineOutputOk} from './machine/util';
 import {FileManager} from './util/filemanager';
 
 type SetupResult =

@@ -1,33 +1,25 @@
-import {type ReporterListeners} from '#reporter';
+import {type CtrlEmitted} from '#machine/controller';
 import {type SomeReporter} from '#reporter/reporter';
 import {fromPromise} from 'xstate';
-import {type CtrlEmitted} from '../controller/control-machine-events';
 
 export interface DrainQueueInput {
-  listeners: Partial<ReporterListeners>;
   queue: CtrlEmitted[];
   reporter: SomeReporter;
 }
 
+/**
+ * Drains the queue of events and invokes the listener for each event.
+ */
 export const drainQueue = fromPromise<void, DrainQueueInput>(
   async ({input: {reporter, queue}}): Promise<void> => {
     while (queue.length) {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       const event = queue.shift()!;
       const {type, ...rest} = event;
-      // @ts-expect-error fix later
+
+      // If this rejects, it should be a ReporterError.
+      // @ts-expect-error TODO fix later
       await reporter.invokeListener({...rest, type});
     }
-  },
-);
-
-export const teardownReporter = fromPromise<void, SomeReporter>(
-  async ({input: reporter}): Promise<void> => {
-    await reporter.teardown();
-  },
-);
-
-export const setupReporter = fromPromise<void, SomeReporter>(
-  async ({input: reporter}): Promise<void> => {
-    await reporter.setup();
   },
 );

@@ -33,7 +33,7 @@ import {
   monkeypatchActorLogger,
   type MachineOutputError,
   type MachineOutputOk,
-} from '../machine-util';
+} from '../util';
 import {RuleMachine, type RuleMachineOutput} from './rule-machine';
 
 export interface LinterMachineInput {
@@ -140,10 +140,11 @@ export const LinterMachine = setup({
         context: {rules, ruleConfigs, lintManifestsWithPkgs, pkgManager},
       }): Readonly<RuleContext>[] =>
         lintManifestsWithPkgs.flatMap(
-          ({pkgName, installPath, pkgJson, pkgJsonPath}) =>
+          ({pkgName, installPath, pkgJson, pkgJsonPath, localPath}) =>
             rules.map((rule) => {
               const {severity} = ruleConfigs[rule.name];
               return RuleContext.create(rule, {
+                localPath,
                 pkgName,
                 severity,
                 installPath,
@@ -184,13 +185,14 @@ export const LinterMachine = setup({
         {self, context: {pkgManager, ruleConfigs}},
         {
           issues,
-          ctx: {ruleName, pkgName, installPath},
+          ctx: {ruleName, pkgName, installPath, localPath},
           index: currentRule,
         }: RuleMachineOutput,
       ): CtrlRuleFailedEvent => ({
         pkgManager: pkgManager.staticSpec,
         pkgName,
         installPath,
+        localPath,
         config: ruleConfigs[ruleName],
         rule: ruleName,
         currentRule,
@@ -204,7 +206,7 @@ export const LinterMachine = setup({
       (
         {self, context: {pkgManager, ruleConfigs}},
         {
-          ctx: {ruleName, pkgName, installPath},
+          ctx: {ruleName, pkgName, installPath, localPath},
           index: currentRule,
         }: RuleMachineOutput,
       ): CtrlRuleOkEvent => ({
@@ -216,6 +218,7 @@ export const LinterMachine = setup({
         currentRule,
         type: 'RULE_OK',
         sender: self.id,
+        localPath,
       }),
     ),
     sendRuleBegin: sendTo(
@@ -224,7 +227,7 @@ export const LinterMachine = setup({
         {self, context: {pkgManager, ruleConfigs}},
         {
           currentRule,
-          ctx: {pkgName, installPath, ruleName},
+          ctx: {pkgName, installPath, ruleName, localPath},
         }: {currentRule: number; ctx: StaticRuleContext},
       ): CtrlRuleBeginEvent => ({
         pkgName,
@@ -235,6 +238,7 @@ export const LinterMachine = setup({
         currentRule,
         type: 'RULE_BEGIN',
         sender: self.id,
+        localPath,
       }),
     ),
     sendPkgManagerLintBegin: sendTo(
@@ -273,10 +277,10 @@ export const LinterMachine = setup({
     readPkgJsons: fromPromise<LintManifestWithPkg[], ReadPkgJsonsInput>(
       async ({input: {fileManager, lintManifests}}) =>
         Promise.all(
-          lintManifests.map(async ({installPath, pkgName}) => {
+          lintManifests.map(async ({installPath, pkgName, localPath}) => {
             const {packageJson: pkgJson, path: pkgJsonPath} =
               await fileManager.findPkgUp(installPath, {strict: true});
-            return {installPath, pkgName, pkgJson, pkgJsonPath};
+            return {installPath, pkgName, pkgJson, pkgJsonPath, localPath};
           }),
         ),
     ),

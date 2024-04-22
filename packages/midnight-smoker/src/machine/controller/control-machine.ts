@@ -1,10 +1,24 @@
 import {DEFAULT_EXECUTOR_ID, SYSTEM_EXECUTOR_ID} from '#constants';
 import {fromUnknownError} from '#error';
 import {SmokerEvent} from '#event';
+import {
+  InstallerMachine,
+  type InstallerMachineInput,
+  type InstallerMachineInstallEvent,
+} from '#machine/installer';
+import {LinterMachine, type LinterMachineOutput} from '#machine/linter';
+import {PackerMachine, type PackerMachineInput} from '#machine/packer';
+import {
+  PluginLoaderMachine,
+  type PluginLoaderMachineInput,
+} from '#machine/plugin-loader';
+import {ReporterMachine, type ReporterMachineOutput} from '#machine/reporter';
+import {RunnerMachine, type RunnerMachineOutput} from '#machine/runner';
+import * as MachineUtil from '#machine/util';
 import {type SmokerOptions} from '#options/options';
 import {type PkgManager} from '#pkg-manager';
 import {type PluginRegistry} from '#plugin';
-import {type Reporter} from '#reporter/reporter';
+import {type SomeReporter} from '#reporter/reporter';
 import {
   type Executor,
   type InstallEventBaseData,
@@ -17,42 +31,18 @@ import {
 } from '#schema';
 import {type FileManager} from '#util/filemanager';
 import {filter, isEmpty, map, memoize, partition, sumBy, uniq} from 'lodash';
+import assert from 'node:assert';
 import {
   and,
   assign,
   enqueueActions,
-  fromPromise,
   log,
   not,
+  raise,
   sendTo,
   setup,
   type ActorRefFrom,
 } from 'xstate';
-import {
-  InstallerMachine,
-  type InstallerMachineInput,
-} from '../installer/installer-machine';
-import {type InstallerMachineInstallEvent} from '../installer/installer-machine-events';
-import {
-  LinterMachine,
-  type LinterMachineOutput,
-} from '../linter/linter-machine';
-import * as MachineUtil from '../machine-util';
-import {uniquePkgNames} from '../machine-util';
-import {PackerMachine, type PackerMachineInput} from '../packer/packer-machine';
-import {
-  LoadableComponents,
-  ReifierMachine,
-  type ReifierOutput,
-} from '../reifier/reifier-machine';
-import {
-  ReporterMachine,
-  type ReporterMachineOutput,
-} from '../reporter/reporter-machine';
-import {
-  RunnerMachine,
-  type RunnerMachineOutput,
-} from '../runner/runner-machine';
 import type * as Event from './control-machine-events';
 
 export interface CtrlMachineInput {
@@ -74,13 +64,12 @@ export type CtrlMachineContext = Omit<
   pkgManagers: PkgManager[];
   defaultExecutor: Executor;
   systemExecutor: Executor;
-  reifierMachineRefs: Record<string, ActorRefFrom<typeof ReifierMachine>>;
   reporterMachineRefs: Record<string, ActorRefFrom<typeof ReporterMachine>>;
   runnerMachineRefs: Record<string, ActorRefFrom<typeof RunnerMachine>>;
   linterMachineRefs: Record<string, ActorRefFrom<typeof LinterMachine>>;
   runScriptManifests: WeakMap<PkgManager, RunScriptManifest[]>;
   lintManifests: WeakMap<PkgManager, LintManifest[]>;
-  reporters: Reporter[];
+  reporters: SomeReporter[];
   rules: SomeRule[];
   shouldLint: boolean;
   scripts: string[];
@@ -92,6 +81,8 @@ export type CtrlMachineContext = Omit<
   shouldHalt: boolean;
   packerMachineRef?: ActorRefFrom<typeof PackerMachine>;
   installerMachineRef?: ActorRefFrom<typeof InstallerMachine>;
+  pluginLoaderRef?: ActorRefFrom<typeof PluginLoaderMachine>;
+  startTime: number;
 };
 
 export type CtrlOutputOk = MachineUtil.MachineOutputOk<{
@@ -112,21 +103,9 @@ export const ControlMachine = setup({
     output: {} as CtrlMachineOutput,
   },
   actors: {
-    setupPkgManagers: fromPromise<void, PkgManager[]>(
-      async ({input: pkgManagers}): Promise<void> => {
-        await Promise.all(pkgManagers.map((pkgManager) => pkgManager.setup()));
-      },
-    ),
-    teardownPkgManagers: fromPromise<void, PkgManager[]>(
-      async ({input: pkgManagers}): Promise<void> => {
-        await Promise.all(
-          pkgManagers.map((pkgManager) => pkgManager.teardown()),
-        );
-      },
-    ),
     ReporterMachine,
+    PluginLoaderMachine,
     RunnerMachine,
-    ReifierMachine,
     PackerMachine,
     InstallerMachine,
     LinterMachine,
@@ -236,6 +215,12 @@ export const ControlMachine = setup({
      */
     isNotLinting: ({context: {linterMachineRefs}}) =>
       isEmpty(linterMachineRefs),
+
+    hasPluginLoaderRef: ({context: {pluginLoaderRef}}) =>
+      Boolean(pluginLoaderRef),
+
+    hasReporterRefs: ({context: {reporterMachineRefs}}) =>
+      !isEmpty(reporterMachineRefs),
   },
   actions: {
     assignLintResult: assign({
@@ -249,25 +234,25 @@ export const ControlMachine = setup({
         };
       },
     }),
-    cleanup: enqueueActions(
-      ({enqueue, context: {reporterMachineRefs: reporterMachines}}) => {
-        Object.values(reporterMachines).forEach((reporterMachine) => {
+    flushReporters: enqueueActions(
+      ({enqueue, context: {reporterMachineRefs}}) => {
+        Object.values(reporterMachineRefs).forEach((reporterMachine) => {
           enqueue.sendTo(reporterMachine, {type: 'HALT'});
         });
       },
+    ),
+    teardown: sendTo(
+      ({context: {pluginLoaderRef}}) => {
+        assert.ok(pluginLoaderRef);
+        return pluginLoaderRef;
+      },
+      {type: 'TEARDOWN'},
     ),
 
     assignError: assign({
       // TODO: aggregate for multiple
       error: ({context}, {error}: {error?: unknown}): Error | undefined =>
         error ? fromUnknownError(error) : context.error,
-    }),
-
-    stopReifiers: enqueueActions(({enqueue, context: {reifierMachineRefs}}) => {
-      for (const machine of Object.values(reifierMachineRefs)) {
-        enqueue.stopChild(machine);
-      }
-      enqueue.assign({reifierMachineRefs: {}});
     }),
 
     assignRunScriptManifests: assign({
@@ -297,10 +282,13 @@ export const ControlMachine = setup({
         return new WeakMap(
           pkgManagers.map((pkgManager) => [
             pkgManager,
-            pkgManager.pkgInstallManifests.map(({installPath, pkgName}) => ({
-              installPath,
-              pkgName,
-            })),
+            pkgManager.pkgInstallManifests.map(
+              ({installPath, pkgName, localPath}) => ({
+                installPath,
+                pkgName,
+                localPath,
+              }),
+            ),
           ]),
         );
       },
@@ -385,69 +373,48 @@ export const ControlMachine = setup({
         }
       },
     ),
+    stopPluginLoaderMachine: enqueueActions(
+      ({enqueue, context: {pluginLoaderRef}}) => {
+        if (pluginLoaderRef) {
+          enqueue.stopChild(pluginLoaderRef.id);
+          enqueue.assign({pluginLoaderRef: undefined});
+        }
+      },
+    ),
     spawnReporterMachines: assign({
       reporterMachineRefs: ({spawn, context: {reporters}, self}) =>
         Object.fromEntries(
           reporters.map((reporter) => {
             const id = `ReporterMachine.${MachineUtil.makeId()}`;
+            // @ts-expect-error https://github.com/statelyai/xstate/blob/main/packages/core/src/types.ts#L114 -- no TEmitted
             const actor = spawn('ReporterMachine', {
               id,
-              // @ts-expect-error https://github.com/statelyai/xstate/blob/main/packages/core/src/types.ts#L114 -- no TEmitted
               input: {emitter: self, reporter},
             });
             return [id, MachineUtil.monkeypatchActorLogger(actor, id)];
           }),
         ),
     }),
-    assignReifierResults: assign({
-      pkgManagers: ({context: {pkgManagers}}, output: ReifierOutput) => {
-        MachineUtil.assertMachineOutputOk(output);
-        return [...pkgManagers, ...output.pkgManagers];
-      },
-      reporters: ({context: {reporters}}, output: ReifierOutput) => {
-        MachineUtil.assertMachineOutputOk(output);
-        return [...reporters, ...output.reporters];
-      },
-      rules: ({context: {rules}}, output: ReifierOutput) => {
-        MachineUtil.assertMachineOutputOk(output);
-        return [...rules, ...output.rules];
-      },
-    }),
-    spawnReifiers: assign({
-      reifierMachineRefs: ({
-        context: {
-          pluginRegistry,
-          fileManager: fm,
-          systemExecutor,
-          defaultExecutor,
-          smokerOptions: smokerOpts,
+    assignComponents: enqueueActions(
+      (
+        {enqueue, context},
+        {
+          pkgManagers,
+          reporters,
+          rules,
+        }: {
+          pkgManagers: PkgManager[];
+          reporters: SomeReporter[];
+          rules: SomeRule[];
         },
-        spawn,
-      }) =>
-        Object.fromEntries(
-          pluginRegistry.plugins.map((plugin) => {
-            const id = `Reifier.${MachineUtil.makeId()}`;
-            const actor = spawn('ReifierMachine', {
-              id,
-              input: {
-                plugin,
-                pluginRegistry,
-                pkgManager: {
-                  fm,
-                  cwd: smokerOpts.cwd,
-                  systemExecutor,
-                  defaultExecutor,
-                },
-                smokerOpts,
-                component: LoadableComponents.All,
-              },
-            });
-
-            return [id, MachineUtil.monkeypatchActorLogger(actor, id)];
-          }),
-        ),
-    }),
-
+      ) => {
+        enqueue.assign({
+          pkgManagers: [...(context.pkgManagers ?? []), ...pkgManagers],
+          reporters: [...(context.reporters ?? []), ...reporters],
+          rules: [...(context.rules ?? []), ...rules],
+        });
+      },
+    ),
     spawnLinterMachines: assign({
       linterMachineRefs: ({
         context: {
@@ -464,12 +431,14 @@ export const ControlMachine = setup({
           pkgManagers.map((pkgManager, index) => {
             const id = `LinterMachine.${MachineUtil.makeId()}`;
 
+            const manifests = lintManifests.get(pkgManager);
+            assert.ok(manifests);
             const actorRef = spawn('LinterMachine', {
               id,
               input: {
                 pkgManager,
                 ruleConfigs,
-                lintManifests: lintManifests.get(pkgManager)!,
+                lintManifests: manifests,
                 fileManager,
                 rules,
                 parentRef: self,
@@ -553,11 +522,17 @@ export const ControlMachine = setup({
       },
     }),
     sendPackingComplete: sendTo(
-      ({context: {installerMachineRef}}) => installerMachineRef!,
+      ({context: {installerMachineRef}}) => {
+        assert.ok(installerMachineRef);
+        return installerMachineRef;
+      },
       {type: 'PACKING_COMPLETE'},
     ),
     beginInstallation: sendTo(
-      ({context: {installerMachineRef}}) => installerMachineRef!,
+      ({context: {installerMachineRef}}) => {
+        assert.ok(installerMachineRef);
+        return installerMachineRef;
+      },
       (
         _,
         {
@@ -590,7 +565,6 @@ export const ControlMachine = setup({
     fileManager,
     shouldLint: false,
     pkgManagers: [],
-    reifierMachineRefs: {},
     runnerMachineRefs: {},
     reporterMachineRefs: {},
     reporters: [],
@@ -601,6 +575,7 @@ export const ControlMachine = setup({
     totalChecks: 0,
     linterMachineRefs: {},
     shouldHalt: false,
+    startTime: performance.now(),
   }),
   initial: 'loading',
   on: {
@@ -646,6 +621,7 @@ export const ControlMachine = setup({
               };
             },
           },
+          {type: 'stopReporterMachine', params: ({event}) => event},
         ],
         target: '#ControlMachine.done',
       },
@@ -660,84 +636,93 @@ export const ControlMachine = setup({
               event: {
                 output: {id},
               },
-            }) => `pkg manager machine ${id} exited gracefully`,
+            }) => `${id} exited gracefully`,
           ),
+          {type: 'stopReporterMachine', params: ({event}) => event},
         ],
       },
-      {actions: [{type: 'stopReporterMachine', params: ({event}) => event}]},
+    ],
+
+    'xstate.done.actor.PluginLoaderMachine': [
+      {
+        guard: {
+          type: 'isMachineOutputOk',
+          params: ({event: {output}}) => output,
+        },
+        actions: [
+          {type: 'stopPluginLoaderMachine'},
+          log('unloading plugin loader'),
+        ],
+      },
+      {
+        guard: {
+          type: 'isMachineOutputNotOk',
+          params: ({event: {output}}) => output,
+        },
+        actions: [
+          {
+            type: 'assignError',
+            params: ({event: {output}}) => {
+              MachineUtil.assertMachineOutputNotOk(output);
+              return {error: output.error};
+            },
+          },
+          {type: 'stopPluginLoaderMachine'},
+          log('unloading plugin loader'),
+        ],
+      },
     ],
   },
   states: {
     loading: {
-      entry: [log('loading plugin components...')],
-      initial: 'loadingPlugins',
-      states: {
-        loadingPlugins: {
-          entry: [{type: 'spawnReifiers'}],
-          on: {
-            'xstate.done.actor.Reifier.*': [
-              {
-                guard: {
-                  type: 'isMachineOutputNotOk',
-                  params: ({event: {output}}) => output,
-                },
-                actions: [
-                  {
-                    type: 'assignError',
-                    params: ({event: {output}}) => {
-                      MachineUtil.assertMachineOutputNotOk(output);
-                      return {error: output.error};
-                    },
-                  },
-                ],
-                target: '#ControlMachine.done',
-              },
-              {
-                guard: {
-                  type: 'isMachineOutputOk',
-                  params: ({event: {output}}) => output,
-                },
-                actions: [
-                  {
-                    type: 'assignReifierResults',
-                    params: ({event: {output}}) => output,
-                  },
-                ],
-                target: '#ControlMachine.loading.loadedPlugins',
-              },
-            ],
-          },
-        },
-        loadedPlugins: {
-          invoke: {
-            src: 'setupPkgManagers',
-            input: ({context: {pkgManagers}}) => pkgManagers,
-            onDone: {
-              target: '#ControlMachine.loading.done',
+      description:
+        'Spawns a PluginLoaderMachine, which provides reified components',
+      entry: [
+        log('loading plugin components...'),
+
+        assign({
+          pluginLoaderRef: ({
+            self,
+            spawn,
+            context: {
+              pluginRegistry,
+              smokerOptions,
+              fileManager,
+              systemExecutor,
+              defaultExecutor,
             },
-            onError: {
-              actions: [
-                {
-                  type: 'assignError',
-                  params: ({event: {error}}) => ({error}),
-                },
-              ],
-              target: '#ControlMachine.done',
-            },
+          }) => {
+            const input: PluginLoaderMachineInput = {
+              pluginRegistry,
+              smokerOptions,
+              fileManager,
+              systemExecutor,
+              defaultExecutor,
+              parentRef: self,
+            };
+            const id = 'PluginLoaderMachine';
+            const actorRef = spawn('PluginLoaderMachine', {
+              id,
+              input,
+            });
+            return MachineUtil.monkeypatchActorLogger(actorRef, id);
           },
-          entry: [
+        }),
+      ],
+      on: {
+        COMPONENTS: {
+          actions: [
+            {
+              type: 'assignComponents',
+              params: ({event}) => event,
+            },
+            log('components loaded'),
             {
               type: 'spawnReporterMachines',
             },
           ],
+          target: 'setup',
         },
-        done: {
-          type: 'final',
-        },
-      },
-      onDone: {
-        target: 'setup',
-        actions: [log('done loading components')],
       },
     },
     setup: {
@@ -752,9 +737,75 @@ export const ControlMachine = setup({
             opts: smokerOptions,
           }),
         },
-        {type: 'assignSetupActors'},
+        {
+          type: 'assignSetupActors',
+        },
       ],
       on: {
+        PACK_OK: {
+          actions: [
+            {
+              type: 'report',
+              params: ({
+                context,
+                event: {manifests},
+              }): Event.CtrlExternalEvent<typeof SmokerEvent.PackOk> => {
+                return {
+                  uniquePkgs: MachineUtil.uniquePkgNames(manifests),
+                  type: SmokerEvent.PackOk,
+                  pkgManagers: map(context.pkgManagers, 'staticSpec'),
+                  manifests,
+                  totalPkgs: manifests.length,
+                };
+              },
+            },
+            {
+              type: 'sendPackingComplete',
+            },
+            {
+              type: 'stopPackerMachine',
+            },
+          ],
+        },
+        PACK_FAILED: {
+          actions: [
+            {
+              type: 'report',
+              params: ({
+                context: {
+                  pkgManagers,
+                  smokerOptions: {
+                    cwd,
+                    all: allWorkspaces,
+                    includeRoot: includeWorkspaceRoot,
+                    workspace: workspaces,
+                  },
+                },
+                event: {error},
+              }): Event.CtrlExternalEvent<typeof SmokerEvent.PackFailed> => {
+                return {
+                  error,
+                  type: SmokerEvent.PackFailed,
+                  packOptions: {
+                    cwd,
+                    allWorkspaces,
+                    includeWorkspaceRoot,
+                    workspaces,
+                  },
+                  pkgManagers: map(pkgManagers, 'staticSpec'),
+                };
+              },
+            },
+            {
+              type: 'assignError',
+              params: ({event: {error}}) => ({error}),
+            },
+            {
+              type: 'stopPackerMachine',
+            },
+          ],
+          target: '#ControlMachine.done',
+        },
         'xstate.done.actor.PackerMachine': [
           {
             guard: {
@@ -762,28 +813,13 @@ export const ControlMachine = setup({
               params: ({event: {output}}) => output,
             },
             actions: [
-              {
-                type: 'report',
-                params: ({
-                  context,
-                  event: {output},
-                }): Event.CtrlExternalEvent<typeof SmokerEvent.PackOk> => {
-                  MachineUtil.assertMachineOutputOk(output);
-                  return {
-                    uniquePkgs: uniquePkgNames(output.manifests),
-                    type: SmokerEvent.PackOk,
-                    pkgManagers: map(context.pkgManagers, 'staticSpec'),
-                    manifests: output.manifests,
-                    totalPkgs: output.manifests.length,
-                  };
-                },
-              },
-              {
-                type: 'sendPackingComplete',
-              },
-              {
-                type: 'stopPackerMachine',
-              },
+              raise(({event: {output}}) => {
+                MachineUtil.assertMachineOutputOk(output);
+                return {
+                  type: 'PACK_OK',
+                  manifests: output.manifests,
+                };
+              }),
             ],
           },
           {
@@ -792,117 +828,100 @@ export const ControlMachine = setup({
               params: ({event: {output}}) => output,
             },
             actions: [
-              {
-                type: 'report',
-                params: ({
-                  context: {
-                    pkgManagers,
-                    smokerOptions: {
-                      cwd,
-                      all: allWorkspaces,
-                      includeRoot: includeWorkspaceRoot,
-                      workspace: workspaces,
-                    },
-                  },
-                  event: {output},
-                }): Event.CtrlExternalEvent<typeof SmokerEvent.PackFailed> => {
-                  MachineUtil.assertMachineOutputNotOk(output);
-                  return {
-                    error: output.error,
-                    type: SmokerEvent.PackFailed,
-                    packOptions: {
-                      cwd,
-                      allWorkspaces,
-                      includeWorkspaceRoot,
-                      workspaces,
-                    },
-                    pkgManagers: map(pkgManagers, 'staticSpec'),
-                  };
-                },
-              },
-              {
-                type: 'assignError',
-                params: ({event: {output}}) => {
-                  MachineUtil.assertMachineOutputNotOk(output);
-                  return {error: output.error};
-                },
-              },
-              {
-                type: 'stopPackerMachine',
-              },
+              raise(({event: {output}}) => {
+                MachineUtil.assertMachineOutputNotOk(output);
+                return {
+                  type: 'PACK_FAILED',
+                  error: output.error,
+                };
+              }),
             ],
-            target: '#ControlMachine.done',
           },
         ],
-        'xstate.done.actor.InstallerMachine': [
-          {
-            guard: {
-              type: 'isMachineOutputNotOk',
-              params: ({event: {output}}) => output,
+        INSTALL_OK: {
+          actions: [
+            {
+              type: 'report',
+              params: ({
+                context: {pkgManagers},
+                event: {manifests},
+              }): Event.CtrlExternalEvent<typeof SmokerEvent.InstallOk> => {
+                const [additionalDeps, pkgs] = partition(
+                  manifests,
+                  'isAdditional',
+                );
+                const uniquePkgs: string[] = MachineUtil.uniquePkgNames(pkgs);
+                const uniqueAdditionalDeps =
+                  MachineUtil.uniquePkgNames(additionalDeps);
+                return {
+                  type: SmokerEvent.InstallOk,
+                  uniquePkgs,
+                  pkgManagers: map(pkgManagers, 'staticSpec'),
+                  manifests,
+                  totalPkgs: manifests.length,
+                  additionalDeps: uniqueAdditionalDeps,
+                };
+              },
             },
-            actions: [
-              {
-                type: 'report',
-                params: ({
-                  context: {pkgManagers},
-                  event: {output},
-                }): Event.CtrlExternalEvent<
-                  typeof SmokerEvent.InstallFailed
-                > => {
-                  MachineUtil.assertMachineOutputNotOk(output);
-                  return {
-                    error: output.error,
-                    type: SmokerEvent.InstallFailed,
-                    ...buildInstallEventData(pkgManagers),
-                  };
-                },
+            {
+              type: 'stopInstallerMachine',
+            },
+          ],
+        },
+        INSTALL_FAILED: {
+          actions: [
+            {
+              type: 'report',
+              params: ({
+                context: {pkgManagers},
+                event: {error},
+              }): Event.CtrlExternalEvent<typeof SmokerEvent.InstallFailed> => {
+                return {
+                  error,
+                  type: SmokerEvent.InstallFailed,
+                  ...buildInstallEventData(pkgManagers),
+                };
               },
-              {
-                type: 'assignError',
-                params: ({event: {output}}) => {
-                  MachineUtil.assertMachineOutputNotOk(output);
-                  return {error: output.error};
-                },
-              },
-              {
-                type: 'stopInstallerMachine',
-              },
-            ],
-            target: '#ControlMachine.done',
-          },
+            },
+            {
+              type: 'assignError',
+              params: ({event: {error}}) => ({error}),
+            },
+            {
+              type: 'stopInstallerMachine',
+            },
+          ],
+          target: '#ControlMachine.done',
+        },
+        'xstate.done.actor.InstallerMachine': [
           {
             guard: {
               type: 'isMachineOutputOk',
               params: ({event: {output}}) => output,
             },
             actions: [
-              {
-                type: 'report',
-                params: ({
-                  context: {pkgManagers},
-                  event: {output},
-                }): Event.CtrlExternalEvent<typeof SmokerEvent.InstallOk> => {
-                  MachineUtil.assertMachineOutputOk(output);
-                  const {manifests} = output;
-                  const [additionalDeps, pkgs] = partition(
-                    manifests,
-                    'isAdditional',
-                  );
-                  const uniquePkgs: string[] = uniquePkgNames(pkgs);
-                  const uniqueAdditionalDeps = uniquePkgNames(additionalDeps);
-                  return {
-                    type: SmokerEvent.InstallOk,
-                    uniquePkgs,
-                    pkgManagers: map(pkgManagers, 'staticSpec'),
-                    manifests,
-                    totalPkgs: manifests.length,
-                    additionalDeps: uniqueAdditionalDeps,
-                  };
-                },
-              },
-              {
-                type: 'stopInstallerMachine',
-              },
+              raise(({event: {output}}) => {
+                MachineUtil.assertMachineOutputOk(output);
+                return {
+                  type: 'INSTALL_OK',
+                  manifests: output.manifests,
+                };
+              }),
+            ],
+          },
+          {
+            guard: {
+              type: 'isMachineOutputNotOk',
+              params: ({event: {output}}) => output,
+            },
+            actions: [
+              raise(({event: {output}}) => {
+                MachineUtil.assertMachineOutputNotOk(output);
+                return {
+                  type: 'INSTALL_FAILED',
+                  error: output.error,
+                };
+              }),
             ],
           },
         ],
@@ -964,20 +983,18 @@ export const ControlMachine = setup({
                 event: {index, pkgManager},
               }): Event.CtrlExternalEvent<
                 typeof SmokerEvent.PkgManagerPackBegin
-              > => {
-                return {
-                  type: SmokerEvent.PkgManagerPackBegin,
-                  currentPkgManager: index,
-                  pkgManager: pkgManager.staticSpec,
-                  packOptions: {
-                    cwd,
-                    allWorkspaces,
-                    includeWorkspaceRoot,
-                    workspaces,
-                  },
-                  totalPkgManagers: pkgManagers.length,
-                };
-              },
+              > => ({
+                type: SmokerEvent.PkgManagerPackBegin,
+                currentPkgManager: index,
+                pkgManager: pkgManager.staticSpec,
+                packOptions: {
+                  cwd,
+                  allWorkspaces,
+                  includeWorkspaceRoot,
+                  workspaces,
+                },
+                totalPkgManagers: pkgManagers.length,
+              }),
             },
           ],
         },
@@ -1000,50 +1017,46 @@ export const ControlMachine = setup({
             },
           ],
         },
-        PKG_MANAGER_PACK_OK: [
-          {
-            guard: ({context: {installerMachineRef}}) =>
-              Boolean(installerMachineRef),
-            actions: [
-              {
-                type: 'report',
-                params: ({
-                  context: {
-                    pkgManagers,
-                    smokerOptions: {
-                      cwd,
-                      all: allWorkspaces,
-                      includeRoot: includeWorkspaceRoot,
-                      workspace: workspaces,
-                    },
-                  },
-                  event: {index, pkgManager, installManifests},
-                }): Event.CtrlExternalEvent<
-                  typeof SmokerEvent.PkgManagerPackOk
-                > => ({
-                  type: SmokerEvent.PkgManagerPackOk,
-                  currentPkgManager: index,
-                  pkgManager: pkgManager.staticSpec,
-                  packOptions: {
-                    allWorkspaces,
+        PKG_MANAGER_PACK_OK: {
+          actions: [
+            {
+              type: 'report',
+              params: ({
+                context: {
+                  pkgManagers,
+                  smokerOptions: {
                     cwd,
-                    includeWorkspaceRoot,
-                    workspaces,
+                    all: allWorkspaces,
+                    includeRoot: includeWorkspaceRoot,
+                    workspace: workspaces,
                   },
-                  manifests: installManifests,
-                  totalPkgManagers: pkgManagers.length,
-                }),
-              },
-              {
-                type: 'beginInstallation',
-                params: ({event: {pkgManager, installManifests}}) => ({
-                  pkgManager,
-                  installManifests,
-                }),
-              },
-            ],
-          },
-        ],
+                },
+                event: {index, pkgManager, installManifests},
+              }): Event.CtrlExternalEvent<
+                typeof SmokerEvent.PkgManagerPackOk
+              > => ({
+                type: SmokerEvent.PkgManagerPackOk,
+                currentPkgManager: index,
+                pkgManager: pkgManager.staticSpec,
+                packOptions: {
+                  allWorkspaces,
+                  cwd,
+                  includeWorkspaceRoot,
+                  workspaces,
+                },
+                manifests: installManifests,
+                totalPkgManagers: pkgManagers.length,
+              }),
+            },
+            {
+              type: 'beginInstallation',
+              params: ({event: {pkgManager, installManifests}}) => ({
+                pkgManager,
+                installManifests,
+              }),
+            },
+          ],
+        },
         PKG_MANAGER_PACK_FAILED: {
           actions: [
             {
@@ -1082,27 +1095,25 @@ export const ControlMachine = setup({
           ],
           target: '#ControlMachine.done',
         },
-        PKG_MANAGER_INSTALL_OK: [
-          {
-            actions: [
-              {
-                type: 'report',
-                params: ({
-                  context: {pkgManagers},
-                  event: {index, pkgManager, installManifests},
-                }): Event.CtrlExternalEvent<
-                  typeof SmokerEvent.PkgManagerInstallOk
-                > => ({
-                  type: SmokerEvent.PkgManagerInstallOk,
-                  manifests: installManifests,
-                  currentPkgManager: index,
-                  pkgManager: pkgManager.staticSpec,
-                  totalPkgManagers: pkgManagers.length,
-                }),
-              },
-            ],
-          },
-        ],
+        PKG_MANAGER_INSTALL_OK: {
+          actions: [
+            {
+              type: 'report',
+              params: ({
+                context: {pkgManagers},
+                event: {index, pkgManager, installManifests},
+              }): Event.CtrlExternalEvent<
+                typeof SmokerEvent.PkgManagerInstallOk
+              > => ({
+                type: SmokerEvent.PkgManagerInstallOk,
+                manifests: installManifests,
+                currentPkgManager: index,
+                pkgManager: pkgManager.staticSpec,
+                totalPkgManagers: pkgManagers.length,
+              }),
+            },
+          ],
+        },
         PKG_MANAGER_INSTALL_FAILED: {
           actions: [
             {
@@ -1344,7 +1355,8 @@ export const ControlMachine = setup({
                       currentPkgManager,
                       totalPkgManagers: pkgManagers.length,
                       totalUniqueScripts: scripts.length,
-                      totalUniquePkgs: uniquePkgNames(manifests).length,
+                      totalUniquePkgs:
+                        MachineUtil.uniquePkgNames(manifests).length,
                     };
                   },
                 },
@@ -1375,7 +1387,8 @@ export const ControlMachine = setup({
                       currentPkgManager: pkgManagerIndex,
                       totalPkgManagers: pkgManagers.length,
                       totalUniqueScripts: scripts.length,
-                      totalUniquePkgs: uniquePkgNames(manifests).length,
+                      totalUniquePkgs:
+                        MachineUtil.uniquePkgNames(manifests).length,
                     };
                   },
                 },
@@ -1403,6 +1416,7 @@ export const ControlMachine = setup({
                     | typeof SmokerEvent.RunScriptsOk
                     | typeof SmokerEvent.RunScriptsFailed
                   > => {
+                    assert.ok(runScriptResults);
                     const [failedResults, otherResults] = partition(
                       runScriptResults,
                       'error',
@@ -1445,7 +1459,7 @@ export const ControlMachine = setup({
                       totalUniqueScripts: scripts.length,
                       totalUniquePkgs: pkgNames.size,
                       totalPkgManagers: pkgManagers.length,
-                      results: runScriptResults!,
+                      results: runScriptResults,
                     };
                   },
                 },
@@ -1656,13 +1670,14 @@ export const ControlMachine = setup({
                   }): Event.CtrlExternalEvent<
                     typeof SmokerEvent.LintOk | typeof SmokerEvent.LintFailed
                   > => {
-                    const type = isEmpty(lintResult!.issues)
+                    assert.ok(lintResult);
+                    const type = isEmpty(lintResult.issues)
                       ? SmokerEvent.LintOk
                       : SmokerEvent.LintFailed;
 
                     return {
                       type,
-                      result: lintResult!,
+                      result: lintResult,
                       totalPkgManagers: pkgManagers.length,
                       config: smokerOptions.rules,
                       totalRules,
@@ -1684,9 +1699,9 @@ export const ControlMachine = setup({
       },
     },
     done: {
-      initial: 'cleanup',
+      initial: 'flushReporters',
       states: {
-        cleanup: {
+        flushReporters: {
           entry: [
             log('cleaning up...'),
             {
@@ -1694,16 +1709,33 @@ export const ControlMachine = setup({
               params: {type: SmokerEvent.BeforeExit},
             },
             {
-              type: 'cleanup',
+              type: 'flushReporters',
             },
           ],
           always: [
             {
-              guard: {type: 'notHasError'},
+              guard: and([
+                'notHasError',
+                'hasPluginLoaderRef',
+                not('hasReporterRefs'),
+              ]),
+              target: '#ControlMachine.done.teardown',
+            },
+            {
+              guard: and(['hasError', not('hasPluginLoaderRef')]),
+              target: '#ControlMachine.done.errored',
+            },
+          ],
+        },
+        teardown: {
+          entry: [{type: 'teardown'}],
+          always: [
+            {
+              guard: and(['notHasError', not('hasPluginLoaderRef')]),
               target: '#ControlMachine.done.complete',
             },
             {
-              guard: {type: 'hasError'},
+              guard: and(['hasError', not('hasPluginLoaderRef')]),
               target: '#ControlMachine.done.errored',
             },
           ],
@@ -1713,7 +1745,12 @@ export const ControlMachine = setup({
           type: 'final',
         },
         complete: {
-          entry: [log('complete')],
+          entry: [
+            log(({context: {startTime}}) => {
+              const sec = ((performance.now() - startTime) / 1000).toFixed(2);
+              return `complete in ${sec}s`;
+            }),
+          ],
           type: 'final',
         },
       },
@@ -1738,7 +1775,7 @@ const buildInstallEventData = memoize(
     const additionalDeps = uniq(
       map(filter(manifests, {isAdditional: true}), 'pkgName'),
     );
-    const uniquePkgs = uniquePkgNames(manifests);
+    const uniquePkgs = MachineUtil.uniquePkgNames(manifests);
     const specs = map(pkgManagers, 'staticSpec');
 
     return Object.freeze({

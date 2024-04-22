@@ -1,4 +1,4 @@
-import {type CtrlEmitted} from '../controller/control-machine-events';
+import {type CtrlEmitted} from '#machine/controller';
 
 export type ReporterMachineEvents =
   | ReporterMachineCtrlEvent

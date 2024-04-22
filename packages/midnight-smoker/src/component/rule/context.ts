@@ -66,6 +66,10 @@ export class RuleContext implements StaticRuleContext {
     return [...this.#issues];
   }
 
+  public get localPath(): string {
+    return this.staticCtx.localPath;
+  }
+
   /**
    * The absolute path to this context's package's `package.json`.
    */

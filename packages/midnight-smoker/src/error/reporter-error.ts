@@ -15,7 +15,7 @@ export class ReporterError<Ctx = unknown> extends BaseSmokerError<
 
   constructor(error: Error, reporter: ReporterDef<Ctx>) {
     super(
-      `Reporter ${reporter.name} threw while initializing: ${error.message}`,
+      `Reporter ${reporter.name} threw: ${error.message}`,
       {reporter},
       error,
     );

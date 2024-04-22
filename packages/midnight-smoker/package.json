@@ -28,7 +28,7 @@
     "#config-file": "./dist/config-file.js",
     "#constants": "./dist/constants.js",
     "#machine": "./dist/machine/index.js",
-    "#machine/*": "./dist/machine/*.js",
+    "#machine/*": "./dist/machine/*/index.js",
     "#error": "./dist/error/index.js",
     "#error/*": "./dist/error/*.js",
     "#event": "./dist/event/index.js",
@@ -196,7 +196,7 @@
     "terminal-link": "2.1.1",
     "type-fest": "4.8.3",
     "which": "4.0.0",
-    "xstate": "5.9.1",
+    "xstate": "5.11.0",
     "yargs": "17.7.2",
     "zod": "3.22.4",
     "zod-validation-error": "2.1.0"

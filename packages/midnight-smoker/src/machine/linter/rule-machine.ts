@@ -15,7 +15,7 @@ import {
   type AnyActorRef,
 } from 'xstate';
 import {type LinterMachineRuleBeginEvent} from '.';
-import {type MachineOutputOk} from '../machine-util';
+import {type MachineOutputOk} from '../util';
 
 export interface RuleMachineInput {
   ctx: Readonly<RuleContext>;

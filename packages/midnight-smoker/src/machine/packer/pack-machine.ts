@@ -1,7 +1,4 @@
-import {
-  type MachineOutputError,
-  type MachineOutputOk,
-} from '#machine/machine-util';
+import {type MachineOutputError, type MachineOutputOk} from '#machine/util';
 import {
   type PackError,
   type PackOptions,

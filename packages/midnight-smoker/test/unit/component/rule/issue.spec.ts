@@ -37,6 +37,7 @@ describe('midnight-smoker', function () {
           },
           pkgJsonPath: '/path/to/example-package/package.json',
           installPath: '/path/to/example-package',
+          localPath: '/path/to/example-package',
           severity: 'error',
           ruleName: exampleStaticRule.name,
           pkgManager: 'bebebebebee',

@@ -1,3 +1,18 @@
+import {
+  type CtrlPkgManagerRunScriptsBeginEvent,
+  type CtrlRunScriptBeginEvent,
+  type CtrlRunScriptFailedEvent,
+  type CtrlRunScriptOkEvent,
+  type CtrlRunScriptSkippedEvent,
+} from '#machine/controller';
+import {
+  assertMachineOutputOk,
+  isMachineOutputOk,
+  makeId,
+  monkeypatchActorLogger,
+  type MachineOutputLike,
+  type MachineOutputOk,
+} from '#machine/util';
 import {type PkgManager} from '#pkg-manager';
 import {type RunScriptManifest, type RunScriptResult} from '#schema';
 import {isEmpty} from 'lodash';
@@ -10,21 +25,6 @@ import {
   type ActorRefFrom,
   type AnyActorRef,
 } from 'xstate';
-import {
-  type CtrlPkgManagerRunScriptsBeginEvent,
-  type CtrlRunScriptBeginEvent,
-  type CtrlRunScriptFailedEvent,
-  type CtrlRunScriptOkEvent,
-  type CtrlRunScriptSkippedEvent,
-} from '../controller/control-machine-events';
-import {
-  assertMachineOutputOk,
-  isMachineOutputOk,
-  makeId,
-  monkeypatchActorLogger,
-  type MachineOutputLike,
-  type MachineOutputOk,
-} from '../machine-util';
 import {RunMachine, type RunMachineOutputOk} from './run-machine';
 import {
   type RunMachineRunScriptBeginEvent,

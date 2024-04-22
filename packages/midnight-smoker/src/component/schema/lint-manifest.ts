@@ -10,6 +10,7 @@ export const LintManifestSchema = z.object({
   installPath: NonEmptyStringSchema.describe(
     'Install path of package being checked',
   ),
+  localPath: NonEmptyStringSchema,
 });
 
 export const LintManifestsSchema = z
