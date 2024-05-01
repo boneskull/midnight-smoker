@@ -18,7 +18,7 @@ import {type StaticPluginMetadata} from '#plugin/static-metadata';
 import * as RuleNS from '#rule';
 import {ExecutorSchema} from '#schema/executor';
 import {PkgManagerDefSchema} from '#schema/pkg-manager-def';
-import {ReporterDefSchema} from '#schema/reporter-def';
+import {assertReporterDef} from '#schema/reporter-def';
 import {RuleDefSchema, type RuleDef} from '#schema/rule-def';
 import {type RuleDefSchemaValue} from '#schema/rule-options';
 import * as SchemaUtils from '#util/schema-util';
@@ -75,7 +75,7 @@ export const createPluginAPI = (
   };
 
   const defineReporter: DefineReporterFn = (reporterDef) => {
-    ReporterDefSchema.parse(reporterDef);
+    assertReporterDef(reporterDef);
     metadata.addReporterDef(reporterDef);
     registerComponent(
       ComponentKinds.ReporterDef,

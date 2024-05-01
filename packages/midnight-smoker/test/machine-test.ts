@@ -9,7 +9,7 @@ import Debug from 'debug';
 import {createActor} from 'xstate';
 import {SmokerEvent} from '../src/event';
 import {ControlMachine} from '../src/machine/controller/control-machine';
-import {type CtrlEmitted} from '../src/machine/controller/control-machine-events';
+import {type ControlMachineEmitted} from '../src/machine/controller/control-machine-events';
 import {OptionParser} from '../src/options';
 import {FileManager} from '../src/util';
 import {plugin} from './e2e/fixture/plugin/plugin-rule/index.js';
@@ -76,7 +76,7 @@ async function main() {
   m.start();
 
   const emitted = new Set<string>();
-  const listener = (evt: CtrlEmitted) => {
+  const listener = (evt: ControlMachineEmitted) => {
     // debugEmit(evt.type);
     emitted.add(evt.type);
   };

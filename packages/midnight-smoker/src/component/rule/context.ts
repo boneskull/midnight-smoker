@@ -1,9 +1,9 @@
 import {fromUnknownError} from '#error';
 import {RuleError} from '#error/rule-error';
+import {type SomeRule} from '#schema/rule';
 import {type StaticRuleContext} from '#schema/rule-static';
 import {serialize} from '#util/util';
 import {type PackageJson, type SetOptional} from 'type-fest';
-import {type SomeRule} from '.';
 import {RuleIssue} from './issue';
 
 /**
@@ -12,7 +12,11 @@ import {RuleIssue} from './issue';
  *
  * Member of a {@link RuleContext}.
  */
-export type AddIssueFn = (message: string, data?: unknown) => void;
+export type AddIssueFn = (
+  message: string,
+  filepath?: string | URL,
+  data?: unknown,
+) => void;
 
 /**
  * A context object which is provided to a {@link RuleCheckFn}, containing
@@ -154,15 +158,22 @@ export class RuleContext implements StaticRuleContext {
    * This should be called by the {@link RuleCheckFn} when it detects a problem.
    *
    * @param message - Message for the issue
+   * @param filepath - Filepath where the issue was found
    * @param data - Additional data to include in the issue
    */
-  public addIssue: AddIssueFn = function (this: RuleContext, message, data) {
+  public addIssue: AddIssueFn = function (
+    this: RuleContext,
+    message,
+    filepath,
+    data,
+  ) {
     this.#addIssue(
       RuleIssue.create({
         message,
         data,
         rule: serialize(this.rule),
         context: serialize(this),
+        filepath,
       }),
     );
   };

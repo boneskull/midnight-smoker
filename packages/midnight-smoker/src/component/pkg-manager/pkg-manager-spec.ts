@@ -7,11 +7,26 @@
 import {DEFAULT_PKG_MANAGER_BIN, DEFAULT_PKG_MANAGER_VERSION} from '#constants';
 import {type PkgManagerDef} from '#schema/pkg-manager-def';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
+import {FileManager, type FileManagerOpts} from '#util';
 import {getSystemPkgManagerVersion} from '#util/pkg-util';
 import type {NonEmptyArray} from '#util/util';
+import {globIterate} from 'glob';
 import {isString} from 'lodash';
+import path from 'node:path';
 import {parse, type SemVer} from 'semver';
-import {guessPackageManager} from './pkg-manager-oracle';
+
+/**
+ * Options for {@link PkgManagerSpec.fromPkgManagerDefs}.
+ */
+export interface FromPkgManagerDefsOpts {
+  cwd?: string;
+  desiredPkgManagers?: Array<string | Readonly<PkgManagerSpec>>;
+}
+
+export interface PkgManagerOracleOpts {
+  fileManagerOpts?: FileManagerOpts;
+  getSystemPkgManagerVersion?: (bin: string) => Promise<string>;
+}
 
 /**
  * Options for {@link PkgManagerSpec}.
@@ -38,6 +53,127 @@ export interface PkgManagerSpecOpts {
    * @defaultValue `latest`
    */
   version?: string | SemVer;
+}
+
+/**
+ * @internal
+ * @todo The coupling here sucks. do something about it
+ */
+export class PkgManagerOracle {
+  #fm: FileManager;
+
+  #getSystemPkgManagerVersion: (bin: string) => Promise<string>;
+
+  constructor(opts: PkgManagerOracleOpts = {}) {
+    this.#getSystemPkgManagerVersion =
+      opts.getSystemPkgManagerVersion ?? getSystemPkgManagerVersion;
+    this.#fm = FileManager.create(opts.fileManagerOpts);
+  }
+
+  public static guessPackageManager(
+    this: void,
+    pkgManagerDefs: PkgManagerDef[],
+    cwd?: string,
+  ): Promise<Readonly<PkgManagerSpec>> {
+    return new PkgManagerOracle().guessPackageManager(pkgManagerDefs, cwd);
+  }
+
+  /**
+   * Given the `lockfile` specified in the provided {@link PkgManagerDef}
+   * objects, looks in `cwd` for them.
+   *
+   * Returns the first found.
+   *
+   * @param pkgManagerDefs - An array of `PkgManagerDef` objects.
+   * @param cwd - Path with ancestor `package.json` file
+   * @returns Package manager bin, if found
+   */
+  public async getPkgManagerFromLockfiles(
+    pkgManagerDefs: PkgManagerDef[],
+    cwd = process.cwd(),
+  ): Promise<string | undefined> {
+    // each PkgManagerDef is responsible for setting its lockfile
+    const lockfileMap = new Map(
+      pkgManagerDefs
+        .filter((def) => Boolean(def.lockfile))
+        .map((def) => [path.join(cwd, def.lockfile!), def.bin]),
+    );
+
+    const patterns = [...lockfileMap.keys()];
+
+    for await (const match of globIterate(patterns, {
+      fs: this.#fm.fs,
+      cwd,
+      absolute: false,
+    })) {
+      if (lockfileMap.has(match)) {
+        return lockfileMap.get(match)!;
+      }
+    }
+  }
+
+  /**
+   * Looks at the closest `package.json` to `cwd` in the `packageManager` field
+   * for a value.
+   *
+   * This should _not_ be a "system" package manager.
+   *
+   * @param cwd Path with ancestor `package.json` file.
+   * @returns Package manager spec, if found
+   */
+  public async getPkgManagerFromPackageJson(
+    cwd = process.cwd(),
+  ): Promise<Readonly<PkgManagerSpec> | undefined> {
+    const result = await this.#fm.findPkgUp(cwd);
+
+    const pkgManager = result?.packageJson.packageManager;
+
+    if (pkgManager) {
+      return PkgManagerSpec.from(pkgManager);
+    }
+  }
+
+  /**
+   * Attempts to guess which package manager to use if none were provided by the
+   * user.
+   *
+   * The strategy is:
+   *
+   * 1. Look for a `packageManager` field in the closest `package.json` from `cwd`
+   * 2. Look for a lockfile in the closest `package.json` from `cwd` that matches
+   *    one of the `lockfile` fields as specified by the {@link PkgManagerDef}
+   *    objects
+   * 3. Use the default package manager (npm)
+   *
+   * In the first case, we are assuming the field is a complete "package manager
+   * spec" (with version). In the other two cases, we don't know what version is
+   * involved, so we'll just use the "system" package manager.
+   *
+   * @param pkgManagerDefs - Package manager definitions as provided by plugins
+   * @param cwd - Current working directory having an ancestor `package.json`
+   *   file
+   * @returns Package manager spec
+   */
+  public async guessPackageManager(
+    pkgManagerDefs: PkgManagerDef[],
+    cwd = process.cwd(),
+  ): Promise<Readonly<PkgManagerSpec>> {
+    // this should be tried first, as it's "canonical"
+    let spec = await this.getPkgManagerFromPackageJson(cwd);
+
+    if (!spec) {
+      const pkgManager = await this.getPkgManagerFromLockfiles(
+        pkgManagerDefs,
+        cwd,
+      );
+      if (pkgManager) {
+        const version = await this.#getSystemPkgManagerVersion(pkgManager);
+        spec = PkgManagerSpec.create({pkgManager, version, isSystem: true});
+      }
+    }
+
+    return spec ?? PkgManagerSpec.create();
+  }
 }
 
 /**
@@ -151,7 +287,6 @@ export class PkgManagerSpec {
     this: void,
     opts?: PkgManagerSpecOpts,
   ): Promise<Readonly<PkgManagerSpec>>;
-
   public static async from(
     this: void,
     specOrOpts: Readonly<PkgManagerSpec> | PkgManagerSpecOpts | string = {},
@@ -186,6 +321,39 @@ export class PkgManagerSpec {
         : allegedVersion || DEFAULT_PKG_MANAGER_VERSION;
 
     return PkgManagerSpec.create({pkgManager, version, isSystem});
+  }
+
+  public static async fromMany(
+    specs: Iterable<PkgManagerSpec | string>,
+  ): Promise<Readonly<PkgManagerSpec>[]> {
+    return Promise.all([...specs].map((spec) => PkgManagerSpec.from(spec)));
+  }
+
+  /**
+   * Given a nonempty list of package manager definitions, resolves a list of
+   * {@link PkgManagerSpec} instances.
+   *
+   * This is guaranteed to return at least one {@link PkgManagerSpec} instance.
+   *
+   * @param defs - Package manager definitions
+   * @param opts - Options
+   * @returns One or more {@link PkgManagerSpec} instances representing available
+   *   package managers
+   */
+  public static async fromPkgManagerDefs(
+    this: void,
+    defs: NonEmptyArray<PkgManagerDef>,
+    {desiredPkgManagers = [], cwd = process.cwd()}: FromPkgManagerDefsOpts = {},
+  ): Promise<NonEmptyArray<Readonly<PkgManagerSpec>>> {
+    if (desiredPkgManagers.length) {
+      const specs = (await PkgManagerSpec.fromMany(
+        desiredPkgManagers,
+      )) as NonEmptyArray<Readonly<PkgManagerSpec>>;
+      if (specs.length) {
+        return specs;
+      }
+    }
+    return [await PkgManagerOracle.guessPackageManager(defs, cwd)];
   }
 
   /**
@@ -236,47 +404,6 @@ export class PkgManagerSpec {
     }
     return `${this.pkgManager}@${this.version}`;
   }
-
-  public static async fromMany(
-    specs: Iterable<PkgManagerSpec | string>,
-  ): Promise<Readonly<PkgManagerSpec>[]> {
-    return Promise.all([...specs].map((spec) => PkgManagerSpec.from(spec)));
-  }
-
-  /**
-   * Given a nonempty list of package manager definitions, resolves a list of
-   * {@link PkgManagerSpec} instances.
-   *
-   * This is guaranteed to return at least one {@link PkgManagerSpec} instance.
-   *
-   * @param defs - Package manager definitions
-   * @param opts - Options
-   * @returns One or more {@link PkgManagerSpec} instances representing available
-   *   package managers
-   */
-  public static async fromPkgManagerDefs(
-    this: void,
-    defs: NonEmptyArray<PkgManagerDef>,
-    {desiredPkgManagers = [], cwd = process.cwd()}: FromPkgManagerDefsOpts = {},
-  ): Promise<NonEmptyArray<Readonly<PkgManagerSpec>>> {
-    if (desiredPkgManagers.length) {
-      const specs = (await PkgManagerSpec.fromMany(
-        desiredPkgManagers,
-      )) as NonEmptyArray<Readonly<PkgManagerSpec>>;
-      if (specs.length) {
-        return specs;
-      }
-    }
-    return [await guessPackageManager(defs, cwd)];
-  }
-}
-
-/**
- * Options for {@link PkgManagerSpec.fromPkgManagerDefs}.
- */
-export interface FromPkgManagerDefsOpts {
-  cwd?: string;
-  desiredPkgManagers?: Array<string | Readonly<PkgManagerSpec>>;
 }
 
 /**
@@ -291,3 +418,5 @@ const PKG_MANAGER_SPEC_REGEX = /^([^@]+?)(?:@([^@]+))?$/;
  * private fields don't make it out.
  */
 const semvers = new WeakMap<PkgManagerSpec, SemVer>();
+
+export const {guessPackageManager} = PkgManagerOracle;

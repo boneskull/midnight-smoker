@@ -1,6 +1,6 @@
 import {type ReporterError} from '#error';
-import {type CtrlEmitted} from '#machine/controller';
-import {type MachineOutputError, type MachineOutputOk} from '#machine/util';
+import {type ControlMachineEmitted} from '#machine/controller';
+import {type ActorOutputError, type ActorOutputOk} from '#machine/util';
 import {type SomeReporter} from '#reporter/reporter';
 import {isEmpty} from 'lodash';
 import {assign, log, not, setup, type ActorRef} from 'xstate';
@@ -11,18 +11,18 @@ export type ReporterMachineOutput =
   | ReporterMachineOutputOk
   | ReporterMachineOutputError;
 
-export type ReporterMachineOutputError = MachineOutputError;
+export type ReporterMachineOutputError = ActorOutputError;
 
-export type ReporterMachineOutputOk = MachineOutputOk;
+export type ReporterMachineOutputOk = ActorOutputOk;
 
 export interface ReporterMachineContext extends ReporterMachineInput {
   error?: ReporterError;
-  queue: CtrlEmitted[];
+  queue: ControlMachineEmitted[];
   shouldHalt: boolean;
 }
 
 export interface ReporterMachineInput {
-  emitter: ActorRef<any, any, CtrlEmitted>;
+  emitter: ActorRef<any, any, ControlMachineEmitted>;
   reporter: SomeReporter;
 }
 
@@ -50,7 +50,7 @@ export const ReporterMachine = setup({
       error: (_, {error}: {error: ReporterError}) => error,
     }),
     enqueue: assign({
-      queue: ({context: {queue}}, {event}: {event: CtrlEmitted}) => [
+      queue: ({context: {queue}}, {event}: {event: ControlMachineEmitted}) => [
         ...queue,
         event,
       ],
@@ -97,11 +97,13 @@ export const ReporterMachine = setup({
         description: 'Enqueue the event for re-emission to the reporter',
         guard: {type: 'shouldListen'},
         actions: [
+          // log(({event}) => `enqueueing event: ${event.event.type}`),
           {
             type: 'enqueue',
             params: ({event: {event}}) => ({event}),
           },
         ],
+        target: '#ReporterMachine.draining',
       },
     ],
   },

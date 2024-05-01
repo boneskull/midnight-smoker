@@ -23,14 +23,12 @@ export const nullPmDef: PkgManagerDef = {
   },
   async pack() {
     await scheduler.wait(1500);
-    return [
-      {
-        pkgSpec: `${TEST_TMPDIR}/bar.tgz`,
-        pkgName: 'bar',
-        cwd: TEST_TMPDIR,
-        installPath: `${TEST_TMPDIR}/node_modules/bar`,
-      },
-    ];
+    return {
+      pkgSpec: `${TEST_TMPDIR}/bar.tgz`,
+      pkgName: 'bar',
+      cwd: TEST_TMPDIR,
+      installPath: `${TEST_TMPDIR}/node_modules/bar`,
+    };
   },
   async runScript() {
     await scheduler.wait(1500);

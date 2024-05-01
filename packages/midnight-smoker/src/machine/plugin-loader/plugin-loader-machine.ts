@@ -6,26 +6,26 @@ import {
   type ReifierOutput,
 } from '#machine/reifier';
 import {
-  assertMachineOutputNotOk,
-  assertMachineOutputOk,
-  isMachineOutputNotOk,
-  isMachineOutputOk,
+  assertActorOutputNotOk,
+  assertActorOutputOk,
+  isActorOutputNotOk,
+  isActorOutputOk,
   makeId,
   monkeypatchActorLogger,
-  type MachineOutput,
-  type MachineOutputError,
-  type MachineOutputOk,
+  type ActorOutput,
+  type ActorOutputError,
+  type ActorOutputOk,
 } from '#machine/util';
 import {type SmokerOptions} from '#options';
 import {type PkgManager} from '#pkg-manager';
 import {type PluginRegistry} from '#plugin';
 import {type SomeReporter} from '#reporter';
-import {type Executor, type SomeRule} from '#schema';
+import {type Executor, type SomeRule, type WorkspaceInfo} from '#schema';
 import {type FileManager} from '#util';
+import {isEmpty} from 'lodash';
 import {
   assign,
   enqueueActions,
-  fromPromise,
   log,
   not,
   sendTo,
@@ -33,6 +33,13 @@ import {
   type ActorRefFrom,
   type AnyActorRef,
 } from 'xstate';
+import {
+  pruneTempDirs,
+  setupPkgManagers,
+  setupReporters,
+  teardownPkgManagers,
+  teardownReporters,
+} from './plugin-loader-actors';
 
 export interface PluginLoaderMachineInput {
   pluginRegistry: PluginRegistry;
@@ -41,11 +48,12 @@ export interface PluginLoaderMachineInput {
   defaultExecutor: Executor;
   smokerOptions: SmokerOptions;
   parentRef: AnyActorRef;
+  workspaceInfo: WorkspaceInfo[];
 }
 
-export type PluginLoaderMachineOutputOk = MachineOutputOk;
+export type PluginLoaderMachineOutputOk = ActorOutputOk;
 
-export type PluginLoaderMachineOutputError = MachineOutputError;
+export type PluginLoaderMachineOutputError = ActorOutputError;
 
 export type PluginLoaderMachineOutput =
   | PluginLoaderMachineOutputOk
@@ -85,42 +93,6 @@ export interface AssignReifiedComponentsParams {
 }
 
 /**
- * Executes the {@link PkgManager.teardown} method on all package managers.
- */
-const teardownPkgManagers = fromPromise<void, PkgManager[]>(
-  async ({input: pkgManagers}): Promise<void> => {
-    await Promise.all(pkgManagers.map((pkgManager) => pkgManager.teardown()));
-  },
-);
-
-/**
- * Executes the {@link PkgManager.setup} method on all package managers.
- */
-const setupPkgManagers = fromPromise<void, PkgManager[]>(
-  async ({input: pkgManagers}): Promise<void> => {
-    await Promise.all(pkgManagers.map((pkgManager) => pkgManager.setup()));
-  },
-);
-
-/**
- * Executes the {@link Reporter.setup} method on all reporters.
- */
-const setupReporters = fromPromise<void, SomeReporter[]>(
-  async ({input: reporters}): Promise<void> => {
-    await Promise.all(reporters.map((reporter) => reporter.setup()));
-  },
-);
-
-/**
- * Executes the {@link Reporter.teardown} method on all reporters.
- */
-const teardownReporters = fromPromise<void, SomeReporter[]>(
-  async ({input: reporters}): Promise<void> => {
-    await Promise.all(reporters.map((reporter) => reporter.teardown()));
-  },
-);
-
-/**
  * This is mainly here to make `ControlMachine` smaller.
  *
  * When loading, `ControlMachine` will spawn one of these. It reifies (via _n_
@@ -147,6 +119,7 @@ export const PluginLoaderMachine = setup({
     teardownPkgManagers,
     setupReporters,
     teardownReporters,
+    pruneTempDirs,
   },
   actions: {
     /**
@@ -181,7 +154,8 @@ export const PluginLoaderMachine = setup({
           fileManager: fm,
           systemExecutor,
           defaultExecutor,
-          smokerOptions: smokerOpts,
+          smokerOptions,
+          workspaceInfo,
         },
         spawn,
       }) =>
@@ -195,12 +169,13 @@ export const PluginLoaderMachine = setup({
                 pluginRegistry,
                 pkgManager: {
                   fm,
-                  cwd: smokerOpts.cwd,
+                  cwd: smokerOptions.cwd,
                   systemExecutor,
                   defaultExecutor,
                 },
-                smokerOpts,
+                smokerOptions,
                 component: LoadableComponents.All,
+                workspaceInfo,
               },
             });
 
@@ -251,16 +226,19 @@ export const PluginLoaderMachine = setup({
     ),
   },
   guards: {
+    shouldPruneTempDirs: ({
+      context: {
+        pkgManagers,
+        smokerOptions: {linger},
+      },
+    }) => !isEmpty(pkgManagers) && !linger,
     hasError: ({context: {error}}) => Boolean(error),
     notHasError: not('hasError'),
-    isMachineOutputOk: (_, output: MachineOutput) => isMachineOutputOk(output),
-    isMachineOutputNotOk: (_, output: MachineOutput) =>
-      isMachineOutputNotOk(output),
+    isMachineOutputOk: (_, output: ActorOutput) => isActorOutputOk(output),
+    isMachineOutputNotOk: (_, output: ActorOutput) =>
+      isActorOutputNotOk(output),
   },
 }).createMachine({
-  /**
-   * @xstate-layout N4IgpgJg5mDOIC5QAUA2BXKBLAdgGQHsBDCMAJwFkiBjAC1zADpViJcoBiAD1gBcjeTCARxMavAmUYAlMFgBmWclToNGAKgDaABgC6iUAAcCsLLywiDILogBsAJgA0IAJ6IArAE4AjI2+eHAGZA+08AFjDA7wB2AF9Y5zRMXEISZRp6UWZWdm4+ASERMWoJKVkFJUoMtS1vfSQQY1NzSwabBDD7AA5GWzDtW21orqj7KLDnNwR7MNtGd0DPJfdohy6uz0DbeMSMbHxWdNUs2DBedEMOYRP+QUYk-dTSKuOmU-PDHXqjEzMLHCs7W82n6jE8XUitlsSy69m0nmik0QnlCjAh0XstkCQ1s3gh9h2IAeKUOL0ybzOFyuRUY+TuxIOaTJaneF00dSsTT+rVAQJB2jBEK20PBcIRSIQ3kxvjC4OxCIi3S6hIZTyO5NplMMjDIYGMZEEZFgmo+sn1htg1KyuAAbgQANZMVWklQa1na3Xm8jG91myQWhC2gjUAT-L5fTm-FoAtqIQLRXwDGbhBPabH2bwS4EJ+baLoY4JjQLuZUJIl7ElM10srU6vX+70mi5+g3ejjkMiSRiGVACeSSAC29wrjOe1ZOtc9DaNTcMLYDQZD0fDekjzX+gLjOaTsrCqfTmdcyPcvi67hmDmiQ28fTiZedVeqE4+3ftUCoOCIMBn7uQb4-X5ttcTBBo6w7JKO6o1i+hj-kQn7fj6Wp-u+8GAUagY4HaS5hnoEYNFy0abggiyBGCSwIkMKwYl0thZpEPQzFEaaeNowKse4KojmqzLPhcr6oQhja-nBQlGu2ZCdlIPZ9oO4GPC6T4UjBonoUhHwoQBiGYdhoYiCu3yNFGG6xiRmzkUsV7RNR3R0UekpRD0Ja2EK3RhBs0RhFxEE8eOTC6iQLgcAAKgAogAgtIAAiADyADqABy+E-OuPLWIgMR4n4-S2F4uJ9LY0SIvZATRH4WzBJsGzots97cYpryMIIRBkMIADuOBWm8txOvVj6Nc1rUEB1yVGalMa8ogcLRJ4jCjOeIIRO5h5TJs7i5vmYzuCW3jOd5Cn9Rqg3tZ1wG0j18mVmOSlNWALUneyhmESZk3TEMs3zXCS3LVmbHrfi2grLRWKrJ48RljgBCkPADQPtdrxrtyE3pQgAC09jFVMGJoi5SaBLC2Jpt4+1XVBWQsCQ7CI0RpmdBK9gzHNuM7WEJ4bLlJOQbxykXNTL0oxmEouWVZ4zFesJeJ5nO+Td7p1l6Rp82l7TQhKXT+Gi56zIVULuNCXl1T5DVupO9atj+Wrzt6SvI0CMQSp4JbzN4pEOOCV5RNLxvQfxU7m8awE28RKxkWemzWf4ybeBMJXDM7izAi76zZl7h0+9qsGCWpQemar9neHiczOeigQROmqfwybKlZ4hs6aWhiE569BeYxlITrTMIw3vmfTFrVuxG2nfEZ6pteBwRxnK3YGvRKX8ZsXmAwrFmpcd+5oTXrlkQGwPB2V2oAUQFMKVI8R0cZoKDGO3rN7uQ7Ll+NZq8Zo7wScYbe9k0wx3Dcjz1T5KCEs1WJYjTGEaOnRwhqxzDEBY6xFh60KhXL+t17q-wElpa2E9xpnw8mCAY2JS4QNCDHKYwI0yP3cJ0BMes5R3l3qTbmqChodXltOGGJ8abNx8GRROgw0znnCBEX6uJehPyhOAma4xkFMI7JISATcBZbHWsMKU+UZqeVnlmMYZVdbaH0WMaOeYd7lkHvvLI49OH83aGMcEjAPYFxcnrWULkHYFzEYI8EiD1ilniEAA
-   */
   context: ({input}) => ({...input, reifierMachineRefs: {}}),
   initial: 'loading',
   id: 'PluginLoaderMachine',
@@ -281,7 +259,7 @@ export const PluginLoaderMachine = setup({
               {
                 type: 'assignError',
                 params: ({event: {output}}) => {
-                  assertMachineOutputNotOk(output);
+                  assertActorOutputNotOk(output);
                   return {error: output.error};
                 },
               },
@@ -301,7 +279,7 @@ export const PluginLoaderMachine = setup({
               {
                 type: 'assignReifiedComponents',
                 params: ({event: {output}}) => {
-                  assertMachineOutputOk(output);
+                  assertActorOutputOk(output);
                   return output;
                 },
               },
@@ -422,66 +400,91 @@ export const PluginLoaderMachine = setup({
       },
     },
     teardown: {
-      type: 'parallel',
       description: 'Runs the "teardown" lifecycle for reified components',
+      initial: 'teardownPkgManagers',
       states: {
-        pkgManagers: {
-          initial: 'teardownPkgManagers',
-          states: {
-            teardownPkgManagers: {
-              description:
-                'Runs the "teardown" lifecycle for reified PkgManagers',
-              entry: [log('tearing down pkg managers...')],
-              invoke: {
-                src: 'teardownPkgManagers',
-                input: ({context: {pkgManagers = []}}) => pkgManagers,
-                onError: {
-                  actions: [
-                    {
-                      type: 'assignError',
-                      params: ({event: {error}}) => ({error}),
-                    },
-                  ],
-                  target: '#PluginLoaderMachine.teardown.pkgManagers.done',
-                },
-                onDone: {
-                  target: '#PluginLoaderMachine.teardown.pkgManagers.done',
-                },
+        teardownPkgManagers: {
+          description: 'Runs the "teardown" lifecycle for reified PkgManagers',
+          entry: [log('tearing down pkg managers...')],
+          invoke: {
+            src: 'teardownPkgManagers',
+            input: ({context: {pkgManagers = []}}) => pkgManagers,
+            onError: [
+              {
+                guard: {type: 'shouldPruneTempDirs'},
+                actions: [
+                  {
+                    type: 'assignError',
+                    params: ({event: {error}}) => ({error}),
+                  },
+                ],
+                target: '#PluginLoaderMachine.teardown.pruningTempDirs',
               },
+              {
+                actions: [
+                  {
+                    type: 'assignError',
+                    params: ({event: {error}}) => ({error}),
+                  },
+                ],
+                target: '#PluginLoaderMachine.teardown.teardownReporters',
+              },
+            ],
+            onDone: [
+              {
+                guard: {type: 'shouldPruneTempDirs'},
+                target: '#PluginLoaderMachine.teardown.pruningTempDirs',
+              },
+              {
+                target: '#PluginLoaderMachine.teardown.teardownReporters',
+              },
+            ],
+          },
+        },
+        pruningTempDirs: {
+          entry: [log('pruning temp dirs...')],
+          invoke: {
+            src: 'pruneTempDirs',
+            input: ({context: {pkgManagers = [], fileManager}}) => ({
+              pkgManagers,
+              fileManager,
+            }),
+            onDone: {
+              target: '#PluginLoaderMachine.teardown.teardownReporters',
             },
-            done: {
-              type: 'final',
+            onError: {
+              actions: [
+                {
+                  type: 'assignError',
+                  params: ({event: {error}}) => ({error}),
+                },
+              ],
+              target: '#PluginLoaderMachine.teardown.teardownReporters',
             },
           },
         },
-        reporters: {
-          initial: 'teardownReporters',
-          states: {
-            teardownReporters: {
-              description:
-                'Runs the "teardown" lifecycle for reified Reporters',
-              entry: [log('tearing down reporters...')],
-              invoke: {
-                src: 'teardownReporters',
-                input: ({context: {reporters = []}}) => reporters,
-                onDone: {
-                  target: '#PluginLoaderMachine.teardown.reporters.done',
-                },
-                onError: {
-                  actions: [
-                    {
-                      type: 'assignError',
-                      params: ({event: {error}}) => ({error}),
-                    },
-                  ],
-                  target: '#PluginLoaderMachine.teardown.reporters.done',
-                },
-              },
+        teardownReporters: {
+          description: 'Runs the "teardown" lifecycle for reified Reporters',
+          entry: [log('tearing down reporters...')],
+          invoke: {
+            src: 'teardownReporters',
+            input: ({context: {reporters = []}}) => reporters,
+            onDone: {
+              target: '#PluginLoaderMachine.teardown.teardownComplete',
             },
-            done: {
-              type: 'final',
+            onError: {
+              actions: [
+                {
+                  type: 'assignError',
+                  params: ({event: {error}}) => ({error}),
+                },
+              ],
+              target: '#PluginLoaderMachine.teardown.teardownComplete',
             },
           },
+        },
+        teardownComplete: {
+          type: 'final',
         },
       },
       onDone: [

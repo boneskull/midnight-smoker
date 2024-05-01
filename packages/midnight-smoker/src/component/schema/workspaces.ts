@@ -1,5 +1,9 @@
+import {
+  NonEmptyStringArraySchema,
+  NonEmptyStringSchema,
+} from '#util/schema-util';
+import {type Opaque} from 'type-fest';
 import {z} from 'zod';
-import {NonEmptyStringArraySchema} from '../../util';
 
 export const WorkspacesSchema = NonEmptyStringArraySchema;
 
@@ -11,3 +15,13 @@ export const WorkspacesConfigSchema = WorkspacesSchema.or(
     .transform(({packages}) => packages)
     .pipe(WorkspacesSchema),
 );
+
+export const WorkspaceInfoSchema = z.object({
+  pkgName: NonEmptyStringSchema,
+  localPath: NonEmptyStringSchema,
+});
+
+export type WorkspaceInfo = Opaque<
+  z.infer<typeof WorkspaceInfoSchema>,
+  'WorkspaceInfo'
+>;

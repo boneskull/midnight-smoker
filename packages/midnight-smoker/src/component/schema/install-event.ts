@@ -1,9 +1,10 @@
 import {InstallError} from '#error/install-error';
-import {type InstallEvent} from '#event/event-constants';
+import {InstallEvent} from '#event/event-constants';
 import {InstallManifestSchema} from '#schema/install-manifest';
 import {
   NonEmptyNonEmptyStringArraySchema,
   NonEmptyStringArraySchema,
+  NonEmptyStringSchema,
   NonNegativeIntSchema,
   instanceofSchema,
 } from '#util/schema-util';
@@ -59,6 +60,12 @@ export type InstallEventData = {
    * @event
    */
   [InstallEvent.PkgManagerInstallFailed]: PkgManagerInstallFailedEventData;
+
+  [InstallEvent.PkgInstallBegin]: PkgInstallBeginEventData;
+
+  [InstallEvent.PkgInstallOk]: PkgInstallOkEventData;
+
+  [InstallEvent.PkgInstallFailed]: PkgInstallFailedEventData;
 };
 
 export type InstallFailedEventData = z.infer<
@@ -66,6 +73,16 @@ export type InstallFailedEventData = z.infer<
 >;
 
 export type InstallOkEventData = z.infer<typeof InstallOkEventDataSchema>;
+
+export type PkgInstallBeginEventData = z.infer<
+  typeof PkgInstallBeginEventDataSchema
+>;
+
+export type PkgInstallFailedEventData = z.infer<
+  typeof PkgInstallFailedEventDataSchema
+>;
+
+export type PkgInstallOkEventData = z.infer<typeof PkgInstallOkEventDataSchema>;
 
 export type PkgManagerInstallBeginEventData = z.infer<
   typeof PkgManagerInstallBeginEventDataSchema
@@ -141,3 +158,32 @@ export const PkgManagerInstallFailedEventDataSchema =
   PkgManagerInstallBeginEventDataSchema.extend({
     error: instanceofSchema(InstallError),
   });
+
+export const PkgInstallEventBaseDataSchema = InstallManifestSchema.extend({
+  localPath: NonEmptyStringSchema,
+  currentPkg: NonNegativeIntSchema,
+  totalPkgs: NonNegativeIntSchema,
+  pkgManager: StaticPkgManagerSpecSchema,
+});
+
+export const PkgInstallBeginEventDataSchema = PkgInstallEventBaseDataSchema;
+
+export const PkgInstallOkEventDataSchema = PkgInstallEventBaseDataSchema;
+
+export const PkgInstallFailedEventDataSchema =
+  PkgInstallBeginEventDataSchema.extend({
+    error: instanceofSchema(InstallError),
+  });
+
+export const InstallEventSchemas = {
+  [InstallEvent.InstallBegin]: InstallBeginEventDataSchema,
+  [InstallEvent.InstallOk]: InstallOkEventDataSchema,
+  [InstallEvent.InstallFailed]: InstallFailedEventDataSchema,
+  [InstallEvent.PkgManagerInstallBegin]: PkgManagerInstallBeginEventDataSchema,
+  [InstallEvent.PkgManagerInstallOk]: PkgManagerInstallOkEventDataSchema,
+  [InstallEvent.PkgManagerInstallFailed]:
+    PkgManagerInstallFailedEventDataSchema,
+  [InstallEvent.PkgInstallBegin]: PkgInstallBeginEventDataSchema,
+  [InstallEvent.PkgInstallOk]: PkgInstallOkEventDataSchema,
+  [InstallEvent.PkgInstallFailed]: PkgInstallFailedEventDataSchema,
+} as const;

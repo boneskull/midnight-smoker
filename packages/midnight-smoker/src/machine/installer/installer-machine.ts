@@ -21,24 +21,24 @@ import {
   type ActorRefFrom,
   type AnyActorRef,
 } from 'xstate';
-import {type PackResult} from '../packer/packer-machine';
+import {type PkgManagerPackResult} from '../packer/pack-machine-types';
 import {
-  assertMachineOutputNotOk,
-  assertMachineOutputOk,
-  isMachineOutputNotOk,
-  isMachineOutputOk,
+  assertActorOutputNotOk,
+  assertActorOutputOk,
+  isActorOutputNotOk,
+  isActorOutputOk,
   makeId,
   monkeypatchActorLogger,
-  type MachineOutputError,
+  type ActorOutputError,
+  type ActorOutputOk,
   type MachineOutputLike,
-  type MachineOutputOk,
 } from '../util';
+import {InstallMachine} from './install-machine';
 import {
-  InstallMachine,
   type InstallMachineError,
   type InstallMachineOk,
   type InstallMachineOutput,
-} from './install-machine';
+} from './install-machine-types';
 import {type InstallerMachineEvents} from './installer-machine-events';
 
 export interface InstallerMachineInput {
@@ -47,18 +47,16 @@ export interface InstallerMachineInput {
 }
 
 export interface InstallerMachineContext extends InstallerMachineInput {
-  queue: PackResult[];
+  queue: PkgManagerPackResult[];
   installMachineRefs: Record<string, ActorRefFrom<typeof InstallMachine>>;
   error?: InstallError;
   shouldFlush: boolean;
   manifests: InstallManifest[];
 }
 
-export type InstallerMachineOutputError = MachineOutputError<InstallError>;
+export type InstallerMachineOutputError = ActorOutputError<InstallError>;
 
-export type InstallerMachineOutputOk = MachineOutputOk<{
-  manifests: InstallManifest[];
-}>;
+export type InstallerMachineOutputOk = ActorOutputOk;
 
 export type InstallerMachineOutput =
   | InstallerMachineOutputOk
@@ -85,7 +83,7 @@ export const InstallerMachine = setup({
   },
   actions: {
     enqueue: assign({
-      queue: ({context: {queue}}, packResult: PackResult) => [
+      queue: ({context: {queue}}, packResult: PkgManagerPackResult) => [
         ...queue,
         packResult,
       ],
@@ -174,9 +172,12 @@ export const InstallerMachine = setup({
         error,
       }),
     ),
-    sendWillInstallEvent: sendTo(({context: {parentRef}}) => parentRef, <
-      CtrlInstallBeginEvent
-    >{type: 'INSTALL_BEGIN'}),
+    sendInstallBeginEvent: sendTo(
+      ({context: {parentRef}}) => parentRef,
+      (): CtrlInstallBeginEvent => ({
+        type: 'INSTALL_BEGIN',
+      }),
+    ),
     assignError: assign({
       error: (_, error: InstallError) => error,
     }),
@@ -192,11 +193,12 @@ export const InstallerMachine = setup({
   guards: {
     shouldFlush: ({context: {shouldFlush}}) => shouldFlush,
     isQueueEmpty: ({context: {queue}}) => !queue.length,
-    installOk: (_, output: InstallMachineOutput) => isMachineOutputOk(output),
+    installOk: (_, output: InstallMachineOutput) => isActorOutputOk(output),
     installNotOk: (_, output: InstallMachineOutput) =>
-      isMachineOutputNotOk(output),
+      isActorOutputNotOk(output),
     isDoneInstalling: ({context: {installMachineRefs}}) =>
       isEmpty(installMachineRefs),
+    hasError: ({context: {error}}) => Boolean(error),
   },
 }).createMachine({
   context: ({input}) => ({
@@ -208,6 +210,10 @@ export const InstallerMachine = setup({
   }),
   initial: 'draining',
   id: 'InstallerMachine',
+  always: {
+    guard: 'hasError',
+    actions: [log(({context: {error}}) => `ERROR: ${error?.message}`)],
+  },
   on: {
     PACKING_COMPLETE: {
       actions: [
@@ -221,7 +227,7 @@ export const InstallerMachine = setup({
         guard: not('shouldFlush'),
         actions: [
           log(({event}) => `enqueueing for ${event.pkgManager.spec}`),
-          {type: 'sendWillInstallEvent'},
+          {type: 'sendInstallBeginEvent'},
           {type: 'enqueue', params: ({event}) => event},
         ],
       },
@@ -238,6 +244,9 @@ export const InstallerMachine = setup({
         },
       ],
     },
+    PKG_INSTALL_BEGIN: {},
+    PKG_INSTALL_OK: {},
+    PKG_INSTALL_FAILED: {},
     'xstate.done.actor.InstallMachine.*': [
       {
         guard: {
@@ -249,14 +258,14 @@ export const InstallerMachine = setup({
           {
             type: 'assignManifests',
             params: ({event: {output}}) => {
-              assertMachineOutputOk(output);
+              assertActorOutputOk(output);
               return output;
             },
           },
           {
             type: 'sendPkgManagerInstallOkEvent',
             params: ({event: {output}}) => {
-              assertMachineOutputOk(output);
+              assertActorOutputOk(output);
               return output;
             },
           },
@@ -279,14 +288,14 @@ export const InstallerMachine = setup({
           {
             type: 'assignError',
             params: ({event: {output}}) => {
-              assertMachineOutputNotOk(output);
+              assertActorOutputNotOk(output);
               return output.error;
             },
           },
           {
             type: 'sendPkgManagerInstallFailedEvent',
             params: ({event: {output}}) => {
-              assertMachineOutputNotOk(output);
+              assertActorOutputNotOk(output);
               return output;
             },
           },
@@ -304,12 +313,12 @@ export const InstallerMachine = setup({
       always: [
         {
           guard: not('isQueueEmpty'),
-          actions: [log('draining queue'), {type: 'drain'}],
+          actions: [{type: 'drain'}],
         },
         {
           guard: and(['isQueueEmpty', 'shouldFlush', 'isDoneInstalling']),
           target: 'done',
-          actions: [log('no more events to process')],
+          actions: [log('no more events to process; stopping')],
         },
       ],
     },
@@ -317,6 +326,6 @@ export const InstallerMachine = setup({
       type: 'final',
     },
   },
-  output: ({self: {id}, context: {error, manifests}}) =>
-    error ? {type: 'ERROR', error, id} : {type: 'OK', id, manifests},
+  output: ({self: {id}, context: {error}}) =>
+    error ? {type: 'ERROR', error, id} : {type: 'OK', id},
 });

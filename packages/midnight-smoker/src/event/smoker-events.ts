@@ -12,3 +12,18 @@ export type SmokerEvents = InstallEventData &
   LintEventData &
   ScriptEventData &
   SmokerEventData;
+
+/**
+ * All events emitted by `midnight-smoker`
+ */
+
+export type EventName = keyof SmokerEvents;
+
+/**
+ * Data associated with a specific event
+ *
+ * @template T - The event
+ */
+export type EventData<T extends EventName> = {
+  [K in T]: {type: K} & SmokerEvents[K];
+}[T];

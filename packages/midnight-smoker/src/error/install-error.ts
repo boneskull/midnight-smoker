@@ -9,7 +9,7 @@ import {BaseSmokerError} from './base-error';
 export class InstallError extends BaseSmokerError<
   {
     pkgManager: string;
-    installSpecs: string[];
+    pkgSpec: string;
     cwd: string;
     exitCode?: number;
     output?: string;
@@ -22,7 +22,7 @@ export class InstallError extends BaseSmokerError<
   constructor(
     message: string,
     pkgManager: string | PkgManagerSpec,
-    installSpecs: string[],
+    pkgSpec: string,
     cwd: string,
     {
       error,
@@ -32,10 +32,10 @@ export class InstallError extends BaseSmokerError<
     execError?: ExecError,
   ) {
     super(
-      `Package manager ${pkgManager} failed to install ${installSpecs.join(
-        ', ',
-      )} in dir ${cwd}: ${red(message)}`,
-      {pkgManager: `${pkgManager}`, installSpecs, cwd, exitCode, output, error},
+      `Package manager ${pkgManager} failed to install "${pkgSpec}" in dir ${cwd}: ${red(
+        message,
+      )}`,
+      {pkgManager: `${pkgManager}`, pkgSpec, cwd, exitCode, output, error},
       execError,
     );
   }

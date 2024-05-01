@@ -25,7 +25,13 @@ const BASE_CFG_FILENAMES = [
 ] as const;
 
 const DEFAULT_OPTS = Object.freeze<LilconfigOpts>({
-  loaders: {'.mjs': loadEsm, '.js': loadEsm, '.ts': loadTs},
+  loaders: {
+    '.mjs': loadEsm,
+    '.js': loadEsm,
+    '.ts': loadTs,
+    '.mts': loadTs,
+    '.cts': loadTs,
+  },
   searchPlaces: [
     'package.json',
     ...BASE_CFG_FILENAMES.flatMap((name) => [
@@ -34,6 +40,8 @@ const DEFAULT_OPTS = Object.freeze<LilconfigOpts>({
       `${name}.cjs`,
       `${name}.mjs`,
       `${name}.ts`,
+      `${name}.mts`,
+      `${name}.cts`,
     ]),
   ],
 });

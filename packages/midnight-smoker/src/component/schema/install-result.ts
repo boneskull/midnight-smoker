@@ -1,9 +1,9 @@
 import {ExecResultSchema} from '#schema/exec-result';
-import {InstallManifestsSchema} from '#schema/install-manifest';
+import {InstallManifestSchema} from '#schema/install-manifest';
 import {z} from 'zod';
 
 export const InstallResultSchema = z.object({
-  installManifests: InstallManifestsSchema,
+  installManifest: InstallManifestSchema,
   rawResult: ExecResultSchema,
 });
 

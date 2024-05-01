@@ -6,9 +6,6 @@
 
 import {type ReporterDef} from 'midnight-smoker/reporter';
 import {RuleSeverities} from 'midnight-smoker/rule';
-import {PassThrough} from 'stream';
-
-const nullStream = new PassThrough();
 
 function nonZeroExitListener() {
   process.exitCode = 1;
@@ -24,8 +21,6 @@ export const ExitListener: ReporterDef = {
   name: 'exit',
   when: () => true,
   isHidden: true,
-  stdout: nullStream, // should never write to stdout
-  stderr: nullStream, // should never write to stderr
   description: 'Determines when to set the process exit code to 1',
   onSmokeFailed: nonZeroExitListener,
   onPackFailed: nonZeroExitListener,

@@ -1,9 +1,9 @@
-import {type CtrlEmitted} from '#machine/controller';
+import {type ControlMachineEmitted} from '#machine/controller';
 import {type SomeReporter} from '#reporter/reporter';
 import {fromPromise} from 'xstate';
 
 export interface DrainQueueInput {
-  queue: CtrlEmitted[];
+  queue: ControlMachineEmitted[];
   reporter: SomeReporter;
 }
 

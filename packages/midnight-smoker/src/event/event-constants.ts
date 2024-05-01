@@ -28,6 +28,10 @@ export const InstallEvent = {
    * {@inheritDoc SmokerEvents.InstallOk}
    */
   PkgManagerInstallOk: 'PkgManagerInstallOk',
+
+  PkgInstallBegin: 'PkgInstallBegin',
+  PkgInstallFailed: 'PkgInstallFailed',
+  PkgInstallOk: 'PkgInstallOk',
 } as const;
 
 export const PackEvent = {
@@ -60,6 +64,10 @@ export const PackEvent = {
    * {@inheritDoc SmokerEvents.PkgManagerPackOk}
    */
   PkgManagerPackOk: 'PkgManagerPackOk',
+
+  PkgPackOk: 'PkgPackOk',
+  PkgPackBegin: 'PkgPackBegin',
+  PkgPackFailed: 'PkgPackFailed',
 } as const;
 
 export const ScriptEvent = {

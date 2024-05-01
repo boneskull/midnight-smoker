@@ -5,7 +5,7 @@ import {
   SYSTEM_EXECUTOR_ID,
 } from '#constants';
 import {fromUnknownError} from '#error';
-import {type MachineOutputError, type MachineOutputOk} from '#machine/util';
+import {type ActorOutputError, type ActorOutputOk} from '#machine/util';
 import {type SmokerOptions} from '#options';
 import {PkgManager} from '#pkg-manager';
 import {type PluginMetadata, type PluginRegistry} from '#plugin';
@@ -18,8 +18,10 @@ import {
   type ReporterDef,
   type SomeRule,
   type SomeRuleDef,
+  type WorkspaceInfo,
 } from '#schema';
 import {type FileManager} from '#util';
+import {isEmpty} from 'lodash';
 import assert from 'node:assert';
 import {
   type PackageJson,
@@ -33,7 +35,6 @@ import {
   createPkgManagerContexts,
   createReporterContexts,
   loadPkgManagers,
-  queryWorkspaces,
   readSmokerPackageJson,
   type CreatePkgManagerContextsInput,
   type CreateReporterContextsInput,
@@ -63,9 +64,10 @@ export interface ReifierPkgManagerParams {
 export interface BaseReifierInput {
   plugin: Readonly<PluginMetadata>;
   pluginRegistry: PluginRegistry;
-  smokerOpts: SmokerOptions;
+  smokerOptions: SmokerOptions;
   pkgManager?: ReifierPkgManagerParams;
   component?: LoadableComponent;
+  workspaceInfo: WorkspaceInfo[];
 }
 
 export type ReifierInputForPkgManagers = Simplify<
@@ -96,16 +98,15 @@ export type ReifierContext = ReifierInput & {
   reporters?: SomeReporter[];
   ruleDefsWithCtx?: RuleDefWithCtx[];
   rules?: SomeRule[];
-  workspaces: Record<string, string>;
 };
 
-export type ReifierOutputOk = MachineOutputOk<{
+export type ReifierOutputOk = ActorOutputOk<{
   pkgManagers: PkgManager[];
   reporters: SomeReporter[];
   rules: SomeRule[];
 }>;
 
-export type ReifierOutputError = MachineOutputError;
+export type ReifierOutputError = ActorOutputError;
 
 export type ReifierOutput = ReifierOutputOk | ReifierOutputError;
 
@@ -127,7 +128,7 @@ export const ReifierMachine = setup({
   },
   actions: {
     assignWorkspaces: assign({
-      workspaces: (_, workspaces: Record<string, string>) => workspaces,
+      workspaceInfo: (_, workspaces: WorkspaceInfo[]) => workspaces,
     }),
     assignError: assign({
       error: (_, {error}: {error: unknown}) => fromUnknownError(error),
@@ -175,7 +176,7 @@ export const ReifierMachine = setup({
 
     assignEnabledReporterDefs: assign({
       enabledReporterDefs: ({context}) => {
-        const {plugin, pluginRegistry, smokerOpts} = context;
+        const {plugin, pluginRegistry, smokerOptions: smokerOpts} = context;
         return plugin.getEnabledReporterDefs(
           smokerOpts,
           pluginRegistry.getComponentId.bind(pluginRegistry),
@@ -185,7 +186,7 @@ export const ReifierMachine = setup({
 
     assignEnabledRuleDefs: assign({
       enabledRuleDefs: ({context}) => {
-        const {plugin, smokerOpts, pluginRegistry} = context;
+        const {plugin, smokerOptions: smokerOpts, pluginRegistry} = context;
         return [...plugin.ruleDefMap.values()].filter((def) => {
           const id = pluginRegistry.getComponentId(def);
           return smokerOpts.rules[id].severity !== RuleSeverities.Off;
@@ -240,7 +241,6 @@ export const ReifierMachine = setup({
     }),
   },
   actors: {
-    queryWorkspaces,
     readSmokerPkgJson: readSmokerPackageJson,
     loadPkgManagers,
     createReporterContexts,
@@ -279,7 +279,7 @@ export const ReifierMachine = setup({
       component = LoadableComponents.All,
       plugin,
       pluginRegistry,
-      smokerOpts,
+      smokerOptions: smokerOpts,
       ...input
     },
   }): ReifierContext => {
@@ -295,11 +295,10 @@ export const ReifierMachine = setup({
       component,
       plugin,
       pluginRegistry,
-      smokerOpts,
+      smokerOptions: smokerOpts,
       ...input,
       enabledReporterDefs,
       enabledRuleDefs,
-      workspaces: {},
     };
   },
   initial: 'materializing',
@@ -323,7 +322,11 @@ export const ReifierMachine = setup({
               invoke: {
                 src: 'loadPkgManagers',
                 input: ({context}): LoadPkgManagersInput => {
-                  const {plugin, smokerOpts, pkgManager} = context;
+                  const {
+                    plugin,
+                    smokerOptions: smokerOpts,
+                    pkgManager,
+                  } = context;
                   assert.ok(pkgManager);
                   const {cwd} = pkgManager;
                   return {
@@ -333,7 +336,7 @@ export const ReifierMachine = setup({
                   };
                 },
                 onDone: {
-                  target: 'queryWorkspaces',
+                  target: 'creatingPkgManagerContexts',
                   actions: [
                     {
                       type: 'assignPkgManagerDefSpecs',
@@ -356,37 +359,37 @@ export const ReifierMachine = setup({
                 },
               },
             },
-            queryWorkspaces: {
-              invoke: {
-                src: 'queryWorkspaces',
-                input: ({context: {smokerOpts, pkgManager}}) => {
-                  assert.ok(pkgManager);
-                  return {
-                    cwd: smokerOpts.cwd,
-                    fm: pkgManager.fm,
-                    includeRoot: smokerOpts.includeRoot,
-                  };
-                },
-                onDone: {
-                  actions: [
-                    {
-                      type: 'assignWorkspaces',
-                      params: ({event: {output: workspaces}}) => workspaces,
-                    },
-                  ],
-                  target: 'creatingPkgManagerContexts',
-                },
-                onError: {
-                  actions: [
-                    {
-                      type: 'assignError',
-                      params: ({event: {error}}) => ({error}),
-                    },
-                  ],
-                  target: '#Reifier.errored',
-                },
-              },
-            },
+            // queryWorkspaces: {
+            //   invoke: {
+            //     src: 'queryWorkspaces',
+            //     input: ({context: {smokerOpts, pkgManager}}) => {
+            //       assert.ok(pkgManager);
+            //       return {
+            //         cwd: smokerOpts.cwd,
+            //         fm: pkgManager.fm,
+            //         includeRoot: smokerOpts.includeRoot,
+            //       };
+            //     },
+            //     onDone: {
+            //       actions: [
+            //         {
+            //           type: 'assignWorkspaces',
+            //           params: ({event: {output: workspaces}}) => workspaces,
+            //         },
+            //       ],
+            //       target: 'creatingPkgManagerContexts',
+            //     },
+            //     onError: {
+            //       actions: [
+            //         {
+            //           type: 'assignError',
+            //           params: ({event: {error}}) => ({error}),
+            //         },
+            //       ],
+            //       target: '#Reifier.errored',
+            //     },
+            //   },
+            // },
             creatingPkgManagerContexts: {
               invoke: {
                 src: 'createPkgManagerContexts',
@@ -395,7 +398,8 @@ export const ReifierMachine = setup({
                     pkgManager,
                     pkgManagerDefSpecs,
                     pluginRegistry,
-                    workspaces,
+                    workspaceInfo,
+                    smokerOptions,
                   } = context;
                   assert.ok(pkgManager);
                   assert.ok(pkgManagerDefSpecs);
@@ -409,13 +413,18 @@ export const ReifierMachine = setup({
                     ),
                     pkgManagerOpts,
                   } = pkgManager;
+
+                  const useWorkspaces =
+                    smokerOptions.all || !isEmpty(smokerOptions.workspace);
+
                   return {
+                    useWorkspaces,
                     pkgManagerDefSpecs,
                     fm,
                     systemExecutor,
                     defaultExecutor,
                     pkgManagerOpts,
-                    workspaces,
+                    workspaceInfo,
                   };
                 },
                 onDone: {
@@ -502,7 +511,11 @@ export const ReifierMachine = setup({
               invoke: {
                 src: 'createReporterContexts',
                 input: ({
-                  context: {smokerOpts, enabledReporterDefs, smokerPkgJson},
+                  context: {
+                    smokerOptions: smokerOpts,
+                    enabledReporterDefs,
+                    smokerPkgJson,
+                  },
                 }): CreateReporterContextsInput => {
                   assert.ok(smokerPkgJson);
                   return {

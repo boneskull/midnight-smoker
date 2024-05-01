@@ -41,4 +41,5 @@ export const RuleResultFailedSchema = RuleResultSchema.extend({
   pkgManager: NonEmptyStringSchema.describe(
     'String representation of the current pkg manager',
   ),
+  filepath: NonEmptyStringSchema,
 });

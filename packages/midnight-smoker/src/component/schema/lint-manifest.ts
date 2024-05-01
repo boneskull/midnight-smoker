@@ -1,3 +1,4 @@
+import {WorkspaceInfoSchema} from '#schema/workspaces';
 import {NonEmptyStringSchema} from '#util/schema-util';
 import {z} from 'zod';
 
@@ -5,12 +6,10 @@ export type LintManifest = z.infer<typeof LintManifestSchema>;
 
 export type LintManifests = z.infer<typeof LintManifestsSchema>;
 
-export const LintManifestSchema = z.object({
-  pkgName: NonEmptyStringSchema.describe('Name of package being checked'),
+export const LintManifestSchema = WorkspaceInfoSchema.extend({
   installPath: NonEmptyStringSchema.describe(
     'Install path of package being checked',
   ),
-  localPath: NonEmptyStringSchema,
 });
 
 export const LintManifestsSchema = z

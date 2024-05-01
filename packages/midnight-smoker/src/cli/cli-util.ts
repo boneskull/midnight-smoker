@@ -3,6 +3,7 @@ import {isSerializable} from '#util/util';
 import {bold, cyan, yellow} from 'chalk';
 import Table from 'cli-table3';
 import {isError, isFunction, isObject, mergeWith} from 'lodash';
+import {type WriteStream} from 'node:tty';
 import stringWidth from 'string-width';
 import type {MergeDeep, Primitive} from 'type-fest';
 
@@ -134,4 +135,8 @@ export function handleRejection(
     }
   }
   console.error(output ?? err);
+}
+
+export function isWriteStream(value: unknown): value is WriteStream {
+  return value === process.stdout || value === process.stderr;
 }

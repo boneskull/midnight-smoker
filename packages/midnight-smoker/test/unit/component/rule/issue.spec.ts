@@ -133,6 +133,7 @@ describe('midnight-smoker', function () {
                 failed: issue.failed,
                 severity: issue.severity,
                 pkgManager: issue.pkgManager,
+                filepath: issue.filepath,
               };
               expect(issue.toJSON(), 'to equal', expected).and(
                 'when passed as parameter to',

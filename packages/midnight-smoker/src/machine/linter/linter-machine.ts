@@ -1,17 +1,11 @@
 import {fromUnknownError} from '#error';
-import {type PkgManager} from '#pkg-manager';
 import {
   RuleContext,
-  type BaseNormalizedRuleOptionsRecord,
   type RuleResultFailed,
   type RuleResultOk,
-  type SomeRule,
   type StaticRuleContext,
 } from '#rule';
-import {type LintManifest, type LintManifests, type LintResult} from '#schema';
-import {type FileManager} from '#util/filemanager';
 import {isEmpty} from 'lodash';
-import {type PackageJson} from 'type-fest';
 import {
   assign,
   enqueueActions,
@@ -20,7 +14,6 @@ import {
   sendTo,
   setup,
   type ActorRefFrom,
-  type AnyActorRef,
 } from 'xstate';
 import {
   type CtrlPkgManagerLintBeginEvent,
@@ -28,79 +21,17 @@ import {
   type CtrlRuleFailedEvent,
   type CtrlRuleOkEvent,
 } from '../controller/control-machine-events';
+import {asWorkspacesInfo, makeId, monkeypatchActorLogger} from '../util';
+import {type LinterMachineEvents} from './linter-machine-events';
 import {
-  makeId,
-  monkeypatchActorLogger,
-  type MachineOutputError,
-  type MachineOutputOk,
-} from '../util';
-import {RuleMachine, type RuleMachineOutput} from './rule-machine';
-
-export interface LinterMachineInput {
-  ruleConfigs: BaseNormalizedRuleOptionsRecord;
-  rules: SomeRule[];
-  pkgManager: PkgManager;
-  lintManifests: LintManifests;
-  parentRef: AnyActorRef;
-
-  fileManager: FileManager;
-
-  index: number;
-}
-
-export interface LinterMachineContext extends LinterMachineInput {
-  lintManifestsWithPkgs: LintManifestWithPkg[];
-  ruleContexts: Readonly<RuleContext>[];
-  passed: RuleResultOk[];
-  issues: RuleResultFailed[];
-
-  ruleMachines: Record<string, ActorRefFrom<typeof RuleMachine>>;
-  error?: Error;
-}
-
-export type ReadPkgJsonsInput = Pick<
-  LinterMachineContext,
-  'fileManager' | 'lintManifests'
->;
-
-export interface LintManifestWithPkg extends LintManifest {
-  pkgJson: PackageJson;
-  pkgJsonPath: string;
-}
-
-export interface LinterMachineLintDoneEvent {
-  type: 'xstate.done.actor.RuleMachine.*';
-  output: RuleMachineOutput;
-}
-
-export interface LinterMachineRuleBeginEvent {
-  type: 'RULE_BEGIN';
-  index: number;
-  ctx: StaticRuleContext;
-  sender: string;
-}
-
-export type LinterMachineEvents =
-  | LinterMachineLintDoneEvent
-  | LinterMachineRuleBeginEvent;
-
-export type LinterMachineOutputOk = MachineOutputOk<{
-  lintResult: LintResult;
-  pkgManagerIndex: number;
-  pkgManager: PkgManager;
-  didFail: boolean;
-}>;
-
-export type LinterMachineOutputError = MachineOutputError<
-  Error,
-  {
-    pkgManager: PkgManager;
-  }
->;
-
-export type LinterMachineOutput =
-  | LinterMachineOutputOk
-  | LinterMachineOutputError;
+  type LintManifestWithPkg,
+  type LinterMachineContext,
+  type LinterMachineInput,
+  type LinterMachineOutput,
+  type ReadPkgJsonsInput,
+} from './linter-machine-types';
+import {RuleMachine} from './rule-machine';
+import {type RuleMachineOutput} from './rule-machine-types';
 
 export const LinterMachine = setup({
   types: {
@@ -244,13 +175,14 @@ export const LinterMachine = setup({
     sendPkgManagerLintBegin: sendTo(
       ({context: {parentRef}}) => parentRef,
       ({
-        context: {index: currentPkgManager, pkgManager},
+        context: {index: currentPkgManager, pkgManager, lintManifests},
         self,
       }): CtrlPkgManagerLintBeginEvent => ({
         type: 'PKG_MANAGER_LINT_BEGIN',
         currentPkgManager,
         pkgManager: pkgManager.staticSpec,
         sender: self.id,
+        workspaceInfo: asWorkspacesInfo(lintManifests),
       }),
     ),
     stopRuleMachine: enqueueActions(
@@ -434,11 +366,11 @@ export const LinterMachine = setup({
     },
   },
   output: ({
-    context: {passed, issues, error, pkgManager, index},
+    context: {workspaceInfo, passed, issues, error, pkgManager, index},
     self: {id},
   }): LinterMachineOutput =>
     error
-      ? {type: 'ERROR', id, error, pkgManager}
+      ? {type: 'ERROR', id, error, pkgManager, workspaceInfo}
       : {
           type: 'OK',
           id,
@@ -446,5 +378,6 @@ export const LinterMachine = setup({
           pkgManager,
           lintResult: {passed, issues},
           didFail: Boolean(issues.length),
+          workspaceInfo,
         },
 });

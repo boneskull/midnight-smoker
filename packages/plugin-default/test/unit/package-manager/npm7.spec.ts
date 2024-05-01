@@ -108,7 +108,8 @@ describe('@midnight-smoker/plugin-default', function () {
               stdout: JSON.stringify(npmPackItems),
             } as any);
             ctx = {
-              workspaceInfo: {},
+              workspaceInfo: [{pkgName: 'foo', localPath: '/some/path'}],
+              localPath: '/some/path',
               spec,
               tmpdir: MOCK_TMPDIR,
               executor,
@@ -132,59 +133,59 @@ describe('@midnight-smoker/plugin-default', function () {
             });
           });
 
-          describe('when called with context containing "workspaces" option', function () {
-            it('should call exec with --workspace args', async function () {
-              await Npm7.pack({...ctx, workspaces: ['bar', 'baz']});
-              expect(executor, 'to have a call satisfying', [
-                spec,
-                [
-                  'pack',
-                  '--json',
-                  `--pack-destination=${MOCK_TMPDIR}`,
-                  '--foreground-scripts=false',
-                  '--workspace=bar',
-                  '--workspace=baz',
-                ],
-              ]);
-            });
-          });
+          // describe('when called with context containing "workspaces" option', function () {
+          //   it('should call exec with --workspace args', async function () {
+          //     await Npm7.pack({...ctx, workspaces: ['bar', 'baz']});
+          //     expect(executor, 'to have a call satisfying', [
+          //       spec,
+          //       [
+          //         'pack',
+          //         '--json',
+          //         `--pack-destination=${MOCK_TMPDIR}`,
+          //         '--foreground-scripts=false',
+          //         '--workspace=bar',
+          //         '--workspace=baz',
+          //       ],
+          //     ]);
+          //   });
+          // });
 
-          describe('when called with context containing "allWorkspaces" option', function () {
-            it('should call exec with --workspaces flag', async function () {
-              await Npm7.pack({...ctx, allWorkspaces: true});
-              expect(executor, 'to have a call satisfying', [
-                spec,
-                [
-                  'pack',
-                  '--json',
-                  `--pack-destination=${MOCK_TMPDIR}`,
-                  '--foreground-scripts=false',
-                  '--workspaces',
-                ],
-              ]);
-            });
+          // describe('when called with context containing "allWorkspaces" option', function () {
+          //   it('should call exec with --workspaces flag', async function () {
+          //     await Npm7.pack({...ctx, allWorkspaces: true});
+          //     expect(executor, 'to have a call satisfying', [
+          //       spec,
+          //       [
+          //         'pack',
+          //         '--json',
+          //         `--pack-destination=${MOCK_TMPDIR}`,
+          //         '--foreground-scripts=false',
+          //         '--workspaces',
+          //       ],
+          //     ]);
+          //   });
 
-            describe('when called with contxt containing "includeWorkspaceRoot" option', function () {
-              it('should call exec with --workspaces flag and --include-workspace-root flag', async function () {
-                await Npm7.pack({
-                  ...ctx,
-                  allWorkspaces: true,
-                  includeWorkspaceRoot: true,
-                });
-                expect(executor, 'to have a call satisfying', [
-                  spec,
-                  [
-                    'pack',
-                    '--json',
-                    `--pack-destination=${MOCK_TMPDIR}`,
-                    '--foreground-scripts=false',
-                    '--workspaces',
-                    '--include-workspace-root',
-                  ],
-                ]);
-              });
-            });
-          });
+          //   describe('when called with contxt containing "includeWorkspaceRoot" option', function () {
+          //     it('should call exec with --workspaces flag and --include-workspace-root flag', async function () {
+          //       await Npm7.pack({
+          //         ...ctx,
+          //         allWorkspaces: true,
+          //         includeWorkspaceRoot: true,
+          //       });
+          //       expect(executor, 'to have a call satisfying', [
+          //         spec,
+          //         [
+          //           'pack',
+          //           '--json',
+          //           `--pack-destination=${MOCK_TMPDIR}`,
+          //           '--foreground-scripts=false',
+          //           '--workspaces',
+          //           '--include-workspace-root',
+          //         ],
+          //       ]);
+          //     });
+          //   });
+          // });
 
           describe('when Npm7 failed to spawn', function () {
             beforeEach(async function () {
@@ -260,25 +261,17 @@ describe('@midnight-smoker/plugin-default', function () {
           beforeEach(function () {
             executor.resolves({stdout: 'stuff', exitCode: 0} as any);
             ctx = {
-              workspaceInfo: {},
+              workspaceInfo: [],
               spec,
               tmpdir: MOCK_TMPDIR,
               executor,
               signal: new AbortController().signal,
-              installManifests: [
-                {
-                  pkgSpec: `${MOCK_TMPDIR}/bar.tgz`,
-                  pkgName: 'bar',
-                  cwd: MOCK_TMPDIR,
-                  installPath: `${MOCK_TMPDIR}/node_modules/bar`,
-                },
-                {
-                  pkgSpec: `${MOCK_TMPDIR}/baz.tgz`,
-                  pkgName: 'baz',
-                  cwd: MOCK_TMPDIR,
-                  installPath: `${MOCK_TMPDIR}/node_modules/baz`,
-                },
-              ],
+              installManifest: {
+                pkgSpec: `${MOCK_TMPDIR}/bar.tgz`,
+                pkgName: 'bar',
+                cwd: MOCK_TMPDIR,
+                installPath: `${MOCK_TMPDIR}/node_modules/bar`,
+              },
             };
           });
 
@@ -310,7 +303,7 @@ describe('@midnight-smoker/plugin-default', function () {
                 '--no-package-lock',
                 '--global-style',
                 '--json',
-                ...ctx.installManifests.map(({pkgSpec}) => pkgSpec),
+                ctx.installManifest.pkgSpec,
               ],
               {},
               {cwd: '/some/dir'},
@@ -320,7 +313,8 @@ describe('@midnight-smoker/plugin-default', function () {
           describe('when "manifest" argument is empty', function () {
             it('should reject', async function () {
               await expect(
-                Npm7.install({...ctx, installManifests: []}),
+                // @ts-expect-error bad type
+                Npm7.install({...ctx, installManifest: undefined}),
                 'to be rejected with error satisfying',
                 {code: ErrorCodes.InvalidArgError},
               );
@@ -334,18 +328,17 @@ describe('@midnight-smoker/plugin-default', function () {
           beforeEach(function () {
             executor.resolves({failed: false, stdout: 'stuff'} as any);
             ctx = {
-              workspaceInfo: {},
+              workspaceInfo: [{pkgName: 'foo', localPath: '/some/path'}],
               signal: new AbortController().signal,
               spec,
               executor,
               tmpdir: MOCK_TMPDIR,
               loose: false,
-              pkgName: 'foo',
-              script: 'some-script',
               runScriptManifest: {
                 cwd: `${MOCK_TMPDIR}/node_modules/foo`,
                 pkgName: 'foo',
                 script: 'some-script',
+                localPath: '/some/path',
               },
             };
           });

@@ -24,6 +24,7 @@ export class LintCommand extends BaseCommand<CommonOptionTypes> {
     const smoker = await Smoker.create(opts);
     debug('Running lint...');
     await smoker.smoke();
+    debug('Lint complete');
   }
 
   override builder(argv: Argv<GlobalOptionTypes>): Argv<CommonOptionTypes> {

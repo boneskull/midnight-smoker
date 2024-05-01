@@ -1,72 +1,69 @@
-import {
-  blueBright,
-  dim,
-  green,
-  greenBright,
-  italic,
-  red,
-  white,
-  yellow,
-} from 'chalk';
-import Spinnies from 'dreidels';
-import {groupBy, isError, pick} from 'lodash';
+import {blueBright, dim, greenBright, italic, red, white, yellow} from 'chalk';
+import {MultiBar, Presets, type SingleBar} from 'cli-progress';
+import {isError} from 'lodash';
 import {error, warning} from 'log-symbols';
 import {
   type RuleFailedEventData,
   type RunScriptFailedEventData,
 } from 'midnight-smoker/event';
-import {type StaticPkgManagerSpec} from 'midnight-smoker/pkg-manager';
 import {isBlessedPlugin} from 'midnight-smoker/plugin/blessed';
 import {type ReporterDef} from 'midnight-smoker/reporter';
-import {RuleSeverities} from 'midnight-smoker/rule';
 import pluralize from 'pluralize';
-import {type WriteStream} from 'tty';
 
 const ELLIPSIS = '…';
 
 /**
- * Given the name of a thing and optionally a version, return a fancy string
+ * Given the name of a pkg manager and optionally a version, return a fancy
+ * string
  *
- * @param name Name
- * @param version Version
+ * @param spec Spec
  * @returns `name@version` with some colors
  */
-function nameAndVersion(name: string, version?: string) {
-  return version ? `${name}${dim('@')}${white(version)}` : name;
+function nameAndVersion({
+  pkgManager,
+  version,
+}: {
+  pkgManager: string;
+  version?: string;
+}): string {
+  return version ? `${pkgManager}${dim('@')}${white(version)}` : pkgManager;
 }
 
-/**
- * Pretty string for a package manager
- *
- * @param pkgManager Package manager spec
- * @param pkgManagerIndex Index of the current package manager
- * @param totalPkgManagers Total number of package managers
- * @returns A pretty string
- */
-function pkgManagerToString(
-  {pkgManager, version}: StaticPkgManagerSpec,
-  pkgManagerIndex?: number,
-  totalPkgManagers?: number,
-) {
-  let text = `${nameAndVersion(green(pkgManager), version)}`;
-  if (pkgManagerIndex && totalPkgManagers && totalPkgManagers > 1) {
-    text += ` (${currentOfTotal(pkgManagerIndex, totalPkgManagers)})`;
-  }
-  return text;
-}
+// /**
+//  * Pretty string for a package manager
+//  *
+//  * @param pkgManager Package manager spec
+//  * @param pkgManagerIndex Index of the current package manager
+//  * @param totalPkgManagers Total number of package managers
+//  * @returns A pretty string
+//  */
+// function pkgManagerToString(
+//   {pkgManager, version}: StaticPkgManagerSpec,
+//   pkgManagerIndex?: number,
+//   totalPkgManagers?: number,
+// ) {
+//   let text = `${nameAndVersion(green(pkgManager), version)}`;
+//   if (pkgManagerIndex && totalPkgManagers && totalPkgManagers > 1) {
+//     text += ` (${currentOfTotal(pkgManagerIndex, totalPkgManagers)})`;
+//   }
+//   return text;
+// }
 
 /**
  * Reporter-specific context object for the {@link ConsoleReporter}
  */
 type ConsoleReporterContext = {
-  spinners: Spinnies;
+  // spinners: Spinnies;
   scriptFailedEvents: RunScriptFailedEventData[];
   ruleFailedEvents: RuleFailedEventData[];
+  multiBar: MultiBar;
+  bars: Map<string, SingleBar>;
+  log: string[];
 };
 
-function currentOfTotal(current: number, total: number) {
-  return `${current}/${total}`;
-}
+// function currentOfTotal(current: number, total: number) {
+//   return `${current}/${total}`;
+// }
 
 /**
  * Tag function for pluralizing strings.
@@ -118,17 +115,29 @@ export const ConsoleReporter: ReporterDef<ConsoleReporterContext> = {
   name: 'console',
   description: 'Default console reporter (for humans)',
   setup(ctx) {
-    ctx.spinners = new Spinnies({
-      stream: ctx.stderr as WriteStream,
-      spinnerColor: 'blueBright',
-      succeedColor: 'white',
-      infoColor: 'white',
-    });
+    ctx.log = [];
+    ctx.bars = new Map();
+    ctx.multiBar = new MultiBar(
+      {format: ' {bar} | {operation} | {value}/{total}', fps: 30},
+      Presets.rect,
+    );
+
+    // ctx.spinners = new Spinnies({
+    //   stream: process.stderr,
+    //   spinnerColor: 'blueBright',
+    //   succeedColor: 'white',
+    //   infoColor: 'white',
+    // });
     ctx.scriptFailedEvents = [];
     ctx.ruleFailedEvents = [];
   },
   teardown(ctx) {
-    ctx.spinners.stopAll();
+    for (const [id, bar] of ctx.bars) {
+      bar.stop();
+      ctx.bars.delete(id);
+    }
+    ctx.multiBar.stop();
+    // ctx.spinners.stopAll();
   },
 
   //    ▄███████▄    ▄████████  ▄████████    ▄█   ▄█▄
@@ -141,72 +150,109 @@ export const ConsoleReporter: ReporterDef<ConsoleReporterContext> = {
   //  ▄████▀        ███    █▀  ████████▀    ███   ▀█▀
   //                                        ▀
 
-  onPackBegin({spinners}, {packOptions: opts = {}}) {
-    let text = `Packing`;
-    if (opts.workspaces?.length) {
-      text += plur` ${['workspace', opts.workspaces.length, true]}`;
-    } else if (opts.allWorkspaces) {
-      text += ' all workspaces';
-      if (opts?.includeWorkspaceRoot) {
-        text += ' (and the workspace root)';
-      }
-    } else {
-      text += ' current project';
-    }
-    text += `${ELLIPSIS}`;
+  onPackBegin({multiBar, bars}, {workspaceInfo, pkgManagers}) {
+    // let text = `Packing`;
+    // if (packOptions?.workspaces?.length) {
+    //   text += plur` ${['workspace', packOptions?.workspaces.length, true]}`;
+    // } else if (packOptions?.allWorkspaces) {
+    //   text += ' all workspaces';
+    //   if (packOptions?.includeWorkspaceRoot) {
+    //     text += ' (and the workspace root)';
+    //   }
+    // } else {
+    //   text += ' current project';
+    // }
+    // text += `${ELLIPSIS}`;
 
-    spinners.add('pack', {text});
+    const bar = multiBar.create(pkgManagers.length, 0, {operation: 'packing'});
+    bars.set('pack', bar);
   },
 
   onPkgManagerPackBegin(
-    {spinners},
-    {pkgManager, currentPkgManager, totalPkgManagers},
+    {bars, multiBar},
+    {pkgManager, workspaceInfo, currentPkgManager, totalPkgManagers},
   ) {
-    const text = `${pkgManagerToString(
-      pkgManager,
-      currentPkgManager,
-      totalPkgManagers,
-    )} packing${ELLIPSIS}`;
-
-    spinners.add(`packing-${pkgManager.spec}`, {
-      indent: 2,
-      text,
+    const spec = nameAndVersion(pkgManager);
+    const bar = multiBar.create(workspaceInfo.length * totalPkgManagers, 0, {
+      operation: `${spec} packing`,
     });
+    // bars.get('pack')?.update(currentPkgManager);
+
+    // const bar = terminal.progressBar({
+    //   title: nameAndVersion(pkgManager, version),
+    //   eta: true,
+    //   percent: true,
+    //   items: workspaceInfo.length,
+    //   // @ts-expect-error bad types
+    //   x: -totalPkgManagers + currentPkgManager,
+    // });
+    bars.set(`pack-${spec}`, bar);
+    // const text = `${pkgManagerToString(
+    //   pkgManager,
+    //   currentPkgManager,
+    //   totalPkgManagers,
+    // )} packing${ELLIPSIS}`;
+
+    // spinners.add(`packing-${pkgManager.spec}`, {
+    //   indent: 2,
+    //   text,
+    // });
   },
 
-  onPkgManagerPackOk(
-    {spinners},
-    {pkgManager, manifests, currentPkgManager, totalPkgManagers},
-  ) {
-    let text = `${pkgManagerToString(
-      pkgManager,
-      currentPkgManager,
-      totalPkgManagers,
-    )}`;
-    text += plur` packed ${['package', manifests.length, true]}`;
+  onPkgPackBegin(
+    {bars},
+    {pkgManager, workspace, currentPkg, workspace: {pkgName}},
+  ) {},
 
-    spinners.get(`packing-${pkgManager.spec}`).update({
-      text,
-      status: 'success',
-    });
+  onPkgPackFailed({bars}, {pkgManager, workspace}) {
+    const spec = nameAndVersion(pkgManager);
+    bars.get(`pack-${spec}`)?.increment();
   },
 
-  onPkgManagerPackFailed({spinners}, {pkgManager}) {
-    spinners.get(`packing-${pkgManager.spec}`).update({status: 'fail'});
+  onPkgPackOk({bars}, {pkgManager, workspace}) {
+    const spec = nameAndVersion(pkgManager);
+    bars.get(`pack-${spec}`)?.increment();
   },
-  onPackOk({spinners}, {uniquePkgs, pkgManagers}) {
+
+  onPkgManagerPackOk({bars}, {pkgManager}) {
+    bars.get('pack')?.increment();
+    const spec = nameAndVersion(pkgManager);
+    bars.get(`pack-${spec}`)?.stop();
+    // let text = `${pkgManagerToString(
+    //   pkgManager,
+    //   currentPkgManager,
+    //   totalPkgManagers,
+    // )}`;
+    // text += plur` packed ${['package', manifests.length, true]}`;
+
+    // spinners.get(`packing-${pkgManager.spec}`).update({
+    //   text,
+    //   status: 'success',
+    // });
+  },
+
+  onPkgManagerPackFailed({bars}, {pkgManager}) {
+    bars.get('pack')?.increment();
+    const spec = nameAndVersion(pkgManager);
+    bars.get(`pack-${spec}`)?.stop();
+    // spinners.get(`packing-${pkgManager.spec}`).update({status: 'fail'});
+  },
+  onPackOk({bars, log}, {uniquePkgs, pkgManagers}) {
     const text = plur`Packing complete; ${[
       'package manager',
       pkgManagers.length,
       true,
     ]} packed ${['package', uniquePkgs.length, true]}`;
 
-    spinners.get('pack').update({text, status: 'success'});
+    // spinners.get('pack').update({text, status: 'success'});
+    log.push(text);
+    bars.get('pack')?.stop();
   },
-  onPackFailed({spinners, opts}, {error: err}) {
-    const text = err.format(opts.verbose);
-
-    spinners.get('pack').update({text, status: 'fail'});
+  onPackFailed({bars, log, opts}, {error}) {
+    const text = error.format(opts.verbose);
+    log.push(text);
+    bars.get('pack')?.stop();
+    // spinners.get('pack').update({text, status: 'fail'});
   },
 
   // ▄█  ███▄▄▄▄      ▄████████     ███        ▄████████  ▄█        ▄█
@@ -219,69 +265,101 @@ export const ConsoleReporter: ReporterDef<ConsoleReporterContext> = {
   // █▀    ▀█   █▀   ▄████████▀     ▄████▀     ███    █▀  █████▄▄██ █████▄▄██
   //                                                       ▀         ▀
 
-  onInstallBegin({spinners}, {uniquePkgs, pkgManagers, additionalDeps}) {
-    let text = plur`Installing ${[
-      'package',
-      uniquePkgs.length,
-      true,
-    ]} from tarball`;
-    if (additionalDeps.length) {
-      text += plur` with ${[
-        'additional dependency',
-        additionalDeps.length,
-        true,
-      ]}`;
-    }
-    text += plur` using ${['package manager', pkgManagers.length, true]}`;
-    text += ELLIPSIS;
-    spinners.add('installing', {text});
-  },
-  onPkgManagerInstallBegin(
-    {spinners},
-    {pkgManager, currentPkgManager, totalPkgManagers},
+  onInstallBegin(
+    {multiBar, bars},
+    {uniquePkgs, totalPkgs, pkgManagers, additionalDeps},
   ) {
-    const text = `${pkgManagerToString(
-      pkgManager,
-      currentPkgManager,
-      totalPkgManagers,
-    )} installing${ELLIPSIS}`;
-
-    spinners.add(`installing-${pkgManager.spec}`, {
-      indent: 2,
-      text,
+    const bar = multiBar.create(uniquePkgs.length * pkgManagers.length, 0, {
+      operation: 'installing',
     });
+    bars.set('install', bar);
+    // const bar = terminal.progressBar({
+    //   title: 'Installing:',
+    //   eta: true,
+    //   percent: true,
+    //   items: pkgManagers.length,
+    // });
+    // bars.set('install', bar);
+    // let text = plur`Installing ${[
+    //   'package',
+    //   uniquePkgs.length,
+    //   true,
+    // ]} from tarball`;
+    // if (additionalDeps.length) {
+    //   text += plur` with ${[
+    //     'additional dependency',
+    //     additionalDeps.length,
+    //     true,
+    //   ]}`;
+    // }
+    // text += plur` using ${['package manager', pkgManagers.length, true]}`;
+    // text += ELLIPSIS;
+    // spinners.add('installing', {text});
   },
-  onPkgManagerInstallOk(
-    {spinners},
-    {pkgManager, currentPkgManager, totalPkgManagers, manifests},
-  ) {
-    let text = `${pkgManagerToString(
-      pkgManager,
-      currentPkgManager,
-      totalPkgManagers,
-    )}`;
-    text += plur` installed ${['packages', manifests.length, true]}`;
-
-    spinners.get(`installing-${pkgManager.spec}`).update({
-      text,
-      status: 'success',
+  onPkgManagerInstallBegin({bars, multiBar}, {pkgManager, manifests}) {
+    const spec = nameAndVersion(pkgManager);
+    const bar = multiBar.create(manifests.length, 0, {
+      operation: `${spec} installing`,
     });
-  },
-  onPkgManagerInstallFailed({spinners}, {pkgManager}) {
-    spinners.get(`installing-${pkgManager.spec}`).update({status: 'fail'});
-  },
-  onInstallOk({spinners}, {uniquePkgs, pkgManagers}) {
-    const text = plur`Installing complete; ${[
-      'package manager',
-      pkgManagers.length,
-      true,
-    ]} installed ${['unique package', uniquePkgs.length, true]}`;
+    bars.set(`install-${spec}`, bar);
+    // bars.get('install')?.startItem(name);
 
-    spinners.get('installing').update({text, status: 'success'});
+    // const bar = terminal.progressBar({
+    //   title: `${name} installing:`,
+    //   items: manifests.length,
+    //   eta: true,
+    //   percent: true,
+    // });
+    // bars.set(`install.${name}`, bar);
+    // const text = `${pkgManagerToString(
+    //   pkgManager,
+    //   currentPkgManager,
+    //   totalPkgManagers,
+    // )} installing${ELLIPSIS}`;
+
+    // spinners.add(`installing-${pkgManager.spec}`, {
+    //   indent: 2,
+    //   text,
+    // });
   },
-  onInstallFailed({spinners, opts}, {error: err}) {
+  onPkgManagerInstallOk({bars}, {pkgManager}) {
+    bars.get('install')?.increment();
+    const spec = nameAndVersion(pkgManager);
+    bars.get(`install-${spec}`)?.stop();
+
+    // bars.get('install')?.itemDone(nameAndVersion(pkgManager));
+    // let text = `${pkgManagerToString(
+    //   pkgManager,
+    //   currentPkgManager,
+    //   totalPkgManagers,
+    // )}`;
+    // text += plur` installed ${['packages', manifests.length, true]}`;
+    // spinners.get(`installing-${pkgManager.spec}`).update({
+    //   text,
+    //   status: 'success',
+    // });
+  },
+  onPkgManagerInstallFailed({bars}, {pkgManager}) {
+    bars.get('install')?.increment();
+    const spec = nameAndVersion(pkgManager);
+    bars.get(`install-${spec}`)?.stop();
+    // bars.get('install')?.itemDone(nameAndVersion(pkgManager));
+    // spinners.get(`installing-${pkgManager.spec}`).update({status: 'fail'});
+  },
+  onInstallOk({bars}, {uniquePkgs, pkgManagers}) {
+    bars.get('install')?.stop();
+    // const text = plur`Installing complete; ${[
+    //   'package manager',
+    //   pkgManagers.length,
+    //   true,
+    // ]} installed ${['unique package', uniquePkgs.length, true]}`;
+    // spinners.get('installing').update({text, status: 'success'});
+  },
+  onInstallFailed({bars, log, opts}, {error: err}) {
+    bars.get('install')?.stop();
     const text = err.format(opts.verbose);
-    spinners.get('installing').update({text, status: 'fail'});
+    log.push(text);
+    // spinners.get('installing').update({text, status: 'fail'});
   },
 
   //  ▄█        ▄█  ███▄▄▄▄       ███
@@ -294,134 +372,127 @@ export const ConsoleReporter: ReporterDef<ConsoleReporterContext> = {
   // █████▄▄██ █▀    ▀█   █▀     ▄████▀
   // ▀
 
-  onLintBegin({spinners}, {totalUniquePkgs, totalRules, totalPkgManagers}) {
-    let text = plur`Linting with ${['rule', totalRules, true]}`;
-    if (totalUniquePkgs > 1) {
-      text += plur` across ${['package', totalUniquePkgs, true]}`;
-    }
-    if (totalPkgManagers > 1) {
-      text += plur` using ${['package manager', totalPkgManagers, true]}`;
-    }
-    text += ELLIPSIS;
-
-    spinners.add('lint', {text});
+  onLintBegin(ctx, {totalUniquePkgs, totalRules, totalPkgManagers}) {
+    // let text = plur`Linting with ${['rule', totalRules, true]}`;
+    // if (totalUniquePkgs > 1) {
+    //   text += plur` across ${['package', totalUniquePkgs, true]}`;
+    // }
+    // if (totalPkgManagers > 1) {
+    //   text += plur` using ${['package manager', totalPkgManagers, true]}`;
+    // }
+    // text += ELLIPSIS;
+    // spinners.add('lint', {text});
   },
-  onPkgManagerLintBegin({spinners}, {pkgManager, totalRules}) {
-    let text = `${pkgManagerToString(pkgManager)} executing ${currentOfTotal(
-      0,
-      totalRules,
-    )}`;
-    text += plur` ${['rule', totalRules]}`;
-    text += ELLIPSIS;
-
-    spinners.add(`linting-${pkgManager.spec}`, {text, indent: 2});
+  onPkgManagerLintBegin(ctx, {pkgManager, totalRules}) {
+    // let text = `${pkgManagerToString(pkgManager)} executing ${currentOfTotal(
+    //   0,
+    //   totalRules,
+    // )}`;
+    // text += plur` ${['rule', totalRules]}`;
+    // text += ELLIPSIS;
+    // spinners.add(`linting-${pkgManager.spec}`, {text, indent: 2});
   },
-  onRuleBegin({spinners}, {pkgManager, currentRule, totalRules}) {
-    let text = `${pkgManagerToString(pkgManager)} executing ${currentOfTotal(
-      currentRule,
-      totalRules,
-    )}`;
-    text += plur` ${['rule', totalRules]}`;
-    text += ELLIPSIS;
-
-    spinners.get(`linting-${pkgManager.spec}`).update({text});
+  onRuleBegin(ctx, {pkgManager, currentRule, totalRules}) {
+    // let text = `${pkgManagerToString(pkgManager)} executing ${currentOfTotal(
+    //   currentRule,
+    //   totalRules,
+    // )}`;
+    // text += plur` ${['rule', totalRules]}`;
+    // text += ELLIPSIS;
+    // spinners.get(`linting-${pkgManager.spec}`).update({text});
   },
   onRuleOk() {},
   onRuleFailed(ctx, evt) {
     ctx.ruleFailedEvents.push(evt);
   },
-  onPkgManagerLintOk({spinners}, {pkgManager, totalRules}) {
-    let text = pkgManagerToString(pkgManager);
-    text += plur`executed ${['rule', totalRules, true]}`;
-    spinners
-      .get(`linting-${pkgManager.spec}`)
-      .update({status: 'success', text});
+  onPkgManagerLintOk(ctx, {pkgManager, totalRules}) {
+    // let text = pkgManagerToString(pkgManager);
+    // text += plur`executed ${['rule', totalRules, true]}`;
+    // spinners
+    //   .get(`linting-${pkgManager.spec}`)
+    //   .update({status: 'success', text});
   },
-  onPkgManagerLintFailed({spinners}, {pkgManager, totalRules}) {
-    let text = pkgManagerToString(pkgManager);
-    text += plur` executed ${['rule', totalRules, true]}`;
-    spinners.get(`linting-${pkgManager.spec}`).update({status: 'fail', text});
+  onPkgManagerLintFailed(ctx, {pkgManager, totalRules}) {
+    // let text = pkgManagerToString(pkgManager);
+    // text += plur` executed ${['rule', totalRules, true]}`;
+    // spinners.get(`linting-${pkgManager.spec}`).update({status: 'fail', text});
   },
-  onLintOk({spinners}, {totalRules, totalPkgManagers, totalUniquePkgs}) {
-    let text = plur`Executed ${['rule', totalRules, true]}`;
-    if (totalUniquePkgs > 1) {
-      text += plur` against ${['package', totalUniquePkgs, true]}`;
-    }
-    if (totalPkgManagers > 1) {
-      text += plur` using ${['package manager', totalPkgManagers, true]}`;
-    }
-
-    spinners.get('lint').update({
-      text,
-      status: 'success',
-    });
+  onLintOk(ctx, {totalRules, totalPkgManagers, totalUniquePkgs}) {
+    // let text = plur`Executed ${['rule', totalRules, true]}`;
+    // if (totalUniquePkgs > 1) {
+    //   text += plur` against ${['package', totalUniquePkgs, true]}`;
+    // }
+    // if (totalPkgManagers > 1) {
+    //   text += plur` using ${['package manager', totalPkgManagers, true]}`;
+    // }
+    // spinners.get('lint').update({
+    //   text,
+    //   status: 'success',
+    // });
   },
   onLintFailed(
-    {spinners},
+    ctx,
     {totalRules, result: {issues}, totalUniquePkgs, totalPkgManagers},
   ) {
-    const spinner = spinners.get('lint');
-    let text = plur`Executed ${['rule', totalRules, true]}`;
-    if (totalUniquePkgs > 1) {
-      text += plur` against ${['package', totalUniquePkgs, true]}`;
-    }
-    if (totalPkgManagers > 1) {
-      text += plur` using ${['package manager', totalPkgManagers, true]}`;
-    }
-
-    text += `; ${issues.length} failed`;
-
-    // spinner.update({
-    //   text,
-    //   status: 'fail',
-    // });
-
-    let hasError = false;
-    // TODO move this into a format() function for these error kinds
-
-    const failedByPackage = groupBy(
-      issues.map((issue) =>
-        pick(issue, ['rule', 'severity', 'message', 'context']),
-      ),
-      'context.pkgJson.name',
-    );
-    // const failedByPackage = issues.reduce<Record<string, RuleResultFailed[]>>(
-    //   (acc, failed) => {
-    //     const pkgName =
-    //       failed.context.pkgJson.name ?? failed.context.installPath;
-    //     acc[pkgName] = [...(acc[pkgName] ?? []), failed];
-    //     return acc;
-    //   },
-    //   {},
+    // const spinner = spinners.get('lint');
+    // let text = plur`Executed ${['rule', totalRules, true]}`;
+    // if (totalUniquePkgs > 1) {
+    //   text += plur` against ${['package', totalUniquePkgs, true]}`;
+    // }
+    // if (totalPkgManagers > 1) {
+    //   text += plur` using ${['package manager', totalPkgManagers, true]}`;
+    // }
+    // text += `; ${issues.length} failed`;
+    // // spinner.update({
+    // //   text,
+    // //   status: 'fail',
+    // // });
+    // let hasError = false;
+    // // TODO move this into a format() function for these error kinds
+    // const failedByPkgManager = groupBy(
+    //   issues.map((issue) =>
+    //     pick(issue, ['rule', 'severity', 'message', 'context', 'filepath']),
+    //   ),
+    //   'context.pkgManager',
     // );
-
-    for (const [pkgName, failed] of Object.entries(failedByPackage)) {
-      // const relPkgJsonPath = path.relative(
-      //   process.cwd(),
-      //   // @ts-expect-error wtf
-      //   failed.context.pkgJsonPath,
-      // );
-      const lines = [`Issues found in package ${green(pkgName)}:`];
-
-      for (const {message, severity, rule} of failed) {
-        if (severity === RuleSeverities.Error) {
-          hasError = true;
-          lines.push(
-            `│ ${error} ${message} ${dim('[')}${red(rule.name)}${dim(']')}`,
-          );
-        } else {
-          lines.push(
-            `│ ${warning} ${message} ${dim('[')}${yellow(rule.name)}${dim(
-              ']',
-            )}`,
-          );
-        }
-      }
-      const msg = lines.join('\n');
-      spinner.addLog(msg);
-    }
-
-    spinner.update({text, status: hasError ? 'fail' : 'warn'});
+    // const failedByPackage = groupBy(
+    //   issues.map((issue) =>
+    //     pick(issue, ['rule', 'severity', 'message', 'context', 'filepath']),
+    //   ),
+    //   'context.pkgJson.name',
+    // );
+    // const termWidth = termSize().columns;
+    // const indent = '  ';
+    // for (const [pkgName, failed] of Object.entries(failedByPackage)) {
+    //   const head = [`Issues found in package ${green(pkgName)}:`, ''];
+    //   const lines = [];
+    //   for (const {message, filepath, severity, rule} of failed) {
+    //     const relpath = path.relative(process.cwd(), filepath);
+    //     if (severity === RuleSeverities.Error) {
+    //       hasError = true;
+    //       lines.push(
+    //         `${error} ${dim('[')}${red(rule.name)}${dim(']')} in ${cyan(
+    //           relpath,
+    //         )}:`,
+    //         message,
+    //       );
+    //     } else {
+    //       lines.push(
+    //         `${warning} ${dim('[')}${yellow(rule.name)}${dim(']')} in ${cyan(
+    //           relpath,
+    //         )}:`,
+    //         message,
+    //       );
+    //     }
+    //   }
+    //   const msg = [
+    //     ...head.map((line) => wrapAnsi(line, termWidth)),
+    //     ...lines.map((line) => wrapAnsi(line, termWidth)),
+    //     '',
+    //   ].join('\n');
+    //   spinner.addLog(msg);
+    // }
+    // spinner.update({text, status: hasError ? 'fail' : 'warn'});
   },
   onRuleError() {
     // TODO
@@ -438,95 +509,86 @@ export const ConsoleReporter: ReporterDef<ConsoleReporterContext> = {
   //                           ███    ███
 
   onRunScriptsBegin(
-    {spinners},
+    ctx,
     {totalUniqueScripts, totalUniquePkgs, totalPkgManagers},
   ) {
-    const text = `Running ${pluralize(
-      'script',
-      totalUniqueScripts,
-      true,
-    )} across ${pluralize('package', totalUniquePkgs, true)} using ${pluralize(
-      'package manager',
-      totalPkgManagers,
-      true,
-    )}${ELLIPSIS}`;
-
-    spinners.add('scripts', {text});
+    // const text = `Running ${pluralize(
+    //   'script',
+    //   totalUniqueScripts,
+    //   true,
+    // )} across ${pluralize('package', totalUniquePkgs, true)} using ${pluralize(
+    //   'package manager',
+    //   totalPkgManagers,
+    //   true,
+    // )}${ELLIPSIS}`;
+    // spinners.add('scripts', {text});
   },
-  onRunScriptsOk(
-    {spinners},
-    {totalUniqueScripts, totalUniquePkgs, totalPkgManagers},
-  ) {
-    const text = `Scripts completed successfully; executed ${pluralize(
-      'script',
-      totalUniqueScripts,
-      true,
-    )} across ${pluralize('package', totalUniquePkgs, true)} using ${pluralize(
-      'package manager',
-      totalPkgManagers,
-      true,
-    )}`;
-    spinners.get('scripts').update({status: 'success', text});
+  onRunScriptsOk(ctx, {totalUniqueScripts, totalUniquePkgs, totalPkgManagers}) {
+    // const text = `Scripts completed successfully; executed ${pluralize(
+    //   'script',
+    //   totalUniqueScripts,
+    //   true,
+    // )} across ${pluralize('package', totalUniquePkgs, true)} using ${pluralize(
+    //   'package manager',
+    //   totalPkgManagers,
+    //   true,
+    // )}`;
+    // spinners.get('scripts').update({status: 'success', text});
   },
   onRunScriptsFailed(
-    {spinners},
+    ctx,
     {failed, totalUniqueScripts, totalUniquePkgs, totalPkgManagers},
   ) {
-    const text = `Scripts completed with ${pluralize(
-      'failure',
-      failed,
-      true,
-    )}; executed ${pluralize(
-      'script',
-      totalUniqueScripts,
-      true,
-    )} across ${pluralize('package', totalUniquePkgs, true)} using ${pluralize(
-      'package manager',
-      totalPkgManagers,
-      true,
-    )}`;
-    spinners.get('scripts').update({status: 'fail', text});
+    // const text = `Scripts completed with ${pluralize(
+    //   'failure',
+    //   failed,
+    //   true,
+    // )}; executed ${pluralize(
+    //   'script',
+    //   totalUniqueScripts,
+    //   true,
+    // )} across ${pluralize('package', totalUniquePkgs, true)} using ${pluralize(
+    //   'package manager',
+    //   totalPkgManagers,
+    //   true,
+    // )}`;
+    // spinners.get('scripts').update({status: 'fail', text});
   },
-  onPkgManagerRunScriptsBegin({spinners}, {pkgManager, totalUniqueScripts}) {
-    const text = `${pkgManagerToString(
-      pkgManager,
-    )} running 0/${totalUniqueScripts} ${pluralize(
-      'script',
-      totalUniqueScripts,
-    )}${ELLIPSIS}`;
-
-    spinners.add(`scripts-${pkgManager.spec}`, {text, indent: 2});
+  onPkgManagerRunScriptsBegin(ctx, {pkgManager, totalUniqueScripts}) {
+    // const text = `${pkgManagerToString(
+    //   pkgManager,
+    // )} running 0/${totalUniqueScripts} ${pluralize(
+    //   'script',
+    //   totalUniqueScripts,
+    // )}${ELLIPSIS}`;
+    // spinners.add(`scripts-${pkgManager.spec}`, {text, indent: 2});
   },
-  onPkgManagerRunScriptsOk({spinners}, {pkgManager, totalUniqueScripts}) {
-    const text = `${pkgManagerToString(pkgManager)} ran ${pluralize(
-      'script',
-      totalUniqueScripts,
-      true,
-    )}`;
-    spinners
-      .get(`scripts-${pkgManager.spec}`)
-      .update({status: 'success', text});
+  onPkgManagerRunScriptsOk(ctx, {pkgManager, totalUniqueScripts}) {
+    // const text = `${pkgManagerToString(pkgManager)} ran ${pluralize(
+    //   'script',
+    //   totalUniqueScripts,
+    //   true,
+    // )}`;
+    // spinners
+    //   .get(`scripts-${pkgManager.spec}`)
+    //   .update({status: 'success', text});
   },
-  onPkgManagerRunScriptsFailed({spinners}, {pkgManager, totalUniqueScripts}) {
-    const text = `${pkgManagerToString(pkgManager)} ran ${pluralize(
-      'script',
-      totalUniqueScripts,
-      true,
-    )}`;
-    spinners.get(`scripts-${pkgManager.spec}`).update({status: 'fail', text});
+  onPkgManagerRunScriptsFailed(ctx, {pkgManager, totalUniqueScripts}) {
+    // const text = `${pkgManagerToString(pkgManager)} ran ${pluralize(
+    //   'script',
+    //   totalUniqueScripts,
+    //   true,
+    // )}`;
+    // spinners.get(`scripts-${pkgManager.spec}`).update({status: 'fail', text});
   },
-  onRunScriptBegin(
-    {spinners},
-    {pkgManager, currentScript, totalUniqueScripts},
-  ) {
-    const text = `${pkgManagerToString(
-      pkgManager,
-    )} running ${currentScript}/${totalUniqueScripts} ${pluralize(
-      'script',
-      totalUniqueScripts,
-    )}${ELLIPSIS}`;
-
-    spinners.get(`scripts-${pkgManager.spec}`).update({text});
+  onRunScriptBegin(ctx, {pkgManager, currentScript, totalUniqueScripts}) {
+    // const text = `${pkgManagerToString(
+    //   pkgManager,
+    // )} running ${currentScript}/${totalUniqueScripts} ${pluralize(
+    //   'script',
+    //   totalUniqueScripts,
+    // )}${ELLIPSIS}`;
+    // spinners.get(`scripts-${pkgManager.spec}`).update({text});
   },
   onRunScriptFailed(ctx, evt) {
     ctx.scriptFailedEvents.push(evt);
@@ -545,10 +607,10 @@ export const ConsoleReporter: ReporterDef<ConsoleReporterContext> = {
 
   onSmokeBegin(ctx, {plugins}) {
     console.error(
-      `💨 ${nameAndVersion(
-        blueBright.bold('midnight-smoker'),
-        ctx.pkgJson.version,
-      )}\n`,
+      `💨 ${nameAndVersion({
+        pkgManager: blueBright.bold('midnight-smoker'),
+        version: ctx.pkgJson.version!,
+      })}\n`,
     );
     const extPlugins = plugins.filter(({id}) => !isBlessedPlugin(id));
     if (extPlugins.length) {
@@ -556,15 +618,17 @@ export const ConsoleReporter: ReporterDef<ConsoleReporterContext> = {
         '🔌 Loaded %s: %s',
         pluralize('external plugin', extPlugins.length, true),
         extPlugins
-          .map(({id, version}) => nameAndVersion(greenBright(id), version))
+          .map(({id, version}) =>
+            nameAndVersion({pkgManager: greenBright(id), version}),
+          )
           .join(', '),
       );
     }
   },
-  onSmokeFailed({spinners}, {error: err}) {
+  onSmokeFailed(ctx, {error: err}) {
     // spinners.fail(err.message);
   },
-  onSmokeOk({spinners}) {
+  onSmokeOk() {
     // spinners.succeed('Lovey-dovey! 💖');
   },
   onLingered(_, {directories: dirs}) {
@@ -575,8 +639,9 @@ export const ConsoleReporter: ReporterDef<ConsoleReporterContext> = {
       console.error(yellow(dir));
     }
   },
-  onBeforeExit({spinners}) {
-    spinners.log(console.error);
+  onBeforeExit() {
+    console.error('before exit!');
+    // spinners.log(console.error);
   },
   onUnknownError({opts}, {error: err}) {
     console.error(

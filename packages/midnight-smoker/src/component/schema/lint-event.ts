@@ -1,11 +1,14 @@
 import {RuleError} from '#error/rule-error';
-import {type LintEvent} from '#event';
+import {LintEvent} from '#event';
+import {LintManifestSchema} from '#schema/lint-manifest';
 import {LintResultSchema} from '#schema/lint-result';
+import {PkgManagerEventBaseSchema} from '#schema/pkg-manager-event';
 import {
   BaseNormalizedRuleOptionsRecordSchema,
   BaseNormalizedRuleOptionsSchema,
 } from '#schema/rule-options';
-import {RuleResultSchema} from '#schema/rule-result';
+import {RuleResultFailedSchema, RuleResultSchema} from '#schema/rule-result';
+import {StaticPkgManagerSpecSchema} from '#schema/static-pkg-manager-spec';
 import {
   NonEmptyStringSchema,
   NonNegativeIntSchema,
@@ -13,10 +16,6 @@ import {
   serializeObject,
 } from '#util/schema-util';
 import {z} from 'zod';
-import {StaticPkgManagerSpecSchema} from '.';
-import {LintManifestSchema} from './lint-manifest';
-import {PkgManagerEventBaseSchema} from './pkg-manager-event';
-import {RuleResultFailedSchema} from './rule-result';
 
 export type LintBeginEventData = z.infer<typeof LintBeginEventDataSchema>;
 
@@ -124,3 +123,16 @@ export const PkgManagerLintOkEventDataSchema = PkgManagerLintEndEventDataSchema;
 
 export const PkgManagerLintFailedEventDataSchema =
   PkgManagerLintEndEventDataSchema;
+
+export const LintEventSchemas = {
+  [LintEvent.PkgManagerLintBegin]: PkgManagerLintBeginEventDataSchema,
+  [LintEvent.PkgManagerLintOk]: PkgManagerLintOkEventDataSchema,
+  [LintEvent.PkgManagerLintFailed]: PkgManagerLintFailedEventDataSchema,
+  [LintEvent.RuleBegin]: RuleBeginEventDataSchema,
+  [LintEvent.RuleOk]: RuleOkEventDataSchema,
+  [LintEvent.RuleFailed]: RuleFailedEventDataSchema,
+  [LintEvent.RuleError]: RuleErrorEventDataSchema,
+  [LintEvent.LintBegin]: LintBeginEventDataSchema,
+  [LintEvent.LintOk]: LintOkEventDataSchema,
+  [LintEvent.LintFailed]: LintFailedEventDataSchema,
+} as const;

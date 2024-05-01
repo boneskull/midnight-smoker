@@ -1,79 +1,35 @@
 import {
-  type CtrlInstallBeginEvent,
   type CtrlPackBeginEvent,
   type CtrlPkgManagerPackBeginEvent,
   type CtrlPkgManagerPackFailedEvent,
   type CtrlPkgManagerPackOkEvent,
 } from '#machine/controller';
 import {
-  assertMachineOutputNotOk,
-  assertMachineOutputOk,
-  isMachineOutputNotOk,
-  isMachineOutputOk,
+  assertActorOutputNotOk,
+  assertActorOutputOk,
+  isActorOutputNotOk,
+  isActorOutputOk,
   makeId,
   monkeypatchActorLogger,
-  type MachineOutputError,
   type MachineOutputLike,
-  type MachineOutputOk,
 } from '#machine/util';
-import {
-  type PackError,
-  type PackOptions,
-  type PackParseError,
-  type PkgManager,
-} from '#pkg-manager';
-import {type InstallManifest} from '#schema';
 import {isEmpty} from 'lodash';
+import {assign, enqueueActions, log, sendTo, setup} from 'xstate';
+import {PackMachine} from './pack-machine';
 import {
-  assign,
-  enqueueActions,
-  log,
-  sendTo,
-  setup,
-  type ActorRefFrom,
-  type AnyActorRef,
-} from 'xstate';
-import {
-  PackMachine,
   type PackMachineOutputError,
   type PackMachineOutputOk,
-} from './pack-machine';
+} from './pack-machine-types';
 import {
   type PackerMachineEvents,
   type PackerMachinePackMachineDoneEvent,
   type PackerMachinePkgManagerPackBeginEvent,
 } from './packer-machine-events';
-
-export interface PackerMachineInput {
-  signal: AbortSignal;
-  opts: PackOptions;
-  parentRef: AnyActorRef;
-  pkgManagers: PkgManager[];
-}
-
-export interface PackerMachineContext extends PackerMachineInput {
-  packMachineRefs: Record<string, ActorRefFrom<typeof PackMachine>>;
-  error?: PackError | PackParseError;
-  manifests: InstallManifest[];
-}
-
-export interface PackResult {
-  installManifests: InstallManifest[];
-
-  pkgManager: PkgManager;
-}
-
-export type PackerMachineOutputError = MachineOutputError<
-  PackError | PackParseError
->;
-
-export type PackerMachineOutputOk = MachineOutputOk<{
-  manifests: InstallManifest[];
-}>;
-
-export type PackerMachineOutput =
-  | PackerMachineOutputOk
-  | PackerMachineOutputError;
+import {
+  type PackerMachineContext,
+  type PackerMachineInput,
+  type PackerMachineOutput,
+} from './packer-machine-types';
 
 export const PackerMachine = setup({
   types: {
@@ -88,20 +44,20 @@ export const PackerMachine = setup({
   actions: {
     assignError: assign({
       error: (_, output: PackMachineOutputError) => {
-        assertMachineOutputNotOk(output);
+        assertActorOutputNotOk(output);
         return output.error;
       },
     }),
     assignManifests: assign({
       manifests: ({context: {manifests}}, output: PackMachineOutputOk) => {
-        return isMachineOutputOk(output)
+        return isActorOutputOk(output)
           ? [...manifests, ...output.installManifests]
           : manifests;
       },
     }),
     pack: assign({
       packMachineRefs: ({
-        context: {pkgManagers, signal, opts, packMachineRefs},
+        context: {pkgManagers, signal, workspaceInfo, packMachineRefs},
         self,
         spawn,
       }) => ({
@@ -114,7 +70,7 @@ export const PackerMachine = setup({
               input: {
                 pkgManager,
                 signal,
-                opts,
+                workspaceInfo,
                 parentRef: self,
                 index: index + 1,
               },
@@ -129,17 +85,10 @@ export const PackerMachine = setup({
     >{
       type: 'PACK_BEGIN',
     }),
-    sendInstall: sendTo(
-      ({context: {parentRef}}) => parentRef,
-      (_, output: PackResult): CtrlInstallBeginEvent => ({
-        type: 'INSTALL_BEGIN',
-        ...output,
-      }),
-    ),
     sendPkgManagerPackBeginEvent: sendTo(
       ({context: {parentRef}}) => parentRef,
       (
-        {self, context: {opts}},
+        {self, context: {opts, workspaceInfo}},
         {pkgManager, index}: PackerMachinePkgManagerPackBeginEvent,
       ): CtrlPkgManagerPackBeginEvent => ({
         ...opts,
@@ -147,23 +96,24 @@ export const PackerMachine = setup({
         index,
         pkgManager,
         sender: self.id,
+        workspaceInfo,
       }),
     ),
     sendPkgManagerPackOkEvent: sendTo(
       ({context: {parentRef}}) => parentRef,
       (
         {self},
-
         {output}: PackerMachinePackMachineDoneEvent,
       ): CtrlPkgManagerPackOkEvent => {
-        assertMachineOutputOk(output);
-        const {pkgManager, installManifests, index} = output;
+        assertActorOutputOk(output);
+        const {pkgManager, installManifests, index, workspaceInfo} = output;
         return {
           type: 'PKG_MANAGER_PACK_OK',
           index,
           pkgManager,
           installManifests,
           sender: self.id,
+          workspaceInfo,
         };
       },
     ),
@@ -173,11 +123,12 @@ export const PackerMachine = setup({
         {self},
         {output}: PackerMachinePackMachineDoneEvent,
       ): CtrlPkgManagerPackFailedEvent => {
-        assertMachineOutputNotOk(output);
-        const {pkgManager, error, index} = output;
+        assertActorOutputNotOk(output);
+        const {pkgManager, error, index, workspaceInfo} = output;
         return {
           type: 'PKG_MANAGER_PACK_FAILED',
           index,
+          workspaceInfo,
           pkgManager,
           error,
           sender: self.id,
@@ -207,8 +158,8 @@ export const PackerMachine = setup({
   initial: 'packing',
   entry: [
     log(
-      ({context: {pkgManagers}}) =>
-        `PackerMachine will pack using ${pkgManagers.length} pkgManagers`,
+      ({context}) =>
+        `PackerMachine will pack using ${context.pkgManagers.length} pkgManagers`,
     ),
     {type: 'sendPack'},
     {type: 'pack'},
@@ -227,14 +178,53 @@ export const PackerMachine = setup({
   states: {
     packing: {
       on: {
+        PKG_PACK_FAILED: {
+          actions: [
+            log('got PKG_PACK_FAILED'),
+            sendTo(
+              ({context: {parentRef}}) => parentRef,
+              ({event: {pkgManager, ...event}, context}) => ({
+                ...event,
+                pkgManager: pkgManager.staticSpec,
+                totalPkgs: context.workspaceInfo.length,
+              }),
+            ),
+          ],
+        },
+        PKG_PACK_BEGIN: {
+          actions: [
+            log('got PKG_PACK_BEGIN'),
+            sendTo(
+              ({context: {parentRef}}) => parentRef,
+              ({event: {pkgManager, ...event}, context}) => ({
+                ...event,
+                pkgManager: pkgManager.staticSpec,
+                totalPkgs: context.workspaceInfo.length,
+              }),
+            ),
+          ],
+        },
+        PKG_PACK_OK: {
+          actions: [
+            log('got PKG_PACK_OK'),
+            sendTo(
+              ({context: {parentRef}}) => parentRef,
+              ({event: {pkgManager, ...event}, context}) => ({
+                ...event,
+                pkgManager: pkgManager.staticSpec,
+                totalPkgs: context.workspaceInfo.length,
+              }),
+            ),
+          ],
+        },
         'xstate.done.actor.PackMachine.*': [
           {
-            guard: ({event: {output}}) => isMachineOutputOk(output),
+            guard: ({event: {output}}) => isActorOutputOk(output),
             actions: [
               {
                 type: 'assignManifests',
                 params: ({event: {output}}) => {
-                  assertMachineOutputOk(output);
+                  assertActorOutputOk(output);
                   return output;
                 },
               },
@@ -245,14 +235,14 @@ export const PackerMachine = setup({
               {
                 type: 'sendPkgManagerPackOkEvent',
                 params: ({event}) => {
-                  assertMachineOutputOk(event.output);
+                  assertActorOutputOk(event.output);
                   return event;
                 },
               },
             ],
           },
           {
-            guard: ({event: {output}}) => isMachineOutputNotOk(output),
+            guard: ({event: {output}}) => isActorOutputNotOk(output),
             actions: [
               {
                 type: 'stopPackMachine',
@@ -261,14 +251,14 @@ export const PackerMachine = setup({
               {
                 type: 'assignError',
                 params: ({event: {output}}) => {
-                  assertMachineOutputNotOk(output);
+                  assertActorOutputNotOk(output);
                   return output;
                 },
               },
               {
                 type: 'sendPkgManagerPackFailedEvent',
                 params: ({event}) => {
-                  assertMachineOutputNotOk(event.output);
+                  assertActorOutputNotOk(event.output);
                   return event;
                 },
               },

@@ -1,4 +1,5 @@
 import {DEFAULT_PKG_MANAGER_BIN, DEFAULT_PKG_MANAGER_VERSION} from '#constants';
+import type * as G from '#pkg-manager/pkg-manager-spec';
 import {type getSystemPkgManagerVersion} from '#util/pkg-util';
 import {nullPmDef} from '@midnight-smoker/test-util';
 import {globIterate} from 'glob';
@@ -7,9 +8,7 @@ import rewiremock from 'rewiremock/node';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
-import type * as G from '../../../../dist/component/pkg-manager/pkg-manager-oracle';
 import {createFsMocks, type FsMocks} from '../../mocks/fs';
-
 const expect = unexpected.clone().use(unexpectedSinon);
 
 describe('midnight-smoker', function () {
@@ -38,7 +37,7 @@ describe('midnight-smoker', function () {
 
           ({guessPackageManager} = rewiremock.proxy(
             () =>
-              require('../../../../src/component/pkg-manager/pkg-manager-guesser'),
+              require('../../../../src/component/pkg-manager/pkg-manager-spec'),
             (r) => ({
               ...mocks,
               'read-pkg-up': sandbox.stub().callsFake(async ({cwd = '/'}) => {

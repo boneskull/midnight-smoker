@@ -30,6 +30,7 @@ import type {RunScriptResult} from '#schema/run-script-result';
 import {type SmokeResults} from '#schema/smoker-event';
 import {castArray} from '#util/schema-util';
 import Debug from 'debug';
+import {isEmpty} from 'lodash';
 import {createActor, toPromise} from 'xstate';
 import {
   type Component,
@@ -41,7 +42,7 @@ import {
   ControlMachine,
   type CtrlMachineOutput,
 } from './machine/controller/control-machine';
-import {isMachineOutputOk} from './machine/util';
+import {isActorOutputOk} from './machine/util';
 import {FileManager} from './util/filemanager';
 
 type SetupResult =
@@ -83,10 +84,10 @@ export class Smoker {
    */
   private readonly bail: boolean;
 
-  /**
-   * Whether to include the workspace root
-   */
-  private readonly includeWorkspaceRoot;
+  // /**
+  //  * Whether to include the workspace root
+  //  */
+  // private readonly includeWorkspaceRoot;
 
   /**
    * Whether to keep temp dirs around (debugging purposes)
@@ -102,8 +103,6 @@ export class Smoker {
    * contain a collection of rules and other stuff (in the future)
    */
   private readonly pluginRegistry: PluginRegistry;
-
-  private readonly reporters: Set<string>;
 
   /**
    * Whether or not to run checks
@@ -137,29 +136,16 @@ export class Smoker {
       fileManager = FileManager.create(),
     }: SmokerCapabilities = {},
   ) {
-    const {
-      script,
-      linger,
-      includeRoot,
-      add,
-      bail,
-      all,
-      workspace,
-      lint,
-      reporter,
-      cwd,
-    } = opts;
+    const {script, linger, add, bail, all, workspace, lint, cwd} = opts;
     this.opts = Object.freeze(opts);
     this.scripts = script;
     this.cwd = cwd;
     this.linger = linger;
-    this.includeWorkspaceRoot = includeRoot;
     this.add = add;
     this.bail = bail;
     this.allWorkspaces = all;
     this.workspaces = workspace;
     this.shouldLint = lint;
-    this.reporters = new Set(reporter);
     this.fileManager = fileManager;
 
     /**
@@ -167,7 +153,7 @@ export class Smoker {
      */
     if (this.allWorkspaces && this.workspaces.length) {
       throw new InvalidArgError(
-        'Option "workspace" is mutually exclusive with "all" and/or "includeRoot"',
+        'Option "workspace" is mutually exclusive with "all"',
       );
     }
 
@@ -201,10 +187,7 @@ export class Smoker {
     opts?: RawSmokerOptions,
     caps: SmokerCapabilities = {},
   ) {
-    const {pluginRegistry, options} = await Smoker.bootstrap(
-      opts,
-      caps.pluginRegistry,
-    );
+    const {pluginRegistry, options} = await Smoker.bootstrap(opts, caps);
     return new Smoker(options, {...caps, pluginRegistry});
   }
 
@@ -275,12 +258,6 @@ export class Smoker {
 
   public async lint(): Promise<SmokeResults | undefined> {
     try {
-      await this.preRun();
-    } catch (err) {
-      return await this.postRun({error: err as Error});
-    }
-
-    try {
       let ruleResults: LintResult | undefined;
       const runScriptResults: RunScriptResult[] = [];
       // await this.runLint();
@@ -349,37 +326,51 @@ export class Smoker {
    * @returns Results
    */
   public async smoke(): Promise<SmokeResults | undefined> {
+    const {
+      pluginRegistry,
+      fileManager,
+      opts: smokerOptions,
+      scripts,
+      shouldLint,
+    } = this;
+
     const controller = createActor(ControlMachine, {
       id: 'smoke',
       input: {
-        fileManager: this.fileManager,
-        smokerOptions: this.opts,
-        pluginRegistry: this.pluginRegistry,
+        fileManager,
+        smokerOptions,
+        pluginRegistry,
       },
       logger: Debug('midnight-smoker:controller'),
-    });
+    }).start();
 
-    controller.start();
-
-    if (this.shouldLint) {
+    if (shouldLint) {
       controller.send({type: 'LINT'});
     }
 
-    if (this.scripts.length) {
-      controller.send({type: 'RUN_SCRIPTS', scripts: this.scripts});
+    if (!isEmpty(scripts)) {
+      controller.send({type: 'RUN_SCRIPTS', scripts});
     }
 
     controller.send({type: 'HALT'});
 
     const output = (await toPromise(controller)) as CtrlMachineOutput;
 
-    if (isMachineOutputOk(output)) {
+    if (isActorOutputOk(output)) {
+      debug({
+        scripts: output.runScriptResults,
+        lint: output.lintResult,
+        plugins: pluginRegistry.plugins,
+        opts: smokerOptions,
+      });
       return {
         scripts: output.runScriptResults,
         lint: output.lintResult,
-        plugins: this.pluginRegistry.plugins,
-        opts: this.opts,
+        plugins: pluginRegistry.plugins,
+        opts: smokerOptions,
       };
+    } else {
+      debug('no results');
     }
   }
 
@@ -396,22 +387,29 @@ export class Smoker {
    * 4. {@link OptionParser.parse Parse} the options.
    *
    * @param opts - The options for the smoker.
-   * @param pluginRegistry - The plugin registry for the smoker.
+   * @param caps - Capabilities
    * @returns An object containing the plugin registry and parsed options.
    * @internal
    */
   private static async bootstrap(
     this: void,
     opts: RawSmokerOptions = {},
-    pluginRegistry?: PluginRegistry,
-  ) {
+    caps: SmokerCapabilities = {},
+  ): Promise<{
+    pluginRegistry: PluginRegistry;
+    fileManager: FileManager;
+    options: SmokerOptions;
+  }> {
     const plugins = castArray(opts.plugin).filter(
       (requested) => !isBlessedPlugin(requested),
     );
     debug('Requested external plugins: %O', plugins);
 
+    let {pluginRegistry, fileManager} = caps;
+    fileManager ??= FileManager.create();
+
     if (!pluginRegistry) {
-      pluginRegistry = PluginRegistry.create();
+      pluginRegistry = PluginRegistry.create({fileManager});
       // this must be done in sequence to protect the blessed plugins
       await pluginRegistry.loadPlugins(BLESSED_PLUGINS);
       await pluginRegistry.loadPlugins(plugins);
@@ -423,6 +421,7 @@ export class Smoker {
     debug('Loaded %d plugin(s)', pluginRegistry.plugins.length);
 
     return {
+      fileManager,
       pluginRegistry,
       options: OptionParser.create(pluginRegistry).parse(opts),
     };
@@ -517,31 +516,6 @@ export class Smoker {
     }
 
     return smokeResults;
-  }
-
-  private async preRun(): Promise<void> {
-    // await Promise.all([
-    //   this.reporterController.init().then(() => {
-    //     debug('Reporters initialized');
-    //   }),
-    //   this.pkgManagerController.init().then(() => {
-    //     debug('Package managers initialized');
-    //   }),
-    // ]);
-
-    // await this.eventBus.emit(SmokerEvent.SmokeBegin, {
-    //   plugins: this.pluginRegistry.plugins,
-    //   opts: this.opts,
-    // });
-
-    debug('Beginning packing phase');
-
-    // PACK
-    // await this.pack();
-    debug('Beginning installation phase');
-
-    // INSTALL
-    // await this.install();
   }
 }
 

@@ -1,31 +1,31 @@
 import {type InstallError, type PackError, type PackParseError} from '#error';
+import {type EventData, type SmokerEvents} from '#event';
+import {type InstallerMachineOutput} from '#machine/installer';
+import {type LinterMachineOutput} from '#machine/linter';
+import {type PackerMachineOutput} from '#machine/packer';
+import {type PluginLoaderMachineOutput} from '#machine/plugin-loader';
+import {type ReporterMachineOutput} from '#machine/reporter';
+import {type RunnerMachineOutput} from '#machine/runner';
 import {type PkgManager} from '#pkg-manager';
+import {type SomeReporter} from '#reporter';
 import {
-  type InstallEventData,
   type InstallManifest,
-  type LintEventData,
-  type PackEventData,
   type PackOptions,
   type PkgManagerLintBeginEventData,
   type PkgManagerLintFailedEventData,
   type PkgManagerLintOkEventData,
   type PkgManagerRunScriptsBeginEventData,
+  type PkgPackBeginEventData,
+  type PkgPackFailedEventData,
+  type PkgPackOkEventData,
   type RuleBeginEventData,
   type RuleFailedEventData,
   type RuleOkEventData,
   type RunScriptManifest,
   type RunScriptResult,
-  type ScriptEventData,
-  type SmokerEventData,
+  type SomeRule,
+  type WorkspaceInfo,
 } from '#schema';
-import {type Simplify, type ValueOf} from 'type-fest';
-import {type SomeReporter, type SomeRule} from '../../component';
-import {type InstallerMachineOutput} from '../installer/installer-machine';
-import {type LinterMachineOutput} from '../linter/linter-machine';
-import {type PackerMachineOutput} from '../packer/packer-machine';
-import {type PluginLoaderMachineOutput} from '../plugin-loader/plugin-loader-machine';
-import {type ReporterMachineOutput} from '../reporter/reporter-machine';
-import {type RunnerMachineOutput} from '../runner/runner-machine';
 
 export type CtrlEvents =
   | CtrlRunScriptSkippedEvent
@@ -71,26 +71,12 @@ export type CtrlEvents =
   | CtrlPackOkEvent
   | CtrlInstallOkEvent
   | CtrlInstallFailedEvent
+  | CtrlPkgPackBeginEvent
+  | CtrlPkgPackOkEvent
+  | CtrlPkgPackFailedEvent
   | CtrlRunnerMachineDoneEvent;
 
-type SourceEvents = InstallEventData &
-  PackEventData &
-  ScriptEventData &
-  LintEventData &
-  Pick<
-    SmokerEventData,
-    'BeforeExit' | 'SmokeBegin' | 'SmokeOk' | 'SmokeFailed'
-  >;
-
-export type CtrlExternalEventsMap = {
-  [K in keyof SourceEvents]: SourceEvents[K] & {type: K};
-};
-
-export type CtrlEmitted = ValueOf<CtrlExternalEventsMap>;
-
-export type CtrlExternalEvent<K extends keyof CtrlExternalEventsMap> = Simplify<
-  CtrlExternalEventsMap[K]
->;
+export type ControlMachineEmitted = EventData<keyof SmokerEvents>;
 
 export type ComputedPkgManagerRunScriptsFields =
   | 'totalPkgManagers'
@@ -164,6 +150,11 @@ export interface CtrlLoadedEvent {
   type: 'LOADED';
 }
 
+export interface CtrlSetupEvent {
+  type: 'SETUP';
+  pkgManager: PkgManager;
+}
+
 export interface CtrlReporterDoneEvent {
   type: 'xstate.done.actor.ReporterMachine.*';
   output: ReporterMachineOutput;
@@ -188,20 +179,17 @@ export interface CtrlPkgManagerInstallFailedEvent {
 
 export interface CtrlPkgManagerPackFailedEvent {
   error: PackError | PackParseError;
+  workspaceInfo: WorkspaceInfo[];
   index: number;
   pkgManager: PkgManager;
   type: 'PKG_MANAGER_PACK_FAILED';
   sender: string;
 }
 
-export interface CtrlSetupEvent {
-  type: 'SETUP';
-  pkgManager: PkgManager;
-}
-
 export interface CtrlPkgManagerPackOkEvent {
   index: number;
   installManifests: InstallManifest[];
+  workspaceInfo: WorkspaceInfo[];
   pkgManager: PkgManager;
   type: 'PKG_MANAGER_PACK_OK';
 
@@ -220,6 +208,7 @@ export interface CtrlPkgManagerPackBeginEvent extends PackOptions {
   index: number;
   pkgManager: PkgManager;
   sender: string;
+  workspaceInfo: WorkspaceInfo[];
   type: 'PKG_MANAGER_PACK_BEGIN';
 }
 
@@ -240,7 +229,6 @@ export interface CtrlPackOkEvent {
 
 export interface CtrlInstallOkEvent {
   type: 'INSTALL_OK';
-  manifests: InstallManifest[];
 }
 
 export interface CtrlInstallFailedEvent {
@@ -352,4 +340,16 @@ export interface CtrlComponentsEvent {
   pkgManagers: PkgManager[];
   reporters: SomeReporter[];
   rules: SomeRule[];
+}
+
+export interface CtrlPkgPackBeginEvent extends PkgPackBeginEventData {
+  type: 'PKG_PACK_BEGIN';
+}
+
+export interface CtrlPkgPackOkEvent extends PkgPackOkEventData {
+  type: 'PKG_PACK_OK';
+}
+
+export interface CtrlPkgPackFailedEvent extends PkgPackFailedEventData {
+  type: 'PKG_PACK_FAILED';
 }

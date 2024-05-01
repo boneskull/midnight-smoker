@@ -1,6 +1,7 @@
 import {ReifiedComponent} from '#component';
 import {fromUnknownError} from '#error';
 import {ReporterError} from '#error/reporter-error';
+import {type EventData, type EventName} from '#event/smoker-events';
 import {type PluginMetadata} from '#plugin';
 import {
   type ReporterContext,
@@ -8,7 +9,6 @@ import {
   type ReporterListener,
   type ReporterListeners,
 } from '#schema/reporter-def';
-import {type EventData, type EventKind} from '#schema/smoker-event';
 import Debug from 'debug';
 import {isFunction} from 'lodash';
 
@@ -42,23 +42,25 @@ export class Reporter<Ctx = unknown> extends ReifiedComponent<
     return this.def.description;
   }
 
-  public async invokeListener<T extends EventKind>(data: EventData<T>) {
+  public async invokeListener<T extends EventName>(data: EventData<T>) {
     // await Promise.resolve();
     // XXX don't like these casts
     if (this.hasListener(data.type)) {
       try {
         const listenerName = `on${data.type}` as keyof ReporterListeners<Ctx>;
         const listener = this.def[listenerName] as ReporterListener<T, Ctx>;
-        debug('%s - invoking %s', this, listenerName);
+        // debug('%s - invoking %s', this, listenerName);
         await listener(this.ctx, data);
         debug('%s - invoked %s', this, listenerName);
       } catch (err) {
         throw new ReporterError(err as Error, this.def);
       }
+    } else {
+      // debug('%s - no listener for %s', this, data.type);
     }
   }
 
-  public hasListener<T extends EventKind>(type: T): boolean {
+  public hasListener<T extends EventName>(type: T): boolean {
     return `on${type}` in this.def;
   }
 

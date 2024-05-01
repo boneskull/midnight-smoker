@@ -1,5 +1,5 @@
 import {SmokeFailedError} from '#error/smoker-error';
-import {type SmokerEvent, type SmokerEvents} from '#event';
+import {SmokerEvent} from '#event';
 import {BaseSmokerOptionsSchema} from '#options/options';
 import {LintResultSchema} from '#schema/lint-result';
 import {RunScriptResultSchema} from '#schema/run-script-result';
@@ -106,20 +106,6 @@ export const UnknownErrorEventDataSchema = z.object({
  */
 export type SmokeResults = SmokeOkEventData;
 
-/**
- * All events emitted by `midnight-smoker`
- */
-export type EventKind = keyof SmokerEvents;
-
-/**
- * Data associated with a specific event
- *
- * @template T - The event
- */
-export type EventData<T extends EventKind = EventKind> = {
-  [K in T]: {type: K} & SmokerEvents[K];
-}[T];
-
 export type SmokerEventData = {
   [SmokerEvent.BeforeExit]: BeforeExitEventData;
   [SmokerEvent.Lingered]: LingeredEventData;
@@ -128,3 +114,12 @@ export type SmokerEventData = {
   [SmokerEvent.SmokeOk]: SmokeOkEventData;
   [SmokerEvent.UnknownError]: UnknownErrorEventData;
 };
+
+export const SmokerEventSchemas = {
+  [SmokerEvent.BeforeExit]: BeforeExitEventDataSchema,
+  [SmokerEvent.Lingered]: LingeredEventDataSchema,
+  [SmokerEvent.SmokeBegin]: SmokeBeginEventDataSchema,
+  [SmokerEvent.SmokeFailed]: SmokeFailedEventDataSchema,
+  [SmokerEvent.SmokeOk]: SmokeOkEventDataSchema,
+  [SmokerEvent.UnknownError]: UnknownErrorEventDataSchema,
+} as const;

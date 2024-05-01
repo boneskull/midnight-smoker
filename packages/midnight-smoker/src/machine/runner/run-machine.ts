@@ -1,58 +1,14 @@
 import {ScriptBailed} from '#error';
-import {type MachineOutputError, type MachineOutputOk} from '#machine/util';
-import {type PkgManager} from '#pkg-manager';
-import {
-  type RunScriptManifest,
-  type RunScriptResult,
-  type ScriptError,
-} from '#schema';
+import {type RunScriptResult, type ScriptError} from '#schema';
 import assert from 'node:assert';
+import {assign, fromPromise, log, not, sendTo, setup} from 'xstate';
 import {
-  assign,
-  fromPromise,
-  log,
-  not,
-  sendTo,
-  setup,
-  type AnyActorRef,
-} from 'xstate';
-import {type RunMachineRunScriptBeginEvent} from './runner-machine-events';
-
-export interface RunMachineInput {
-  pkgManager: PkgManager;
-  runScriptManifest: RunScriptManifest;
-  signal: AbortSignal;
-
-  /**
-   * Index of the script in the list of scripts to run _for a particular package
-   * manager_.
-   */
-  index: number;
-
-  parentRef: AnyActorRef;
-}
-
-export interface RunMachineContext extends RunMachineInput {
-  result?: RunScriptResult;
-  error?: ScriptError;
-}
-
-export interface RunMachineBaseOutput {}
-
-export type RunMachineOutputOk = MachineOutputOk<{
-  manifest: RunScriptManifest;
-  scriptIndex: number;
-  result: RunScriptResult;
-}>;
-
-export type RunMachineOutputError = MachineOutputError<ScriptError>;
-
-export type RunMachineOutput = RunMachineOutputOk | RunMachineOutputError;
-
-export type RunMachineRunScriptInput = Omit<
-  RunMachineInput,
-  'index' | 'parentRef'
->;
+  type RunMachineContext,
+  type RunMachineInput,
+  type RunMachineOutput,
+  type RunMachineRunScriptInput,
+} from './run-machine-types';
+import {type RunnerMachineRunScriptBeginEvent} from './runner-machine-events';
 
 export const RunMachine = setup({
   types: {
@@ -63,7 +19,7 @@ export const RunMachine = setup({
   actions: {
     sendRunScriptBeginEvent: sendTo(
       ({context: {parentRef}}) => parentRef,
-      ({context}): RunMachineRunScriptBeginEvent => {
+      ({context}): RunnerMachineRunScriptBeginEvent => {
         const {runScriptManifest, index} = context;
         return {
           type: 'RUN_SCRIPT_BEGIN',

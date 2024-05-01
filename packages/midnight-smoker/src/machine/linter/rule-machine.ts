@@ -1,41 +1,11 @@
+import {type RuleContext, type SomeRule, type SomeRuleConfig} from '#rule';
+import {assign, fromPromise, log, sendTo, setup} from 'xstate';
+import {type LinterMachineRuleBeginEvent} from './linter-machine-events';
 import {
-  type RuleContext,
-  type RuleIssue,
-  type RuleResultFailed,
-  type SomeRule,
-  type SomeRuleConfig,
-  type StaticRuleContext,
-} from '#rule';
-import {
-  assign,
-  fromPromise,
-  log,
-  sendTo,
-  setup,
-  type AnyActorRef,
-} from 'xstate';
-import {type LinterMachineRuleBeginEvent} from '.';
-import {type MachineOutputOk} from '../util';
-
-export interface RuleMachineInput {
-  ctx: Readonly<RuleContext>;
-  rule: SomeRule;
-  config: SomeRuleConfig;
-  index: number;
-  parentRef: AnyActorRef;
-}
-
-export interface RuleMachineContext extends RuleMachineInput {
-  issues?: readonly RuleIssue[];
-}
-
-// this machine does not exit with an error
-export type RuleMachineOutput = MachineOutputOk<{
-  issues: RuleResultFailed[];
-  index: number;
-  ctx: StaticRuleContext;
-  rule: SomeRule;
-}>;
+  type RuleMachineContext,
+  type RuleMachineInput,
+  type RuleMachineOutput,
+} from './rule-machine-types';
 
 export const RuleMachine = setup({
   types: {

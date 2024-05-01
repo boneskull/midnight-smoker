@@ -6,12 +6,12 @@ import {
   type CtrlRunScriptSkippedEvent,
 } from '#machine/controller';
 import {
-  assertMachineOutputOk,
-  isMachineOutputOk,
+  assertActorOutputOk,
+  isActorOutputOk,
   makeId,
   monkeypatchActorLogger,
+  type ActorOutputOk,
   type MachineOutputLike,
-  type MachineOutputOk,
 } from '#machine/util';
 import {type PkgManager} from '#pkg-manager';
 import {type RunScriptManifest, type RunScriptResult} from '#schema';
@@ -25,10 +25,11 @@ import {
   type ActorRefFrom,
   type AnyActorRef,
 } from 'xstate';
-import {RunMachine, type RunMachineOutputOk} from './run-machine';
+import {RunMachine} from './run-machine';
+import {type RunMachineOutputOk} from './run-machine-types';
 import {
-  type RunMachineRunScriptBeginEvent,
   type RunnerMachineEvents,
+  type RunnerMachineRunScriptBeginEvent,
 } from './runner-machine-events';
 
 export interface RunnerMachineInput {
@@ -44,7 +45,7 @@ export interface RunnerMachineContext extends RunnerMachineInput {
   results: RunScriptResult[];
 }
 
-export type RunnerMachineOutputOk = MachineOutputOk<{
+export type RunnerMachineOutputOk = ActorOutputOk<{
   manifests: RunScriptManifest[];
   pkgManagerIndex: number;
   results: RunScriptResult[];
@@ -118,6 +119,9 @@ export const RunnerMachine = setup({
         type: 'PKG_MANAGER_RUN_SCRIPTS_BEGIN',
         pkgManager: context.pkgManager.staticSpec,
         manifests: context.runScriptManifests,
+        workspaceInfo: context.runScriptManifests.map(
+          ({pkgName, localPath}) => ({pkgName, localPath}),
+        ),
         currentPkgManager: context.index,
       }),
     ),
@@ -130,7 +134,7 @@ export const RunnerMachine = setup({
           type,
           index: scriptIndex,
           runScriptManifest,
-        }: RunMachineRunScriptBeginEvent,
+        }: RunnerMachineRunScriptBeginEvent,
       ): CtrlRunScriptBeginEvent => ({
         type,
         scriptIndex,
@@ -205,7 +209,7 @@ export const RunnerMachine = setup({
             {
               type: 'assignResult',
               params: ({event: {output}}) => {
-                if (isMachineOutputOk(output)) {
+                if (isActorOutputOk(output)) {
                   return output.result;
                 }
                 return {error: output.error};
@@ -218,7 +222,7 @@ export const RunnerMachine = setup({
             {
               type: 'sendRunScriptDone',
               params: ({event: {output}}) => {
-                assertMachineOutputOk(output);
+                assertActorOutputOk(output);
                 return output;
               },
             },

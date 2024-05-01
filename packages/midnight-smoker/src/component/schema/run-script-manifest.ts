@@ -1,9 +1,9 @@
+import {WorkspaceInfoSchema} from '#schema/workspaces';
 import {NonEmptyStringSchema} from '#util/schema-util';
-import {z} from 'zod';
+import {type z} from 'zod';
 
-export const RunScriptManifestSchema = z.object({
+export const RunScriptManifestSchema = WorkspaceInfoSchema.extend({
   cwd: NonEmptyStringSchema,
-  pkgName: NonEmptyStringSchema,
   script: NonEmptyStringSchema,
 });
 

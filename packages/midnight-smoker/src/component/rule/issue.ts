@@ -4,11 +4,13 @@
  * @packageDocumentation
  */
 
-import {RuleSeverities} from '#constants';
+import {PACKAGE_JSON, RuleSeverities} from '#constants';
 import type {RuleError} from '#error/rule-error';
 import {type RuleResultFailed} from '#schema/rule-result';
 import {type StaticRuleContext, type StaticRuleDef} from '#schema/rule-static';
 import {uniqueIdFactoryFactory} from '#util/util';
+import path from 'node:path';
+import {fileURLToPath} from 'url';
 
 /**
  * Properties for a {@link RuleIssue}.
@@ -44,6 +46,8 @@ export interface RuleIssueParams<
    * The serialized rule definition for this issue
    */
   rule: RuleDef;
+
+  filepath?: string | URL;
 }
 
 /**
@@ -87,12 +91,15 @@ export class RuleIssue implements RuleResultFailed {
    */
   public readonly rule: StaticRuleDef;
 
+  public readonly filepath: string;
+
   public constructor({
     rule,
     context,
     message,
     data,
     error,
+    filepath,
   }: RuleIssueParams<StaticRuleContext, StaticRuleDef>) {
     this.rule = rule;
     this.context = context;
@@ -100,6 +107,12 @@ export class RuleIssue implements RuleResultFailed {
     this.data = data;
     this.error = error;
     this.id = RuleIssue.generateId();
+    this.filepath =
+      filepath instanceof URL
+        ? fileURLToPath(filepath)
+        : filepath
+          ? filepath
+          : path.join(context.localPath, PACKAGE_JSON);
   }
 
   public get pkgManager() {
@@ -123,8 +136,8 @@ export class RuleIssue implements RuleResultFailed {
   /**
    * Creates a new readonly {@link RuleIssue}.
    *
-   * @template Ctx - _Exact_ `StaticRuleContext`; _not_ a `RuleContext`
-   * @template RuleDef - _Exact_ `SomeStaticRuleDef`; _not_ a `StaticRuleDef`
+   * @template Ctx
+   * @template RuleDef
    * @param params - _Required_ parameters
    * @returns A new readonly {@link RuleIssue}
    */
@@ -132,11 +145,7 @@ export class RuleIssue implements RuleResultFailed {
     Ctx extends StaticRuleContext,
     RuleDef extends StaticRuleDef,
   >(params: RuleIssueParams<Ctx, RuleDef>): Readonly<RuleIssue> {
-    return Object.freeze(
-      new RuleIssue(
-        params as RuleIssueParams<StaticRuleContext, StaticRuleDef>,
-      ),
-    );
+    return Object.freeze(new RuleIssue(params));
   }
 
   /**
@@ -155,6 +164,7 @@ export class RuleIssue implements RuleResultFailed {
       id,
       failed,
       severity,
+      filepath,
     } = this;
     return {
       rule,
@@ -166,6 +176,7 @@ export class RuleIssue implements RuleResultFailed {
       id,
       failed,
       severity,
+      filepath,
     };
   }
 

@@ -1,10 +1,9 @@
 import Debug from 'debug';
-import {isError, map, pickBy} from 'lodash';
-import {type ScriptError} from 'midnight-smoker/error';
+import {isError, pickBy} from 'lodash';
+import {fromUnknownError} from 'midnight-smoker/error';
 import {
   ExecError,
   InstallError,
-  InvalidArgError,
   PackError,
   PackParseError,
   RunScriptError,
@@ -16,6 +15,7 @@ import {
   type PkgManagerPackContext,
   type PkgManagerRunScriptContext,
   type RunScriptResult,
+  type ScriptError,
 } from 'midnight-smoker/pkg-manager';
 import {isSmokerError} from 'midnight-smoker/util';
 import path from 'node:path';
@@ -88,8 +88,20 @@ export function parseNpmError(json: string): NpmJsonOutput['error'] {
 
 export function handleInstallError(
   {tmpdir, spec}: PkgManagerInstallContext,
+  errOrResult: ExecError,
+  pkgSpec: string,
+): InstallError;
+
+export function handleInstallError(
+  {tmpdir, spec}: PkgManagerInstallContext,
+  errOrResult: ExecResult,
+  pkgSpec: string,
+): InstallError | undefined;
+
+export function handleInstallError(
+  {tmpdir, spec}: PkgManagerInstallContext,
   errOrResult: ExecError | ExecResult,
-  installSpecs: string[],
+  pkgSpec: string,
 ): InstallError | undefined {
   if (isSmokerError(ExecError, errOrResult)) {
     try {
@@ -97,7 +109,7 @@ export function handleInstallError(
       return new InstallError(
         parsedError.summary,
         `${spec}`,
-        installSpecs,
+        pkgSpec,
         tmpdir,
         {
           error: parsedError,
@@ -110,7 +122,7 @@ export function handleInstallError(
       return new InstallError(
         `Unable to parse npm output. Use --verbose for more information`,
         `${spec}`,
-        installSpecs,
+        pkgSpec,
         tmpdir,
         {
           output: errOrResult.all || errOrResult.stderr || errOrResult.stdout,
@@ -123,7 +135,7 @@ export function handleInstallError(
     return new InstallError(
       `Use --verbose for more information`,
       `${spec}`,
-      installSpecs,
+      pkgSpec,
       tmpdir,
       {
         output: errOrResult.all || errOrResult.stderr || errOrResult.stdout,
@@ -138,24 +150,28 @@ export const BaseNpmPackageManager = {
 
   lockfile: 'package-lock.json',
 
-  async pack(ctx: PkgManagerPackContext): Promise<InstallManifest[]> {
-    let packArgs = [
+  async pack(ctx: PkgManagerPackContext): Promise<InstallManifest> {
+    const packArgs = [
       'pack',
       '--json',
       `--pack-destination=${ctx.tmpdir}`,
       '--foreground-scripts=false', // suppress output of lifecycle scripts so json can be parsed
     ];
-    if (ctx.workspaces?.length) {
-      packArgs = [
-        ...packArgs,
-        ...ctx.workspaces.map((w) => `--workspace=${w}`),
-      ];
-    } else if (ctx.allWorkspaces) {
-      packArgs = [...packArgs, '--workspaces'];
-      if (ctx.includeWorkspaceRoot) {
-        packArgs = [...packArgs, '--include-workspace-root'];
-      }
+
+    if (ctx.useWorkspaces) {
+      packArgs.push('-w', ctx.localPath);
     }
+    // if (ctx.workspaces?.length) {
+    //   packArgs = [
+    //     ...packArgs,
+    //     ...ctx.workspaces.map((w) => `--workspace=${w}`),
+    //   ];
+    // } else if (ctx.allWorkspaces) {
+    //   packArgs = [...packArgs, '--workspaces'];
+    //   if (ctx.includeWorkspaceRoot) {
+    //     packArgs = [...packArgs, '--include-workspace-root'];
+    //   }
+    // }
 
     let packResult: ExecResult;
 
@@ -191,14 +207,7 @@ export const BaseNpmPackageManager = {
     const {stdout: packOutput} = packResult;
     try {
       parsed = JSON.parse(packOutput) as NpmPackItem[];
-      debug(
-        '(pack) Packed: %O',
-        parsed.map(({filename, name, files}) => ({
-          filename,
-          name,
-          files: map(files, 'path'),
-        })),
-      );
+      debug('(pack) Packed ok');
     } catch (err) {
       debug('(pack) Failed to parse JSON: %s', packOutput);
       throw isError(err)
@@ -215,9 +224,8 @@ export const BaseNpmPackageManager = {
       // workaround for https://github.com/npm/cli/issues/3405
       filename = filename.replace(/^@(.+?)\//, '$1-');
 
-      const localPath = ctx.workspaceInfo[name];
       return {
-        localPath,
+        localPath: ctx.localPath,
         pkgSpec: path.join(ctx.tmpdir, filename),
         installPath: path.join(ctx.tmpdir, 'node_modules', name),
         cwd: ctx.tmpdir,
@@ -226,7 +234,7 @@ export const BaseNpmPackageManager = {
     });
     debug('(pack) Packed %d packages', installManifest.length);
 
-    return installManifest;
+    return installManifest.shift()!;
   },
 
   async runScript({
@@ -316,32 +324,31 @@ export const BaseNpmPackageManager = {
     ctx: PkgManagerInstallContext,
     args: string[],
   ): Promise<ExecResult> {
-    const {executor, installManifests, spec, tmpdir} = ctx;
-    if (!installManifests.length) {
-      throw new InvalidArgError('installManifests must be a non-empty array', {
-        argName: 'installManifests',
-      });
-    }
+    const {executor, installManifest, spec, tmpdir} = ctx;
+    const {pkgSpec, pkgName, isAdditional} = installManifest;
 
-    const installSpecs = installManifests.map(({pkgSpec: spec}) => spec);
     let err: InstallError | undefined;
-    const installArgs = ['install', ...args, ...installSpecs];
+    const installArgs = ['install', pkgSpec, ...args];
 
     let installResult: ExecResult;
     try {
       installResult = await executor(spec, installArgs, {}, {cwd: tmpdir});
-      err = handleInstallError(ctx, installResult, installSpecs);
+      err = handleInstallError(ctx, installResult, pkgSpec);
     } catch (e) {
       if (isSmokerError(ExecError, e)) {
-        err = handleInstallError(ctx, e, installSpecs);
-      } else {
-        throw e;
+        throw handleInstallError(ctx, e, pkgSpec);
       }
+      throw fromUnknownError(e);
     }
     if (err) {
       throw err;
     }
-    debug('(install) Installed %d packages', installSpecs.length);
-    return installResult!;
+
+    if (isAdditional) {
+      debug('Installed additional dep "%s"', pkgName);
+    } else {
+      debug('Installed package "%s" from tarball', pkgName);
+    }
+    return installResult;
   },
 };

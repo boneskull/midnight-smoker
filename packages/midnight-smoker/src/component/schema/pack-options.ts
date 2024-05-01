@@ -10,10 +10,10 @@ export const PackOptionsSchema = z
       .boolean()
       .optional()
       .describe('If true, pack all workspaces'),
-    includeWorkspaceRoot: z
-      .boolean()
-      .optional()
-      .describe('Include the workspace root when packing'),
+    // includeWorkspaceRoot: z
+    //   .boolean()
+    //   .optional()
+    //   .describe('Include the workspace root when packing'),
     workspaces: z
       .array(NonEmptyStringSchema)
       .optional()

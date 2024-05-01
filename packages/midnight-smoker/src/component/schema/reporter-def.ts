@@ -4,6 +4,7 @@
  *
  * @packageDocumentation
  */
+import {type EventData, type EventName, type SmokerEvents} from '#event';
 import {
   InstallEvent,
   LintEvent,
@@ -11,16 +12,7 @@ import {
   ScriptEvent,
   SmokerEvent,
 } from '#event/event-constants';
-import {BaseSmokerOptionsSchema} from '#options/options';
-import {
-  type ReporterDef,
-  type ReporterWhenCallback,
-} from '#reporter/reporter-def';
-import * as InstallEvents from '#schema/install-event';
-import * as LintEvents from '#schema/lint-event';
-import * as PackEvents from '#schema/pack-event';
-import * as ScriptEvents from '#schema/script-event';
-import * as SmokerEvents from '#schema/smoker-event';
+import {BaseSmokerOptionsSchema, type SmokerOptions} from '#options/options';
 import {
   DefaultFalseSchema,
   NonEmptyStringSchema,
@@ -28,14 +20,108 @@ import {
   VoidOrPromiseVoidSchema,
   customSchema,
 } from '#util/schema-util';
-import {z} from 'zod';
-
-export * from '#reporter/reporter-def';
+import {type PackageJson} from 'type-fest';
+import {z, type ZodError} from 'zod';
+import {fromZodError} from 'zod-validation-error';
+import {InstallEventSchemas} from './install-event';
+import {LintEventSchemas} from './lint-event';
+import {PackEventSchemas} from './pack-event';
+import {ScriptEventSchemas} from './script-event';
+import {SmokerEventSchemas} from './smoker-event';
 
 /**
- * Values of {@link ReporterDef.stdout} and {@link ReporterDef.stderr}
+ * Before instantiation of `Smoker`, this callback will be executed with a
+ * `SmokerOptions` object. If this returns `true`, the reporter will be used. If
+ * it returns `false`, it will not be used.
+ *
+ * Use this to automatically enable or disable itself based on options passed to
+ * `Smoker`. **Do not use this to strip users of agency.**
  */
-export type ReporterStream = z.infer<typeof ReporterStreamSchema>;
+
+export type ReporterWhenCallback = z.infer<typeof ReporterWhenCallbackSchema>;
+
+/**
+ * The reporter context is like a `this`, but it's passed as an argument.
+ *
+ * The context has some base properties that are always available, and the
+ * implementor can define extra properties as desired.
+ *
+ * Functions in a {@link ReporterDef} have no context.
+ */
+
+export type ReporterContext<Ctx = unknown> = {
+  opts: SmokerOptions;
+  pkgJson: PackageJson;
+} & Ctx;
+
+export type ReporterListener<Evt extends EventName, Ctx = unknown> = (
+  this: void,
+  ctx: ReporterContext<Ctx>,
+  data: EventData<Evt>,
+) => void | Promise<void>;
+
+export type ReporterSetupFn<Ctx = unknown> = (
+  ctx: ReporterContext<Ctx>,
+) => void | Promise<void>;
+
+export type ReporterTeardownFn<Ctx = unknown> = (
+  ctx: ReporterContext<Ctx>,
+) => void | Promise<void>;
+
+/**
+ * All of the functions which a reporter can implement which map to events
+ * raised by `midnight-smoker`.
+ */
+
+export type ReporterListeners<Ctx = unknown> = {
+  [K in keyof SmokerEvents as `on${K}`]: ReporterListener<K, Ctx>;
+};
+
+/**
+ * A reporter definition, as provided by a plugin author.
+ */
+
+export interface ReporterDef<Ctx = unknown>
+  extends Partial<ReporterListeners<Ctx>> {
+  /**
+   * Reporter description.
+   *
+   * Required
+   */
+  description: string;
+
+  /**
+   * If `true`, this reporter will be hidden from the list of reporters.
+   */
+  isHidden?: boolean;
+
+  /**
+   * Reporter name.
+   *
+   * Required
+   */
+  name: string;
+
+  /**
+   * Before instantiation of `Smoker`, this callback will be executed with a
+   * `SmokerOptions` object. If this returns `true`, the reporter will be used.
+   * If it returns `false`, it will not be used.
+   *
+   * Use this to automatically enable or disable itself based on options passed
+   * to `Smoker`. **Do not use this to strip users of agency.**
+   */
+  when?: ReporterWhenCallback;
+
+  /**
+   * Setup function; called before `Smoker` emits any events
+   */
+  setup?: ReporterSetupFn<Ctx>;
+
+  /**
+   * Teardown function; called just before `Smoker` exits
+   */
+  teardown?: ReporterTeardownFn<Ctx>;
+}
 
 /**
  * Schema for a {@link NodeJS.WritableStream}
@@ -90,121 +176,9 @@ export function eventListenerSchema<T extends z.ZodTypeAny>(data: T) {
     .optional();
 }
 
-export const PackEventListenerSchemas = {
-  [`on${PackEvent.PackBegin}` as const]: eventListenerSchema(
-    PackEvents.PackBeginEventDataSchema,
-  ),
-  [`on${PackEvent.PackFailed}` as const]: eventListenerSchema(
-    PackEvents.PackFailedEventDataSchema,
-  ),
-  [`on${PackEvent.PackOk}` as const]: eventListenerSchema(
-    PackEvents.PackOkEventDataSchema,
-  ),
-  [`on${PackEvent.PkgManagerPackBegin}` as const]: eventListenerSchema(
-    PackEvents.PkgManagerPackBeginEventDataSchema,
-  ),
-  [`on${PackEvent.PkgManagerPackOk}` as const]: eventListenerSchema(
-    PackEvents.PkgManagerPackOkEventDataSchema,
-  ),
-  [`on${PackEvent.PkgManagerPackFailed}` as const]: eventListenerSchema(
-    PackEvents.PkgManagerPackFailedEventDataSchema,
-  ),
-} as const;
+export const ScriptEventListenerSchemas = {} as const;
 
-export const InstallEventListenerSchemas = {
-  [`on${InstallEvent.InstallBegin}` as const]: eventListenerSchema(
-    InstallEvents.InstallBeginEventDataSchema,
-  ),
-  [`on${InstallEvent.InstallFailed}` as const]: eventListenerSchema(
-    InstallEvents.InstallFailedEventDataSchema,
-  ),
-  [`on${InstallEvent.InstallOk}` as const]: eventListenerSchema(
-    InstallEvents.InstallOkEventDataSchema,
-  ),
-  [`on${InstallEvent.PkgManagerInstallBegin}` as const]: eventListenerSchema(
-    InstallEvents.PkgManagerInstallBeginEventDataSchema,
-  ),
-  [`on${InstallEvent.PkgManagerInstallOk}` as const]: eventListenerSchema(
-    InstallEvents.PkgManagerInstallOkEventDataSchema,
-  ),
-  [`on${InstallEvent.PkgManagerInstallFailed}` as const]: eventListenerSchema(
-    InstallEvents.PkgManagerInstallFailedEventDataSchema,
-  ),
-} as const;
-
-export const RuleEventListenerSchemas = {
-  [`on${LintEvent.LintBegin}` as const]: eventListenerSchema(
-    LintEvents.LintBeginEventDataSchema,
-  ),
-  [`on${LintEvent.RuleBegin}` as const]: eventListenerSchema(
-    LintEvents.RuleBeginEventDataSchema,
-  ),
-  [`on${LintEvent.RuleOk}` as const]: eventListenerSchema(
-    LintEvents.RuleOkEventDataSchema,
-  ),
-  [`on${LintEvent.RuleFailed}` as const]: eventListenerSchema(
-    LintEvents.RuleFailedEventDataSchema,
-  ),
-  [`on${LintEvent.LintFailed}` as const]: eventListenerSchema(
-    LintEvents.LintFailedEventDataSchema,
-  ),
-  [`on${LintEvent.LintOk}` as const]: eventListenerSchema(
-    LintEvents.LintOkEventDataSchema,
-  ),
-  [`on${LintEvent.RuleError}` as const]: eventListenerSchema(
-    LintEvents.RuleErrorEventDataSchema,
-  ),
-} as const;
-
-export const ScriptEventListenerSchemas = {
-  [`on${ScriptEvent.RunScriptBegin}` as const]: eventListenerSchema(
-    ScriptEvents.PkgManagerRunScriptsBeginEventDataSchema,
-  ),
-  [`on${ScriptEvent.RunScriptOk}` as const]: eventListenerSchema(
-    ScriptEvents.PkgManagerRunScriptsOkEventDataSchema,
-  ),
-  [`on${ScriptEvent.RunScriptFailed}` as const]: eventListenerSchema(
-    ScriptEvents.PkgManagerRunScriptFailedEventDataSchema,
-  ),
-  [`on${ScriptEvent.RunScriptsBegin}` as const]: eventListenerSchema(
-    ScriptEvents.RunScriptsEventDataSchema,
-  ),
-  [`on${ScriptEvent.RunScriptsOk}` as const]: eventListenerSchema(
-    ScriptEvents.RunScriptsEndEventDataSchema,
-  ),
-  [`on${ScriptEvent.RunScriptsFailed}` as const]: eventListenerSchema(
-    ScriptEvents.RunScriptsEndEventDataSchema,
-  ),
-} as const;
-
-export const SmokerEventListenerSchemas = {
-  [`on${SmokerEvent.BeforeExit}` as const]: eventListenerSchema(
-    SmokerEvents.BeforeExitEventDataSchema,
-  ),
-  [`on${SmokerEvent.Lingered}` as const]: eventListenerSchema(
-    SmokerEvents.LingeredEventDataSchema,
-  ),
-  [`on${SmokerEvent.SmokeBegin}` as const]: eventListenerSchema(
-    SmokerEvents.SmokeBeginEventDataSchema,
-  ),
-  [`on${SmokerEvent.SmokeFailed}` as const]: eventListenerSchema(
-    SmokerEvents.SmokeFailedEventDataSchema,
-  ),
-  [`on${SmokerEvent.SmokeOk}` as const]: eventListenerSchema(
-    SmokerEvents.SmokeOkEventDataSchema,
-  ),
-  [`on${SmokerEvent.UnknownError}` as const]: eventListenerSchema(
-    SmokerEvents.UnknownErrorEventDataSchema,
-  ),
-};
-
-export const AllListenerSchemas = {
-  ...PackEventListenerSchemas,
-  ...InstallEventListenerSchemas,
-  ...ScriptEventListenerSchemas,
-  ...RuleEventListenerSchemas,
-  ...SmokerEventListenerSchemas,
-} as const;
+export const SmokerEventListenerSchemas = {};
 
 /**
  * The main implementation of a Reporter, which is expected to listen for events
@@ -224,103 +198,368 @@ export type ReporterParams = z.infer<typeof ReporterContextSchema>;
 /**
  * Schema representing a {@link ReporterWhenCallback} function
  */
-export const ReporterWhenCallbackSchema = customSchema<ReporterWhenCallback>(
-  z.function(
-    z.tuple([ReporterContextSchema, BaseSmokerOptionsSchema] as [
-      context: typeof ReporterContextSchema,
+export const ReporterWhenCallbackSchema = z
+  .function(
+    z.tuple([BaseSmokerOptionsSchema] as [
       opts: typeof BaseSmokerOptionsSchema,
     ]),
     z.boolean(),
-  ),
-);
+  )
+  .optional();
 
-/**
- * Schema for values of {@link ReporterDef.stdout} and {@link ReporterDef.stderr}
- */
-export const ReporterStreamSchema = z.union([
-  WritableStreamSchema,
-  z.function(z.tuple([]), WritableStreamSchema),
-  z.function(z.tuple([]), z.promise(WritableStreamSchema)),
-]);
+export const ReporterSetupFnSchema = z
+  .function(
+    z.tuple([ReporterContextSchema] as [context: typeof ReporterContextSchema]),
+    VoidOrPromiseVoidSchema,
+  )
+  .optional();
 
-export const ListenerSchemas = {
-  ...PackEventListenerSchemas,
-  ...InstallEventListenerSchemas,
-  ...ScriptEventListenerSchemas,
-  ...RuleEventListenerSchemas,
-  ...SmokerEventListenerSchemas,
-} as const;
+export const ReporterTeardownFnSchema = z
+  .function(
+    z.tuple([ReporterContextSchema] as [context: typeof ReporterContextSchema]),
+    VoidOrPromiseVoidSchema,
+  )
+  .optional();
 
 /**
  * Schema for a {@link ReporterDef} as defined by a plugin
- *
- * @todo Why custom schema here?
  */
-export const ReporterDefSchema = customSchema<ReporterDef>(
-  z.object({
-    /**
-     * Reporter description.
-     *
-     * Required
-     */
-    description: NonEmptyStringSchema,
+export const ReporterDefSchema = z.object({
+  /**
+   * Reporter description.
+   *
+   * Required
+   */
+  description: NonEmptyStringSchema,
 
-    /**
-     * If `true`, this reporter will be hidden from the list of reporters.
-     */
-    isHidden: DefaultFalseSchema,
+  /**
+   * If `true`, this reporter will be hidden from the list of reporters.
+   */
+  isHidden: DefaultFalseSchema,
 
-    /**
-     * Reporter name.
-     *
-     * Required
-     */
-    name: NonEmptyStringSchema,
+  /**
+   * Reporter name.
+   *
+   * Required
+   */
+  name: NonEmptyStringSchema,
 
-    /**
-     * Custom `stderr` stream or callback to provide one.
-     */
-    stderr: ReporterStreamSchema.optional(),
+  /**
+   * Before instantiation of `Smoker`, this callback will be executed with a
+   * `SmokerOptions` object. If this returns `true`, the reporter will be used.
+   * If it returns `false`, it will not be used.
+   *
+   * Use this to automatically enable or disable itself based on options passed
+   * to `Smoker`. **Do not use this to strip users of agency.**
+   */
+  when: ReporterWhenCallbackSchema,
 
-    /**
-     * Custom `stdout` stream or callback to provide one.
-     */
-    stdout: ReporterStreamSchema.optional(),
+  /**
+   * Setup function; called before `Smoker` emits any events
+   */
+  setup: ReporterSetupFnSchema,
 
-    /**
-     * Before instantiation of `Smoker`, this callback will be executed with a
-     * `SmokerOptions` object. If this returns `true`, the reporter will be
-     * used. If it returns `false`, it will not be used.
-     *
-     * Use this to automatically enable or disable itself based on options
-     * passed to `Smoker`. **Do not use this to strip users of agency.**
-     */
-    when: ReporterWhenCallbackSchema.optional(),
+  /**
+   * Teardown function; called just before `Smoker` exits
+   */
+  teardown: ReporterTeardownFnSchema,
+});
 
-    /**
-     * Setup function; called before `Smoker` emits any events
-     */
-    setup: z
-      .function(
-        z.tuple([ReporterContextSchema] as [
-          context: typeof ReporterContextSchema,
-        ]),
-        VoidOrPromiseVoidSchema,
-      )
-      .optional(),
+export const ReporterDefInstallListenersSchema = z
+  .object({
+    [`on${InstallEvent.InstallBegin}` as const]: z.function(
+      z.tuple([ReporterContextSchema, InstallEventSchemas.InstallBegin] as [
+        context: typeof ReporterContextSchema,
+        data: typeof InstallEventSchemas.InstallBegin,
+      ]),
+      VoidOrPromiseVoidSchema,
+    ),
+    [`on${InstallEvent.InstallFailed}` as const]: z.function(
+      z.tuple([ReporterContextSchema, InstallEventSchemas.InstallFailed] as [
+        context: typeof ReporterContextSchema,
+        data: typeof InstallEventSchemas.InstallFailed,
+      ]),
+      VoidOrPromiseVoidSchema,
+    ),
+    [`on${InstallEvent.InstallOk}` as const]: z.function(
+      z.tuple([ReporterContextSchema, InstallEventSchemas.InstallOk] as [
+        context: typeof ReporterContextSchema,
+        data: typeof InstallEventSchemas.InstallOk,
+      ]),
+      VoidOrPromiseVoidSchema,
+    ),
+    [`on${InstallEvent.PkgManagerInstallBegin}` as const]: z.function(
+      z.tuple([
+        ReporterContextSchema,
+        InstallEventSchemas.PkgManagerInstallBegin,
+      ] as [
+        context: typeof ReporterContextSchema,
+        data: typeof InstallEventSchemas.PkgManagerInstallBegin,
+      ]),
+      VoidOrPromiseVoidSchema,
+    ),
+    [`on${InstallEvent.PkgManagerInstallOk}` as const]: z.function(
+      z.tuple([
+        ReporterContextSchema,
+        InstallEventSchemas.PkgManagerInstallOk,
+      ] as [
+        context: typeof ReporterContextSchema,
+        data: typeof InstallEventSchemas.PkgManagerInstallOk,
+      ]),
+      VoidOrPromiseVoidSchema,
+    ),
+    [`on${InstallEvent.PkgManagerInstallFailed}` as const]: z.function(
+      z.tuple([
+        ReporterContextSchema,
+        InstallEventSchemas.PkgManagerInstallFailed,
+      ] as [
+        context: typeof ReporterContextSchema,
+        data: typeof InstallEventSchemas.PkgManagerInstallFailed,
+      ]),
+      VoidOrPromiseVoidSchema,
+    ),
+  })
+  .partial();
 
-    /**
-     * Teardown function; called just before `Smoker` exits
-     */
-    teardown: z
-      .function(
-        z.tuple([ReporterContextSchema] as [
-          context: typeof ReporterContextSchema,
-        ]),
-        VoidOrPromiseVoidSchema,
-      )
-      .optional(),
+export const ReporterDefPackListenersSchema = z
+  .object({
+    [`on${PackEvent.PackBegin}` as const]: z.function(
+      z.tuple([ReporterContextSchema, PackEventSchemas.PackBegin] as [
+        context: typeof ReporterContextSchema,
+        data: typeof PackEventSchemas.PackBegin,
+      ]),
+      VoidOrPromiseVoidSchema,
+    ),
+    [`on${PackEvent.PackFailed}` as const]: z.function(
+      z.tuple([ReporterContextSchema, PackEventSchemas.PackFailed] as [
+        context: typeof ReporterContextSchema,
+        data: typeof PackEventSchemas.PackFailed,
+      ]),
+      VoidOrPromiseVoidSchema,
+    ),
+    [`on${PackEvent.PackOk}` as const]: z.function(
+      z.tuple([ReporterContextSchema, PackEventSchemas.PackOk] as [
+        context: typeof ReporterContextSchema,
+        data: typeof PackEventSchemas.PackOk,
+      ]),
+      VoidOrPromiseVoidSchema,
+    ),
+    [`on${PackEvent.PkgManagerPackBegin}` as const]: z.function(
+      z.tuple([ReporterContextSchema, PackEventSchemas.PkgManagerPackBegin] as [
+        context: typeof ReporterContextSchema,
+        data: typeof PackEventSchemas.PkgManagerPackBegin,
+      ]),
+      VoidOrPromiseVoidSchema,
+    ),
+    [`on${PackEvent.PkgManagerPackOk}` as const]: z.function(
+      z.tuple([ReporterContextSchema, PackEventSchemas.PkgManagerPackOk] as [
+        context: typeof ReporterContextSchema,
+        data: typeof PackEventSchemas.PkgManagerPackOk,
+      ]),
+      VoidOrPromiseVoidSchema,
+    ),
+    [`on${PackEvent.PkgManagerPackFailed}` as const]: z.function(
+      z.tuple([
+        ReporterContextSchema,
+        PackEventSchemas.PkgManagerPackFailed,
+      ] as [
+        context: typeof ReporterContextSchema,
+        data: typeof PackEventSchemas.PkgManagerPackFailed,
+      ]),
+      VoidOrPromiseVoidSchema,
+    ),
+    [`on${PackEvent.PkgPackBegin}` as const]: z.function(
+      z.tuple([ReporterContextSchema, PackEventSchemas.PkgPackBegin] as [
+        context: typeof ReporterContextSchema,
+        data: typeof PackEventSchemas.PkgPackBegin,
+      ]),
+      VoidOrPromiseVoidSchema,
+    ),
+    [`on${PackEvent.PkgPackFailed}` as const]: z.function(
+      z.tuple([ReporterContextSchema, PackEventSchemas.PkgPackFailed] as [
+        context: typeof ReporterContextSchema,
+        data: typeof PackEventSchemas.PkgPackFailed,
+      ]),
+      VoidOrPromiseVoidSchema,
+    ),
+    [`on${PackEvent.PkgPackOk}` as const]: z.function(
+      z.tuple([ReporterContextSchema, PackEventSchemas.PkgPackOk] as [
+        context: typeof ReporterContextSchema,
+        data: typeof PackEventSchemas.PkgPackOk,
+      ]),
+      VoidOrPromiseVoidSchema,
+    ),
+  })
+  .partial();
 
-    ...ListenerSchemas,
-  }),
-);
+export const ReporterDefLintListenersSchema = z
+  .object({
+    [`on${LintEvent.LintBegin}` as const]: z.function(
+      z.tuple([ReporterContextSchema, LintEventSchemas.LintBegin] as [
+        context: typeof ReporterContextSchema,
+        data: typeof LintEventSchemas.LintBegin,
+      ]),
+      VoidOrPromiseVoidSchema,
+    ),
+    [`on${LintEvent.RuleBegin}` as const]: z.function(
+      z.tuple([ReporterContextSchema, LintEventSchemas.RuleBegin] as [
+        context: typeof ReporterContextSchema,
+        data: typeof LintEventSchemas.RuleBegin,
+      ]),
+      VoidOrPromiseVoidSchema,
+    ),
+    [`on${LintEvent.RuleOk}` as const]: z.function(
+      z.tuple([ReporterContextSchema, LintEventSchemas.RuleOk] as [
+        context: typeof ReporterContextSchema,
+        data: typeof LintEventSchemas.RuleOk,
+      ]),
+      VoidOrPromiseVoidSchema,
+    ),
+    [`on${LintEvent.RuleFailed}` as const]: z.function(
+      z.tuple([ReporterContextSchema, LintEventSchemas.RuleFailed] as [
+        context: typeof ReporterContextSchema,
+        data: typeof LintEventSchemas.RuleFailed,
+      ]),
+      VoidOrPromiseVoidSchema,
+    ),
+    [`on${LintEvent.LintFailed}` as const]: z.function(
+      z.tuple([ReporterContextSchema, LintEventSchemas.LintFailed] as [
+        context: typeof ReporterContextSchema,
+        data: typeof LintEventSchemas.LintFailed,
+      ]),
+      VoidOrPromiseVoidSchema,
+    ),
+    [`on${LintEvent.LintOk}` as const]: z.function(
+      z.tuple([ReporterContextSchema, LintEventSchemas.LintOk] as [
+        context: typeof ReporterContextSchema,
+        data: typeof LintEventSchemas.LintOk,
+      ]),
+      VoidOrPromiseVoidSchema,
+    ),
+    [`on${LintEvent.RuleError}` as const]: z.function(
+      z.tuple([ReporterContextSchema, LintEventSchemas.RuleError] as [
+        context: typeof ReporterContextSchema,
+        data: typeof LintEventSchemas.RuleError,
+      ]),
+      VoidOrPromiseVoidSchema,
+    ),
+  })
+  .partial();
+
+export const ReporterDefSmokerListenersSchema = z
+  .object({
+    [`on${SmokerEvent.BeforeExit}` as const]: z.function(
+      z.tuple([ReporterContextSchema, SmokerEventSchemas.BeforeExit] as [
+        context: typeof ReporterContextSchema,
+        data: typeof SmokerEventSchemas.BeforeExit,
+      ]),
+      VoidOrPromiseVoidSchema,
+    ),
+    [`on${SmokerEvent.Lingered}` as const]: z.function(
+      z.tuple([ReporterContextSchema, SmokerEventSchemas.Lingered] as [
+        context: typeof ReporterContextSchema,
+        data: typeof SmokerEventSchemas.Lingered,
+      ]),
+      VoidOrPromiseVoidSchema,
+    ),
+    [`on${SmokerEvent.SmokeBegin}` as const]: z.function(
+      z.tuple([ReporterContextSchema, SmokerEventSchemas.SmokeBegin] as [
+        context: typeof ReporterContextSchema,
+        data: typeof SmokerEventSchemas.SmokeBegin,
+      ]),
+      VoidOrPromiseVoidSchema,
+    ),
+    [`on${SmokerEvent.SmokeFailed}` as const]: z.function(
+      z.tuple([ReporterContextSchema, SmokerEventSchemas.SmokeFailed] as [
+        context: typeof ReporterContextSchema,
+        data: typeof SmokerEventSchemas.SmokeFailed,
+      ]),
+      VoidOrPromiseVoidSchema,
+    ),
+    [`on${SmokerEvent.SmokeOk}` as const]: z.function(
+      z.tuple([ReporterContextSchema, SmokerEventSchemas.SmokeOk] as [
+        context: typeof ReporterContextSchema,
+        data: typeof SmokerEventSchemas.SmokeOk,
+      ]),
+      VoidOrPromiseVoidSchema,
+    ),
+    [`on${SmokerEvent.UnknownError}` as const]: z.function(
+      z.tuple([ReporterContextSchema, SmokerEventSchemas.UnknownError] as [
+        context: typeof ReporterContextSchema,
+        data: typeof SmokerEventSchemas.UnknownError,
+      ]),
+      VoidOrPromiseVoidSchema,
+    ),
+  })
+  .partial();
+
+export const ReporterDefScriptListenersSchema = z
+  .object({
+    [`on${ScriptEvent.RunScriptBegin}` as const]: z.function(
+      z.tuple([
+        ReporterContextSchema,
+        ScriptEventSchemas.PkgManagerRunScriptsBegin,
+      ] as [
+        context: typeof ReporterContextSchema,
+        data: typeof ScriptEventSchemas.PkgManagerRunScriptsBegin,
+      ]),
+      VoidOrPromiseVoidSchema,
+    ),
+    [`on${ScriptEvent.RunScriptOk}` as const]: z.function(
+      z.tuple([
+        ReporterContextSchema,
+        ScriptEventSchemas.PkgManagerRunScriptsOk,
+      ] as [
+        context: typeof ReporterContextSchema,
+        data: typeof ScriptEventSchemas.PkgManagerRunScriptsOk,
+      ]),
+      VoidOrPromiseVoidSchema,
+    ),
+    [`on${ScriptEvent.RunScriptFailed}` as const]: z.function(
+      z.tuple([
+        ReporterContextSchema,
+        ScriptEventSchemas.PkgManagerRunScriptsFailed,
+      ] as [
+        context: typeof ReporterContextSchema,
+        data: typeof ScriptEventSchemas.PkgManagerRunScriptsFailed,
+      ]),
+      VoidOrPromiseVoidSchema,
+    ),
+    [`on${ScriptEvent.RunScriptsBegin}` as const]: z.function(
+      z.tuple([ReporterContextSchema, ScriptEventSchemas.RunScriptsBegin] as [
+        context: typeof ReporterContextSchema,
+        data: typeof ScriptEventSchemas.RunScriptsBegin,
+      ]),
+      VoidOrPromiseVoidSchema,
+    ),
+    [`on${ScriptEvent.RunScriptsOk}` as const]: z.function(
+      z.tuple([ReporterContextSchema, ScriptEventSchemas.RunScriptsOk] as [
+        context: typeof ReporterContextSchema,
+        data: typeof ScriptEventSchemas.RunScriptsOk,
+      ]),
+      VoidOrPromiseVoidSchema,
+    ),
+    [`on${ScriptEvent.RunScriptsFailed}` as const]: z.function(
+      z.tuple([ReporterContextSchema, ScriptEventSchemas.RunScriptsFailed] as [
+        context: typeof ReporterContextSchema,
+        data: typeof ScriptEventSchemas.RunScriptsFailed,
+      ]),
+      VoidOrPromiseVoidSchema,
+    ),
+  })
+  .partial();
+
+export function assertReporterDef<Ctx = unknown>(
+  value: unknown,
+): asserts value is ReporterDef<Ctx> {
+  try {
+    ReporterDefSchema.parse(value);
+    ReporterDefInstallListenersSchema.parse(value);
+    ReporterDefPackListenersSchema.parse(value);
+    ReporterDefLintListenersSchema.parse(value);
+    ReporterDefSmokerListenersSchema.parse(value);
+    ReporterDefScriptListenersSchema.parse(value);
+  } catch (err) {
+    throw fromZodError(err as ZodError);
+  }
+}

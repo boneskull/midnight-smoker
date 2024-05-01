@@ -1,54 +1,82 @@
-import {type MachineOutputError, type MachineOutputOk} from '#machine/util';
 import {
-  type PackError,
-  type PackOptions,
-  type PackParseError,
-  type PkgManager,
-} from '#pkg-manager';
-import {type InstallManifest} from '#schema';
+  assertActorOutputNotOk,
+  assertActorOutputOk,
+  makeId,
+} from '#machine/util';
+import {assign, enqueueActions, log, sendTo, setup} from 'xstate';
+import {pack} from './pack-machine-actors';
 import {
-  assign,
-  fromPromise,
-  log,
-  sendTo,
-  setup,
-  type AnyActorRef,
-} from 'xstate';
-import {type PackResult} from './packer-machine';
-import {type PackerMachinePkgManagerPackBeginEvent} from './packer-machine-events';
-
-export interface PackMachineInput {
-  signal: AbortSignal;
-  pkgManager: PkgManager;
-  opts: PackOptions;
-  parentRef: AnyActorRef;
-  index: number;
-}
-
-export type PackActorInput = PackMachineInput;
-
-export interface PackMachineContext extends PackMachineInput {
-  installManifests?: InstallManifest[];
-  error?: PackError | PackParseError;
-}
-
-export type PackMachineOutputOk = MachineOutputOk<PackResult & {index: number}>;
-
-export type PackMachineOutputError = MachineOutputError<
-  PackError | PackParseError,
-  {pkgManager: PkgManager; index: number}
->;
-
-export type PackMachineOutput = PackMachineOutputOk | PackMachineOutputError;
+  type PackMachineContext,
+  type PackMachineEvents,
+  type PackMachineInput,
+  type PackMachineOutput,
+} from './pack-machine-types';
+import {
+  type PackerMachinePkgManagerPackBeginEvent,
+  type PackerMachinePkgPackFailedEvent,
+  type PackerMachinePkgPackOkEvent,
+} from './packer-machine-events';
 
 export const PackMachine = setup({
   types: {
     input: {} as PackMachineInput,
     context: {} as PackMachineContext,
     output: {} as PackMachineOutput,
+    events: {} as PackMachineEvents,
   },
   actions: {
-    sendPackBegin: sendTo(
+    spawnPackActors: enqueueActions(
+      ({enqueue, context: {pkgManager, workspaceInfo, parentRef}}) => {
+        workspaceInfo.forEach(({pkgName, localPath}, index) => {
+          const id = `PackActor.${pkgName}.${makeId()}`;
+          enqueue.sendTo(parentRef, {
+            type: 'PKG_BACK_BEGIN',
+            pkgManager,
+            localPath,
+            currentPkg: index,
+          });
+
+          enqueue.spawnChild('pack', {
+            id,
+            input: {
+              localPath,
+              pkgManager,
+              // TODO: fix
+              signal: new AbortController().signal,
+              index: index + 1,
+            },
+          });
+        });
+      },
+    ),
+
+    // assign({
+    //   packActorRefs: ({
+    //     ,
+    //     spawn,
+    //   }) => {
+    //     return {
+    //       ...packActorRefs,
+    //       ...Object.fromEntries(
+    //         Object.entries(workspaceInfo).map(([pkgName, localPath], index) => {
+    //           const id = `PackActor.${pkgName}.${makeId()}`;
+    //           const actorRef = spawn('pack', {
+    //             id,
+    //             input: {
+    //               localPath,
+    //               pkgManager,
+    //               // TODO: fix
+    //               signal: new AbortController().signal,
+    //               index: index + 1,
+    //             },
+    //           });
+    //           return [id, actorRef];
+    //         }),
+    //       ),
+    //     };
+    //   },
+    // }),
+    sendPkgManagerPackBegin: sendTo(
       ({context: {parentRef}}) => parentRef,
       ({context}): PackerMachinePkgManagerPackBeginEvent => {
         const {pkgManager, index} = context;
@@ -61,10 +89,7 @@ export const PackMachine = setup({
     ),
   },
   actors: {
-    pack: fromPromise<InstallManifest[], PackActorInput>(
-      async ({input: {signal, pkgManager, opts}}): Promise<InstallManifest[]> =>
-        pkgManager.pack(signal, opts),
-    ),
+    pack,
   },
 }).createMachine({
   context: ({input}) => input,
@@ -72,32 +97,77 @@ export const PackMachine = setup({
   initial: 'packing',
   states: {
     packing: {
-      entry: {type: 'sendPackBegin'},
-      invoke: {
-        src: 'pack',
-        input: ({context}) => context,
-        onDone: {
-          actions: [
-            log(
-              ({context}) =>
-                `successfully packed for ${context.pkgManager.spec}`,
-            ),
-            assign({
-              installManifests: ({event: {output}}) => output,
-            }),
-          ],
-          target: 'done',
-        },
-        onError: {
-          actions: [
-            log(({context}) => `failed to pack for ${context.pkgManager.spec}`),
-            assign({
-              error: ({event: {error}}) => error as PackError | PackParseError,
-            }),
-          ],
-          target: 'done',
-        },
+      entry: [{type: 'sendPkgManagerPackBegin'}, {type: 'spawnPackActors'}],
+      on: {
+        'xstate.done.actor.PackActor.*': [
+          {
+            guard: ({event: {output}}) => output.type === 'ERROR',
+            actions: [
+              log('sending PKG_PACK_FAILED'),
+              assign({
+                error: ({event: {output}}) => {
+                  assertActorOutputNotOk(output);
+                  return output.error;
+                },
+              }),
+              sendTo(
+                ({context: {parentRef}}) => parentRef,
+                ({
+                  context,
+                  event: {output},
+                }): PackerMachinePkgPackFailedEvent => {
+                  assertActorOutputNotOk(output);
+                  return {
+                    type: 'PKG_PACK_FAILED',
+                    localPath: output.localPath,
+                    error: output.error,
+                    pkgManager: context.pkgManager,
+                    currentPkg: output.index,
+                  };
+                },
+              ),
+            ],
+          },
+          {
+            guard: ({event: {output}}) => output.type === 'OK',
+            actions: [
+              log('sending PKG_PACK_OK'),
+              assign({
+                installManifests: ({
+                  context: {installManifests = []},
+                  event,
+                }) => {
+                  assertActorOutputOk(event.output);
+                  return [...installManifests, event.output.installManifest];
+                },
+              }),
+              sendTo(
+                ({context: {parentRef}}) => parentRef,
+                ({
+                  context: {pkgManager},
+                  event: {output},
+                }): PackerMachinePkgPackOkEvent => {
+                  assertActorOutputOk(output);
+                  const {installManifest, index: currentPkg} = output;
+                  return {
+                    installManifest,
+                    type: 'PKG_PACK_OK',
+                    pkgManager,
+                    currentPkg,
+                  };
+                },
+              ),
+            ],
+          },
+        ],
       },
+      always: [
+        {
+          guard: ({context: {workspaceInfo, installManifests = []}}) =>
+            installManifests.length === workspaceInfo.length,
+          target: 'done',
+        },
+      ],
     },
     done: {
       type: 'final',
@@ -105,9 +175,9 @@ export const PackMachine = setup({
   },
   output: ({
     self: {id},
-    context: {pkgManager, installManifests = [], error, index},
+    context: {pkgManager, installManifests = [], error, index, workspaceInfo},
   }) =>
     error
-      ? {type: 'ERROR', error, id, pkgManager, index}
-      : {type: 'OK', installManifests, id, pkgManager, index},
+      ? {type: 'ERROR', error, id, pkgManager, index, workspaceInfo}
+      : {type: 'OK', installManifests, id, pkgManager, index, workspaceInfo},
 });

@@ -7,5 +7,3 @@ export * from '#error/reporter-error';
 export * from '#schema/reporter-def';
 
 export * from './reporter';
-
-export * from './reporter-def';

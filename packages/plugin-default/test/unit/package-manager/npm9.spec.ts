@@ -81,25 +81,17 @@ describe('@midnight-smoker/plugin-default', function () {
 
           beforeEach(function () {
             ctx = {
-              workspaceInfo: {},
+              workspaceInfo: [{pkgName: 'foo', localPath: '/some/dir'}],
               signal: new AbortController().signal,
               spec,
               tmpdir: MOCK_TMPDIR,
               executor,
-              installManifests: [
-                {
-                  pkgSpec: `${MOCK_TMPDIR}/bar.tgz`,
-                  pkgName: 'bar',
-                  cwd: MOCK_TMPDIR,
-                  installPath: `${MOCK_TMPDIR}/node_modules/bar`,
-                },
-                {
-                  pkgSpec: `${MOCK_TMPDIR}/baz.tgz`,
-                  pkgName: 'baz',
-                  cwd: MOCK_TMPDIR,
-                  installPath: `${MOCK_TMPDIR}/node_modules/baz`,
-                },
-              ],
+              installManifest: {
+                pkgSpec: `${MOCK_TMPDIR}/bar.tgz`,
+                pkgName: 'bar',
+                cwd: MOCK_TMPDIR,
+                installPath: `${MOCK_TMPDIR}/node_modules/bar`,
+              },
             };
             executor.resolves({stdout: 'stuff', exitCode: 0} as any);
           });
@@ -114,7 +106,7 @@ describe('@midnight-smoker/plugin-default', function () {
                 '--no-package-lock',
                 '--install-strategy=shallow',
                 '--json',
-                ...ctx.installManifests.map(({pkgSpec}) => pkgSpec),
+                ctx.installManifest.pkgSpec,
               ],
               {},
               {cwd: '/some/dir'},

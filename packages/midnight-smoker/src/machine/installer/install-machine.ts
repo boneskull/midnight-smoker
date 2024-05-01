@@ -1,57 +1,26 @@
-import {type MachineOutputError, type MachineOutputOk} from '#machine/util';
-import {type InstallError, type PkgManager} from '#pkg-manager';
 import {
-  type ExecResult,
-  type InstallManifest,
-  type InstallResult,
-} from '#schema';
+  assertActorOutputNotOk,
+  assertActorOutputOk,
+  isActorOutputNotOk,
+  isActorOutputOk,
+} from '#machine/util';
+import {type InstallError} from '#pkg-manager';
+import {type ExecResult, type InstallManifest} from '#schema';
+import {isEmpty} from 'lodash';
+import assert from 'node:assert';
+import {assign, enqueueActions, log, not, sendTo, setup} from 'xstate';
+import {installActor} from './install-machine-actors';
 import {
-  assign,
-  fromPromise,
-  log,
-  sendTo,
-  setup,
-  type AnyActorRef,
-} from 'xstate';
-import {type InstallerMachinePkgManagerInstallBeginEvent} from './installer-machine-events';
-
-export interface InstallMachineInput {
-  pkgManager: PkgManager;
-  installManifests: InstallManifest[];
-  signal: AbortSignal;
-  index: number;
-  parentRef: AnyActorRef;
-}
-
-export interface InstallMachineContext extends InstallMachineInput {
-  rawResult?: ExecResult;
-  error?: InstallError;
-}
-
-export type InstallMachineOk = MachineOutputOk<
-  Pick<
-    InstallMachineContext,
-    'pkgManager' | 'index' | 'rawResult' | 'installManifests'
-  >
->;
-
-export type InstallMachineError = MachineOutputError<
-  InstallError,
-  Pick<InstallMachineContext, 'pkgManager' | 'index' | 'installManifests'>
->;
-
-export type InstallActorParams = Pick<
-  InstallMachineContext,
-  'pkgManager' | 'installManifests' | 'signal'
->;
-
-export type InstallMachineOutput = InstallMachineOk | InstallMachineError;
-
-export const installActor = fromPromise<InstallResult, InstallActorParams>(
-  async ({
-    input: {signal, pkgManager, installManifests},
-  }): Promise<InstallResult> => pkgManager.install(installManifests, signal),
-);
+  type InstallMachineContext,
+  type InstallMachineInput,
+  type InstallMachineOutput,
+} from './install-machine-types';
+import {
+  type InstallerMachinePkgInstallBeginEvent,
+  type InstallerMachinePkgInstallFailedEvent,
+  type InstallerMachinePkgInstallOkEvent,
+  type InstallerMachinePkgManagerInstallBeginEvent,
+} from './installer-machine-events';
 
 export const InstallMachine = setup({
   types: {
@@ -60,10 +29,7 @@ export const InstallMachine = setup({
     output: {} as InstallMachineOutput,
   },
   actions: {
-    installOk: assign({
-      rawResult: (_, rawResult: ExecResult) => rawResult,
-    }),
-    sendInstallBegin: sendTo(
+    sendPkgManagerInstallBegin: sendTo(
       ({context: {parentRef}}) => parentRef,
       ({context}): InstallerMachinePkgManagerInstallBeginEvent => {
         const {pkgManager, installManifests, index} = context;
@@ -75,51 +41,189 @@ export const InstallMachine = setup({
         };
       },
     ),
+    sendPkgInstallBegin: sendTo(
+      ({context: {parentRef}}) => parentRef,
+      (
+        {context},
+        {
+          installManifest,
+          index,
+        }: {installManifest: InstallManifest; index: number},
+      ): InstallerMachinePkgInstallBeginEvent => {
+        const {pkgManager} = context;
+        return {
+          type: 'PKG_INSTALL_BEGIN',
+          installManifest,
+          pkgManager,
+          currentPkg: index,
+        };
+      },
+    ),
+    sendPkgInstallOk: sendTo(
+      ({context: {parentRef}}) => parentRef,
+      (
+        {context},
+        {
+          rawResult,
+          installManifest,
+          index,
+        }: {
+          rawResult: ExecResult;
+          installManifest: InstallManifest;
+          index: number;
+        },
+      ): InstallerMachinePkgInstallOkEvent => {
+        const {pkgManager} = context;
+        return {
+          type: 'PKG_INSTALL_OK',
+          rawResult,
+          installManifest,
+          pkgManager,
+          currentPkg: index,
+        };
+      },
+    ),
+    sendPkgInstallFailed: sendTo(
+      ({context: {parentRef}}) => parentRef,
+      (
+        {context},
+        {
+          error,
+          installManifest,
+          index,
+        }: {
+          error: InstallError;
+          installManifest: InstallManifest;
+          index: number;
+        },
+      ): InstallerMachinePkgInstallFailedEvent => {
+        const {pkgManager} = context;
+        return {
+          type: 'PKG_INSTALL_FAILED',
+          error,
+          installManifest,
+          pkgManager,
+          currentPkg: index,
+        };
+      },
+    ),
+    take: enqueueActions(({enqueue, context: {installManifestQueue}}) => {
+      const newQueue = [...installManifestQueue];
+      const currentManifest = newQueue.shift();
+      enqueue.assign({currentManifest, installManifestQueue: newQueue});
+    }),
+    assignError: assign({
+      error: (_, {error}: {error: InstallError}) => error,
+    }),
   },
   actors: {
     install: installActor,
   },
+  guards: {
+    hasError: ({context: {error}}) => Boolean(error),
+    hasNext: not('isComplete'),
+    isComplete: ({context: {installManifestQueue}}) =>
+      isEmpty(installManifestQueue),
+    hasCurrent: ({context: {currentManifest}}) => Boolean(currentManifest),
+  },
 }).createMachine({
   id: 'InstallMachine',
-  context: ({input}) => input,
+  context: ({input}) => {
+    const [currentManifest, ...installManifestQueue] = input.installManifests;
+    return {
+      ...input,
+      installManifestQueue,
+      currentManifest,
+    };
+  },
   initial: 'installing',
-  entry: [log(({context}) => `Installing for ${context.pkgManager.spec}`)],
+  entry: [{type: 'sendPkgManagerInstallBegin'}],
+  always: {
+    guard: 'hasError',
+    actions: [log(({context: {error}}) => `ERROR: ${error?.message}`)],
+  },
   states: {
     installing: {
-      entry: [{type: 'sendInstallBegin'}],
       invoke: {
-        id: 'installActor',
         src: 'install',
-        input: ({context: {installManifests, signal, pkgManager}}) => ({
-          pkgManager,
-          installManifests,
-          signal,
-        }),
-        onDone: {
-          description: 'install done',
-          actions: [
-            log('install ok'),
-            {
-              type: 'installOk',
-              params: ({
-                event: {
-                  output: {rawResult},
+        input: ({context: {currentManifest, signal, pkgManager}}) => {
+          assert.ok(currentManifest);
+          return {
+            pkgManager,
+            installManifest: currentManifest,
+            signal,
+          };
+        },
+        onDone: [
+          {
+            description: 'install done',
+            guard: ({event: {output}}) => isActorOutputOk(output),
+            actions: [
+              log('install ok'),
+              {
+                type: 'sendPkgInstallOk',
+                params: ({
+                  event: {output},
+                  context: {installManifests, installManifestQueue},
+                }) => {
+                  assertActorOutputOk(output);
+                  const {installManifest, rawResult} = output;
+                  return {
+                    index:
+                      installManifests.length - installManifestQueue.length,
+                    rawResult,
+                    installManifest,
+                  };
                 },
-              }) => rawResult,
-            },
-          ],
-          target: 'done',
-        },
-        onError: {
-          actions: [
-            log('install failed'),
-            assign({
-              error: ({event: {error}}) => error as InstallError,
-            }),
-          ],
-          target: 'done',
-        },
+              },
+            ],
+            target: '#InstallMachine.next',
+          },
+          {
+            guard: ({event: {output}}) => isActorOutputNotOk(output),
+            actions: [
+              log('install failed'),
+              {
+                type: 'assignError',
+                params: ({event: {output}}) => {
+                  assertActorOutputNotOk(output);
+                  return output;
+                },
+              },
+              {
+                type: 'sendPkgInstallFailed',
+                params: ({
+                  event: {output},
+                  context: {installManifests, installManifestQueue},
+                }) => {
+                  assertActorOutputNotOk(output);
+                  const {error, installManifest} = output;
+                  return {
+                    index:
+                      installManifests.length - installManifestQueue.length,
+                    error,
+                    installManifest,
+                  };
+                },
+              },
+            ],
+            target: '#InstallMachine.next',
+          },
+        ],
       },
+    },
+    next: {
+      always: [
+        {
+          guard: {type: 'isComplete'},
+          target: '#InstallMachine.done',
+        },
+        {
+          guard: {type: 'hasNext'},
+          actions: [{type: 'take'}],
+          target: '#InstallMachine.installing',
+        },
+      ],
     },
     done: {
       type: 'final',
@@ -127,9 +231,9 @@ export const InstallMachine = setup({
   },
   output: ({
     self: {id},
-    context: {pkgManager, rawResult, error, index, installManifests},
+    context: {pkgManager, error, index, installManifests},
   }) =>
     error
       ? {type: 'ERROR', error, id, pkgManager, index, installManifests}
-      : {type: 'OK', rawResult, installManifests, id, pkgManager, index},
+      : {type: 'OK', installManifests, id, pkgManager, index},
 });

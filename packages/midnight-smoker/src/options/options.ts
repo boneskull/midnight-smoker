@@ -49,12 +49,12 @@ const smokerOptionsShape = {
     'Component ID of Executor implementation',
   ).default(DEFAULT_COMPONENT_ID),
 
-  /**
-   * Operate on the root workspace. Only has an effect if `all` is `true`
-   */
-  includeRoot: DefaultFalseSchema.describe(
-    'Operate on the root workspace. Only has an effect if `all` is `true`',
-  ),
+  // /**
+  //  * Operate on the root workspace. Only has an effect if `all` is `true`
+  //  */
+  // includeRoot: DefaultFalseSchema.describe(
+  //   'Operate on the root workspace. Only has an effect if `all` is `true`',
+  // ),
 
   /**
    * Output JSON only
@@ -125,7 +125,7 @@ const smokerOptionsShape = {
 export const BaseSmokerOptionsSchema = z
   .object(smokerOptionsShape)
   .extend({
-    'include-root': smokerOptionsShape.includeRoot,
+    // 'include-root': smokerOptionsShape.includeRoot,
     'pkg-manager': smokerOptionsShape.pkgManager,
   })
   .describe('midnight-smoker options schema');

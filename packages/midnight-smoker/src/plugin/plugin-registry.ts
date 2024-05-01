@@ -25,7 +25,6 @@ import {
   FileManager,
   NonEmptyNonEmptyStringArraySchema,
   isErrnoException,
-  type FileManagerOpts,
 } from '#util';
 import Debug from 'debug';
 import {isEmpty, isError, isString} from 'lodash';
@@ -54,8 +53,8 @@ export interface StaticPluginRegistry {
   plugins: StaticPluginMetadata[];
 }
 
-export interface PluginRegistryOpts {
-  fileManagerOpts?: FileManagerOpts;
+export interface PluginRegistryCapabilities {
+  fileManager?: FileManager;
 }
 
 export class PluginRegistry {
@@ -71,10 +70,12 @@ export class PluginRegistry {
 
   private _fm: FileManager;
 
-  public constructor({fileManagerOpts}: PluginRegistryOpts = {}) {
+  public constructor({
+    fileManager = FileManager.create(),
+  }: PluginRegistryCapabilities = {}) {
     this.pluginMap = new Map();
     this.seenRawPlugins = new Map();
-    this._fm = new FileManager(fileManagerOpts);
+    this._fm = fileManager;
     this.componentRegistry = ComponentRegistry.create();
   }
 
@@ -86,7 +87,7 @@ export class PluginRegistry {
     return this.componentRegistry.getComponent(def);
   }
 
-  public static create(opts?: PluginRegistryOpts) {
+  public static create(opts?: PluginRegistryCapabilities) {
     return new PluginRegistry(opts);
   }
 

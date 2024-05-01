@@ -1,4 +1,4 @@
-import {type ScriptEvent} from '#event/event-constants';
+import {ScriptEvent} from '#event/event-constants';
 import {RunScriptManifestSchema} from '#schema/run-script-manifest';
 import {
   RunScriptResultSchema,
@@ -44,9 +44,11 @@ export type RunScriptsEndEventData = z.infer<
 
 export type RunScriptsEventData = z.infer<typeof RunScriptsEventDataSchema>;
 
-export type RunScriptsFailedEventData = RunScriptsEndEventData;
+export type RunScriptsFailedEventData = z.infer<
+  typeof RunScriptsFailedEventDataSchema
+>;
 
-export type RunScriptsOkEventData = RunScriptsEndEventData;
+export type RunScriptsOkEventData = z.infer<typeof RunScriptsOkEventDataSchema>;
 
 export type ScriptEventData = {
   [ScriptEvent.PkgManagerRunScriptsBegin]: PkgManagerRunScriptsBeginEventData;
@@ -136,6 +138,10 @@ export const RunScriptsEndEventDataSchema = RunScriptsEventDataSchema.extend({
   ),
 });
 
+export const RunScriptsOkEventDataSchema = RunScriptsEndEventDataSchema;
+
+export const RunScriptsFailedEventDataSchema = RunScriptsEndEventDataSchema;
+
 export const RunScriptEventDataSchema = RunScriptManifestSchema.extend({
   currentScript: NonNegativeIntSchema,
   totalUniqueScripts: NonNegativeIntSchema,
@@ -175,3 +181,18 @@ export const PkgManagerRunScriptsOkEventDataSchema =
 
 export const PkgManagerRunScriptFailedEventDataSchema =
   PkgManagerRunScriptsOkEventDataSchema;
+
+export const ScriptEventSchemas = {
+  [ScriptEvent.PkgManagerRunScriptsBegin]:
+    PkgManagerRunScriptsBeginEventDataSchema,
+  [ScriptEvent.PkgManagerRunScriptsFailed]:
+    PkgManagerRunScriptFailedEventDataSchema,
+  [ScriptEvent.PkgManagerRunScriptsOk]: PkgManagerRunScriptsOkEventDataSchema,
+  [ScriptEvent.RunScriptsBegin]: RunScriptsEventDataSchema,
+  [ScriptEvent.RunScriptsOk]: RunScriptsOkEventDataSchema,
+  [ScriptEvent.RunScriptsFailed]: RunScriptsFailedEventDataSchema,
+  [ScriptEvent.RunScriptBegin]: RunScriptBeginEventDataSchema,
+  [ScriptEvent.RunScriptFailed]: RunScriptFailedEventDataSchema,
+  [ScriptEvent.RunScriptOk]: RunScriptOkEventDataSchema,
+  [ScriptEvent.RunScriptSkipped]: RunScriptSkippedEventDataSchema,
+} as const;

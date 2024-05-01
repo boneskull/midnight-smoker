@@ -21,7 +21,7 @@
   },
   "scripts": {
     "build": "tsc -b",
-    "clean": "shx rm -rf \"packages/*/dist\"",
+    "clean": "shx rm -rf \"packages/*/dist\" \"packages/*/*.tsbuildinfo\" \"packages/src/*.tsbuildinfo\" \"packages/*/test/*.tsbuildinfo\" \"packages/scripts/*.tsbuildinfo\"",
     "dev": "tsc -b --watch",
     "dev:docs": "npm run -w packages/docs dev",
     "husky-install": "husky install",
@@ -32,7 +32,7 @@
     "lint:fix": "eslint . --fix",
     "lint:md": "markdownlint-cli2 \"**/*.md\"",
     "lint:staged": "lint-staged",
-    "prepare": "run-p husky-install rebuild",
+    "prepare": "run-p husky-install",
     "pretest:e2e": "run-s build",
     "rebuild": "run-s clean build",
     "test": "npm test --workspaces --if-present",
@@ -79,9 +79,11 @@
     "snap-shot-it": "7.9.10",
     "source-map-support": "0.5.21",
     "ts-node": "10.9.2",
+    "tsd": "0.31.0",
     "typescript": "5.2.2",
     "unexpected": "13.2.1",
-    "unexpected-sinon": "11.1.0"
+    "unexpected-sinon": "11.1.0",
+    "wrap-ansi": "6.2.0"
   },
   "overrides": {
     "debug": "4.3.4",

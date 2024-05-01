@@ -103,44 +103,39 @@ export type Executor = (
  * {@link Executor}.
  */
 export const ExecutorSchema = customSchema<Executor>(
-  z
-    .union([
-      z.function(
-        z.tuple([PkgManagerSpecSchema, NonEmptyStringArraySchema] as [
-          spec: typeof PkgManagerSpecSchema,
-          args: typeof NonEmptyStringArraySchema,
-        ]),
-        z.promise(ExecResultSchema),
-      ),
-      z.function(
-        z.tuple([
-          PkgManagerSpecSchema,
-          NonEmptyStringArraySchema,
-          ExecutorOptsSchema,
-        ] as [
-          spec: typeof PkgManagerSpecSchema,
-          args: typeof NonEmptyStringArraySchema,
-          opts: typeof ExecutorOptsSchema,
-        ]),
-        z.promise(ExecResultSchema),
-      ),
-      z.function(
-        z.tuple([
-          PkgManagerSpecSchema,
-          NonEmptyStringArraySchema,
-          ExecutorOptsSchema,
-          SpawnOptsSchema,
-        ] as [
-          spec: typeof PkgManagerSpecSchema,
-          args: typeof NonEmptyStringArraySchema,
-          opts: typeof ExecutorOptsSchema,
-          spawnOpts: typeof SpawnOptsSchema,
-        ]),
-        z.promise(ExecResultSchema),
-      ),
-    ])
-    .transform((value) => {
-      console.log(value.length);
-      return value;
-    }),
+  z.union([
+    z.function(
+      z.tuple([PkgManagerSpecSchema, NonEmptyStringArraySchema] as [
+        spec: typeof PkgManagerSpecSchema,
+        args: typeof NonEmptyStringArraySchema,
+      ]),
+      z.promise(ExecResultSchema),
+    ),
+    z.function(
+      z.tuple([
+        PkgManagerSpecSchema,
+        NonEmptyStringArraySchema,
+        ExecutorOptsSchema,
+      ] as [
+        spec: typeof PkgManagerSpecSchema,
+        args: typeof NonEmptyStringArraySchema,
+        opts: typeof ExecutorOptsSchema,
+      ]),
+      z.promise(ExecResultSchema),
+    ),
+    z.function(
+      z.tuple([
+        PkgManagerSpecSchema,
+        NonEmptyStringArraySchema,
+        ExecutorOptsSchema,
+        SpawnOptsSchema,
+      ] as [
+        spec: typeof PkgManagerSpecSchema,
+        args: typeof NonEmptyStringArraySchema,
+        opts: typeof ExecutorOptsSchema,
+        spawnOpts: typeof SpawnOptsSchema,
+      ]),
+      z.promise(ExecResultSchema),
+    ),
+  ]),
 );

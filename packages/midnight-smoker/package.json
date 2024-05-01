@@ -186,6 +186,7 @@
     "glob": "10.3.10",
     "lilconfig": "3.0.0",
     "lodash": "4.17.21",
+    "minimatch": "9.0.3",
     "mitt": "3.0.1",
     "read-pkg-up": "7.0.1",
     "semver": "7.5.4",

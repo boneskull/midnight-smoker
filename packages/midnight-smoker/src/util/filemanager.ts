@@ -5,9 +5,9 @@ import type nodeFsPromises from 'node:fs/promises';
 import path from 'node:path';
 import normalizePkgData from 'normalize-package-data';
 import {type PackageJson} from 'type-fest';
-import {justImport, resolveFrom} from '.';
 import {MissingPackageJsonError, fromUnknownError} from '../error';
 import {UnreadablePackageJsonError} from '../error/unreadable-pkg-json-error';
+import {justImport, resolveFrom} from './loader-util';
 
 const debug = Debug('midnight-smoker:filemanager');
 
@@ -61,7 +61,9 @@ export interface ReadPkgJsonNormalizedResult extends ReadPkgJsonResult {
 export class FileManager {
   public readonly fs: FsApi;
 
-  public readonly tmpdir: GetTempDirRoot;
+  public readonly getTempDirRoot: GetTempDirRoot;
+
+  public readonly tempDirs: Set<string> = new Set();
 
   #importer: Importer;
 
@@ -71,7 +73,7 @@ export class FileManager {
     const anyOpts = opts ?? ({} as FileManagerOpts);
     // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-assignment
     this.fs = anyOpts.fs ?? (require('node:fs') as FsApi);
-    this.tmpdir =
+    this.getTempDirRoot =
       // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-member-access
       anyOpts.tmpdir ?? (require('node:os').tmpdir as GetTempDirRoot);
 
@@ -95,7 +97,7 @@ export class FileManager {
     prefix: string = UNKNOWN_TMPDIR_PREFIX,
   ): Promise<string> {
     const fullPrefix = path.join(
-      this.tmpdir.call(null),
+      this.getTempDirRoot.call(null),
       MIDNIGHT_SMOKER,
       prefix,
       path.sep,
@@ -103,13 +105,28 @@ export class FileManager {
     try {
       // this is only required if we're using an in-memory filesystem
       await this.fs.promises.mkdir(fullPrefix, {recursive: true});
-      return await this.fs.promises.mkdtemp(fullPrefix);
+      const tempDir = await this.fs.promises.mkdtemp(fullPrefix);
+      this.tempDirs.add(tempDir);
+      return tempDir;
     } catch (err) {
       throw new DirCreationError(
         `Failed to create temp directory with prefix ${fullPrefix}`,
         fullPrefix,
         err as NodeJS.ErrnoException,
       );
+    }
+  }
+
+  public async pruneTempDir(dir: string): Promise<void> {
+    if (!this.tempDirs.has(dir)) {
+      debug('Refusing to prune unknown dir %s', dir);
+      return;
+    }
+    try {
+      await this.rimraf(dir);
+      this.tempDirs.delete(dir);
+    } catch (err) {
+      debug('Failed to prune temp dir %s: %s', dir, err);
     }
   }
 
@@ -131,14 +148,15 @@ export class FileManager {
     options: {normalize?: boolean} = {},
   ): Promise<PackageJson | NormalizedPackageJson> {
     try {
-      debug('Attempting to read JSON at %s', filepath);
       const file = await this.fs.promises.readFile(filepath, 'utf8');
+      const relativePath = path.relative(process.cwd(), filepath);
       const packageJson = JSON.parse(file) as PackageJson;
       if (options.normalize) {
-        debug('Attempting to normalize JSON at %s', filepath);
         normalizePkgData(packageJson);
+        debug('Normalized JSON at %s', relativePath);
         return packageJson as NormalizedPackageJson;
       }
+      debug('Read JSON at %s', relativePath);
       return packageJson;
     } catch (err) {
       throw new UnreadablePackageJsonError(
