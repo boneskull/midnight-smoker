@@ -38,11 +38,7 @@ export const RunMachine = setup({
   actors: {
     runScript: fromPromise<RunScriptResult, RunMachineRunScriptInput>(
       async ({input: {pkgManager, runScriptManifest, signal}}) =>
-        pkgManager.def.runScript({
-          ...pkgManager.ctx,
-          runScriptManifest,
-          signal,
-        }),
+        pkgManager.runScript(runScriptManifest, signal),
     ),
   },
   guards: {

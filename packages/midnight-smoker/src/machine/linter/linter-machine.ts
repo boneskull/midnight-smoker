@@ -21,7 +21,7 @@ import {
   type CtrlRuleFailedEvent,
   type CtrlRuleOkEvent,
 } from '../controller/control-machine-events';
-import {asWorkspacesInfo, makeId, monkeypatchActorLogger} from '../util';
+import {makeId, monkeypatchActorLogger} from '../util';
 import {type LinterMachineEvents} from './linter-machine-events';
 import {
   type LintManifestWithPkg,
@@ -126,7 +126,6 @@ export const LinterMachine = setup({
         localPath,
         config: ruleConfigs[ruleName],
         rule: ruleName,
-        currentRule,
         type: 'RULE_FAILED',
         sender: self.id,
         issues,
@@ -146,7 +145,6 @@ export const LinterMachine = setup({
         installPath,
         config: ruleConfigs[ruleName],
         rule: ruleName,
-        currentRule,
         type: 'RULE_OK',
         sender: self.id,
         localPath,
@@ -166,7 +164,6 @@ export const LinterMachine = setup({
         installPath,
         config: ruleConfigs[ruleName],
         rule: ruleName,
-        currentRule,
         type: 'RULE_BEGIN',
         sender: self.id,
         localPath,
@@ -179,10 +176,8 @@ export const LinterMachine = setup({
         self,
       }): CtrlPkgManagerLintBeginEvent => ({
         type: 'PKG_MANAGER_LINT_BEGIN',
-        currentPkgManager,
         pkgManager: pkgManager.staticSpec,
         sender: self.id,
-        workspaceInfo: asWorkspacesInfo(lintManifests),
       }),
     ),
     stopRuleMachine: enqueueActions(
@@ -222,6 +217,7 @@ export const LinterMachine = setup({
       !isEmpty(issues),
     didRuleCheckPass: (_, {issues = []}: {issues: RuleResultFailed[]}) =>
       isEmpty(issues),
+    hasError: ({context: {error}}) => Boolean(error),
   },
 }).createMachine({
   context: ({input}): LinterMachineContext => ({
@@ -234,6 +230,10 @@ export const LinterMachine = setup({
   }),
   initial: 'setup',
   id: 'LinterMachine',
+  always: {
+    guard: {type: 'hasError'},
+    actions: [log(({context: {error}}) => `ERROR: ${error?.message}`)],
+  },
   states: {
     setup: {
       initial: 'readingPackages',

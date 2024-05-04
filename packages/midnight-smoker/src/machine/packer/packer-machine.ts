@@ -94,9 +94,8 @@ export const PackerMachine = setup({
         ...opts,
         type: 'PKG_MANAGER_PACK_BEGIN',
         index,
-        pkgManager,
+        pkgManager: pkgManager.staticSpec,
         sender: self.id,
-        workspaceInfo,
       }),
     ),
     sendPkgManagerPackOkEvent: sendTo(
@@ -110,7 +109,7 @@ export const PackerMachine = setup({
         return {
           type: 'PKG_MANAGER_PACK_OK',
           index,
-          pkgManager,
+          pkgManager: pkgManager.staticSpec,
           installManifests,
           sender: self.id,
           workspaceInfo,
@@ -129,7 +128,7 @@ export const PackerMachine = setup({
           type: 'PKG_MANAGER_PACK_FAILED',
           index,
           workspaceInfo,
-          pkgManager,
+          pkgManager: pkgManager.staticSpec,
           error,
           sender: self.id,
         };

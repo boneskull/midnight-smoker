@@ -86,7 +86,7 @@ export const InstallMachine = setup({
     sendPkgInstallFailed: sendTo(
       ({context: {parentRef}}) => parentRef,
       (
-        {context},
+        {context: {pkgManager}},
         {
           error,
           installManifest,
@@ -97,7 +97,6 @@ export const InstallMachine = setup({
           index: number;
         },
       ): InstallerMachinePkgInstallFailedEvent => {
-        const {pkgManager} = context;
         return {
           type: 'PKG_INSTALL_FAILED',
           error,
@@ -139,11 +138,12 @@ export const InstallMachine = setup({
   initial: 'installing',
   entry: [{type: 'sendPkgManagerInstallBegin'}],
   always: {
-    guard: 'hasError',
+    guard: {type: 'hasError'},
     actions: [log(({context: {error}}) => `ERROR: ${error?.message}`)],
   },
   states: {
     installing: {
+      description: 'Installs a single package',
       invoke: {
         src: 'install',
         input: ({context: {currentManifest, signal, pkgManager}}) => {
@@ -156,7 +156,7 @@ export const InstallMachine = setup({
         },
         onDone: [
           {
-            description: 'install done',
+            description: 'Installation finished successfully',
             guard: ({event: {output}}) => isActorOutputOk(output),
             actions: [
               log('install ok'),
@@ -180,6 +180,7 @@ export const InstallMachine = setup({
             target: '#InstallMachine.next',
           },
           {
+            description: 'Installation finished with error',
             guard: ({event: {output}}) => isActorOutputNotOk(output),
             actions: [
               log('install failed'),
@@ -213,6 +214,8 @@ export const InstallMachine = setup({
       },
     },
     next: {
+      description:
+        'Pulls another InstallManifest from the queue, if present; otherwise moves to final state',
       always: [
         {
           guard: {type: 'isComplete'},

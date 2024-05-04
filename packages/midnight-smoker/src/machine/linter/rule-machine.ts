@@ -37,6 +37,7 @@ export const RuleMachine = setup({
     ),
   },
 }).createMachine({
+  description: 'Runs a single check using a rule context',
   id: 'RuleMachine',
   context: ({input}) => input,
   initial: 'linting',

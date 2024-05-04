@@ -136,7 +136,7 @@ export const InstallerMachine = setup({
       ): CtrlPkgManagerInstallBeginEvent => ({
         type: 'PKG_MANAGER_INSTALL_BEGIN',
         index,
-        pkgManager,
+        pkgManager: pkgManager.staticSpec,
         installManifests,
         sender: self.id,
       }),
@@ -153,7 +153,7 @@ export const InstallerMachine = setup({
       ): CtrlPkgManagerInstallOkEvent => ({
         type: 'PKG_MANAGER_INSTALL_OK',
         index,
-        pkgManager,
+        pkgManager: pkgManager.staticSpec,
         installManifests,
         sender: self.id,
       }),
@@ -167,7 +167,7 @@ export const InstallerMachine = setup({
         type: 'PKG_MANAGER_INSTALL_FAILED',
         index,
         installManifests,
-        pkgManager,
+        pkgManager: pkgManager.staticSpec,
         sender: self.id,
         error,
       }),
@@ -211,7 +211,7 @@ export const InstallerMachine = setup({
   initial: 'draining',
   id: 'InstallerMachine',
   always: {
-    guard: 'hasError',
+    guard: {type: 'hasError'},
     actions: [log(({context: {error}}) => `ERROR: ${error?.message}`)],
   },
   on: {

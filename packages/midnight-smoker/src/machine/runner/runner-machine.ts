@@ -119,10 +119,6 @@ export const RunnerMachine = setup({
         type: 'PKG_MANAGER_RUN_SCRIPTS_BEGIN',
         pkgManager: context.pkgManager.staticSpec,
         manifests: context.runScriptManifests,
-        workspaceInfo: context.runScriptManifests.map(
-          ({pkgName, localPath}) => ({pkgName, localPath}),
-        ),
-        currentPkgManager: context.index,
       }),
     ),
 
@@ -139,7 +135,7 @@ export const RunnerMachine = setup({
         type,
         scriptIndex,
         pkgManagerIndex: context.index,
-        pkgManager: context.pkgManager,
+        pkgManager: context.pkgManager.staticSpec,
         runScriptManifest,
       }),
     ),
@@ -165,7 +161,7 @@ export const RunnerMachine = setup({
           type,
           scriptIndex,
           pkgManagerIndex: context.index,
-          pkgManager: context.pkgManager,
+          pkgManager: context.pkgManager.staticSpec,
           runScriptManifest: manifest,
           result,
         };
