@@ -16,7 +16,7 @@ import {
   type RuleError,
   type ScriptError,
 } from '#error';
-import {type SmokerEvents, type StrictEmitter} from '#event';
+import {type SmokeResults} from '#event';
 import type {RawSmokerOptions, SmokerOptions} from '#options/options';
 import {OptionParser} from '#options/parser';
 import {
@@ -25,9 +25,8 @@ import {
   isBlessedPlugin,
   type StaticPluginMetadata,
 } from '#plugin';
-import {type LintResult} from '#schema/lint-result';
+import {type LintResult} from '#schema/rule-result';
 import type {RunScriptResult} from '#schema/run-script-result';
-import {type SmokeResults} from '#schema/smoker-event';
 import {castArray} from '#util/schema-util';
 import Debug from 'debug';
 import {isEmpty} from 'lodash';
@@ -50,8 +49,6 @@ type SetupResult =
       error: Error;
     }
   | undefined;
-
-export type SmokerEmitter = StrictEmitter<SmokerEvents>;
 
 /**
  * Currently, capabilities are for testing purposes because it's a huge pain to
@@ -258,7 +255,7 @@ export class Smoker {
 
   public async lint(): Promise<SmokeResults | undefined> {
     try {
-      let ruleResults: LintResult | undefined;
+      const ruleResults: LintResult[] = [];
       const runScriptResults: RunScriptResult[] = [];
       // await this.runLint();
 
@@ -342,6 +339,11 @@ export class Smoker {
         pluginRegistry,
       },
       logger: Debug('midnight-smoker:controller'),
+      inspect(evt) {
+        if (evt.type === '@xstate.event') {
+          // debug(evt.event);
+        }
+      },
     }).start();
 
     if (shouldLint) {
@@ -359,13 +361,13 @@ export class Smoker {
     if (isActorOutputOk(output)) {
       debug({
         scripts: output.runScriptResults,
-        lint: output.lintResult,
+        lint: output.lintResults,
         plugins: pluginRegistry.plugins,
         opts: smokerOptions,
       });
       return {
         scripts: output.runScriptResults,
-        lint: output.lintResult,
+        lint: output.lintResults,
         plugins: pluginRegistry.plugins,
         opts: smokerOptions,
       };
@@ -456,20 +458,20 @@ export class Smoker {
 
   /**
    * @param setupResult
-   * @param ruleResults
+   * @param lintResults
    * @param runScriptResults
    * @returns
    * @todo Fix this, I hate this
    */
   private async postRun(
     setupResult: SetupResult,
-    ruleResults?: LintResult,
+    lintResults?: LintResult[],
     runScriptResults: RunScriptResult[] = [],
   ) {
     // END
     const smokeResults: SmokeResults = {
       scripts: runScriptResults,
-      lint: ruleResults,
+      lint: lintResults,
       plugins: this.pluginRegistry.plugins,
       opts: this.opts,
     };
@@ -480,14 +482,17 @@ export class Smoker {
         [],
       );
 
-      const ruleErrors = castArray(ruleResults?.issues).reduce<RuleError[]>(
-        (acc, issue) => {
-          return issue.severity === RuleSeverities.Error
-            ? [...acc, issue.error as RuleError]
-            : acc;
-        },
-        [],
-      );
+      const ruleErrors =
+        lintResults?.flatMap<RuleError>((result) => {
+          return result.type === 'FAILED'
+            ? result.results.reduce<RuleError[]>((acc, result) => {
+                return result.type === 'FAILED' &&
+                  result.ctx.severity === RuleSeverities.Error
+                  ? [...acc, result.error as RuleError]
+                  : acc;
+              }, [])
+            : [];
+        }) ?? [];
 
       const errors: Array<
         InstallError | PackError | PackParseError | ScriptError | RuleError

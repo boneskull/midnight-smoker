@@ -34,3 +34,5 @@ export * from './pkg-manager-loader';
 export * from './pkg-manager-spec';
 
 export * from './pkg-manager-version';
+
+export * from '#schema/workspaces';

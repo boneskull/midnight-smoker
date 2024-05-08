@@ -5,6 +5,7 @@
  */
 
 import jsonStringify from 'json-stable-stringify';
+import {partition} from 'lodash';
 import {type SmokeResults} from 'midnight-smoker';
 import {SmokerReferenceError} from 'midnight-smoker/error';
 import {type ReporterDef} from 'midnight-smoker/reporter';
@@ -51,12 +52,16 @@ export const JSONReporter: ReporterDef<JSONReporterContext> = {
   onLintBegin(ctx, {totalRules: total}) {
     ctx.stats.totalRules = total;
   },
-  onLintFailed(ctx, {result: {issues, passed}}) {
+  onLintFailed(ctx, {results}) {
+    const [issues, passed] = partition(
+      results,
+      (result) => result.type === 'FAILED',
+    );
     ctx.stats.failedRules = issues.length;
     ctx.stats.passedRules = passed.length;
   },
-  onLintOk(ctx, {result: {passed}}) {
-    ctx.stats.passedRules = passed.length;
+  onLintOk(ctx, {results}) {
+    ctx.stats.passedRules = results.length;
     ctx.stats.failedRules = 0;
   },
   onLingered(ctx, {directories: dirs}) {

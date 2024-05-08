@@ -1,45 +1,35 @@
-import {RuleSeveritySchema} from '#schema/rule-severity';
-import {NonEmptyStringSchema, instanceofSchema} from '#util/schema-util';
-import {z} from 'zod';
-import {StaticRuleContextSchema, StaticRuleDefSchema} from './rule-static';
+import {LintManifest} from '#schema/lint-manifest';
+import {StaticRuleContext, StaticRuleDef} from '#schema/rule-static';
 
-/**
- * Represents the result of running a rule which has failed
- */
-export type RuleResultFailed = z.infer<typeof RuleResultFailedSchema>;
+export interface BaseLintResult {
+  rule: StaticRuleDef;
+  ctx: StaticRuleContext;
+}
 
-/**
- * Represents the result of running a rule which has not failed
- */
-export type RuleResultOk = z.infer<typeof RuleResultOkSchema>;
+export interface RuleResultOk extends BaseLintResult {
+  type: 'OK';
+}
 
-export const RuleResultSchema = z.object({
-  rule: StaticRuleDefSchema,
-  context: StaticRuleContextSchema,
-});
+export interface RuleResultFailed extends BaseLintResult {
+  type: 'FAILED';
+  id: string;
+  message: string;
+  failed: boolean;
+  filepath?: string;
+  data?: unknown;
+  error?: Error;
+}
 
-export const RuleResultOkSchema = RuleResultSchema;
+export type RuleResult = RuleResultOk | RuleResultFailed;
 
-export const RuleResultFailedSchema = RuleResultSchema.extend({
-  message: NonEmptyStringSchema.describe(
-    'The human-readable message for this issue',
-  ),
-  data: z
-    .unknown()
-    .optional()
-    .describe('Arbitrary metadata attached to the issue'),
-  error: instanceofSchema(Error).optional().describe('An error, if any'),
-  id: NonEmptyStringSchema.describe('A unique identifier for this issue'),
-  failed: z
-    .boolean()
-    .describe(
-      'Whether or not this issue is at severity "error", which should cause a non-zero exit code',
-    ),
-  severity: RuleSeveritySchema.describe(
-    'The severity that this rule was run at',
-  ),
-  pkgManager: NonEmptyStringSchema.describe(
-    'String representation of the current pkg manager',
-  ),
-  filepath: NonEmptyStringSchema,
-});
+export interface LintResultFailed extends LintManifest {
+  type: 'FAILED';
+  results: RuleResult[];
+}
+
+export interface LintResultOk extends LintManifest {
+  type: 'OK';
+  results: RuleResultOk[];
+}
+
+export type LintResult = LintResultFailed | LintResultOk;

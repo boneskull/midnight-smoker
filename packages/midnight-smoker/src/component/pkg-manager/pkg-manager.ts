@@ -18,8 +18,6 @@ import Debug from 'debug';
 import {isFunction} from 'lodash';
 import {type PkgManagerSpec} from './pkg-manager-spec';
 
-export type SomePkgManager = PkgManager;
-
 export class PkgManager extends ReifiedComponent<PkgManagerDef> {
   constructor(
     id: string,
@@ -72,6 +70,7 @@ export class PkgManager extends ReifiedComponent<PkgManagerDef> {
     const ctx: PkgManagerPackContext = {
       ...this.ctx,
       signal,
+      pkgName: '',
       localPath,
     };
     const manifest = await this.def.pack(ctx);

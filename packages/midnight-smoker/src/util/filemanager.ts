@@ -235,4 +235,9 @@ export class FileManager {
   public static create(this: void, opts?: FileManagerOpts): FileManager {
     return new FileManager(opts);
   }
+
+  public async readSmokerPkgJson() {
+    const result = await this.findPkgUp(__dirname, {strict: true});
+    return result.packageJson;
+  }
 }

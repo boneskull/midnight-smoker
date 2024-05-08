@@ -1,4 +1,5 @@
 import {type PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
+import {type WorkspaceInfo} from '#schema/workspaces';
 import {red} from 'chalk';
 import {BaseSmokerError} from './base-error';
 
@@ -12,12 +13,14 @@ export class PackError extends BaseSmokerError<{
   exitCode?: number;
   output?: string;
   error?: object;
+  workspace: WorkspaceInfo;
 }> {
   public readonly id = 'PackError';
 
   constructor(
     message: string,
     pkgManager: string | PkgManagerSpec,
+    workspace: WorkspaceInfo,
     dest: string,
     {
       cwd,
@@ -33,6 +36,7 @@ export class PackError extends BaseSmokerError<{
       dest,
       exitCode,
       output,
+      workspace,
     });
   }
 }
@@ -44,6 +48,7 @@ export class PackParseError extends BaseSmokerError<
   {
     pkgManager: string;
     output: string;
+    workspace: WorkspaceInfo;
   },
   SyntaxError
 > {
@@ -52,9 +57,10 @@ export class PackParseError extends BaseSmokerError<
   constructor(
     message: string,
     pkgManager: string | PkgManagerSpec,
+    workspace: WorkspaceInfo,
     error: SyntaxError,
     output: string,
   ) {
-    super(message, {pkgManager: `${pkgManager}`, output}, error);
+    super(message, {pkgManager: `${pkgManager}`, output, workspace}, error);
   }
 }

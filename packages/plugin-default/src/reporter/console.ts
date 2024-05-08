@@ -170,7 +170,7 @@ export const ConsoleReporter: ReporterDef<ConsoleReporterContext> = {
 
   onPkgManagerPackBegin(
     {bars, multiBar},
-    {pkgManager, workspaceInfo, currentPkgManager, totalPkgManagers},
+    {pkgManager, workspaceInfo, totalPkgManagers},
   ) {
     const spec = nameAndVersion(pkgManager);
     const bar = multiBar.create(workspaceInfo.length * totalPkgManagers, 0, {
@@ -199,10 +199,7 @@ export const ConsoleReporter: ReporterDef<ConsoleReporterContext> = {
     // });
   },
 
-  onPkgPackBegin(
-    {bars},
-    {pkgManager, workspace, currentPkg, workspace: {pkgName}},
-  ) {},
+  onPkgPackBegin({bars}, {pkgManager, workspace, workspace: {pkgName}}) {},
 
   onPkgPackFailed({bars}, {pkgManager, workspace}) {
     const spec = nameAndVersion(pkgManager);
@@ -392,7 +389,7 @@ export const ConsoleReporter: ReporterDef<ConsoleReporterContext> = {
     // text += ELLIPSIS;
     // spinners.add(`linting-${pkgManager.spec}`, {text, indent: 2});
   },
-  onRuleBegin(ctx, {pkgManager, currentRule, totalRules}) {
+  onRuleBegin(ctx, {pkgManager, totalRules}) {
     // let text = `${pkgManagerToString(pkgManager)} executing ${currentOfTotal(
     //   currentRule,
     //   totalRules,
@@ -430,10 +427,7 @@ export const ConsoleReporter: ReporterDef<ConsoleReporterContext> = {
     //   status: 'success',
     // });
   },
-  onLintFailed(
-    ctx,
-    {totalRules, result: {issues}, totalUniquePkgs, totalPkgManagers},
-  ) {
+  onLintFailed(ctx, {totalRules, results, totalUniquePkgs, totalPkgManagers}) {
     // const spinner = spinners.get('lint');
     // let text = plur`Executed ${['rule', totalRules, true]}`;
     // if (totalUniquePkgs > 1) {
@@ -581,7 +575,7 @@ export const ConsoleReporter: ReporterDef<ConsoleReporterContext> = {
     // )}`;
     // spinners.get(`scripts-${pkgManager.spec}`).update({status: 'fail', text});
   },
-  onRunScriptBegin(ctx, {pkgManager, currentScript, totalUniqueScripts}) {
+  onRunScriptBegin(ctx, {pkgManager, totalUniqueScripts}) {
     // const text = `${pkgManagerToString(
     //   pkgManager,
     // )} running ${currentScript}/${totalUniqueScripts} ${pluralize(

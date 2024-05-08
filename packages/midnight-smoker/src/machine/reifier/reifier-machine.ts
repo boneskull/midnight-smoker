@@ -1,19 +1,13 @@
-import {
-  ComponentKinds,
-  DEFAULT_EXECUTOR_ID,
-  RuleSeverities,
-  SYSTEM_EXECUTOR_ID,
-} from '#constants';
+import {ComponentKinds, RuleSeverities} from '#constants';
 import {fromUnknownError} from '#error';
 import {type ActorOutputError, type ActorOutputOk} from '#machine/util';
 import {type SmokerOptions} from '#options';
-import {PkgManager} from '#pkg-manager';
+import {type PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
 import {type PluginMetadata, type PluginRegistry} from '#plugin';
-import {Reporter, type SomeReporter} from '#reporter';
 import {Rule, type RuleContext} from '#rule';
 import {
   type Executor,
-  type PkgManagerDefSpec,
+  type PkgManagerDef,
   type PkgManagerOpts,
   type ReporterDef,
   type SomeRule,
@@ -21,7 +15,6 @@ import {
   type WorkspaceInfo,
 } from '#schema';
 import {type FileManager} from '#util';
-import {isEmpty} from 'lodash';
 import assert from 'node:assert';
 import {
   type PackageJson,
@@ -30,17 +23,11 @@ import {
   type SetRequired,
   type Simplify,
 } from 'type-fest';
-import {and, assign, log, not, setup} from 'xstate';
+import {assign, log, not, setup} from 'xstate';
 import {
-  createPkgManagerContexts,
-  createReporterContexts,
   loadPkgManagers,
   readSmokerPackageJson,
-  type CreatePkgManagerContextsInput,
-  type CreateReporterContextsInput,
   type LoadPkgManagersInput,
-  type PkgManagerDefSpecsWithCtx,
-  type ReporterDefWithCtx,
 } from './reifier-machine-actors';
 
 export const LoadableComponents = {
@@ -61,7 +48,24 @@ export interface ReifierPkgManagerParams {
   pkgManagerOpts?: PkgManagerOpts;
 }
 
-export interface BaseReifierInput {
+export interface BaseInitPayload {
+  plugin: Readonly<PluginMetadata>;
+}
+
+export interface PkgManagerInitPayload extends BaseInitPayload {
+  def: PkgManagerDef;
+  spec: PkgManagerSpec;
+}
+
+export interface ReporterInitPayload extends BaseInitPayload {
+  def: ReporterDef;
+}
+
+export interface RuleInitPayload extends BaseInitPayload {
+  rule: SomeRule;
+}
+
+export interface BaseReifierMachineInput {
   plugin: Readonly<PluginMetadata>;
   pluginRegistry: PluginRegistry;
   smokerOptions: SmokerOptions;
@@ -70,11 +74,11 @@ export interface BaseReifierInput {
   workspaceInfo: WorkspaceInfo[];
 }
 
-export type ReifierInputForPkgManagers = Simplify<
+export type ReifierMachineInputForPkgManagers = Simplify<
   SetOptional<
     SetRequired<
       SetFieldType<
-        BaseReifierInput,
+        BaseReifierMachineInput,
         'component',
         Extract<LoadableComponent, 'pkgManagers' | 'all'>
       >,
@@ -84,31 +88,33 @@ export type ReifierInputForPkgManagers = Simplify<
   >
 >;
 
-export type ReifierInput = BaseReifierInput | ReifierInputForPkgManagers;
+export type ReifierMachineInput =
+  | BaseReifierMachineInput
+  | ReifierMachineInputForPkgManagers;
 
-export type ReifierContext = ReifierInput & {
+export type ReifierMachineContext = ReifierMachineInput & {
   enabledReporterDefs: ReporterDef[];
   enabledRuleDefs: SomeRuleDef[];
-  pkgManagerDefSpecs?: PkgManagerDefSpec[];
-  pkgManagers?: PkgManager[];
+  pkgManagerInitPayloads: PkgManagerInitPayload[];
+  reporterInitPayloads: ReporterInitPayload[];
+  ruleInitPayloads: RuleInitPayload[];
   error?: Error;
-  pkgManagerDefSpecsWithCtx?: PkgManagerDefSpecsWithCtx[];
   smokerPkgJson?: PackageJson;
-  reporterDefsWithCtx?: ReporterDefWithCtx[];
-  reporters?: SomeReporter[];
   ruleDefsWithCtx?: RuleDefWithCtx[];
   rules?: SomeRule[];
 };
 
-export type ReifierOutputOk = ActorOutputOk<{
-  pkgManagers: PkgManager[];
-  reporters: SomeReporter[];
-  rules: SomeRule[];
+export type ReifierMachineOutputOk = ActorOutputOk<{
+  pkgManagerInitPayloads: PkgManagerInitPayload[];
+  reporterInitPayloads: ReporterInitPayload[];
+  ruleInitPayloads: RuleInitPayload[];
 }>;
 
-export type ReifierOutputError = ActorOutputError;
+export type ReifierMachineOutputError = ActorOutputError;
 
-export type ReifierOutput = ReifierOutputOk | ReifierOutputError;
+export type ReifierMachineOutput =
+  | ReifierMachineOutputOk
+  | ReifierMachineOutputError;
 
 export interface LoadReportersInput {
   opts: SmokerOptions;
@@ -122,38 +128,35 @@ export interface RuleDefWithCtx {
 
 export const ReifierMachine = setup({
   types: {
-    input: {} as ReifierInput,
-    context: {} as ReifierContext,
-    output: {} as ReifierOutput,
+    input: {} as ReifierMachineInput,
+    context: {} as ReifierMachineContext,
+    output: {} as ReifierMachineOutput,
   },
   actions: {
-    assignWorkspaces: assign({
-      workspaceInfo: (_, workspaces: WorkspaceInfo[]) => workspaces,
-    }),
     assignError: assign({
       error: (_, {error}: {error: unknown}) => fromUnknownError(error),
     }),
-    assignPkgManagers: assign({
-      // TODO: maybe move side effects elsewhere
-      pkgManagers: ({context}) => {
-        const {
-          plugin,
-          pluginRegistry,
-          pkgManagerDefSpecsWithCtx = [],
-        } = context;
-        return pkgManagerDefSpecsWithCtx.map(({def, ctx}) => {
-          const {id, componentName} = pluginRegistry.getComponent(def);
-          const pkgManager = PkgManager.create(id, def, plugin, ctx);
-          pluginRegistry.registerComponent(
-            plugin,
-            ComponentKinds.PkgManager,
-            pkgManager,
-            componentName,
-          );
-          return pkgManager;
-        });
-      },
-    }),
+    // reifyPkgManagers: assign({
+    //   // TODO: maybe move side effects elsewhere
+    //   pkgManagerDefs: ({context}) => {
+    //     const {
+    //       plugin,
+    //       pluginRegistry,
+    //       pkgManagerDefSpecsWithCtx = [],
+    //     } = context;
+    //     return pkgManagerDefSpecsWithCtx.map(({def, ctx}) => {
+    //       const {id, componentName} = pluginRegistry.getComponent(def);
+    //       const pkgManager = PkgManager.create(id, def, plugin, ctx);
+    //       pluginRegistry.registerComponent(
+    //         plugin,
+    //         ComponentKinds.PkgManager,
+    //         pkgManager,
+    //         componentName,
+    //       );
+    //       return pkgManager;
+    //     });
+    //   },
+    // }),
 
     /**
      * @todo Create `AggregateError` if `context.error` already set
@@ -162,25 +165,18 @@ export const ReifierMachine = setup({
       error: ({context}) =>
         context.error ?? new Error('No matching package managers'),
     }),
-    assignPkgManagerDefSpecs: assign({
-      pkgManagerDefSpecs: (_, pkgManagerDefSpecs: PkgManagerDefSpec[]) =>
-        pkgManagerDefSpecs,
-    }),
 
-    assignPkgManagerDefSpecsWithCtx: assign({
-      pkgManagerDefSpecsWithCtx: (
-        _,
-        pkgManagerDefSpecsWithCtx: PkgManagerDefSpecsWithCtx[],
-      ) => pkgManagerDefSpecsWithCtx,
-    }),
+    // assignPkgManagerDefSpecsWithCtx: assign({
+    //   pkgManagerDefSpecsWithCtx: (
+    //     _,
+    //     pkgManagerDefSpecsWithCtx: PkgManagerDefSpecsWithCtx[],
+    //   ) => pkgManagerDefSpecsWithCtx,
+    // }),
 
     assignEnabledReporterDefs: assign({
       enabledReporterDefs: ({context}) => {
-        const {plugin, pluginRegistry, smokerOptions: smokerOpts} = context;
-        return plugin.getEnabledReporterDefs(
-          smokerOpts,
-          pluginRegistry.getComponentId.bind(pluginRegistry),
-        );
+        const {plugin, smokerOptions: smokerOpts} = context;
+        return plugin.getEnabledReporterDefs(smokerOpts);
       },
     }),
 
@@ -198,28 +194,7 @@ export const ReifierMachine = setup({
       smokerPkgJson: (_, pkgJson: PackageJson) => pkgJson,
     }),
 
-    assignReporterDefsWithCtx: assign({
-      reporterDefsWithCtx: (_, reporterDefsWithCtx: ReporterDefWithCtx[]) =>
-        reporterDefsWithCtx,
-    }),
-
-    assignReporters: assign({
-      reporters: ({context}) => {
-        const {plugin, pluginRegistry, reporterDefsWithCtx = []} = context;
-        return reporterDefsWithCtx.map(({def, ctx}) => {
-          const {id, componentName} = pluginRegistry.getComponent(def);
-          const reporter = Reporter.create(id, def, plugin, ctx);
-          pluginRegistry.registerComponent(
-            plugin,
-            ComponentKinds.Reporter,
-            reporter,
-            componentName,
-          );
-          return reporter;
-        });
-      },
-    }),
-    createRules: assign({
+    reifyRules: assign({
       rules: ({context}) => {
         const {
           plugin,
@@ -243,21 +218,10 @@ export const ReifierMachine = setup({
   actors: {
     readSmokerPkgJson: readSmokerPackageJson,
     loadPkgManagers,
-    createReporterContexts,
-    createPkgManagerContexts,
   },
   guards: {
     hasError: ({context: {error}}) => Boolean(error),
-    hasPkgManagerDefSpecs: ({context: {pkgManagerDefSpecs}}) =>
-      Boolean(pkgManagerDefSpecs?.length),
-    hasPkgManagerDefSpecsWithCtx: ({context: {pkgManagerDefSpecsWithCtx}}) =>
-      Boolean(pkgManagerDefSpecsWithCtx?.length),
-    hasPkgManagers: ({context: {pkgManagers}}) => Boolean(pkgManagers?.length),
-    notHasPkgManagerDefSpecs: not('hasPkgManagerDefSpecs'),
     notHasError: not('hasError'),
-    notHasPkgManagerDefSpecsWithCtx: not('hasPkgManagerDefSpecsWithCtx'),
-    succeeded: and(['hasPkgManagers', not('hasError'), 'hasReporters']),
-    hasReporters: ({context: {reporters}}) => Boolean(reporters?.length),
     shouldProcessPkgManagers: ({context: {component}}) =>
       component === LoadableComponents.All ||
       component === LoadableComponents.PkgManagers,
@@ -274,6 +238,10 @@ export const ReifierMachine = setup({
       ({context: {component}}) => `Reifier loading component(s): ${component}`,
     ),
   ],
+  always: {
+    guard: 'hasError',
+    actions: [log(({context: {error}}) => `ERROR: ${error?.message}`)],
+  },
   context: ({
     input: {
       component = LoadableComponents.All,
@@ -282,16 +250,14 @@ export const ReifierMachine = setup({
       smokerOptions: smokerOpts,
       ...input
     },
-  }): ReifierContext => {
-    const getId = pluginRegistry.getComponentId.bind(pluginRegistry);
-
-    const enabledReporterDefs = plugin.getEnabledReporterDefs(
-      smokerOpts,
-      getId,
-    );
-    const enabledRuleDefs = plugin.getEnabledRuleDefs(smokerOpts, getId);
+  }): ReifierMachineContext => {
+    const enabledReporterDefs = plugin.getEnabledReporterDefs(smokerOpts);
+    const enabledRuleDefs = plugin.getEnabledRuleDefs(smokerOpts);
 
     return {
+      pkgManagerInitPayloads: [],
+      reporterInitPayloads: [],
+      ruleInitPayloads: [],
       component,
       plugin,
       pluginRegistry,
@@ -314,8 +280,13 @@ export const ReifierMachine = setup({
                 {
                   guard: 'shouldProcessPkgManagers',
                   target: 'loadingPkgManagers',
+                  actions: [log('loading pkg managers...')],
                 },
-                {guard: not('shouldProcessPkgManagers'), target: 'skipped'},
+                {
+                  guard: not('shouldProcessPkgManagers'),
+                  target: 'skipped',
+                  actions: [log('skipping pkg manager loading')],
+                },
               ],
             },
             loadingPkgManagers: {
@@ -336,14 +307,12 @@ export const ReifierMachine = setup({
                   };
                 },
                 onDone: {
-                  target: 'creatingPkgManagerContexts',
                   actions: [
-                    {
-                      type: 'assignPkgManagerDefSpecs',
-                      params: ({event: {output: pkgManagerDefSpecs}}) =>
-                        pkgManagerDefSpecs,
-                    },
+                    assign({
+                      pkgManagerInitPayloads: ({event: {output}}) => output,
+                    }),
                   ],
+                  target: '#Reifier.materializing.materializePkgManagers.done',
                 },
                 onError: {
                   actions: [
@@ -359,117 +328,17 @@ export const ReifierMachine = setup({
                 },
               },
             },
-            // queryWorkspaces: {
-            //   invoke: {
-            //     src: 'queryWorkspaces',
-            //     input: ({context: {smokerOpts, pkgManager}}) => {
-            //       assert.ok(pkgManager);
-            //       return {
-            //         cwd: smokerOpts.cwd,
-            //         fm: pkgManager.fm,
-            //         includeRoot: smokerOpts.includeRoot,
-            //       };
-            //     },
-            //     onDone: {
-            //       actions: [
-            //         {
-            //           type: 'assignWorkspaces',
-            //           params: ({event: {output: workspaces}}) => workspaces,
-            //         },
-            //       ],
-            //       target: 'creatingPkgManagerContexts',
-            //     },
-            //     onError: {
-            //       actions: [
-            //         {
-            //           type: 'assignError',
-            //           params: ({event: {error}}) => ({error}),
-            //         },
-            //       ],
-            //       target: '#Reifier.errored',
-            //     },
-            //   },
-            // },
-            creatingPkgManagerContexts: {
-              invoke: {
-                src: 'createPkgManagerContexts',
-                input: ({context}): CreatePkgManagerContextsInput => {
-                  const {
-                    pkgManager,
-                    pkgManagerDefSpecs,
-                    pluginRegistry,
-                    workspaceInfo,
-                    smokerOptions,
-                  } = context;
-                  assert.ok(pkgManager);
-                  assert.ok(pkgManagerDefSpecs);
-                  const {
-                    fm,
-                    systemExecutor = pluginRegistry.getExecutor(
-                      SYSTEM_EXECUTOR_ID,
-                    ),
-                    defaultExecutor = pluginRegistry.getExecutor(
-                      DEFAULT_EXECUTOR_ID,
-                    ),
-                    pkgManagerOpts,
-                  } = pkgManager;
-
-                  const useWorkspaces =
-                    smokerOptions.all || !isEmpty(smokerOptions.workspace);
-
-                  return {
-                    useWorkspaces,
-                    pkgManagerDefSpecs,
-                    fm,
-                    systemExecutor,
-                    defaultExecutor,
-                    pkgManagerOpts,
-                    workspaceInfo,
-                  };
-                },
-                onDone: {
-                  actions: [
-                    {
-                      type: 'assignPkgManagerDefSpecsWithCtx',
-                      params: ({event: {output: pkgManagerDefSpecsWithCtx}}) =>
-                        pkgManagerDefSpecsWithCtx,
-                    },
-                  ],
-                  target: 'validatingPkgManagers',
-                },
-                onError: {
-                  actions: [
-                    {
-                      type: 'assignError',
-                      params: ({event: {error}}) => ({error}),
-                    },
-                  ],
-                  target: '#Reifier.errored',
-                },
-              },
-            },
-            validatingPkgManagers: {
-              always: [
-                {
-                  guard: 'hasPkgManagerDefSpecsWithCtx',
-                  target: 'creatingPkgManagers',
-                },
-                {
-                  guard: 'notHasPkgManagerDefSpecsWithCtx',
-                  actions: ['creatingMissingPkgManagersError'],
-                  target: '#Reifier.errored',
-                },
-              ],
-            },
-            creatingPkgManagers: {
-              type: 'final',
-              entry: ['assignPkgManagers', log('created pkg managers')],
-            },
             skipped: {
+              entry: log('skipped pkg manager loading'),
+              type: 'final',
+            },
+            done: {
+              entry: log('done loading pkg managers'),
               type: 'final',
             },
           },
         },
+
         materializeReporters: {
           initial: 'gate',
           states: {
@@ -477,81 +346,37 @@ export const ReifierMachine = setup({
               always: [
                 {
                   guard: 'shouldProcessReporters',
-                  target: 'readingSmokerPkgJson',
+                  target: 'loadingReporters',
+                  actions: [log('loading reporters...')],
                 },
-                {guard: not('shouldProcessReporters'), target: 'skipped'},
+                {
+                  guard: not('shouldProcessReporters'),
+                  target: 'skipped',
+                  actions: [log('skipping reporter loading')],
+                },
               ],
             },
-            readingSmokerPkgJson: {
-              invoke: {
-                src: 'readSmokerPkgJson',
-                onDone: {
-                  actions: [
-                    {
-                      type: 'assignSmokerPkgJson',
-                      params: ({event: {output: smokerPkgJson}}) => ({
-                        smokerPkgJson,
-                      }),
+            loadingReporters: {
+              always: {
+                actions: [
+                  assign({
+                    reporterInitPayloads: ({
+                      context: {plugin, smokerOptions},
+                    }) => {
+                      const defs = plugin.getEnabledReporterDefs(smokerOptions);
+                      return defs.map((def) => ({def, plugin}));
                     },
-                  ],
-                  target: 'creatingReporterContexts',
-                },
-                onError: {
-                  actions: [
-                    {
-                      type: 'assignError',
-                      params: ({event: {error}}) => ({error}),
-                    },
-                  ],
-                  target: '#Reifier.errored',
-                },
+                  }),
+                ],
+                target: 'done',
               },
-            },
-            creatingReporterContexts: {
-              invoke: {
-                src: 'createReporterContexts',
-                input: ({
-                  context: {
-                    smokerOptions: smokerOpts,
-                    enabledReporterDefs,
-                    smokerPkgJson,
-                  },
-                }): CreateReporterContextsInput => {
-                  assert.ok(smokerPkgJson);
-                  return {
-                    reporterDefs: enabledReporterDefs,
-                    smokerOpts,
-                    pkgJson: smokerPkgJson,
-                  };
-                },
-                onDone: {
-                  actions: [
-                    {
-                      type: 'assignReporterDefsWithCtx',
-                      params: ({event: {output: reporterDefsWithCtx}}) =>
-                        reporterDefsWithCtx,
-                    },
-                  ],
-                  target: 'creatingReporters',
-                },
-                onError: {
-                  actions: [
-                    {
-                      type: 'assignError',
-                      params: ({event: {error}}) => ({error}),
-                    },
-                  ],
-                  target: '#Reifier.errored',
-                },
-              },
-            },
-            creatingReporters: {
-              guard: {type: 'hasReporters'},
-              entry: [log('creating reporters'), {type: 'assignReporters'}],
-              type: 'final',
             },
             skipped: {
-              entry: log('skipping reporter creation'),
+              entry: log('skipped reporter loading'),
+              type: 'final',
+            },
+            done: {
+              entry: log('done loading reporters'),
               type: 'final',
             },
           },
@@ -563,17 +388,22 @@ export const ReifierMachine = setup({
               always: [
                 {
                   guard: 'shouldProcessRules',
-                  target: 'createRules',
+                  target: 'reifyRules',
+                  actions: [log('reifying rules...')],
                 },
-                {guard: not('shouldProcessRules'), target: 'skipped'},
+                {
+                  guard: not('shouldProcessRules'),
+                  target: 'skipped',
+                  actions: log('skipping rules'),
+                },
               ],
             },
-            createRules: {
-              entry: [{type: 'createRules'}],
+            reifyRules: {
+              entry: [{type: 'reifyRules'}, log('done reifying rules')],
               type: 'final',
             },
             skipped: {
-              entry: log('skipping rule creation'),
+              entry: log('skipped rule creation'),
               type: 'final',
             },
           },
@@ -583,15 +413,27 @@ export const ReifierMachine = setup({
         {
           guard: not('hasError'),
           target: 'done',
+          actions: log('materializing complete'),
         },
         {
           guard: 'hasError',
           target: 'errored',
+          actions: log('materializing errored'),
         },
       ],
     },
 
     done: {
+      entry: log(
+        ({
+          context: {
+            pkgManagerInitPayloads = [],
+            ruleInitPayloads = [],
+            reporterInitPayloads = [],
+          },
+        }) =>
+          `pkgManagers: ${pkgManagerInitPayloads.length}, rules: ${ruleInitPayloads.length} reporters: ${reporterInitPayloads.length}`,
+      ),
       type: 'final',
     },
 
@@ -601,12 +443,24 @@ export const ReifierMachine = setup({
   },
   output: ({
     self: {id},
-    context: {pkgManagers = [], reporters = [], rules = [], error},
+    context: {
+      pkgManagerInitPayloads,
+      reporterInitPayloads = [],
+      rules = [],
+      error,
+      plugin,
+    },
   }) => {
     if (error) {
       return {error, type: 'ERROR', id};
     }
-    return {reporters, pkgManagers, rules, type: 'OK', id};
+    return {
+      pkgManagerInitPayloads,
+      reporterInitPayloads,
+      ruleInitPayloads: rules.map((rule) => ({plugin, rule})),
+      type: 'OK',
+      id,
+    };
   },
   id: 'Reifier',
 });

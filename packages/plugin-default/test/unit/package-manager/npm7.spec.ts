@@ -110,6 +110,7 @@ describe('@midnight-smoker/plugin-default', function () {
             ctx = {
               workspaceInfo: [{pkgName: 'foo', localPath: '/some/path'}],
               localPath: '/some/path',
+              pkgName: 'foo',
               spec,
               tmpdir: MOCK_TMPDIR,
               executor,

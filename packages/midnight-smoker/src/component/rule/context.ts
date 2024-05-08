@@ -147,7 +147,7 @@ export class RuleContext implements StaticRuleContext {
         message,
         error,
         rule,
-        context,
+        ctx: context,
       }),
     );
   }
@@ -172,7 +172,7 @@ export class RuleContext implements StaticRuleContext {
         message,
         data,
         rule: serialize(this.rule),
-        context: serialize(this),
+        ctx: serialize(this),
         filepath,
       }),
     );

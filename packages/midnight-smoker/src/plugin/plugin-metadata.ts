@@ -36,7 +36,7 @@ import path from 'node:path';
 import type {LiteralUnion, PackageJson} from 'type-fest';
 import {z} from 'zod';
 import {fromZodError} from 'zod-validation-error';
-import {RuleSeverities} from '../constants';
+import {DEFAULT_COMPONENT_ID, RuleSeverities} from '../constants';
 
 const debug = Debug('midnight-smoker:plugin:metadata');
 
@@ -426,28 +426,35 @@ export class PluginMetadata implements StaticPluginMetadata {
     return loadPackageManagers(pkgManagerDefs, opts);
   }
 
-  public getEnabledReporterDefs(
-    opts: SmokerOptions,
-    getComponentId: (def: object) => string,
-  ) {
+  /**
+   * @todo This is probably duplicate
+   */
+  public getComponentId(def: object) {
+    const name = 'name' in def ? `${def.name}` : DEFAULT_COMPONENT_ID;
+    if (this.isBlessed) {
+      return name;
+    }
+    return `${this.id}:${name}`;
+  }
+
+  public getEnabledReporterDefs(opts: SmokerOptions) {
     const reporterDefs = [...this.reporterDefMap.values()];
 
     assertNonEmptyArray(reporterDefs);
-    assertNonEmptyArray(opts.reporter);
 
-    const shouldEnable = shouldEnableReporter(getComponentId, opts);
+    const shouldEnable = shouldEnableReporter(
+      (def) => this.getComponentId(def),
+      opts,
+    );
 
     const enabledReporters = reporterDefs.filter(shouldEnable);
 
     return enabledReporters;
   }
 
-  public getEnabledRuleDefs(
-    opts: SmokerOptions,
-    getComponentId: (def: object) => string,
-  ) {
+  public getEnabledRuleDefs(opts: SmokerOptions) {
     return [...this.ruleDefMap.values()].filter((def) => {
-      const id = getComponentId(def);
+      const id = this.getComponentId(def);
       return opts.rules[id].severity !== RuleSeverities.Off;
     });
   }

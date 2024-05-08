@@ -24,7 +24,7 @@ export interface RuleIssueParams<
   /**
    * The {@link StaticRuleContext} for this issue, for public consumption.
    */
-  context: Ctx;
+  ctx: Ctx;
 
   /**
    * Arbitrary data attached to the issue by the rule implementation
@@ -61,10 +61,12 @@ export class RuleIssue implements RuleResultFailed {
    */
   protected static generateId = uniqueIdFactoryFactory('issue-');
 
+  public readonly type = 'FAILED';
+
   /**
-   * {@inheritDoc RuleIssueParams.context}
+   * {@inheritDoc RuleIssueParams.ctx}
    */
-  public readonly context: StaticRuleContext;
+  public readonly ctx: StaticRuleContext;
 
   /**
    * {@inheritDoc RuleIssueParams.data}
@@ -95,14 +97,14 @@ export class RuleIssue implements RuleResultFailed {
 
   public constructor({
     rule,
-    context,
+    ctx: context,
     message,
     data,
     error,
     filepath,
   }: RuleIssueParams<StaticRuleContext, StaticRuleDef>) {
     this.rule = rule;
-    this.context = context;
+    this.ctx = context;
     this.message = message;
     this.data = data;
     this.error = error;
@@ -116,7 +118,7 @@ export class RuleIssue implements RuleResultFailed {
   }
 
   public get pkgManager() {
-    return this.context.pkgManager;
+    return this.ctx.pkgManager;
   }
 
   /**
@@ -130,7 +132,7 @@ export class RuleIssue implements RuleResultFailed {
    * The severity of this issue, configured by the end user
    */
   public get severity() {
-    return this.context.severity;
+    return this.ctx.severity;
   }
 
   /**
@@ -154,28 +156,16 @@ export class RuleIssue implements RuleResultFailed {
    * @returns The JSON representation of the {@link RuleIssue} object.
    */
   public toJSON(): RuleResultFailed {
-    const {
-      rule,
-      pkgManager,
-      context,
-      message,
-      data,
-      error,
-      id,
-      failed,
-      severity,
-      filepath,
-    } = this;
+    const {rule, ctx, message, data, error, id, failed, filepath} = this;
     return {
+      type: 'FAILED',
       rule,
-      pkgManager,
-      context,
+      ctx,
       message,
       data,
       error,
       id,
       failed,
-      severity,
       filepath,
     };
   }

@@ -1,5 +1,5 @@
 import {MIDNIGHT_SMOKER} from '#constants';
-import {type WorkspaceInfo} from '#schema';
+import {type WorkspaceInfo} from '#schema/workspaces';
 import Debug from 'debug';
 import {map, memoize, uniqBy} from 'lodash';
 import {AssertionError} from 'node:assert';
@@ -19,16 +19,6 @@ export type ActorOutput<
 > = ActorOutputOk<Ok> | ActorOutputError<Err>;
 
 /**
- * Represents the output of a machine when it is in a successful state.
- *
- * @template Ctx - The type of the additional context information.
- */
-export type ActorOutputOk<Ctx extends object = object> = {
-  type: 'OK';
-  id: string;
-} & Ctx;
-
-/**
  * Represents the output of a machine when an error occurs.
  *
  * @template Err The type of the error.
@@ -42,6 +32,21 @@ export type ActorOutputError<
   type: 'ERROR';
   error: Err;
 } & Ctx;
+
+/**
+ * Represents the output of a machine when it is in a successful state.
+ *
+ * @template Ctx - The type of the additional context information.
+ */
+export type ActorOutputOk<Ctx extends object = object> = {
+  type: 'OK';
+  id: string;
+} & Ctx;
+
+export type MachineEvent<Name extends string, T extends object> = T & {
+  type: Name;
+  sender: string;
+};
 
 /**
  * @deprecated
@@ -181,6 +186,13 @@ export function monkeypatchActorLogger<T extends AnyActorRef>(
   return actor;
 }
 
+/**
+ * Given some array of objects having a `pkgName` property, returns a unique
+ * array of them.
+ *
+ * @param manifests - Array of objects with a `pkgName` property
+ * @returns Array of unique `pkgName` values
+ */
 export const uniquePkgNames = memoize(
   (manifests: {pkgName: string}[]): string[] =>
     map(uniqBy(manifests, 'pkgName'), 'pkgName'),

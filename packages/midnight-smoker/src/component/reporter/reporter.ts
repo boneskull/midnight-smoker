@@ -1,7 +1,7 @@
 import {ReifiedComponent} from '#component';
 import {fromUnknownError} from '#error';
 import {ReporterError} from '#error/reporter-error';
-import {type EventData, type EventName} from '#event/smoker-events';
+import {type EventData, type EventName} from '#event/events';
 import {type PluginMetadata} from '#plugin';
 import {
   type ReporterContext,

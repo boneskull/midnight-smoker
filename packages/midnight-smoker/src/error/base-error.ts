@@ -53,7 +53,7 @@ export abstract class BaseSmokerError<
 
   constructor(
     message: string,
-    public readonly context?: Context,
+    public readonly context: Context,
     public readonly cause?: Cause,
   ) {
     super(message);
@@ -214,3 +214,5 @@ export function fromUnknownError(err?: unknown): Error {
   debug('Handling unknown error: %o', err);
   return new Error(`Unknown error: ${err}`);
 }
+
+export type SomeSmokerError = SmokerError<any, any>;

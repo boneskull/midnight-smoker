@@ -47,6 +47,7 @@ describe('midnight-smoker', function () {
         beforeEach(function () {
           params = {
             rule: exampleStaticRule,
+            // @ts-expect-error FIX
             context: exampleStaticRuleContext,
             message: 'Test message',
             data: {foo: 'bar'},
@@ -64,6 +65,7 @@ describe('midnight-smoker', function () {
           it('should correctly initialize properties', function () {
             expect(issue, 'to satisfy', {
               rule: params.rule,
+              // @ts-expect-error FIX
               context: params.context,
               message: params.message,
               data: params.data,
@@ -77,6 +79,7 @@ describe('midnight-smoker', function () {
           describe('failed', function () {
             describe('when severity is Error', function () {
               it('should return true', function () {
+                // @ts-expect-error FIX
                 params.context.severity = RuleSeverities.Error;
                 expect(issue.failed, 'to be true');
               });
@@ -84,6 +87,7 @@ describe('midnight-smoker', function () {
 
             describe('when severity is Warn', function () {
               it('should return false', function () {
+                // @ts-expect-error FIX
                 params.context.severity = RuleSeverities.Warn;
                 expect(issue.failed, 'to be false');
               });
@@ -92,6 +96,7 @@ describe('midnight-smoker', function () {
 
           describe('severity', function () {
             it('should return the severity from the context', function () {
+              // @ts-expect-error FIX
               expect(issue.severity, 'to be', params.context.severity);
             });
           });
@@ -125,6 +130,7 @@ describe('midnight-smoker', function () {
             it('should return a StaticRuleIssue', function () {
               const expected: IS.RuleResultFailed = {
                 rule: params.rule,
+                // @ts-expect-error FIX
                 context: params.context,
                 message: params.message,
                 data: params.data,
@@ -137,6 +143,7 @@ describe('midnight-smoker', function () {
               };
               expect(issue.toJSON(), 'to equal', expected).and(
                 'when passed as parameter to',
+                // @ts-expect-error FIX
                 IS.RuleResultFailedSchema.parse,
                 'to equal',
                 expected,

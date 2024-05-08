@@ -17,7 +17,7 @@
 
 import {Smoker} from './smoker';
 
-export type {SmokeResults} from '#schema/smoker-event';
+export type {SmokeResults} from '#event';
 
 export {
   BaseSmokerOptionsSchema as zBaseSmokerOptions,

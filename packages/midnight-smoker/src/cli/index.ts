@@ -13,7 +13,7 @@ import {omit} from 'lodash';
 import terminalLink from 'terminal-link';
 import {hideBin} from 'yargs/helpers';
 import yargs from 'yargs/yargs';
-import {handleRejection, mergeOptions} from './cli-util';
+import {mergeOptions} from './cli-util';
 import {
   LintCommand,
   ListCommand,
@@ -53,13 +53,15 @@ async function main(args: string[]): Promise<void> {
         fallback: false,
       })}\n`,
     )
-    .showHelpOnFail(true)
+    .showHelpOnFail(false)
     .help()
     .strict()
     .parseAsync();
 }
 
-main(hideBin(process.argv)).catch((err) => {
-  process.exitCode = 1;
-  handleRejection(err);
-});
+main(hideBin(process.argv));
+
+// .catch((err) => {
+//   process.exitCode = 1;
+//   handleRejection(err);
+// });

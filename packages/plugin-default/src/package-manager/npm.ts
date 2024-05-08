@@ -16,6 +16,7 @@ import {
   type PkgManagerRunScriptContext,
   type RunScriptResult,
   type ScriptError,
+  type WorkspaceInfo,
 } from 'midnight-smoker/pkg-manager';
 import {isSmokerError} from 'midnight-smoker/util';
 import path from 'node:path';
@@ -175,6 +176,10 @@ export const BaseNpmPackageManager = {
 
     let packResult: ExecResult;
 
+    const workspace = {
+      localPath: ctx.localPath,
+      pkgName: ctx.pkgName,
+    } as WorkspaceInfo;
     try {
       packResult = await ctx.executor(ctx.spec, packArgs);
     } catch (e) {
@@ -185,16 +190,23 @@ export const BaseNpmPackageManager = {
         const parsedError = parseNpmError(err.stdout);
 
         if (parsedError) {
-          throw new PackError(parsedError.summary, `${ctx.spec}`, ctx.tmpdir, {
-            error: parsedError,
-            output: err.stderr,
-            exitCode: err.exitCode,
-          });
+          throw new PackError(
+            parsedError.summary,
+            `${ctx.spec}`,
+            workspace,
+            ctx.tmpdir,
+            {
+              error: parsedError,
+              output: err.stderr,
+              exitCode: err.exitCode,
+            },
+          );
         }
 
         throw new PackError(
           `Use --verbose for more information`,
           `${ctx.spec}`,
+          workspace,
           ctx.tmpdir,
           {error: err},
         );
@@ -214,6 +226,7 @@ export const BaseNpmPackageManager = {
         ? new PackParseError(
             `Failed to parse JSON result of "npm pack"`,
             `${ctx.spec}`,
+            workspace,
             err,
             packOutput,
           )
