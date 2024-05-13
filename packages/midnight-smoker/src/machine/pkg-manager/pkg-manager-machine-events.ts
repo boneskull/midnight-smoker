@@ -1,19 +1,21 @@
-import {type StaticComponent} from '#component';
-import {type ComponentKinds} from '#constants';
 import {type RuleError} from '#error';
-import {type PackError, type PackParseError} from '#error/pkg-manager';
+import {
+  type PackError,
+  type PackParseError,
+  type ScriptError,
+} from '#error/pkg-manager';
 import {type PkgManagerSpec} from '#pkg-manager';
 import {
   type InstallManifest,
   type LintManifest,
   type RuleResultFailed,
   type RuleResultOk,
+  type RunScriptManifest,
   type SomeRule,
   type SomeRuleConfig,
-  type StaticPkgManagerSpec,
-  type WorkspaceInfo,
 } from '#schema';
 import {type PackageJson} from 'type-fest';
+import {type RunScriptOutput} from './pkg-manager-machine-actors';
 
 export type CheckOutput = CheckOutputOk | CheckOutputFailed;
 
@@ -24,10 +26,17 @@ export type PkgManagerMachineEvents =
   | PkgManagerMachineCheckDoneEvent
   | PkgManagerMachineHaltEvent
   | PkgManagerMachineCheckErrorEvent
-  | PkgManagerMachinePackEvent
-  | PkgManagerMachineRuleEndEvent
-  | PkgManagerMachineLintEvent;
+  | PkgManagerMachineRunScriptDoneEvent
+  | PkgManagerMachineLintEvent
+  | PkgManagerMachineRunScriptEvent
+  | PkgManagerMachineRunScriptErrorEvent
+  | PkgManagerMachineRuleEndEvent;
 
+/**
+ * Represents a single package to be linted and contains some global metadata
+ *
+ * Used to create a `PkgManagerContext`
+ */
 export interface CheckInput extends CheckItem {
   config: SomeRuleConfig;
   pkgManager: PkgManagerSpec;
@@ -68,10 +77,6 @@ export interface PkgManagerMachineHaltEvent {
   type: 'HALT';
 }
 
-export interface PkgManagerMachineLintEvent {
-  type: 'LINT';
-}
-
 export interface PkgManagerMachineLintItemEvent {
   output: CheckItem;
   type: 'xstate.done.actor.prepareLintItem.*';
@@ -87,20 +92,28 @@ export interface PkgManagerMachinePackErrorEvent {
   type: 'xstate.error.actor.pack.*';
 }
 
-export interface PkgManagerMachinePackEvent {
-  type: 'PACK';
-  workspace: WorkspaceInfo;
-}
-
-export interface PkgManagerMachineReadyEvent {
-  component: StaticComponent<typeof ComponentKinds.PkgManagerDef>;
-  id: string;
-  spec: StaticPkgManagerSpec;
-  type: 'READY';
-}
-
 export interface PkgManagerMachineRuleEndEvent {
   type: 'RULE_END';
-
+  sender: string;
   output: CheckOutput;
+}
+
+export interface PkgManagerMachineLintEvent {
+  type: 'LINT';
+  manifest: LintManifest;
+}
+
+export interface PkgManagerMachineRunScriptEvent {
+  type: 'RUN_SCRIPT';
+  manifest: RunScriptManifest;
+}
+
+export interface PkgManagerMachineRunScriptDoneEvent {
+  output: RunScriptOutput;
+  type: 'xstate.done.actor.runScript.*';
+}
+
+export interface PkgManagerMachineRunScriptErrorEvent {
+  error: ScriptError;
+  type: 'xstate.error.actor.runScript.*';
 }

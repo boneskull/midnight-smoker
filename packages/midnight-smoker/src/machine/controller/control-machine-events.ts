@@ -9,34 +9,31 @@ import {
   type PkgManagerLintFailedEventData,
   type PkgManagerLintOkEventData,
   type PkgManagerRunScriptsBeginEventData,
+  type PkgManagerRunScriptsFailedEventData,
+  type PkgManagerRunScriptsOkEventData,
   type PkgPackBeginEventData,
   type PkgPackFailedEventData,
   type PkgPackOkEventData,
   type RuleBeginEventData,
+  type RuleErrorEventData,
   type RuleFailedEventData,
   type RuleOkEventData,
 } from '#event';
+import {type LoaderMachineOutput} from '#machine/loader-machine';
 import {type PkgManagerMachineOutput} from '#machine/pkg-manager';
 import {type ReporterMachineOutput} from '#machine/reporter';
 import {type MachineEvent} from '#machine/util';
-import {type StaticPkgManagerSpec} from '#pkg-manager';
-import {type SomeReporter} from '#reporter';
 import {
   type InstallManifest,
-  type PkgManagerDefSpec,
   type RunScriptManifest,
   type RunScriptResult,
-  type SomeRule,
+  type StaticPkgManagerSpec,
   type WorkspaceInfo,
 } from '#schema';
-import {type ReifierMachineOutput} from '../reifier/reifier-machine';
 
 export type ComputedPkgEventFields = 'currentPkg' | 'totalPkgs';
 
-export type ComputedPkgManagerLintFields =
-  | 'totalPkgManagers'
-  | 'totalRules'
-  | 'totalPkgManagerChecks';
+export type ComputedPkgManagerLintFields = 'totalPkgManagers' | 'totalRules';
 
 export type ComputedPkgManagerRunScriptsFields =
   | 'totalPkgManagers'
@@ -48,7 +45,6 @@ export type ComputedRuleEventFields = 'totalRules';
 export type ControlMachineEmitted = EventData<keyof Events>;
 
 export type CtrlEvents =
-  | CtrlComponentsEvent
   | CtrlHaltEvent
   | CtrlInitEvent
   | CtrlInstallBeginEvent
@@ -94,8 +90,9 @@ export type CtrlEvents =
   | CtrlRunScriptSkippedEvent
   | CtrlRunScriptsOkEvent
   | CtrlSetupEvent
+  | CtrlLingeredEvent
   | CtrlPkgManagerMachineDoneEvent
-  | CtrlReifierMachineDoneEvent;
+  | CtrlLoaderMachineDoneEvent;
 
 export type CtrlPkgInstallBeginEvent = MachineEvent<
   'PKG_INSTALL_BEGIN',
@@ -142,14 +139,6 @@ export type CtrlPkgPackOkEvent = MachineEvent<
   Omit<PkgPackOkEventData, ComputedPkgEventFields>
 >;
 
-export interface CtrlComponentsEvent {
-  pkgManagerDefSpecs: PkgManagerDefSpec[];
-  reporters: SomeReporter[];
-  rules: SomeRule[];
-  sender: string;
-  type: 'COMPONENTS';
-}
-
 export interface CtrlHaltEvent {
   type: 'HALT';
 }
@@ -169,6 +158,11 @@ export interface CtrlInstallFailedEvent {
 
 export interface CtrlInstallOkEvent {
   type: 'INSTALL_OK';
+}
+
+export interface CtrlLingeredEvent {
+  directory: string;
+  type: 'LINGERED';
 }
 
 export interface CtrlLintBeginEvent {
@@ -275,19 +269,25 @@ export interface CtrlPkgManagerRunScriptsBeginEvent
   type: 'PKG_MANAGER_RUN_SCRIPTS_BEGIN';
 }
 
-export interface CtrlPkgManagerRunScriptsFailedEvent {
-  sender: string;
+export interface CtrlPkgManagerRunScriptsFailedEvent
+  extends Omit<
+    PkgManagerRunScriptsFailedEventData,
+    ComputedPkgManagerRunScriptsFields
+  > {
   type: 'PKG_MANAGER_RUN_SCRIPTS_FAILED';
 }
 
-export interface CtrlPkgManagerRunScriptsOkEvent {
-  sender: string;
+export interface CtrlPkgManagerRunScriptsOkEvent
+  extends Omit<
+    PkgManagerRunScriptsOkEventData,
+    ComputedPkgManagerRunScriptsFields
+  > {
   type: 'PKG_MANAGER_RUN_SCRIPTS_OK';
 }
 
-export interface CtrlReifierMachineDoneEvent {
-  output: ReifierMachineOutput;
-  type: 'xstate.done.actor.ReifierMachine.*';
+export interface CtrlLoaderMachineDoneEvent {
+  output: LoaderMachineOutput;
+  type: 'xstate.done.actor.LoaderMachine.*';
 }
 
 export interface CtrlReporterDoneEvent {
@@ -301,7 +301,8 @@ export interface CtrlRuleBeginEvent
   type: 'RULE_BEGIN';
 }
 
-export interface CtrlRuleErrorEvent {
+export interface CtrlRuleErrorEvent
+  extends Omit<RuleErrorEventData, ComputedRuleEventFields> {
   type: 'RULE_ERROR';
 }
 

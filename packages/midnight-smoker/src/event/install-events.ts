@@ -69,18 +69,14 @@ export interface InstallEventDataBase {
   additionalDeps: string[];
 
   /**
-   * A list of objects describing what packages to install where, and what
-   * additional deps to install (if any).
-   */
-  manifests: InstallManifest[];
-
-  /**
    * List of unique package managers
    */
   pkgManagers: StaticPkgManagerSpec[];
 
   /**
    * Total number of packages to install
+   *
+   * `pkgManagers.length * totalPkgs`
    */
   totalPkgs: number;
 

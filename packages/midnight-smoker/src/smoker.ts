@@ -29,7 +29,6 @@ import {type LintResult} from '#schema/rule-result';
 import type {RunScriptResult} from '#schema/run-script-result';
 import {castArray} from '#util/schema-util';
 import Debug from 'debug';
-import {isEmpty} from 'lodash';
 import {createActor, toPromise} from 'xstate';
 import {
   type Component,
@@ -323,13 +322,7 @@ export class Smoker {
    * @returns Results
    */
   public async smoke(): Promise<SmokeResults | undefined> {
-    const {
-      pluginRegistry,
-      fileManager,
-      opts: smokerOptions,
-      scripts,
-      shouldLint,
-    } = this;
+    const {pluginRegistry, fileManager, opts: smokerOptions} = this;
 
     const controller = createActor(ControlMachine, {
       id: 'smoke',
@@ -345,14 +338,6 @@ export class Smoker {
         }
       },
     }).start();
-
-    if (shouldLint) {
-      controller.send({type: 'LINT'});
-    }
-
-    if (!isEmpty(scripts)) {
-      controller.send({type: 'RUN_SCRIPTS', scripts});
-    }
 
     controller.send({type: 'HALT'});
 

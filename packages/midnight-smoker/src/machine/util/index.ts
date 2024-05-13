@@ -5,6 +5,8 @@ import {map, memoize, uniqBy} from 'lodash';
 import {AssertionError} from 'node:assert';
 import {type AnyActorRef} from 'xstate';
 
+export * from './constants';
+
 /**
  * `ActorOutput` is a convention for an actor output.
  *

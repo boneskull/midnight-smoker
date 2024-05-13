@@ -8,6 +8,7 @@ import {type PackageJson} from 'type-fest';
 import {MissingPackageJsonError, fromUnknownError} from '../error';
 import {UnreadablePackageJsonError} from '../error/unreadable-pkg-json-error';
 import {justImport, resolveFrom} from './loader-util';
+import {memoize} from './util';
 
 const debug = Debug('midnight-smoker:filemanager');
 
@@ -143,6 +144,7 @@ export class FileManager {
     filepath: string,
     options: {normalize: true},
   ): Promise<NormalizedPackageJson>;
+  @memoize((filepath, opts) => JSON.stringify({filepath, opts}))
   public async readPkgJson(
     filepath: string,
     options: {normalize?: boolean} = {},
@@ -183,6 +185,7 @@ export class FileManager {
     cwd: string,
     options?: ReadPkgJsonOpts,
   ): Promise<ReadPkgJsonResult | ReadPkgJsonNormalizedResult | undefined>;
+  @memoize((cwd, opts) => JSON.stringify({cwd, opts}))
   public async findPkgUp(
     cwd: string,
     options: ReadPkgJsonOpts = {},
@@ -236,6 +239,7 @@ export class FileManager {
     return new FileManager(opts);
   }
 
+  @memoize()
   public async readSmokerPkgJson() {
     const result = await this.findPkgUp(__dirname, {strict: true});
     return result.packageJson;

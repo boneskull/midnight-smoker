@@ -7,6 +7,7 @@ import {
   type PkgManagerPackContext,
   type PkgManagerRunScriptContext,
   type PkgManagerSpec,
+  type RunScriptManifest,
   type RunScriptResult,
 } from '#pkg-manager';
 import {RuleContext, type RuleResultOk} from '#rule';
@@ -19,49 +20,110 @@ import {
   type CheckOutput,
 } from './pkg-manager-machine-events';
 
+/**
+ * Input for {@link install}
+ */
 export type InstallInput = OperationInput<PkgManagerInstallContext>;
 
+/**
+ * Input for {@link pack}
+ */
 export type PackInput = OperationInput<PkgManagerPackContext>;
 
+/**
+ * Input for {@link runScript}
+ */
 export type RunScriptInput = OperationInput<PkgManagerRunScriptContext>;
 
+/**
+ * Input for {@link createTempDir}
+ */
+export interface CreateTempDirInput {
+  fileManager: FileManager;
+  spec: PkgManagerSpec;
+}
+
+/**
+ * Input for the lifecycle actors
+ */
+export interface LifecycleInput {
+  ctx: PkgManagerContext;
+  def: PkgManagerDef;
+}
+
+/**
+ * Common input for various actors
+ */
 export interface OperationInput<Ctx extends PkgManagerContext> {
   ctx: Ctx;
   def: PkgManagerDef;
 }
 
-export const createTempDir = fromPromise<
-  string,
-  {spec: PkgManagerSpec; fileManager: FileManager}
->(async ({input: {spec, fileManager}}) => {
-  return await fileManager.createTempDir(`${spec.pkgManager}-${spec.version}`);
-});
+/**
+ * Input for {@link prepareLintItem}
+ */
+export interface PrepareLintItemInput {
+  fileManager: FileManager;
+  lintItem: Omit<CheckItem, 'pkgJson' | 'pkgJsonPath'>;
+}
 
-export const setupPkgManager = fromPromise<
-  void,
-  {def: PkgManagerDef; ctx: PkgManagerContext}
->(async ({input: {def, ctx}}) => {
-  if (isFunction(def.setup)) {
-    await def.setup(ctx);
-  }
-});
+/**
+ * Input for {@link pruneTempDir}
+ */
+export interface PruneTempDirInput {
+  fileManager: FileManager;
+  tmpdir: string;
+}
 
-export const pruneTempDir = fromPromise<
-  void,
-  {tmpdir: string; fileManager: FileManager}
->(async ({input: {tmpdir, fileManager}}) => {
-  await fileManager.pruneTempDir(tmpdir);
-});
+/**
+ * Creates a temp dir for the package manager.
+ *
+ * Happens prior to the "setup" lifecycle hook
+ */
+export const createTempDir = fromPromise<string, CreateTempDirInput>(
+  async ({input: {spec, fileManager}}) => {
+    return await fileManager.createTempDir(
+      `${spec.pkgManager}-${spec.version}`,
+    );
+  },
+);
 
-export const teardownPkgManager = fromPromise<
-  void,
-  {def: PkgManagerDef; ctx: PkgManagerContext}
->(async ({input: {def, ctx}}) => {
-  if (isFunction(def.teardown)) {
-    await def.teardown(ctx);
-  }
-});
+/**
+ * Runs the "setup" lifecycle of a package manager, if defined
+ */
+export const setupPkgManager = fromPromise<void, LifecycleInput>(
+  async ({input: {def, ctx}}) => {
+    if (isFunction(def.setup)) {
+      await def.setup(ctx);
+    }
+  },
+);
 
+/**
+ * Prunes the package manager's temporary directory.
+ *
+ * This happens after the teardown lifecycle hook
+ */
+export const pruneTempDir = fromPromise<void, PruneTempDirInput>(
+  async ({input: {tmpdir, fileManager}}) => {
+    await fileManager.pruneTempDir(tmpdir);
+  },
+);
+
+/**
+ * Runs the "teardown" lifecycle of a package manager, if defined
+ */
+export const teardownPkgManager = fromPromise<void, LifecycleInput>(
+  async ({input: {def, ctx}}) => {
+    if (isFunction(def.teardown)) {
+      await def.teardown(ctx);
+    }
+  },
+);
+
+/**
+ * Packs a package into a tarball
+ */
 export const pack = fromPromise<InstallManifest, PackInput>(
   async ({input: {def, ctx}}) => {
     const manifest = await def.pack(ctx);
@@ -69,6 +131,9 @@ export const pack = fromPromise<InstallManifest, PackInput>(
   },
 );
 
+/**
+ * Installs a package
+ */
 export const install = fromPromise<InstallResult, InstallInput>(
   async ({input: {def, ctx}}) => {
     const rawResult = await def.install(ctx);
@@ -76,44 +141,51 @@ export const install = fromPromise<InstallResult, InstallInput>(
   },
 );
 
-export const runScript = fromPromise<RunScriptResult, RunScriptInput>(
+/**
+ * Output of {@link runScript}
+ */
+export interface RunScriptOutput {
+  result: RunScriptResult;
+  manifest: RunScriptManifest;
+}
+
+/**
+ * Runs a script
+ */
+export const runScript = fromPromise<RunScriptOutput, RunScriptInput>(
   async ({input: {def, ctx}}) => {
-    return await def.runScript(ctx);
+    const result = await def.runScript(ctx);
+
+    return {result, manifest: ctx.runScriptManifest};
   },
 );
 
-export const prepareLintItem = fromPromise<
-  CheckItem,
-  {
-    lintItem: Omit<CheckItem, 'pkgJson' | 'pkgJsonPath'>;
-    fileManager: FileManager;
-  }
->(async ({input: {lintItem, fileManager}}) => {
-  const {packageJson: pkgJson, path: pkgJsonPath} = await fileManager.findPkgUp(
-    lintItem.manifest.installPath,
-    {
-      strict: true,
-    },
-  );
-  return {...lintItem, pkgJson, pkgJsonPath};
-});
+/**
+ * Assigns package.json information to a {@link CheckItem}
+ */
+export const prepareLintItem = fromPromise<CheckItem, PrepareLintItemInput>(
+  async ({input: {lintItem, fileManager}}) => {
+    const {packageJson: pkgJson, path: pkgJsonPath} =
+      await fileManager.findPkgUp(lintItem.manifest.installPath, {
+        strict: true,
+      });
+    return {...lintItem, pkgJson, pkgJsonPath};
+  },
+);
 
+/**
+ * Runs a single rule's check against an installed package using user-provided
+ * configuration
+ */
 export const check = fromPromise<CheckOutput, CheckInput>(async ({input}) => {
-  const {
-    pkgManager: pkgManagerSpec,
-    pkgJson,
-    pkgJsonPath,
-    manifest: lintManifest,
-    rule,
-    config,
-  } = input;
+  const {pkgManager, pkgJson, pkgJsonPath, manifest, rule, config} = input;
 
   const ctx = RuleContext.create(rule, {
-    ...lintManifest,
+    ...manifest,
     pkgJson,
     pkgJsonPath,
     severity: config.severity,
-    pkgManager: `${pkgManagerSpec}`,
+    pkgManager: `${pkgManager}`,
   });
 
   try {
@@ -128,6 +200,7 @@ export const check = fromPromise<CheckOutput, CheckInput>(async ({input}) => {
   }
   return {
     ...input,
+    // TODO fix this readonly disagreement.  it _should_ be read-only, but that breaks somewhere down the line
     result: [...issues],
     ctx,
     type: 'FAILED',

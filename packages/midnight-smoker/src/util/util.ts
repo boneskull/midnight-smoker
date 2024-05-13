@@ -4,7 +4,7 @@
  * @packageDocumentation
  */
 
-import {once as _once, isFunction, isObject} from 'lodash';
+import {memoize as _memoize, once as _once, isFunction, isObject} from 'lodash';
 import type {Opaque} from 'type-fest';
 
 /**
@@ -102,4 +102,27 @@ export function assertNonEmptyArray<T>(
   if (!isNonEmptyArray(value)) {
     throw new Error('Expected a non-empty array');
   }
+}
+
+/**
+ * Memoization decorator
+ *
+ * @param resolver Function to return the cache key
+ * @returns The decorator
+ */
+export function memoize<
+  TThis extends object,
+  TArgs extends any[] = unknown[],
+  TReturn = unknown,
+>(resolver?: (...args: TArgs) => any) {
+  return function (
+    target: (this: TThis, ...args: TArgs) => TReturn,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    context: ClassMethodDecoratorContext<
+      TThis,
+      (this: TThis, ...args: TArgs) => TReturn
+    >,
+  ) {
+    return _memoize(target, resolver);
+  };
 }

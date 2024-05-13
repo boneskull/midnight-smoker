@@ -69,7 +69,6 @@ export interface ScriptEventData {
 }
 
 export interface RunScriptsEventDataBase {
-  manifests: Record<string, RunScriptManifest[]>;
   totalUniqueScripts: number;
   totalUniquePkgs: number;
   totalPkgManagers: number;

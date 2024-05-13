@@ -6,10 +6,8 @@ import {
   type ReporterContext,
   type ReporterDef,
 } from '#schema';
-import {readSmokerPkgJson} from '#util';
-import {type PackageJson} from 'type-fest';
 import {fromPromise} from 'xstate';
-import {PkgManagerInitPayload} from './reifier-machine';
+import {type PkgManagerInitPayload} from './loader-machine';
 
 export interface LoadPkgManagersInput {
   cwd?: string;
@@ -25,10 +23,6 @@ export interface ReporterDefWithCtx {
   ctx: ReporterContext;
   def: ReporterDef;
 }
-
-export const readSmokerPackageJson = fromPromise<PackageJson, void>(
-  readSmokerPkgJson,
-);
 
 export const loadPkgManagers = fromPromise<
   PkgManagerInitPayload[],

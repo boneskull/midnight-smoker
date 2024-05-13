@@ -29,7 +29,6 @@ export interface PkgManagerLintBeginEventData
   extends PkgManagerLintEventDataBase {}
 
 export interface PkgManagerLintEventDataBase extends PkgManagerEventBase {
-  totalPkgManagerChecks: number;
   totalRules: number;
 }
 

@@ -84,15 +84,13 @@ export interface PackEventDataBase {
   pkgManagers: StaticPkgManagerSpec[];
   workspaceInfo: WorkspaceInfo[];
   packOptions?: PackOptions;
+  uniquePkgs: string[];
+  totalPkgs: number;
 }
 
 export interface PackBeginEventData extends PackEventDataBase {}
 
-export interface PackOkEventData extends PackEventDataBase {
-  uniquePkgs: string[];
-  manifests: InstallManifest[];
-  totalPkgs: number;
-}
+export interface PackOkEventData extends PackEventDataBase {}
 
 export interface PackFailedEventData extends PackEventDataBase {
   error: PackError | PackParseError;

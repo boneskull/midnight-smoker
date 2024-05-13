@@ -4,6 +4,6 @@ export * from './pkg-manager';
 
 export * from './reporter';
 
-export * from './reifier';
+export * from './loader-machine';
 
 export * from './controller';
