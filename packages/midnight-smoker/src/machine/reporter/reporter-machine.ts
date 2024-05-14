@@ -9,7 +9,7 @@ import {
 } from '#schema/reporter-def';
 import {isEmpty} from 'lodash';
 import {type PackageJson} from 'type-fest';
-import {assign, log, not, setup, type ActorRef} from 'xstate';
+import {assign, log, not, setup} from 'xstate';
 import {
   drainQueue,
   setupReporter,
@@ -34,7 +34,6 @@ export interface ReporterMachineContext
 }
 
 export interface ReporterMachineInput {
-  emitter: ActorRef<any, any, ControlMachineEmitted>;
   def: SomeReporterDef;
   plugin: Readonly<PluginMetadata>;
   smokerOptions: SmokerOptions;
@@ -131,7 +130,6 @@ export const ReporterMachine = setup({
         description: 'Enqueue the event for re-emission to the reporter',
         guard: {type: 'shouldListen'},
         actions: [
-          // log(({event}) => `enqueueing event: ${event.event.type}`),
           {
             type: 'enqueue',
             params: ({event: {event}}) => ({event}),
@@ -144,7 +142,7 @@ export const ReporterMachine = setup({
     setup: {
       invoke: {
         src: 'setupReporter',
-        input: ({context: {def, ctx}}) => ({def, ctx}),
+        input: ({context}) => ({def: context.def, ctx: context.ctx}),
         onDone: {
           target: 'listening',
         },

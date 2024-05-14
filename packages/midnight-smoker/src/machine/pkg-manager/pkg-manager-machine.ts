@@ -1,5 +1,4 @@
 import {type SomeSmokerError} from '#error';
-import type * as CtrlEvent from '#machine/controller';
 import {
   ERROR,
   FAILED,
@@ -51,6 +50,40 @@ import {
   setup,
   type AnyActorRef,
 } from 'xstate';
+import {type CtrlLingeredEvent} from '../controller/control-machine-events';
+import {
+  type CtrlPkgInstallBeginEvent,
+  type CtrlPkgInstallFailedEvent,
+  type CtrlPkgInstallOkEvent,
+  type CtrlPkgManagerInstallBeginEvent,
+  type CtrlPkgManagerInstallFailedEvent,
+  type CtrlPkgManagerInstallOkEvent,
+} from '../controller/install-events';
+import {
+  type CtrlPkgManagerLintBeginEvent,
+  type CtrlPkgManagerLintFailedEvent,
+  type CtrlPkgManagerLintOkEvent,
+  type CtrlRuleBeginEvent,
+  type CtrlRuleFailedEvent,
+  type CtrlRuleOkEvent,
+} from '../controller/lint-events';
+import {
+  type CtrlPkgManagerPackBeginEvent,
+  type CtrlPkgManagerPackFailedEvent,
+  type CtrlPkgManagerPackOkEvent,
+  type CtrlPkgPackBeginEvent,
+  type CtrlPkgPackFailedEvent,
+  type CtrlPkgPackOkEvent,
+} from '../controller/pack-events';
+import {
+  type CtrlPkgManagerRunScriptsBeginEvent,
+  type CtrlPkgManagerRunScriptsFailedEvent,
+  type CtrlPkgManagerRunScriptsOkEvent,
+  type CtrlRunScriptBeginEvent,
+  type CtrlRunScriptFailedEvent,
+  type CtrlRunScriptOkEvent,
+  type CtrlRunScriptSkippedEvent,
+} from '../controller/script-events';
 import {
   check,
   createTempDir,
@@ -223,7 +256,7 @@ export const PkgManagerMachine = setup({
   actions: {
     sendLingered: sendTo(
       ({context: {parentRef}}) => parentRef,
-      ({context: {tmpdir}}): CtrlEvent.CtrlLingeredEvent => {
+      ({context: {tmpdir}}): CtrlLingeredEvent => {
         assert.ok(tmpdir);
         return {
           type: 'LINGERED',
@@ -236,7 +269,7 @@ export const PkgManagerMachine = setup({
       (
         {self: {id: sender}, context: {spec}},
         {result, type, rule, ...output}: CheckOutput,
-      ): CtrlEvent.CtrlRuleFailedEvent | CtrlEvent.CtrlRuleOkEvent =>
+      ): CtrlRuleFailedEvent | CtrlRuleOkEvent =>
         type === OK
           ? {
               ...output,
@@ -244,7 +277,7 @@ export const PkgManagerMachine = setup({
               pkgManager: spec.toJSON(),
               rule: rule.id,
               sender,
-              type: 'RULE_OK',
+              type: 'LINT.RULE_OK',
             }
           : {
               ...output,
@@ -252,7 +285,7 @@ export const PkgManagerMachine = setup({
               pkgManager: spec.toJSON(),
               rule: rule.id,
               sender,
-              type: 'RULE_FAILED',
+              type: 'LINT.RULE_FAILED',
             },
     ),
 
@@ -336,13 +369,13 @@ export const PkgManagerMachine = setup({
       ({context: {parentRef}}) => parentRef,
       ({
         self,
-        context: {index, spec},
-      }): CtrlEvent.CtrlPkgManagerPackBeginEvent => {
+        context: {workspaceInfo, spec},
+      }): CtrlPkgManagerPackBeginEvent => {
         return {
           sender: self.id,
-          type: 'PKG_MANAGER_PACK_BEGIN',
-          index,
+          type: 'PACK.PKG_MANAGER_PACK_BEGIN',
           pkgManager: spec.toJSON(),
+          workspaceInfo,
         };
       },
     ),
@@ -357,9 +390,7 @@ export const PkgManagerMachine = setup({
           workspaceInfo,
           spec,
         },
-      }):
-        | CtrlEvent.CtrlPkgManagerPackOkEvent
-        | CtrlEvent.CtrlPkgManagerPackFailedEvent => {
+      }): CtrlPkgManagerPackOkEvent | CtrlPkgManagerPackFailedEvent => {
         const data = {
           index: pkgManagerIndex,
           workspaceInfo,
@@ -368,13 +399,13 @@ export const PkgManagerMachine = setup({
         };
         return error
           ? {
-              type: 'PKG_MANAGER_PACK_FAILED',
+              type: 'PACK.PKG_MANAGER_PACK_FAILED',
               error: error as PackError | PackParseError,
               ...data,
             }
           : {
-              type: 'PKG_MANAGER_PACK_OK',
-              installManifests,
+              type: 'PACK.PKG_MANAGER_PACK_OK',
+              manifests: installManifests,
               ...data,
             };
       },
@@ -383,12 +414,11 @@ export const PkgManagerMachine = setup({
       ({context: {parentRef}}) => parentRef,
       ({
         self,
-        context: {index, spec, installManifests = []},
-      }): CtrlEvent.CtrlPkgManagerInstallBeginEvent => ({
-        installManifests,
+        context: {spec, installManifests = []},
+      }): CtrlPkgManagerInstallBeginEvent => ({
+        manifests: installManifests,
         sender: self.id,
-        type: 'PKG_MANAGER_INSTALL_BEGIN',
-        index,
+        type: 'INSTALL.PKG_MANAGER_INSTALL_BEGIN',
         pkgManager: spec.toJSON(),
       }),
     ),
@@ -396,23 +426,19 @@ export const PkgManagerMachine = setup({
       ({context: {parentRef}}) => parentRef,
       ({
         self: {id: sender},
-        context: {index: pkgManagerIndex, installManifests = [], spec, error},
-      }):
-        | CtrlEvent.CtrlPkgManagerInstallOkEvent
-        | CtrlEvent.CtrlPkgManagerInstallFailedEvent =>
+        context: {installManifests = [], spec, error},
+      }): CtrlPkgManagerInstallOkEvent | CtrlPkgManagerInstallFailedEvent =>
         isSmokerError(InstallError, error)
           ? {
-              installManifests,
-              type: 'PKG_MANAGER_INSTALL_FAILED',
-              index: pkgManagerIndex,
+              manifests: installManifests,
+              type: 'INSTALL.PKG_MANAGER_INSTALL_FAILED',
               pkgManager: spec.toJSON(),
               sender,
               error,
             }
           : {
-              type: 'PKG_MANAGER_INSTALL_OK',
-              index: pkgManagerIndex,
-              installManifests,
+              type: 'INSTALL.PKG_MANAGER_INSTALL_OK',
+              manifests: installManifests,
               pkgManager: spec.toJSON(),
               sender,
             },
@@ -433,9 +459,9 @@ export const PkgManagerMachine = setup({
         {context: {scripts = [], spec, index: pkgManagerIndex}},
         {result, manifest}: RunScriptOutput,
       ):
-        | CtrlEvent.CtrlRunScriptOkEvent
-        | CtrlEvent.CtrlRunScriptFailedEvent
-        | CtrlEvent.CtrlRunScriptSkippedEvent => {
+        | CtrlRunScriptOkEvent
+        | CtrlRunScriptFailedEvent
+        | CtrlRunScriptSkippedEvent => {
         const type = result.error
           ? 'RUN_SCRIPT_FAILED'
           : result.skipped
@@ -474,7 +500,7 @@ export const PkgManagerMachine = setup({
           const job = queue.shift();
           assert.ok(job);
           const {runScriptManifest, signal} = job;
-          const evt: CtrlEvent.CtrlRunScriptBeginEvent = {
+          const evt: CtrlRunScriptBeginEvent = {
             type: 'RUN_SCRIPT_BEGIN',
             pkgManager: spec.toJSON(),
             runScriptManifest,
@@ -511,9 +537,9 @@ export const PkgManagerMachine = setup({
         while (queue.length) {
           const workspace = queue.shift();
           assert.ok(workspace);
-          const evt: CtrlEvent.CtrlPkgPackBeginEvent = {
+          const evt: CtrlPkgPackBeginEvent = {
             sender,
-            type: 'PKG_PACK_BEGIN',
+            type: 'PACK.PKG_PACK_BEGIN',
             pkgManager: spec.toJSON(),
             workspace,
           };
@@ -540,11 +566,11 @@ export const PkgManagerMachine = setup({
       (
         {self: {id: sender}, context: {spec}},
         installManifest: InstallManifest,
-      ): CtrlEvent.CtrlPkgPackOkEvent => {
+      ): CtrlPkgPackOkEvent => {
         assert.ok(installManifest.localPath);
         return {
           sender,
-          type: 'PKG_PACK_OK',
+          type: 'PACK.PKG_PACK_OK',
           pkgManager: spec.toJSON(),
           workspace: <WorkspaceInfo>{
             localPath: installManifest.localPath,
@@ -558,7 +584,7 @@ export const PkgManagerMachine = setup({
       ({context: {parentRef}}) => parentRef,
       ({
         context: {spec, runScriptManifests = []},
-      }): CtrlEvent.CtrlPkgManagerRunScriptsBeginEvent => {
+      }): CtrlPkgManagerRunScriptsBeginEvent => {
         return {
           type: 'PKG_MANAGER_RUN_SCRIPTS_BEGIN',
           manifests: runScriptManifests,
@@ -571,8 +597,8 @@ export const PkgManagerMachine = setup({
       ({
         context: {runScriptManifests = [], runScriptResults = [], spec},
       }):
-        | CtrlEvent.CtrlPkgManagerRunScriptsOkEvent
-        | CtrlEvent.CtrlPkgManagerRunScriptsFailedEvent => {
+        | CtrlPkgManagerRunScriptsOkEvent
+        | CtrlPkgManagerRunScriptsFailedEvent => {
         const type = runScriptResults?.some((r) => r.error)
           ? 'PKG_MANAGER_RUN_SCRIPTS_FAILED'
           : 'PKG_MANAGER_RUN_SCRIPTS_OK';
@@ -604,9 +630,9 @@ export const PkgManagerMachine = setup({
           assert.ok(rules);
           for (const rule of rules) {
             const config = ruleConfigs[rule.id];
-            const evt: CtrlEvent.CtrlRuleBeginEvent = {
+            const evt: CtrlRuleBeginEvent = {
               sender,
-              type: 'RULE_BEGIN',
+              type: 'LINT.RULE_BEGIN',
               manifest: job.manifest,
               rule: rule.id,
               config,
@@ -670,22 +696,19 @@ export const PkgManagerMachine = setup({
       (
         {self: {id: sender}, context: {spec}},
         {installManifest, rawResult}: InstallResult,
-      ): CtrlEvent.CtrlPkgInstallOkEvent => ({
+      ): CtrlPkgInstallOkEvent => ({
         sender,
         rawResult,
-        type: 'PKG_INSTALL_OK',
+        type: 'INSTALL.PKG_INSTALL_OK',
         installManifest,
         pkgManager: spec.toJSON(),
       }),
     ),
     sendPkgManagerLintBegin: sendTo(
       ({context: {parentRef}}) => parentRef,
-      ({
-        self: {id: sender},
-        context: {spec},
-      }): CtrlEvent.CtrlPkgManagerLintBeginEvent => {
+      ({self: {id: sender}, context: {spec}}): CtrlPkgManagerLintBeginEvent => {
         return {
-          type: 'PKG_MANAGER_LINT_BEGIN',
+          type: 'LINT.PKG_MANAGER_LINT_BEGIN',
           pkgManager: spec.toJSON(),
           sender,
         };
@@ -696,9 +719,7 @@ export const PkgManagerMachine = setup({
       ({
         self: {id: sender},
         context: {spec, error, ruleResultMap, lintManifests},
-      }):
-        | CtrlEvent.CtrlPkgManagerLintOkEvent
-        | CtrlEvent.CtrlPkgManagerLintFailedEvent => {
+      }): CtrlPkgManagerLintOkEvent | CtrlPkgManagerLintFailedEvent => {
         let hasIssues = false;
 
         const manifestsByInstallPath = keyBy(lintManifests, 'installPath');
@@ -733,13 +754,13 @@ export const PkgManagerMachine = setup({
 
         return error || hasIssues
           ? {
-              type: 'PKG_MANAGER_LINT_FAILED',
+              type: 'LINT.PKG_MANAGER_LINT_FAILED',
               pkgManager: spec.toJSON(),
               sender,
               results: lintResults,
             }
           : {
-              type: 'PKG_MANAGER_LINT_OK',
+              type: 'LINT.PKG_MANAGER_LINT_OK',
               pkgManager: spec.toJSON(),
               results: lintResults,
               sender,
@@ -785,10 +806,10 @@ export const PkgManagerMachine = setup({
       ({
         self: {id: sender},
         context: {spec, currentInstallJob},
-      }): CtrlEvent.CtrlPkgInstallBeginEvent => {
+      }): CtrlPkgInstallBeginEvent => {
         assert.ok(currentInstallJob);
         return {
-          type: 'PKG_INSTALL_BEGIN',
+          type: 'INSTALL.PKG_INSTALL_BEGIN',
           installManifest: currentInstallJob.installManifest,
           pkgManager: spec.toJSON(),
           sender,
@@ -800,12 +821,12 @@ export const PkgManagerMachine = setup({
       (
         {self: {id: sender}, context: {spec, currentInstallJob}},
         error: InstallError,
-      ): CtrlEvent.CtrlPkgInstallFailedEvent => {
+      ): CtrlPkgInstallFailedEvent => {
         assert.ok(currentInstallJob);
         return {
           installManifest: currentInstallJob.installManifest,
           sender,
-          type: 'PKG_INSTALL_FAILED',
+          type: 'INSTALL.PKG_INSTALL_FAILED',
           error,
           pkgManager: spec.toJSON(),
         };
@@ -816,10 +837,10 @@ export const PkgManagerMachine = setup({
       (
         {self: {id: sender}, context: {spec}},
         error: PackError | PackParseError,
-      ): CtrlEvent.CtrlPkgPackFailedEvent => ({
+      ): CtrlPkgPackFailedEvent => ({
         sender,
         workspace: error.context.workspace,
-        type: 'PKG_PACK_FAILED',
+        type: 'PACK.PKG_PACK_FAILED',
         error,
         pkgManager: spec.toJSON(),
       }),

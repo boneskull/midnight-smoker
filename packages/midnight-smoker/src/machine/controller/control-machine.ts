@@ -1,10 +1,5 @@
 import {DEFAULT_EXECUTOR_ID, SYSTEM_EXECUTOR_ID} from '#constants';
-import {
-  fromUnknownError,
-  type InstallError,
-  type PackError,
-  type PackParseError,
-} from '#error';
+import {fromUnknownError} from '#error';
 import {SmokerEvent, type EventData} from '#event';
 import {
   LoadableComponents,
@@ -26,7 +21,6 @@ import {type PluginRegistry} from '#plugin';
 import {
   type Executor,
   type LintResult,
-  type LintResultOk,
   type RunScriptResult,
   type SomeReporterDef,
   type SomeRule,
@@ -43,11 +37,27 @@ import {
   enqueueActions,
   log,
   not,
+  sendTo,
   setup,
   type ActorRefFrom,
 } from 'xstate';
 import {queryWorkspaces, readSmokerPkgJson} from './control-machine-actors';
 import type * as Event from './control-machine-events';
+import {
+  InstallBusMachine,
+  type InstallBusMachineEvents,
+  type InstallBusMachineInput,
+} from './install-bus-machine';
+import {
+  LintBusMachine,
+  type LintBusMachineEvents,
+  type LintBusMachineInput,
+} from './lint-bus-machine';
+import {
+  PackBusMachine,
+  type PackBusMachineEvents,
+  type PackBusMachineInput,
+} from './pack-bus-machine';
 
 export type CtrlMachineOutput = CtrlOutputOk | CtrlOutputError;
 
@@ -98,6 +108,10 @@ export interface CtrlMachineContext extends CtrlMachineInput {
 
   uniquePkgNames?: string[];
   pkgManagers?: StaticPkgManagerSpec[];
+
+  packBusMachineRef?: ActorRefFrom<typeof PackBusMachine>;
+  installBusMachineRef?: ActorRefFrom<typeof InstallBusMachine>;
+  lintBusMachineRef?: ActorRefFrom<typeof LintBusMachine>;
 }
 
 export interface CtrlMachineInput {
@@ -121,6 +135,9 @@ export const ControlMachine = setup({
     output: {} as CtrlMachineOutput,
   },
   actors: {
+    PackBusMachine,
+    InstallBusMachine,
+    LintBusMachine,
     readSmokerPkgJson,
     queryWorkspaces,
     ReporterMachine,
@@ -174,13 +191,8 @@ export const ControlMachine = setup({
      */
     shouldHalt: ({context: {shouldHalt}}) => shouldHalt,
 
-    hasNoPkgManagerMachineRefs: ({context: {pkgManagerMachineRefs}}) =>
+    isWorkComplete: ({context: {pkgManagerMachineRefs}}) =>
       pkgManagerMachineRefs !== undefined && isEmpty(pkgManagerMachineRefs),
-
-    /**
-     * If `true`, then no custom scripts have been executed.
-     */
-    hasNoScriptResults: not('hasScriptResults'),
 
     /**
      * If `true`, then one or more custom scripts have been executed.
@@ -207,14 +219,33 @@ export const ControlMachine = setup({
       !isEmpty(reporterMachineRefs),
   },
   actions: {
+    beginPacking: sendTo(
+      ({context: {packBusMachineRef}}) => packBusMachineRef!,
+      ({context: {reporterMachineRefs}}) => ({
+        type: 'PACK',
+        actorIds: Object.keys(reporterMachineRefs),
+      }),
+    ),
+    beginInstalling: sendTo(
+      ({context: {installBusMachineRef}}) => installBusMachineRef!,
+      ({context: {reporterMachineRefs}}) => ({
+        type: 'INSTALL',
+        actorIds: Object.keys(reporterMachineRefs),
+      }),
+    ),
+    beginLinting: sendTo(
+      ({context: {lintBusMachineRef}}) => lintBusMachineRef!,
+      ({context: {reporterMachineRefs}}) => ({
+        type: 'LINT',
+        actorIds: Object.keys(reporterMachineRefs),
+      }),
+    ),
+    assignSmokerPkgJson: assign({
+      smokerPkgJson: (_, smokerPkgJson: PackageJson) => smokerPkgJson,
+    }),
     appendLingered: assign({
       lingered: ({context: {lingered = []}}, directory: string) => {
         return [...lingered, directory];
-      },
-    }),
-    appendLintResults: assign({
-      lintResults: ({context: {lintResults = []}}, results: LintResult[]) => {
-        return [...lintResults, ...results];
       },
     }),
 
@@ -330,7 +361,6 @@ export const ControlMachine = setup({
 
     spawnComponentMachines: assign({
       reporterMachineRefs: ({
-        self,
         spawn,
         context: {
           reporterMachineRefs,
@@ -339,21 +369,21 @@ export const ControlMachine = setup({
           smokerPkgJson,
         },
       }) => {
+        assert.ok(smokerPkgJson);
         const newRefs = Object.fromEntries(
           reporterInitPayloads.map(({def, plugin}) => {
             const id = `ReporterMachine.${MachineUtil.makeId()}-${plugin.id}/${
               def.name
             }`;
             const input: ReporterMachineInput = {
-              // @ts-expect-error https://github.com/statelyai/xstate/blob/main/packages/core/src/types.ts#L114 -- no TEmitted
-              emitter: self,
               def,
               smokerOptions,
               plugin,
-              smokerPkgJson: smokerPkgJson!,
+              smokerPkgJson,
             };
             const actor = spawn('ReporterMachine', {
               id,
+              systemId: id,
               input,
             });
             return [id, MachineUtil.monkeypatchActorLogger(actor, id)];
@@ -447,6 +477,32 @@ export const ControlMachine = setup({
       pkgManagers: (_, {pkgManagerInitPayloads}: LoaderMachineOutputOk) =>
         pkgManagerInitPayloads.map(({spec}) => spec.toJSON()),
     }),
+    freeInitPayloads: assign({
+      pkgManagerInitPayloads: [],
+      reporterInitPayloads: [],
+      ruleInitPayloads: [],
+    }),
+    freePackBusMachineRef: assign({
+      packBusMachineRef: undefined,
+    }),
+    freeInstallBusMachineRef: assign({
+      installBusMachineRef: undefined,
+    }),
+    freeLintBusMachineRef: assign({
+      lintBusMachineRef: undefined,
+    }),
+    resendPackEvent: sendTo(
+      ({context: {packBusMachineRef}}) => packBusMachineRef!,
+      (_, event: PackBusMachineEvents) => event,
+    ),
+    resendInstallEvent: sendTo(
+      ({context: {installBusMachineRef}}) => installBusMachineRef!,
+      (_, event: InstallBusMachineEvents) => event,
+    ),
+    resendLintEvent: sendTo(
+      ({context: {lintBusMachineRef}}) => lintBusMachineRef!,
+      (_, event: LintBusMachineEvents) => event,
+    ),
   },
 }).createMachine({
   id: 'ControlMachine',
@@ -493,19 +549,9 @@ export const ControlMachine = setup({
   always: {
     guard: 'hasError',
     actions: [log(({context: {error}}) => `ERROR: ${error?.message}`)],
+    target: '.shutdown',
   },
   on: {
-    RUN_SCRIPTS: {
-      guard: {type: 'hasNoScriptResults'},
-      actions: [
-        {
-          type: 'assignScripts',
-          params: ({event: {scripts}}) => ({scripts}),
-        },
-        log('will run scripts'),
-      ],
-    },
-
     HALT: {
       actions: [{type: 'shouldHalt'}],
     },
@@ -626,7 +672,7 @@ export const ControlMachine = setup({
                     },
                   },
                 ],
-                target: 'spawningComponents',
+                target: 'spawnWorkers',
               },
               {
                 guard: {
@@ -649,23 +695,114 @@ export const ControlMachine = setup({
             ],
           },
         },
+
+        spawnWorkers: {
+          entry: [
+            assign({
+              packBusMachineRef: ({
+                spawn,
+                context: {
+                  workspaceInfo,
+                  smokerOptions,
+                  pkgManagers,
+                  uniquePkgNames,
+                },
+                self: parentRef,
+              }) => {
+                assert.ok(pkgManagers);
+                assert.ok(uniquePkgNames);
+                const input: PackBusMachineInput = {
+                  workspaceInfo,
+                  smokerOptions,
+                  pkgManagers,
+                  uniquePkgNames,
+                  parentRef,
+                };
+                const actor = spawn('PackBusMachine', {
+                  input,
+                });
+                return MachineUtil.monkeypatchActorLogger(
+                  actor,
+                  'PackBusMachine',
+                );
+              },
+              installBusMachineRef: ({
+                spawn,
+                context: {
+                  workspaceInfo,
+                  smokerOptions,
+                  pkgManagers,
+                  uniquePkgNames,
+                },
+                self: parentRef,
+              }) => {
+                assert.ok(pkgManagers);
+                assert.ok(uniquePkgNames);
+                const input: InstallBusMachineInput = {
+                  workspaceInfo,
+                  smokerOptions,
+                  pkgManagers,
+                  uniquePkgNames,
+                  parentRef,
+                };
+                const actor = spawn('InstallBusMachine', {
+                  input,
+                });
+                return MachineUtil.monkeypatchActorLogger(
+                  actor,
+                  'InstallBusMachine',
+                );
+              },
+              lintBusMachineRef: ({
+                spawn,
+                context: {
+                  workspaceInfo,
+                  smokerOptions,
+                  pkgManagers,
+                  uniquePkgNames,
+                },
+                self: parentRef,
+              }) => {
+                assert.ok(pkgManagers);
+                assert.ok(uniquePkgNames);
+                const input: LintBusMachineInput = {
+                  workspaceInfo,
+                  smokerOptions,
+                  pkgManagers,
+                  uniquePkgNames,
+                  parentRef,
+                  rules: [],
+                };
+                const actor = spawn('LintBusMachine', {
+                  input,
+                });
+                return MachineUtil.monkeypatchActorLogger(
+                  actor,
+                  'LintBusMachine',
+                );
+              },
+            }),
+          ],
+          always: {
+            target: 'spawningComponents',
+          },
+        },
         spawningComponents: {
           invoke: {
             src: 'readSmokerPkgJson',
             input: ({context: {fileManager}}) => fileManager,
             onDone: {
               actions: [
-                assign({
-                  smokerPkgJson: ({event: {output}}) => output,
-                }),
+                {
+                  type: 'assignSmokerPkgJson',
+                  params: ({event: {output}}) => output,
+                },
                 {
                   type: 'spawnComponentMachines',
                 },
-                assign({
-                  pkgManagerInitPayloads: [],
-                  reporterInitPayloads: [],
-                  ruleInitPayloads: [],
-                }),
+                {
+                  type: 'freeInitPayloads',
+                },
               ],
               target: 'done',
             },
@@ -708,12 +845,53 @@ export const ControlMachine = setup({
       ],
       type: 'parallel',
       states: {
+        packing: {
+          initial: 'working',
+          states: {
+            working: {
+              entry: [
+                {
+                  type: 'beginPacking',
+                },
+              ],
+              always: [
+                {
+                  guard: 'hasError',
+                  target: 'errored',
+                },
+              ],
+              exit: [{type: 'freePackBusMachineRef'}],
+              on: {
+                'PACK.*': {
+                  actions: [
+                    {
+                      type: 'resendPackEvent',
+                      params: ({event}) => event,
+                    },
+                  ],
+                },
+                PACK_OK: {
+                  target: 'done',
+                },
+                PACK_FAILED: {
+                  target: 'errored',
+                },
+              },
+            },
+            done: {
+              type: MachineUtil.FINAL,
+            },
+            errored: {
+              type: MachineUtil.FINAL,
+            },
+          },
+        },
         installing: {
           initial: 'idle',
           states: {
             idle: {
               on: {
-                PKG_PACK_OK: {
+                'PACK.PKG_PACK_OK': {
                   target: 'working',
                 },
               },
@@ -721,23 +899,7 @@ export const ControlMachine = setup({
             working: {
               entry: [
                 {
-                  type: 'report',
-                  params: ({
-                    context: {
-                      smokerOptions: {add: additionalDeps = []},
-                      pkgManagers = [],
-                      uniquePkgNames: uniquePkgs = [],
-                      workspaceInfo,
-                    },
-                  }): EventData<typeof SmokerEvent.InstallBegin> => {
-                    return {
-                      type: SmokerEvent.InstallBegin,
-                      uniquePkgs,
-                      pkgManagers,
-                      additionalDeps,
-                      totalPkgs: pkgManagers.length * workspaceInfo.length,
-                    };
-                  },
+                  type: 'beginInstalling',
                 },
               ],
               always: [
@@ -745,175 +907,24 @@ export const ControlMachine = setup({
                   guard: 'hasError',
                   target: 'errored',
                 },
-                {
-                  guard: 'isInstallationComplete',
+              ],
+              exit: [{type: 'freeInstallBusMachineRef'}],
+              on: {
+                'INSTALL.*': {
+                  actions: [
+                    {
+                      type: 'resendInstallEvent',
+                      params: ({event}) => event,
+                    },
+                  ],
+                },
+                [SmokerEvent.InstallOk]: {
                   target: 'done',
                 },
-              ],
-              on: {
-                PKG_INSTALL_BEGIN: {
-                  actions: [
-                    {
-                      type: 'report',
-                      params: ({
-                        context: {
-                          workspaceInfo: {length: totalPkgs},
-                        },
-                        event,
-                      }): EventData<typeof SmokerEvent.PkgInstallBegin> => ({
-                        totalPkgs,
-                        ...event,
-                        type: SmokerEvent.PkgInstallBegin,
-                      }),
-                    },
-                  ],
-                },
-                PKG_INSTALL_OK: {
-                  actions: [
-                    {
-                      type: 'report',
-                      params: ({
-                        context: {
-                          workspaceInfo: {length: totalPkgs},
-                        },
-                        event,
-                      }): EventData<typeof SmokerEvent.PkgInstallOk> => ({
-                        totalPkgs,
-                        ...event,
-                        type: SmokerEvent.PkgInstallOk,
-                      }),
-                    },
-                  ],
-                },
-                PKG_INSTALL_FAILED: {
-                  actions: [
-                    {
-                      type: 'report',
-                      params: ({
-                        context: {
-                          workspaceInfo: {length: totalPkgs},
-                        },
-                        event,
-                      }): EventData<typeof SmokerEvent.PkgInstallFailed> => {
-                        return {
-                          ...event,
-                          type: SmokerEvent.PkgInstallFailed,
-                          totalPkgs,
-                        };
-                      },
-                    },
-                    // TODO: abort
-                  ],
-                },
-                PKG_MANAGER_INSTALL_BEGIN: {
-                  actions: [
-                    {
-                      type: 'report',
-                      params: ({
-                        context: {pkgManagers = []},
-                        event: {pkgManager, installManifests},
-                      }): EventData<
-                        typeof SmokerEvent.PkgManagerInstallBegin
-                      > => ({
-                        type: SmokerEvent.PkgManagerInstallBegin,
-                        pkgManager,
-                        manifests: installManifests,
-                        totalPkgs: installManifests.length, // TODO is this right?
-                        totalPkgManagers: pkgManagers.length,
-                      }),
-                    },
-                  ],
-                },
-                PKG_MANAGER_INSTALL_OK: {
-                  actions: [
-                    assign({
-                      pkgManagerDidInstallCount: ({
-                        context: {pkgManagerDidInstallCount},
-                      }) => {
-                        return pkgManagerDidInstallCount + 1;
-                      },
-                    }),
-                    {
-                      type: 'report',
-                      params: ({
-                        context: {pkgManagers = []},
-                        event: {pkgManager, installManifests},
-                      }): EventData<
-                        typeof SmokerEvent.PkgManagerInstallOk
-                      > => ({
-                        type: SmokerEvent.PkgManagerInstallOk,
-                        manifests: installManifests,
-                        pkgManager,
-                        totalPkgs: installManifests.length,
-                        totalPkgManagers: pkgManagers.length,
-                      }),
-                    },
-                  ],
-                },
-                PKG_MANAGER_INSTALL_FAILED: {
-                  actions: [
-                    assign({
-                      pkgManagerDidInstallCount: ({
-                        context: {pkgManagerDidInstallCount},
-                      }) => {
-                        return pkgManagerDidInstallCount + 1;
-                      },
-                    }),
-                    {
-                      type: 'report',
-                      params: ({
-                        context: {pkgManagers = []},
-                        event: {pkgManager, installManifests, error},
-                      }): EventData<
-                        typeof SmokerEvent.PkgManagerInstallFailed
-                      > => ({
-                        type: SmokerEvent.PkgManagerInstallFailed,
-                        manifests: installManifests,
-                        pkgManager,
-                        error,
-                        totalPkgs: installManifests.length,
-                        totalPkgManagers: pkgManagers.length,
-                      }),
-                    },
-                    {
-                      type: 'assignError',
-                      params: ({event: {error}}) => ({error}),
-                    },
-                  ],
+                [SmokerEvent.InstallFailed]: {
+                  target: 'errored',
                 },
               },
-              exit: [
-                {
-                  type: 'report',
-                  params: ({
-                    context: {
-                      error,
-                      pkgManagers = [],
-                      uniquePkgNames: uniquePkgs = [],
-                      smokerOptions: {add: additionalDeps = []},
-                      workspaceInfo,
-                    },
-                  }):
-                    | EventData<typeof SmokerEvent.InstallOk>
-                    | EventData<typeof SmokerEvent.InstallFailed> =>
-                    error
-                      ? {
-                          type: SmokerEvent.InstallFailed,
-                          error: error as InstallError,
-                          uniquePkgs,
-                          pkgManagers,
-                          additionalDeps,
-                          totalPkgs: pkgManagers.length * workspaceInfo.length,
-                        }
-                      : {
-                          type: SmokerEvent.InstallOk,
-                          uniquePkgs,
-                          pkgManagers,
-                          additionalDeps,
-                          totalPkgs: pkgManagers.length * workspaceInfo.length,
-                        },
-                },
-              ],
             },
             errored: {
               type: MachineUtil.FINAL,
@@ -923,271 +934,7 @@ export const ControlMachine = setup({
             },
           },
         },
-        packing: {
-          initial: 'working',
-          states: {
-            working: {
-              entry: [
-                {
-                  type: 'report',
-                  params: ({
-                    context: {
-                      pkgManagers = [],
-                      workspaceInfo,
-                      smokerOptions,
-                      uniquePkgNames: uniquePkgs = [],
-                    },
-                  }): EventData<typeof SmokerEvent.PackBegin> => ({
-                    type: SmokerEvent.PackBegin,
-                    packOptions: {
-                      cwd: smokerOptions.cwd,
-                      allWorkspaces: smokerOptions.all,
-                      workspaces: smokerOptions.workspace,
-                    },
-                    pkgManagers,
-                    totalPkgs: workspaceInfo.length * pkgManagers.length,
-                    uniquePkgs,
-                    workspaceInfo,
-                  }),
-                },
-              ],
-              always: [
-                {
-                  guard: 'hasError',
-                  target: 'errored',
-                },
-                {
-                  guard: 'isPackingComplete',
-                  target: 'done',
-                },
-              ],
-              on: {
-                PKG_PACK_BEGIN: {
-                  actions: [
-                    {
-                      type: 'report',
-                      params: ({
-                        context: {
-                          workspaceInfo: {length: totalPkgs},
-                        },
-                        event,
-                      }): EventData<typeof SmokerEvent.PkgPackBegin> => ({
-                        totalPkgs,
-                        ...event,
-                        type: SmokerEvent.PkgPackBegin,
-                      }),
-                    },
-                  ],
-                },
-                PKG_PACK_OK: {
-                  actions: [
-                    {
-                      type: 'report',
-                      params: ({
-                        context: {
-                          workspaceInfo: {length: totalPkgs},
-                        },
-                        event,
-                      }): EventData<typeof SmokerEvent.PkgPackOk> => ({
-                        totalPkgs,
-                        ...event,
-                        type: SmokerEvent.PkgPackOk,
-                      }),
-                    },
-                  ],
-                },
-                PKG_PACK_FAILED: {
-                  actions: [
-                    {
-                      type: 'report',
-                      params: ({
-                        context: {
-                          workspaceInfo: {length: totalPkgs},
-                        },
-                        event,
-                      }): EventData<typeof SmokerEvent.PkgPackFailed> => {
-                        return {
-                          ...event,
-                          type: SmokerEvent.PkgPackFailed,
-                          totalPkgs,
-                        };
-                      },
-                    },
-                    // TODO: abort
-                  ],
-                },
-                PKG_MANAGER_PACK_BEGIN: {
-                  actions: [
-                    {
-                      type: 'report',
-                      params: ({
-                        context: {
-                          pkgManagers = [],
-                          smokerOptions: {
-                            cwd,
-                            all: allWorkspaces,
-                            workspace: workspaces,
-                          },
-                          workspaceInfo,
-                        },
-                        event: {pkgManager},
-                      }): EventData<
-                        typeof SmokerEvent.PkgManagerPackBegin
-                      > => ({
-                        type: SmokerEvent.PkgManagerPackBegin,
-                        pkgManager,
-                        packOptions: {
-                          cwd,
-                          allWorkspaces,
-                          // includeWorkspaceRoot,
-                          workspaces,
-                        },
-                        totalPkgManagers: pkgManagers.length,
-                        workspaceInfo,
-                      }),
-                    },
-                  ],
-                },
-                PKG_MANAGER_PACK_OK: {
-                  actions: [
-                    assign({
-                      pkgManagerDidPackCount: ({
-                        context: {pkgManagerDidPackCount},
-                      }) => {
-                        return pkgManagerDidPackCount + 1;
-                      },
-                    }),
-                    {
-                      type: 'report',
-                      params: ({
-                        context: {
-                          pkgManagers = [],
-                          smokerOptions: {
-                            cwd,
-                            all: allWorkspaces,
-                            workspace: workspaces,
-                          },
-                        },
-                        event: {pkgManager, installManifests, workspaceInfo},
-                      }): EventData<typeof SmokerEvent.PkgManagerPackOk> => ({
-                        type: SmokerEvent.PkgManagerPackOk,
-                        pkgManager,
-                        packOptions: {
-                          allWorkspaces,
-                          cwd,
-                          // includeWorkspaceRoot,
-                          workspaces,
-                        },
-                        manifests: installManifests,
-                        totalPkgManagers: pkgManagers.length,
-                        workspaceInfo,
-                      }),
-                    },
-                  ],
-                },
-                PKG_MANAGER_PACK_FAILED: {
-                  actions: [
-                    assign({
-                      pkgManagerDidPackCount: ({
-                        context: {pkgManagerDidPackCount},
-                      }) => {
-                        return pkgManagerDidPackCount + 1;
-                      },
-                    }),
-                    {
-                      type: 'report',
-                      params: ({
-                        context: {
-                          pkgManagers = [],
-                          smokerOptions: {
-                            cwd,
-                            all: allWorkspaces,
-                            workspace: workspaces,
-                          },
-                        },
-                        event: {pkgManager, error, workspaceInfo},
-                      }): EventData<
-                        typeof SmokerEvent.PkgManagerPackFailed
-                      > => ({
-                        type: SmokerEvent.PkgManagerPackFailed,
-                        pkgManager,
-                        packOptions: {
-                          cwd,
-                          allWorkspaces,
-                          // includeWorkspaceRoot,
-                          workspaces,
-                        },
-                        error,
-                        totalPkgManagers: pkgManagers.length,
-                        workspaceInfo,
-                      }),
-                    },
-                    {
-                      type: 'assignError',
-                      params: ({event: {error}}) => ({error}),
-                    },
-                  ],
-                },
-              },
-              exit: [
-                {
-                  type: 'report',
-                  params: ({
-                    context: {
-                      smokerOptions: {
-                        cwd,
-                        all: allWorkspaces,
-                        workspace: workspaces,
-                      },
-                      uniquePkgNames: uniquePkgs = [],
-                      pkgManagers = [],
-                      workspaceInfo,
-                      error,
-                    },
-                  }):
-                    | EventData<typeof SmokerEvent.PackFailed>
-                    | EventData<typeof SmokerEvent.PackOk> => {
-                    const totalPkgs = pkgManagers.length * workspaceInfo.length;
-                    return error
-                      ? {
-                          error: error as PackError | PackParseError,
-                          type: SmokerEvent.PackFailed,
-                          packOptions: {
-                            cwd,
-                            allWorkspaces,
-                            // includeWorkspaceRoot,
-                            workspaces,
-                          },
-                          pkgManagers,
-                          uniquePkgs,
-                          workspaceInfo,
-                          totalPkgs,
-                        }
-                      : {
-                          type: SmokerEvent.PackOk,
-                          packOptions: {
-                            cwd,
-                            allWorkspaces,
-                            // includeWorkspaceRoot,
-                            workspaces,
-                          },
-                          pkgManagers,
-                          workspaceInfo,
-                          uniquePkgs,
-                          totalPkgs,
-                        };
-                  },
-                },
-              ],
-            },
-            done: {
-              type: MachineUtil.FINAL,
-            },
-            errored: {
-              type: MachineUtil.FINAL,
-            },
-          },
-        },
+
         linting: {
           initial: 'idle',
           states: {
@@ -1199,7 +946,7 @@ export const ControlMachine = setup({
                 },
               ],
               on: {
-                PKG_INSTALL_OK: {
+                'INSTALL.PKG_INSTALL_OK': {
                   target: 'working',
                 },
               },
@@ -1207,21 +954,7 @@ export const ControlMachine = setup({
             working: {
               entry: [
                 {
-                  type: 'report',
-                  params: ({
-                    context: {
-                      smokerOptions: {rules: config},
-                      pkgManagers = [],
-                      uniquePkgNames = [],
-                      rules = [],
-                    },
-                  }): EventData<typeof SmokerEvent.LintBegin> => ({
-                    type: SmokerEvent.LintBegin,
-                    totalRules: rules.length,
-                    totalPkgManagers: pkgManagers.length,
-                    config,
-                    totalUniquePkgs: uniquePkgNames.length,
-                  }),
+                  type: 'beginLinting',
                 },
               ],
               always: [
@@ -1229,203 +962,23 @@ export const ControlMachine = setup({
                   guard: 'hasError',
                   target: 'errored',
                 },
-                {
-                  guard: 'isLintingComplete',
+              ],
+              exit: [{type: 'freeLintBusMachineRef'}],
+              on: {
+                'LINT.*': {
+                  actions: [
+                    {
+                      type: 'resendLintEvent',
+                      params: ({event}) => event,
+                    },
+                  ],
+                },
+                [SmokerEvent.LintOk]: {
+                  actions: [log('lint_ok')],
                   target: 'done',
                 },
-              ],
-              exit: [
-                {
-                  type: 'report',
-                  params: ({
-                    context: {
-                      pkgManagers = [],
-                      uniquePkgNames = [],
-                      rules = [],
-                      lintResults = [],
-                      smokerOptions: {rules: config},
-                    },
-                    event,
-                  }):
-                    | EventData<typeof SmokerEvent.LintOk>
-                    | EventData<typeof SmokerEvent.LintFailed> => {
-                    const totalRules = rules.length;
-                    const totalPkgManagers = pkgManagers.length;
-                    const totalUniquePkgs = uniquePkgNames.length;
-
-                    if (
-                      lintResults.some((result) => result.type === 'FAILED')
-                    ) {
-                      return {
-                        ...event,
-                        results: lintResults,
-                        config,
-                        totalRules,
-                        totalPkgManagers,
-                        totalUniquePkgs,
-                        type: SmokerEvent.LintFailed,
-                      };
-                    }
-                    return {
-                      ...event,
-                      results: lintResults as LintResultOk[],
-                      config,
-                      totalRules: rules.length,
-                      totalPkgManagers: pkgManagers.length,
-                      totalUniquePkgs: uniquePkgNames.length,
-                      type: SmokerEvent.LintOk,
-                    };
-                  },
-                },
-              ],
-              on: {
-                RULE_BEGIN: {
-                  actions: [
-                    {
-                      type: 'report',
-                      params: ({
-                        context: {rules},
-                        event,
-                      }): EventData<typeof SmokerEvent.RuleBegin> => {
-                        return {
-                          ...event,
-                          totalRules: rules.length,
-                          type: SmokerEvent.RuleBegin,
-                        };
-                      },
-                    },
-                  ],
-                },
-                RULE_OK: {
-                  actions: [
-                    {
-                      type: 'report',
-                      params: ({
-                        context: {rules},
-                        event,
-                      }): EventData<typeof SmokerEvent.RuleOk> => {
-                        return {
-                          ...event,
-                          totalRules: rules.length,
-                          type: SmokerEvent.RuleOk,
-                        };
-                      },
-                    },
-                  ],
-                },
-                RULE_ERROR: {
-                  actions: [
-                    {
-                      type: 'report',
-                      params: ({
-                        context: {rules},
-                        event,
-                      }): EventData<typeof SmokerEvent.RuleError> => {
-                        return {
-                          ...event,
-                          totalRules: rules.length,
-                          type: SmokerEvent.RuleError,
-                        };
-                      },
-                    },
-                    {
-                      type: 'assignError',
-                      params: ({event: {error}}) => ({error}),
-                    },
-                  ],
-                },
-                RULE_FAILED: {
-                  actions: [
-                    {
-                      type: 'report',
-                      params: ({
-                        context: {rules},
-                        event,
-                      }): EventData<typeof SmokerEvent.RuleFailed> => {
-                        return {
-                          ...event,
-                          totalRules: rules.length,
-                          type: SmokerEvent.RuleFailed,
-                        };
-                      },
-                    },
-                  ],
-                },
-                PKG_MANAGER_LINT_BEGIN: {
-                  actions: [
-                    {
-                      type: 'report',
-                      params: ({
-                        context: {pkgManagers = [], rules = []},
-                        event: {pkgManager},
-                      }): EventData<typeof SmokerEvent.PkgManagerLintBegin> => {
-                        return {
-                          type: SmokerEvent.PkgManagerLintBegin,
-                          pkgManager,
-                          totalRules: rules.length,
-                          totalPkgManagers: pkgManagers.length,
-                        };
-                      },
-                    },
-                  ],
-                },
-                PKG_MANAGER_LINT_FAILED: {
-                  actions: [
-                    assign({
-                      pkgManagerDidLintCount: ({
-                        context: {pkgManagerDidLintCount},
-                      }) => pkgManagerDidLintCount + 1,
-                    }),
-                    {
-                      type: 'appendLintResults',
-                      params: ({event: {results}}) => results,
-                    },
-                    {
-                      type: 'report',
-                      params: ({
-                        context: {pkgManagers = [], rules = []},
-                        event: {pkgManager, results},
-                      }): EventData<
-                        typeof SmokerEvent.PkgManagerLintFailed
-                      > => {
-                        return {
-                          type: SmokerEvent.PkgManagerLintFailed,
-                          pkgManager,
-                          results,
-                          totalRules: rules.length,
-                          totalPkgManagers: pkgManagers.length,
-                        };
-                      },
-                    },
-                  ],
-                },
-                PKG_MANAGER_LINT_OK: {
-                  actions: [
-                    assign({
-                      pkgManagerDidLintCount: ({
-                        context: {pkgManagerDidLintCount},
-                      }) => pkgManagerDidLintCount + 1,
-                    }),
-                    {
-                      type: 'appendLintResults',
-                      params: ({event: {results}}) => results,
-                    },
-                    {
-                      type: 'report',
-                      params: ({
-                        context: {pkgManagers = [], rules = []},
-                        event: {pkgManager, results},
-                      }): EventData<typeof SmokerEvent.PkgManagerLintOk> => {
-                        return {
-                          type: SmokerEvent.PkgManagerLintOk,
-                          pkgManager,
-                          results,
-                          totalRules: rules.length,
-                          totalPkgManagers: pkgManagers.length,
-                        };
-                      },
-                    },
-                  ],
+                [SmokerEvent.LintFailed]: {
+                  target: 'errored',
                 },
               },
             },
@@ -1448,7 +1001,7 @@ export const ControlMachine = setup({
                 },
               ],
               on: {
-                PKG_INSTALL_OK: {
+                'INSTALL.PKG_INSTALL_OK': {
                   target: 'working',
                 },
               },
@@ -1722,7 +1275,7 @@ export const ControlMachine = setup({
       always: [
         {
           // we halt when 1. the shouldHalt flag is true, and 2. when all pkg managers have shut themselves down.
-          guard: and(['shouldHalt', 'hasNoPkgManagerMachineRefs']),
+          guard: and(['shouldHalt', 'isWorkComplete']),
           target: '#ControlMachine.shutdown',
         },
       ],

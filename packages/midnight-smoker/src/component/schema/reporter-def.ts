@@ -43,7 +43,7 @@ export type ReporterContext<Ctx = unknown> = {
   plugin: StaticPluginMetadata;
 } & Ctx;
 
-export type SomeReporterContext = ReporterContext<any>;
+export type SomeReporterContext = ReporterContext<object>;
 
 export type ReporterListener<Evt extends EventName, Ctx = unknown> = (
   this: void,
