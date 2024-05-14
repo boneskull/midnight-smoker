@@ -19,7 +19,7 @@ export interface CtrlPkgManagerRunScriptsBeginEvent
     PkgManagerRunScriptsBeginEventData,
     ComputedPkgManagerRunScriptsFields
   > {
-  type: 'PKG_MANAGER_RUN_SCRIPTS_BEGIN';
+  type: 'SCRIPT.PKG_MANAGER_RUN_SCRIPTS_BEGIN';
 }
 
 export interface CtrlPkgManagerRunScriptsFailedEvent
@@ -27,7 +27,7 @@ export interface CtrlPkgManagerRunScriptsFailedEvent
     PkgManagerRunScriptsFailedEventData,
     ComputedPkgManagerRunScriptsFields
   > {
-  type: 'PKG_MANAGER_RUN_SCRIPTS_FAILED';
+  type: 'SCRIPT.PKG_MANAGER_RUN_SCRIPTS_FAILED';
 }
 
 export interface CtrlPkgManagerRunScriptsOkEvent
@@ -35,11 +35,11 @@ export interface CtrlPkgManagerRunScriptsOkEvent
     PkgManagerRunScriptsOkEventData,
     ComputedPkgManagerRunScriptsFields
   > {
-  type: 'PKG_MANAGER_RUN_SCRIPTS_OK';
+  type: 'SCRIPT.PKG_MANAGER_RUN_SCRIPTS_OK';
 }
 
 export interface CtrlRunScriptBeginEvent extends CtrlRunScriptEventBase {
-  type: 'RUN_SCRIPT_BEGIN';
+  type: 'SCRIPT.RUN_SCRIPT_BEGIN';
 }
 
 export interface CtrlRunScriptEventBase {
@@ -51,17 +51,17 @@ export interface CtrlRunScriptEventBase {
 
 export interface CtrlRunScriptFailedEvent extends CtrlRunScriptEventBase {
   result: RunScriptResult;
-  type: 'RUN_SCRIPT_FAILED';
+  type: 'SCRIPT.RUN_SCRIPT_FAILED';
 }
 
 export interface CtrlRunScriptOkEvent extends CtrlRunScriptEventBase {
   result: RunScriptResult;
-  type: 'RUN_SCRIPT_OK';
+  type: 'SCRIPT.RUN_SCRIPT_OK';
 }
 
 export interface CtrlRunScriptSkippedEvent extends CtrlRunScriptEventBase {
   result: RunScriptResult;
-  type: 'RUN_SCRIPT_SKIPPED';
+  type: 'SCRIPT.RUN_SCRIPT_SKIPPED';
 }
 
 export type CtrlScriptEvents =
@@ -75,11 +75,11 @@ export type CtrlScriptEvents =
 
 export interface AnyScriptEvent {
   type: 'SCRIPT.*' &
-    'PKG_MANAGER_RUN_SCRIPTS_BEGIN' &
-    'PKG_MANAGER_RUN_SCRIPTS_FAILED' &
-    'PKG_MANAGER_RUN_SCRIPTS_OK' &
-    'RUN_SCRIPT_BEGIN' &
-    'RUN_SCRIPT_FAILED' &
-    'RUN_SCRIPT_OK' &
-    'RUN_SCRIPT_SKIPPED';
+    'SCRIPT.PKG_MANAGER_RUN_SCRIPTS_BEGIN' &
+    'SCRIPT.PKG_MANAGER_RUN_SCRIPTS_FAILED' &
+    'SCRIPT.PKG_MANAGER_RUN_SCRIPTS_OK' &
+    'SCRIPT.RUN_SCRIPT_BEGIN' &
+    'SCRIPT.RUN_SCRIPT_FAILED' &
+    'SCRIPT.RUN_SCRIPT_OK' &
+    'SCRIPT.RUN_SCRIPT_SKIPPED';
 }

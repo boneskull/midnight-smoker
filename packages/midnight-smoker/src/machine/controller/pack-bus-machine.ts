@@ -66,10 +66,10 @@ export const PackBusMachine = setup({
   actions: {
     report: enqueueActions(
       (
-        {enqueue, context: {actorIds: machines = [], parentRef}},
+        {enqueue, context: {actorIds = [], parentRef}},
         event: ControlMachineEmitted,
       ) => {
-        for (const id of machines) {
+        for (const id of actorIds) {
           enqueue.sendTo(
             ({system}) =>
               system.get(id) as ActorRefFrom<typeof ReporterMachine>,

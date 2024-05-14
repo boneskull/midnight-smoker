@@ -463,10 +463,10 @@ export const PkgManagerMachine = setup({
         | CtrlRunScriptFailedEvent
         | CtrlRunScriptSkippedEvent => {
         const type = result.error
-          ? 'RUN_SCRIPT_FAILED'
+          ? 'SCRIPT.RUN_SCRIPT_FAILED'
           : result.skipped
-            ? 'RUN_SCRIPT_SKIPPED'
-            : 'RUN_SCRIPT_OK';
+            ? 'SCRIPT.RUN_SCRIPT_SKIPPED'
+            : 'SCRIPT.RUN_SCRIPT_OK';
 
         return {
           type,
@@ -501,7 +501,7 @@ export const PkgManagerMachine = setup({
           assert.ok(job);
           const {runScriptManifest, signal} = job;
           const evt: CtrlRunScriptBeginEvent = {
-            type: 'RUN_SCRIPT_BEGIN',
+            type: 'SCRIPT.RUN_SCRIPT_BEGIN',
             pkgManager: spec.toJSON(),
             runScriptManifest,
             pkgManagerIndex,
@@ -586,7 +586,7 @@ export const PkgManagerMachine = setup({
         context: {spec, runScriptManifests = []},
       }): CtrlPkgManagerRunScriptsBeginEvent => {
         return {
-          type: 'PKG_MANAGER_RUN_SCRIPTS_BEGIN',
+          type: 'SCRIPT.PKG_MANAGER_RUN_SCRIPTS_BEGIN',
           manifests: runScriptManifests,
           pkgManager: spec.toJSON(),
         };
@@ -600,8 +600,8 @@ export const PkgManagerMachine = setup({
         | CtrlPkgManagerRunScriptsOkEvent
         | CtrlPkgManagerRunScriptsFailedEvent => {
         const type = runScriptResults?.some((r) => r.error)
-          ? 'PKG_MANAGER_RUN_SCRIPTS_FAILED'
-          : 'PKG_MANAGER_RUN_SCRIPTS_OK';
+          ? 'SCRIPT.PKG_MANAGER_RUN_SCRIPTS_FAILED'
+          : 'SCRIPT.PKG_MANAGER_RUN_SCRIPTS_OK';
         return {
           type,
           pkgManager: spec.toJSON(),
