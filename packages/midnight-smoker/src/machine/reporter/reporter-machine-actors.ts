@@ -1,6 +1,6 @@
 import {fromUnknownError, ReporterError} from '#error';
-import {type EventData, type EventName} from '#event';
-import {type ControlMachineEmitted} from '#machine/controller';
+import {type DataForEvent, type EventName} from '#event';
+import {type CtrlMachineEmitted} from '#machine/control';
 import {
   type ReporterListener,
   type ReporterListeners,
@@ -11,7 +11,7 @@ import {isFunction} from 'lodash';
 import {fromPromise} from 'xstate';
 
 export interface DrainQueueInput {
-  queue: ControlMachineEmitted[];
+  queue: CtrlMachineEmitted[];
   def: SomeReporterDef;
 
   ctx: SomeReporterContext;
@@ -20,7 +20,7 @@ export interface DrainQueueInput {
 async function invokeListener<T extends EventName>(
   def: SomeReporterDef,
   ctx: SomeReporterContext,
-  data: EventData<T>,
+  data: DataForEvent<T>,
 ) {
   const listenerName = `on${data.type}` as keyof ReporterListeners;
   const listener = def[listenerName] as ReporterListener<T, any>;

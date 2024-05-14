@@ -1,6 +1,6 @@
 import {DEFAULT_EXECUTOR_ID, SYSTEM_EXECUTOR_ID} from '#constants';
 import {fromUnknownError} from '#error';
-import {SmokerEvent, type EventData} from '#event';
+import {SmokerEvent, type DataForEvent} from '#event';
 import {
   LoadableComponents,
   LoaderMachine,
@@ -8,7 +8,7 @@ import {
   type PkgManagerInitPayload,
   type ReporterInitPayload,
   type RuleInitPayload,
-} from '#machine/loader-machine';
+} from '#machine/loader';
 import {PkgManagerMachine} from '#machine/pkg-manager';
 import {
   ReporterMachine,
@@ -26,7 +26,7 @@ import {
   type WorkspaceInfo,
 } from '#schema';
 import {FileManager} from '#util/filemanager';
-import {isEmpty} from 'lodash';
+import {isEmpty, map, uniqBy} from 'lodash';
 import assert from 'node:assert';
 import {type PackageJson} from 'type-fest';
 import {
@@ -139,7 +139,7 @@ function delta(startTime: number): string {
 export const ControlMachine = setup({
   types: {
     context: {} as CtrlMachineContext,
-    emitted: {} as Event.ControlMachineEmitted,
+    emitted: {} as Event.CtrlMachineEmitted,
     events: {} as Event.CtrlEvents,
     input: {} as CtrlMachineInput,
     output: {} as CtrlMachineOutput,
@@ -211,7 +211,7 @@ export const ControlMachine = setup({
     assignWorkspaceInfo: assign({
       workspaceInfo: (_, workspaceInfo: WorkspaceInfo[]) => workspaceInfo,
       uniquePkgNames: (_, workspaceInfo: WorkspaceInfo[]) =>
-        MachineUtil.uniquePkgNames(workspaceInfo),
+        map(uniqBy(workspaceInfo, 'pkgName'), 'pkgName'),
     }),
 
     /**
@@ -413,7 +413,7 @@ export const ControlMachine = setup({
     report: enqueueActions(
       (
         {enqueue, context: {reporterMachineRefs}},
-        event: Event.ControlMachineEmitted,
+        event: Event.CtrlMachineEmitted,
       ) => {
         for (const reporterMachineRef of Object.values(reporterMachineRefs)) {
           enqueue.sendTo(reporterMachineRef, {type: 'EVENT', event});
@@ -1004,14 +1004,14 @@ export const ControlMachine = setup({
           type: 'report',
           params: ({
             context: {pluginRegistry, smokerOptions},
-          }): EventData<typeof SmokerEvent.SmokeBegin> => ({
+          }): DataForEvent<typeof SmokerEvent.SmokeBegin> => ({
             type: SmokerEvent.SmokeBegin,
             plugins: pluginRegistry.plugins.map((plugin) => plugin.toJSON()),
             opts: smokerOptions,
           }),
         },
       ],
-      type: 'parallel',
+      type: MachineUtil.PARALLEL,
       states: {
         packing: {
           initial: 'working',
@@ -1273,7 +1273,7 @@ export const ControlMachine = setup({
                 type: 'report',
                 params: ({
                   context: {lingered},
-                }): EventData<typeof SmokerEvent.Lingered> => {
+                }): DataForEvent<typeof SmokerEvent.Lingered> => {
                   assert.ok(lingered);
                   return {type: SmokerEvent.Lingered, directories: lingered};
                 },
@@ -1312,13 +1312,13 @@ export const ControlMachine = setup({
                 `complete (with error) in ${delta(startTime)}s`,
             ),
           ],
-          type: 'final',
+          type: MachineUtil.FINAL,
         },
         complete: {
           entry: [
             log(({context: {startTime}}) => `complete in ${delta(startTime)}s`),
           ],
-          type: 'final',
+          type: MachineUtil.FINAL,
         },
       },
       onDone: {
@@ -1326,7 +1326,7 @@ export const ControlMachine = setup({
       },
     },
     stopped: {
-      type: 'final',
+      type: MachineUtil.FINAL,
     },
   },
   output: ({

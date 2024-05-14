@@ -39,7 +39,7 @@ import {
 import {
   ControlMachine,
   type CtrlMachineOutput,
-} from './machine/controller/control-machine';
+} from './machine/control/control-machine';
 import {isActorOutputOk} from './machine/util';
 import {FileManager} from './util/filemanager';
 

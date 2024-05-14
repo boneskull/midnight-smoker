@@ -1,3 +1,4 @@
+import {FAILED, OK} from '#machine/util';
 import {
   type InstallManifest,
   type InstallResult,
@@ -7,8 +8,6 @@ import {
   type PkgManagerPackContext,
   type PkgManagerRunScriptContext,
   type PkgManagerSpec,
-  type RunScriptManifest,
-  type RunScriptResult,
 } from '#pkg-manager';
 import {RuleContext, type RuleResultOk} from '#rule';
 import type {FileManager} from '#util';
@@ -18,6 +17,7 @@ import {
   type CheckInput,
   type CheckItem,
   type CheckOutput,
+  type RunScriptOutput,
 } from './pkg-manager-machine-events';
 
 /**
@@ -142,14 +142,6 @@ export const install = fromPromise<InstallResult, InstallInput>(
 );
 
 /**
- * Output of {@link runScript}
- */
-export interface RunScriptOutput {
-  result: RunScriptResult;
-  manifest: RunScriptManifest;
-}
-
-/**
  * Runs a script
  */
 export const runScript = fromPromise<RunScriptOutput, RunScriptInput>(
@@ -195,14 +187,14 @@ export const check = fromPromise<CheckOutput, CheckInput>(async ({input}) => {
   }
   const issues = ctx.finalize() ?? [];
   if (isEmpty(issues)) {
-    const ok: RuleResultOk = {type: 'OK', ctx, rule: rule.toJSON()};
-    return {...input, result: ok, type: 'OK'};
+    const ok: RuleResultOk = {type: OK, ctx, rule: rule.toJSON()};
+    return {...input, result: ok, type: OK};
   }
   return {
     ...input,
     // TODO fix this readonly disagreement.  it _should_ be read-only, but that breaks somewhere down the line
     result: [...issues],
     ctx,
-    type: 'FAILED',
+    type: FAILED,
   };
 });

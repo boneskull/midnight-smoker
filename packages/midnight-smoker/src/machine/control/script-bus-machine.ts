@@ -1,5 +1,5 @@
 import {fromUnknownError} from '#error';
-import {SmokerEvent, type EventData} from '#event';
+import {SmokerEvent, type DataForEvent, type ScriptEventData} from '#event';
 import {type ReporterMachine} from '#machine/reporter';
 import {FINAL} from '#machine/util';
 import {type SmokerOptions} from '#options/options';
@@ -13,7 +13,6 @@ import {
   type ActorRefFrom,
   type AnyActorRef,
 } from 'xstate';
-import {type ControlMachineEmitted} from './control-machine-events';
 import {type CtrlScriptEvents} from './script-events';
 
 export interface ScriptBusMachineInput {
@@ -39,6 +38,8 @@ export type ScriptBusMachineEvents =
   | ScriptBusMachineRunScriptsEvent
   | CtrlScriptEvents;
 
+export type ReportableScriptEventData = DataForEvent<keyof ScriptEventData>;
+
 export const ScriptBusMachine = setup({
   types: {
     input: {} as ScriptBusMachineInput,
@@ -52,23 +53,19 @@ export const ScriptBusMachine = setup({
         pkgManagerDidRunScriptCount: pkgManagerDidScriptCount,
         pkgManagers = [],
       },
-    }) => {
-      return pkgManagerDidScriptCount === pkgManagers.length;
-    },
+    }) => pkgManagerDidScriptCount === pkgManagers.length,
   },
   actions: {
     appendRunScriptResult: assign({
       runScriptResults: (
         {context: {runScriptResults = []}},
         runScriptResult: RunScriptResult,
-      ) => {
-        return [...runScriptResults, runScriptResult];
-      },
+      ) => [...runScriptResults, runScriptResult],
     }),
     report: enqueueActions(
       (
         {enqueue, context: {actorIds: machines = [], parentRef}},
-        event: ControlMachineEmitted,
+        event: ReportableScriptEventData,
       ) => {
         for (const id of machines) {
           enqueue.sendTo(
@@ -83,9 +80,7 @@ export const ScriptBusMachine = setup({
     incrementScriptCount: assign({
       pkgManagerDidRunScriptCount: ({
         context: {pkgManagerDidRunScriptCount: pkgManagerDidScriptCount},
-      }) => {
-        return pkgManagerDidScriptCount + 1;
-      },
+      }) => pkgManagerDidScriptCount + 1,
     }),
     assignError: assign({
       // TODO: aggregate for multiple
@@ -117,7 +112,7 @@ export const ScriptBusMachine = setup({
               smokerOptions: {script: scripts},
               uniquePkgNames: uniquePkgs = [],
             },
-          }): EventData<typeof SmokerEvent.RunScriptsBegin> => ({
+          }): DataForEvent<typeof SmokerEvent.RunScriptsBegin> => ({
             type: SmokerEvent.RunScriptsBegin,
             totalUniqueScripts: scripts.length,
             totalUniquePkgs: uniquePkgs.length,
@@ -144,12 +139,12 @@ export const ScriptBusMachine = setup({
                 context: {
                   smokerOptions: {script: scripts},
                 },
-                event: {runScriptManifest, pkgManager},
-              }): EventData<typeof SmokerEvent.RunScriptBegin> => ({
+                event: {manifest, pkgManager},
+              }): DataForEvent<typeof SmokerEvent.RunScriptBegin> => ({
                 type: SmokerEvent.RunScriptBegin,
                 totalUniqueScripts: scripts.length,
                 pkgManager,
-                manifest: runScriptManifest,
+                manifest,
               }),
             },
           ],
@@ -162,25 +157,18 @@ export const ScriptBusMachine = setup({
                 context: {
                   smokerOptions: {script: scripts},
                 },
-                event: {runScriptManifest, pkgManager, result},
-              }): EventData<typeof SmokerEvent.RunScriptFailed> => {
-                assert.ok(result.error);
-                return {
-                  type: SmokerEvent.RunScriptFailed,
-                  totalUniqueScripts: scripts.length,
-                  pkgManager,
-                  manifest: runScriptManifest,
-                  error: result.error,
-                };
-              },
+                event: {manifest, pkgManager, error},
+              }): DataForEvent<typeof SmokerEvent.RunScriptFailed> => ({
+                type: SmokerEvent.RunScriptFailed,
+                totalUniqueScripts: scripts.length,
+                pkgManager,
+                manifest,
+                error,
+              }),
             },
             {
               type: 'appendRunScriptResult',
-              params: ({
-                event: {
-                  result: {error},
-                },
-              }) => ({
+              params: ({event: {error}}) => ({
                 error,
               }),
             },
@@ -194,13 +182,13 @@ export const ScriptBusMachine = setup({
                 context: {
                   smokerOptions: {script: scripts},
                 },
-                event: {runScriptManifest, pkgManager},
-              }): EventData<typeof SmokerEvent.RunScriptSkipped> => ({
+                event: {manifest, pkgManager},
+              }): DataForEvent<typeof SmokerEvent.RunScriptSkipped> => ({
                 type: SmokerEvent.RunScriptSkipped,
                 totalUniqueScripts: scripts.length,
                 pkgManager,
                 skipped: true,
-                manifest: runScriptManifest,
+                manifest,
               }),
             },
             {
@@ -218,25 +206,18 @@ export const ScriptBusMachine = setup({
                   context: {
                     smokerOptions: {script: scripts},
                   },
-                  event: {runScriptManifest, pkgManager, result},
-                }): EventData<typeof SmokerEvent.RunScriptOk> => {
-                  assert.ok(result.rawResult);
-                  return {
-                    type: SmokerEvent.RunScriptOk,
-                    totalUniqueScripts: scripts.length,
-                    pkgManager,
-                    manifest: runScriptManifest,
-                    rawResult: result.rawResult,
-                  };
-                },
+                  event: {manifest, pkgManager, rawResult},
+                }): DataForEvent<typeof SmokerEvent.RunScriptOk> => ({
+                  type: SmokerEvent.RunScriptOk,
+                  totalUniqueScripts: scripts.length,
+                  pkgManager,
+                  manifest,
+                  rawResult,
+                }),
               },
               {
                 type: 'appendRunScriptResult',
-                params: ({
-                  event: {
-                    result: {rawResult},
-                  },
-                }) => ({
+                params: ({event: {rawResult}}) => ({
                   rawResult,
                 }),
               },
@@ -250,21 +231,23 @@ export const ScriptBusMachine = setup({
                 type: 'report',
                 params: ({
                   context: {
-                    pkgManagers = [],
-                    smokerOptions: {script: scripts},
-                    uniquePkgNames = [],
+                    pkgManagers: {length: totalPkgManagers},
+                    smokerOptions: {
+                      script: {length: totalUniqueScripts},
+                    },
+                    uniquePkgNames: {length: totalUniquePkgs},
                   },
                   event: {pkgManager, manifests},
-                }): EventData<typeof SmokerEvent.PkgManagerRunScriptsBegin> => {
-                  return {
-                    manifests,
-                    type: SmokerEvent.PkgManagerRunScriptsBegin,
-                    pkgManager,
-                    totalPkgManagers: pkgManagers.length,
-                    totalUniqueScripts: scripts.length,
-                    totalUniquePkgs: uniquePkgNames.length,
-                  };
-                },
+                }): DataForEvent<
+                  typeof SmokerEvent.PkgManagerRunScriptsBegin
+                > => ({
+                  manifests,
+                  type: SmokerEvent.PkgManagerRunScriptsBegin,
+                  pkgManager,
+                  totalPkgManagers,
+                  totalUniqueScripts,
+                  totalUniquePkgs,
+                }),
               },
             ],
           },
@@ -283,15 +266,13 @@ export const ScriptBusMachine = setup({
                   uniquePkgNames,
                 },
                 event,
-              }): EventData<typeof SmokerEvent.PkgManagerRunScriptsOk> => {
-                return {
-                  ...event,
-                  type: SmokerEvent.PkgManagerRunScriptsOk,
-                  totalPkgManagers: pkgManagers.length,
-                  totalUniqueScripts: scripts.length,
-                  totalUniquePkgs: uniquePkgNames.length,
-                };
-              },
+              }): DataForEvent<typeof SmokerEvent.PkgManagerRunScriptsOk> => ({
+                ...event,
+                type: SmokerEvent.PkgManagerRunScriptsOk,
+                totalPkgManagers: pkgManagers.length,
+                totalUniqueScripts: scripts.length,
+                totalUniquePkgs: uniquePkgNames.length,
+              }),
             },
           ],
         },
@@ -307,15 +288,15 @@ export const ScriptBusMachine = setup({
                   uniquePkgNames,
                 },
                 event,
-              }): EventData<typeof SmokerEvent.PkgManagerRunScriptsFailed> => {
-                return {
-                  ...event,
-                  type: SmokerEvent.PkgManagerRunScriptsFailed,
-                  totalPkgManagers: pkgManagers.length,
-                  totalUniqueScripts: scripts.length,
-                  totalUniquePkgs: uniquePkgNames.length,
-                };
-              },
+              }): DataForEvent<
+                typeof SmokerEvent.PkgManagerRunScriptsFailed
+              > => ({
+                ...event,
+                type: SmokerEvent.PkgManagerRunScriptsFailed,
+                totalPkgManagers: pkgManagers.length,
+                totalUniqueScripts: scripts.length,
+                totalUniquePkgs: uniquePkgNames.length,
+              }),
             },
           ],
         },
@@ -325,19 +306,19 @@ export const ScriptBusMachine = setup({
           type: 'report',
           params: ({
             context: {
-              runScriptResults,
-              pkgManagers = [],
-              smokerOptions: {script: scripts},
+              runScriptResults: results,
+              pkgManagers: {length: totalPkgManagers},
+              smokerOptions: {
+                script: {length: totalUniqueScripts},
+              },
+              uniquePkgNames: {length: totalUniquePkgs},
             },
-          }): EventData<
+          }): DataForEvent<
             | typeof SmokerEvent.RunScriptsOk
             | typeof SmokerEvent.RunScriptsFailed
           > => {
-            assert.ok(runScriptResults);
-            const [failedResults, otherResults] = partition(
-              runScriptResults,
-              'error',
-            );
+            assert.ok(results);
+            const [failedResults, otherResults] = partition(results, 'error');
             const failed = failedResults.length;
             const [skippedResults, passedResults] = partition(otherResults, {
               skipped: true,
@@ -349,17 +330,15 @@ export const ScriptBusMachine = setup({
               ? SmokerEvent.RunScriptsFailed
               : SmokerEvent.RunScriptsOk;
 
-            const pkgNames = new Set<string>();
-
             return {
               type,
               passed,
               skipped,
               failed,
-              totalUniqueScripts: scripts.length,
-              totalUniquePkgs: pkgNames.size,
-              totalPkgManagers: pkgManagers.length,
-              results: runScriptResults,
+              totalUniqueScripts,
+              totalUniquePkgs,
+              totalPkgManagers,
+              results,
             };
           },
         },

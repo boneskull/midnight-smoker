@@ -7,7 +7,7 @@ import {type SmokerEventData} from './smoker-events';
 /**
  * Describes the data emitted by each event.
  */
-export type Events = InstallEventData &
+export type EventData = InstallEventData &
   PackEventData &
   LintEventData &
   ScriptEventData &
@@ -16,13 +16,14 @@ export type Events = InstallEventData &
 /**
  * Names of all events emitted by `midnight-smoker`
  */
-export type EventName = keyof Events;
+export type EventName = keyof EventData;
 
 /**
- * Data associated with a specific event
+ * Data associated with a specific event with an additional `type` field
+ * containing the event name
  *
  * @template T - The event name
  */
-export type EventData<T extends EventName> = {
-  [K in T]: {type: K} & Events[K];
+export type DataForEvent<T extends EventName> = {
+  [K in T]: {type: K} & EventData[K];
 }[T];

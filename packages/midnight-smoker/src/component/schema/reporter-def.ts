@@ -4,7 +4,7 @@
  *
  * @packageDocumentation
  */
-import {type EventData, type EventName, type Events} from '#event';
+import {type DataForEvent, type EventData, type EventName} from '#event';
 import {BaseSmokerOptionsSchema, type SmokerOptions} from '#options/options';
 import {type StaticPluginMetadata} from '#plugin/static-metadata';
 import {
@@ -48,7 +48,7 @@ export type SomeReporterContext = ReporterContext<object>;
 export type ReporterListener<Evt extends EventName, Ctx = unknown> = (
   this: void,
   ctx: ReporterContext<Ctx>,
-  data: EventData<Evt>,
+  data: DataForEvent<Evt>,
 ) => void | Promise<void>;
 
 export type ReporterSetupFn<Ctx = unknown> = (
@@ -65,7 +65,7 @@ export type ReporterTeardownFn<Ctx = unknown> = (
  */
 
 export type ReporterListeners<Ctx = unknown> = {
-  [K in keyof Events as `on${K}`]: ReporterListener<K, Ctx>;
+  [K in keyof EventData as `on${K}`]: ReporterListener<K, Ctx>;
 };
 
 /**

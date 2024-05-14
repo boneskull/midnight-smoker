@@ -23,13 +23,7 @@ import {
 } from '#schema';
 import {type FileManager} from '#util';
 import assert from 'node:assert';
-import {
-  type PackageJson,
-  type SetFieldType,
-  type SetOptional,
-  type SetRequired,
-  type Simplify,
-} from 'type-fest';
+import {type PackageJson} from 'type-fest';
 import {assign, log, not, setup} from 'xstate';
 import {
   loadPkgManagers,
@@ -84,19 +78,11 @@ export interface BaseLoaderMachineInput {
  * If package managers are to be loaded, we expect
  * {@link BaseLoaderMachineInput.pkgManager} to truthy
  */
-export type LoaderMachineInputForPkgManagers = Simplify<
-  SetOptional<
-    SetRequired<
-      SetFieldType<
-        BaseLoaderMachineInput,
-        'component',
-        Extract<LoadableComponent, 'pkgManagers' | 'all'>
-      >,
-      'pkgManager'
-    >,
-    'component'
-  >
->;
+export interface LoaderMachineInputForPkgManagers
+  extends BaseLoaderMachineInput {
+  component: 'pkgManagers' | 'all';
+  pkgManager: LoaderPkgManagerParams;
+}
 
 export type LoaderMachineInput =
   | BaseLoaderMachineInput

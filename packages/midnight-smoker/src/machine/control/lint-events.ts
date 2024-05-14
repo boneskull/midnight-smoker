@@ -9,9 +9,20 @@ import type {
 } from '#event';
 import type {MachineEvent} from '#machine/util';
 
+export type AnyLintEvent = CtrlLintEvents & {type: 'LINT.*'};
+
 export type ComputedPkgManagerLintFields = 'totalPkgManagers' | 'totalRules';
 
 export type ComputedRuleEventFields = 'totalRules';
+
+export type CtrlLintEvents =
+  | CtrlPkgManagerLintBeginEvent
+  | CtrlPkgManagerLintOkEvent
+  | CtrlPkgManagerLintFailedEvent
+  | CtrlRuleBeginEvent
+  | CtrlRuleOkEvent
+  | CtrlRuleFailedEvent
+  | CtrlRuleErrorEvent;
 
 export type CtrlPkgManagerLintBeginEvent = MachineEvent<
   'LINT.PKG_MANAGER_LINT_BEGIN',
@@ -47,23 +58,3 @@ export type CtrlRuleOkEvent = MachineEvent<
   'LINT.RULE_OK',
   Omit<RuleOkEventData, ComputedRuleEventFields>
 >;
-
-export interface AnyLintEvent {
-  type: 'LINT.*' &
-    'LINT.PKG_MANAGER_LINT_BEGIN' &
-    'LINT.PKG_MANAGER_LINT_FAILED' &
-    'LINT.PKG_MANAGER_LINT_OK' &
-    'LINT.RULE_BEGIN' &
-    'LINT.RULE_ERROR' &
-    'LINT.RULE_FAILED' &
-    'LINT.RULE_OK';
-}
-
-export type CtrlLintEvents =
-  | CtrlPkgManagerLintBeginEvent
-  | CtrlPkgManagerLintOkEvent
-  | CtrlPkgManagerLintFailedEvent
-  | CtrlRuleBeginEvent
-  | CtrlRuleOkEvent
-  | CtrlRuleFailedEvent
-  | CtrlRuleErrorEvent;

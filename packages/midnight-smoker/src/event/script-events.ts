@@ -1,12 +1,12 @@
-import type {
-  ExecResult,
-  RunScriptManifest,
-  RunScriptResult,
-  ScriptError,
-  StaticPkgManagerSpec,
-} from '../component';
-import type {ScriptEvent} from './event-constants';
-import type {PkgManagerEventBase} from './pkg-manager-events';
+import {
+  type ExecResult,
+  type RunScriptManifest,
+  type RunScriptResult,
+  type ScriptError,
+  type StaticPkgManagerSpec,
+} from '#schema';
+import {type ScriptEvent} from './event-constants';
+import {type PkgManagerEventBase} from './pkg-manager-events';
 
 export interface ScriptEventData {
   [ScriptEvent.PkgManagerRunScriptsBegin]: PkgManagerRunScriptsBeginEventData;
@@ -99,6 +99,7 @@ export interface RunScriptOkEventData extends RunScriptEventDataBase {
 
 export interface RunScriptFailedEventData extends RunScriptEventDataBase {
   error: ScriptError;
+  rawResult?: ExecResult;
 }
 
 export interface RunScriptSkippedEventData extends RunScriptEventDataBase {

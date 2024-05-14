@@ -1,11 +1,11 @@
-import {type ControlMachineEmitted} from '#machine/controller';
+import {type CtrlMachineEmitted} from '#machine/control';
 
 export type ReporterMachineEvents =
   | ReporterMachineCtrlEvent
   | ReporterMachineHaltEvent;
 
 export interface ReporterMachineCtrlEvent {
-  event: ControlMachineEmitted;
+  event: CtrlMachineEmitted;
   type: 'EVENT';
 }
 

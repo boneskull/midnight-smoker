@@ -1,7 +1,7 @@
 import {ReifiedComponent} from '#component';
 import {fromUnknownError} from '#error';
 import {ReporterError} from '#error/reporter-error';
-import {type EventData, type EventName} from '#event/events';
+import {type DataForEvent, type EventName} from '#event/events';
 import {type PluginMetadata} from '#plugin';
 import {
   type ReporterContext,
@@ -42,7 +42,7 @@ export class Reporter<Ctx = unknown> extends ReifiedComponent<
     return this.def.description;
   }
 
-  public async invokeListener<T extends EventName>(data: EventData<T>) {
+  public async invokeListener<T extends EventName>(data: DataForEvent<T>) {
     // await Promise.resolve();
     // XXX don't like these casts
     if (this.hasListener(data.type)) {

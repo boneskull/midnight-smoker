@@ -1,9 +1,10 @@
-export * from './util';
+/**
+ * Only `ControlMachine` and `LoaderMachine` are intended to be consumed as the
+ * root of a statechart.
+ *
+ * @packageDocumentation
+ */
 
-export * from './pkg-manager';
+export * from './loader';
 
-export * from './reporter';
-
-export * from './loader-machine';
-
-export * from './controller';
+export * from './control';

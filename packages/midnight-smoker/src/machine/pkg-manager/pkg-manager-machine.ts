@@ -50,7 +50,7 @@ import {
   setup,
   type AnyActorRef,
 } from 'xstate';
-import {type CtrlLingeredEvent} from '../controller/control-machine-events';
+import {type CtrlLingeredEvent} from '../control/control-machine-events';
 import {
   type CtrlPkgInstallBeginEvent,
   type CtrlPkgInstallFailedEvent,
@@ -58,7 +58,7 @@ import {
   type CtrlPkgManagerInstallBeginEvent,
   type CtrlPkgManagerInstallFailedEvent,
   type CtrlPkgManagerInstallOkEvent,
-} from '../controller/install-events';
+} from '../control/install-events';
 import {
   type CtrlPkgManagerLintBeginEvent,
   type CtrlPkgManagerLintFailedEvent,
@@ -66,7 +66,7 @@ import {
   type CtrlRuleBeginEvent,
   type CtrlRuleFailedEvent,
   type CtrlRuleOkEvent,
-} from '../controller/lint-events';
+} from '../control/lint-events';
 import {
   type CtrlPkgManagerPackBeginEvent,
   type CtrlPkgManagerPackFailedEvent,
@@ -74,7 +74,7 @@ import {
   type CtrlPkgPackBeginEvent,
   type CtrlPkgPackFailedEvent,
   type CtrlPkgPackOkEvent,
-} from '../controller/pack-events';
+} from '../control/pack-events';
 import {
   type CtrlPkgManagerRunScriptsBeginEvent,
   type CtrlPkgManagerRunScriptsFailedEvent,
@@ -83,7 +83,7 @@ import {
   type CtrlRunScriptFailedEvent,
   type CtrlRunScriptOkEvent,
   type CtrlRunScriptSkippedEvent,
-} from '../controller/script-events';
+} from '../control/script-events';
 import {
   check,
   createTempDir,
@@ -95,13 +95,13 @@ import {
   setupPkgManager,
   teardownPkgManager,
   type InstallInput,
-  type RunScriptOutput,
 } from './pkg-manager-machine-actors';
 import {
   type CheckItem,
   type CheckOutput,
   type PkgManagerMachineEvents,
   type PkgManagerMachineRuleEndEvent,
+  type RunScriptOutput,
 } from './pkg-manager-machine-events';
 
 export type PkgManagerMachineOutput = ActorOutput;
@@ -456,40 +456,46 @@ export const PkgManagerMachine = setup({
     sendRunScriptEnd: sendTo(
       ({context: {parentRef}}) => parentRef,
       (
-        {context: {scripts = [], spec, index: pkgManagerIndex}},
+        {self: {id: sender}, context: {spec}},
         {result, manifest}: RunScriptOutput,
       ):
         | CtrlRunScriptOkEvent
         | CtrlRunScriptFailedEvent
         | CtrlRunScriptSkippedEvent => {
-        const type = result.error
-          ? 'SCRIPT.RUN_SCRIPT_FAILED'
-          : result.skipped
-            ? 'SCRIPT.RUN_SCRIPT_SKIPPED'
-            : 'SCRIPT.RUN_SCRIPT_OK';
-
-        return {
-          type,
+        const baseEventData = {
           pkgManager: spec.toJSON(),
-          runScriptManifest: manifest,
-          result,
-          pkgManagerIndex,
-          scriptIndex: scripts.indexOf(manifest.script) + 1,
+          rawResult: result.rawResult,
+          manifest,
+          sender,
+        };
+
+        if (result.error) {
+          return {
+            ...baseEventData,
+            type: 'SCRIPT.RUN_SCRIPT_FAILED',
+            error: result.error,
+          };
+        }
+        if (result.skipped) {
+          return {
+            ...baseEventData,
+            type: 'SCRIPT.RUN_SCRIPT_SKIPPED',
+            skipped: true,
+          };
+        }
+        assert.ok(result.rawResult);
+        return {
+          ...baseEventData,
+          type: 'SCRIPT.RUN_SCRIPT_OK',
+          rawResult: result.rawResult,
         };
       },
     ),
     drainRunScriptQueue: enqueueActions(
       ({
         enqueue,
-        context: {
-          runScriptQueue,
-          spec,
-          scripts,
-          ctx,
-          index: pkgManagerIndex,
-          parentRef,
-          def,
-        },
+        self: {id: sender},
+        context: {runScriptQueue, spec, scripts, ctx, parentRef, def},
       }) => {
         assert.ok(runScriptQueue);
         assert.ok(scripts);
@@ -503,10 +509,8 @@ export const PkgManagerMachine = setup({
           const evt: CtrlRunScriptBeginEvent = {
             type: 'SCRIPT.RUN_SCRIPT_BEGIN',
             pkgManager: spec.toJSON(),
-            runScriptManifest,
-            pkgManagerIndex,
-            // TODO Fix
-            scriptIndex: 0,
+            manifest: runScriptManifest,
+            sender,
           };
           enqueue.sendTo(parentRef, evt);
           enqueue.spawnChild('runScript', {

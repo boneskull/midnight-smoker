@@ -4,6 +4,7 @@ import {
   type PackParseError,
   type ScriptError,
 } from '#error/pkg-manager';
+import {type FAILED, type OK} from '#machine/util';
 import {type PkgManagerSpec} from '#pkg-manager';
 import {
   type InstallManifest,
@@ -11,11 +12,11 @@ import {
   type RuleResultFailed,
   type RuleResultOk,
   type RunScriptManifest,
+  type RunScriptResult,
   type SomeRule,
   type SomeRuleConfig,
 } from '#schema';
 import {type PackageJson} from 'type-fest';
-import {type RunScriptOutput} from './pkg-manager-machine-actors';
 
 export type CheckOutput = CheckOutputOk | CheckOutputFailed;
 
@@ -55,12 +56,12 @@ export interface CheckItem {
 
 export interface CheckOutputFailed extends CheckInput {
   result: RuleResultFailed[];
-  type: 'FAILED';
+  type: typeof FAILED;
 }
 
 export interface CheckOutputOk extends CheckInput {
   result: RuleResultOk;
-  type: 'OK';
+  type: typeof OK;
 }
 
 export interface PkgManagerMachineCheckDoneEvent {
@@ -75,6 +76,11 @@ export interface PkgManagerMachineCheckErrorEvent {
 
 export interface PkgManagerMachineHaltEvent {
   type: 'HALT';
+}
+
+export interface PkgManagerMachineLintEvent {
+  manifest: LintManifest;
+  type: 'LINT';
 }
 
 export interface PkgManagerMachineLintItemEvent {
@@ -93,19 +99,9 @@ export interface PkgManagerMachinePackErrorEvent {
 }
 
 export interface PkgManagerMachineRuleEndEvent {
-  type: 'RULE_END';
-  sender: string;
   output: CheckOutput;
-}
-
-export interface PkgManagerMachineLintEvent {
-  type: 'LINT';
-  manifest: LintManifest;
-}
-
-export interface PkgManagerMachineRunScriptEvent {
-  type: 'RUN_SCRIPT';
-  manifest: RunScriptManifest;
+  sender: string;
+  type: 'RULE_END';
 }
 
 export interface PkgManagerMachineRunScriptDoneEvent {
@@ -116,4 +112,17 @@ export interface PkgManagerMachineRunScriptDoneEvent {
 export interface PkgManagerMachineRunScriptErrorEvent {
   error: ScriptError;
   type: 'xstate.error.actor.runScript.*';
+}
+
+export interface PkgManagerMachineRunScriptEvent {
+  manifest: RunScriptManifest;
+  type: 'RUN_SCRIPT';
+}
+
+/**
+ * Output of {@link runScript}
+ */
+export interface RunScriptOutput {
+  manifest: RunScriptManifest;
+  result: RunScriptResult;
 }

@@ -1,7 +1,7 @@
 import {fromUnknownError} from '#error';
-import {SmokerEvent, type EventData} from '#event';
+import {SmokerEvent, type DataForEvent, type LintEventData} from '#event';
 import {type ReporterMachine} from '#machine/reporter';
-import {FINAL} from '#machine/util';
+import {FAILED, FINAL} from '#machine/util';
 import {type SmokerOptions} from '#options/options';
 import {
   type LintResult,
@@ -17,16 +17,7 @@ import {
   type ActorRefFrom,
   type AnyActorRef,
 } from 'xstate';
-import {type ControlMachineEmitted} from './control-machine-events';
-import {
-  type CtrlPkgManagerLintBeginEvent,
-  type CtrlPkgManagerLintFailedEvent,
-  type CtrlPkgManagerLintOkEvent,
-  type CtrlRuleBeginEvent,
-  type CtrlRuleErrorEvent,
-  type CtrlRuleFailedEvent,
-  type CtrlRuleOkEvent,
-} from './lint-events';
+import {type CtrlLintEvents} from './lint-events';
 
 export interface LintBusMachineInput {
   workspaceInfo: WorkspaceInfo[];
@@ -49,15 +40,9 @@ export interface LintBusMachineLintEvent {
   actorIds: string[];
 }
 
-export type LintBusMachineEvents =
-  | LintBusMachineLintEvent
-  | CtrlRuleBeginEvent
-  | CtrlRuleOkEvent
-  | CtrlRuleFailedEvent
-  | CtrlPkgManagerLintBeginEvent
-  | CtrlPkgManagerLintOkEvent
-  | CtrlPkgManagerLintFailedEvent
-  | CtrlRuleErrorEvent;
+export type LintBusMachineEvents = LintBusMachineLintEvent | CtrlLintEvents;
+
+export type ReportableLintEventData = DataForEvent<keyof LintEventData>;
 
 export const LintBusMachine = setup({
   types: {
@@ -82,7 +67,7 @@ export const LintBusMachine = setup({
     report: enqueueActions(
       (
         {enqueue, context: {actorIds: machines = [], parentRef}},
-        event: ControlMachineEmitted,
+        event: ReportableLintEventData,
       ) => {
         for (const id of machines) {
           enqueue.sendTo(
@@ -129,7 +114,7 @@ export const LintBusMachine = setup({
               smokerOptions,
               uniquePkgNames: uniquePkgs = [],
             },
-          }): EventData<typeof SmokerEvent.LintBegin> => ({
+          }): DataForEvent<typeof SmokerEvent.LintBegin> => ({
             type: SmokerEvent.LintBegin,
             config: smokerOptions.rules,
             totalRules: 0,
@@ -156,7 +141,7 @@ export const LintBusMachine = setup({
               params: ({
                 context: {rules},
                 event,
-              }): EventData<typeof SmokerEvent.RuleBegin> => {
+              }): DataForEvent<typeof SmokerEvent.RuleBegin> => {
                 return {
                   ...event,
                   totalRules: rules.length,
@@ -173,7 +158,7 @@ export const LintBusMachine = setup({
               params: ({
                 context: {rules},
                 event,
-              }): EventData<typeof SmokerEvent.RuleOk> => {
+              }): DataForEvent<typeof SmokerEvent.RuleOk> => {
                 return {
                   ...event,
                   totalRules: rules.length,
@@ -190,7 +175,7 @@ export const LintBusMachine = setup({
               params: ({
                 context: {rules},
                 event,
-              }): EventData<typeof SmokerEvent.RuleError> => {
+              }): DataForEvent<typeof SmokerEvent.RuleError> => {
                 return {
                   ...event,
                   totalRules: rules.length,
@@ -211,7 +196,7 @@ export const LintBusMachine = setup({
               params: ({
                 context: {rules},
                 event,
-              }): EventData<typeof SmokerEvent.RuleFailed> => {
+              }): DataForEvent<typeof SmokerEvent.RuleFailed> => {
                 return {
                   ...event,
                   totalRules: rules.length,
@@ -228,7 +213,7 @@ export const LintBusMachine = setup({
               params: ({
                 context: {pkgManagers = [], rules = []},
                 event: {pkgManager},
-              }): EventData<typeof SmokerEvent.PkgManagerLintBegin> => {
+              }): DataForEvent<typeof SmokerEvent.PkgManagerLintBegin> => {
                 return {
                   type: SmokerEvent.PkgManagerLintBegin,
                   pkgManager,
@@ -254,7 +239,7 @@ export const LintBusMachine = setup({
               params: ({
                 context: {pkgManagers = [], rules = []},
                 event: {pkgManager, results},
-              }): EventData<typeof SmokerEvent.PkgManagerLintFailed> => {
+              }): DataForEvent<typeof SmokerEvent.PkgManagerLintFailed> => {
                 return {
                   type: SmokerEvent.PkgManagerLintFailed,
                   pkgManager,
@@ -281,7 +266,7 @@ export const LintBusMachine = setup({
               params: ({
                 context: {pkgManagers = [], rules = []},
                 event: {pkgManager, results},
-              }): EventData<typeof SmokerEvent.PkgManagerLintOk> => {
+              }): DataForEvent<typeof SmokerEvent.PkgManagerLintOk> => {
                 return {
                   type: SmokerEvent.PkgManagerLintOk,
                   pkgManager,
@@ -307,13 +292,13 @@ export const LintBusMachine = setup({
             },
             event,
           }):
-            | EventData<typeof SmokerEvent.LintOk>
-            | EventData<typeof SmokerEvent.LintFailed> => {
+            | DataForEvent<typeof SmokerEvent.LintOk>
+            | DataForEvent<typeof SmokerEvent.LintFailed> => {
             const totalRules = rules.length;
             const totalPkgManagers = pkgManagers.length;
             const totalUniquePkgs = uniquePkgNames.length;
 
-            if (lintResults.some((result) => result.type === 'FAILED')) {
+            if (lintResults.some((result) => result.type === FAILED)) {
               return {
                 ...event,
                 results: lintResults,

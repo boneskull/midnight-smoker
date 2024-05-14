@@ -1,6 +1,6 @@
 import {type ReporterError} from '#error';
-import {type ControlMachineEmitted} from '#machine/controller';
-import {type ActorOutputError, type ActorOutputOk} from '#machine/util';
+import {type CtrlMachineEmitted} from '#machine/control';
+import {ERROR, FINAL, OK, type ActorOutput} from '#machine/util';
 import {type SmokerOptions} from '#options/options';
 import {type PluginMetadata} from '#plugin';
 import {
@@ -9,7 +9,7 @@ import {
 } from '#schema/reporter-def';
 import {isEmpty} from 'lodash';
 import {type PackageJson} from 'type-fest';
-import {assign, log, not, setup} from 'xstate';
+import {and, assign, log, not, setup} from 'xstate';
 import {
   drainQueue,
   setupReporter,
@@ -17,29 +17,80 @@ import {
 } from './reporter-machine-actors';
 import {type ReporterMachineEvents} from './reporter-machine-events';
 
-export type ReporterMachineOutput =
-  | ReporterMachineOutputOk
-  | ReporterMachineOutputError;
+/**
+ * Output for {@link ReporterMachine}
+ *
+ * `ReporterMachine` outputs nothing machine-specific.
+ */
+export type ReporterMachineOutput = ActorOutput;
 
-export type ReporterMachineOutputError = ActorOutputError;
-
-export type ReporterMachineOutputOk = ActorOutputOk;
-
+/**
+ * The machine context stuffs {@link ReporterMachineInput.smokerPkgJson} and
+ * {@link ReporterMachineInput.smokerOptions} into
+ * {@link ReporterMachineContext.ctx its `ReporterContext` object}.
+ */
 export interface ReporterMachineContext
   extends Omit<ReporterMachineInput, 'smokerPkgJson' | 'smokerOptions'> {
+  /**
+   * If a `ReporterDef` throws an error, it will be caught and re-thrown as a
+   * {@link ReporterError} by {@link drainQueue}, {@link setupReporter} or
+   * {@link teardownReporter}.
+   */
   error?: ReporterError;
-  queue: ControlMachineEmitted[];
+
+  /**
+   * As events are emitted from the event bus, they are put into this queue.
+   *
+   * The machine uses a guard to check if the queue is non-empty; if it is, it
+   * transitions to the `draining` state, which invokes {@link drainQueue}.
+   */
+  queue: CtrlMachineEmitted[];
+
+  /**
+   * If this is `true`, then the reporter will halt after draining its queue via
+   * {@link drainQueue}.
+   *
+   * It's not expected that the `ReporterMachine` will receive an event after
+   * this becomes `true`; however, there is nothing preventing it from
+   * happening. If it _does_ happen, a debug message will be logged.
+   */
   shouldHalt: boolean;
+
+  /**
+   * The object passed to all of the `ReporterDef`'s listener methods.
+   */
   ctx: SomeReporterContext;
 }
 
+/**
+ * Input for {@link ReporterMachine}
+ */
 export interface ReporterMachineInput {
+  /**
+   * Reporter definition (registered by a plugin)
+   */
   def: SomeReporterDef;
+
+  /**
+   * The plugin itself; owner of the reporter definition
+   */
   plugin: Readonly<PluginMetadata>;
+
+  /**
+   * User-provided options & defaults
+   */
   smokerOptions: SmokerOptions;
+
+  /**
+   * Contents of `midnight-smoker`'s `package.json`
+   */
   smokerPkgJson: PackageJson;
 }
 
+/**
+ * Bridges the events emitted from the event bus machines to a
+ * {@link ReporterMachineInput.def ReporterDef}
+ */
 export const ReporterMachine = setup({
   types: {
     context: {} as ReporterMachineContext,
@@ -53,20 +104,54 @@ export const ReporterMachine = setup({
     teardownReporter,
   },
   guards: {
+    /**
+     * If the queue contains events, this guard will return `true`.
+     */
     hasEvents: not('isQueueEmpty'),
+
+    /**
+     * If the queue is empty, this guard will return `true`
+     */
     isQueueEmpty: ({context: {queue}}) => isEmpty(queue),
+
+    /**
+     * If the `error` context property is truthy, this guard will return `true`.
+     */
     hasError: ({context: {error}}) => Boolean(error),
+
+    /**
+     * If the `error` context property is falsy, this guard will return `true`.
+     */
     notHasError: not('hasError'),
-    shouldHalt: ({context: {queue, shouldHalt}}) =>
-      Boolean(shouldHalt && isEmpty(queue)),
-    shouldListen: not('shouldHalt'),
+
+    /**
+     * If the `shouldHalt` context property is `true` _and_ the queue is empty,
+     * this guard will return `true`.
+     */
+    shouldHalt: and([
+      'isQueueEmpty',
+      ({context: {shouldHalt}}) => Boolean(shouldHalt),
+    ]),
+
+    /**
+     * If the `shouldHalt` context property is falsy, this guard will return
+     * `true`.
+     */
+    shouldListen: ({context: {shouldHalt}}) => !shouldHalt,
   },
   actions: {
+    /**
+     * Assigns to {@link ReporterMachineContext.error context.error}
+     */
     assignError: assign({
-      error: (_, {error}: {error: ReporterError}) => error,
+      error: (_, error: ReporterError) => error,
     }),
+
+    /**
+     * Enqueues any event emitted by the event bus machines
+     */
     enqueue: assign({
-      queue: ({context: {queue}}, {event}: {event: ControlMachineEmitted}) => [
+      queue: ({context: {queue}}, {event}: {event: CtrlMachineEmitted}) => [
         ...queue,
         event,
       ],
@@ -90,7 +175,7 @@ export const ReporterMachine = setup({
   entry: [
     log(
       ({context: {def, plugin}}) =>
-        `starting reporter: ${def.name} (${plugin.id})`,
+        `Starting ReporterMachine for reporter: ${def.name} from ${plugin.id}`,
     ),
   ],
   always: {
@@ -151,7 +236,7 @@ export const ReporterMachine = setup({
           actions: [
             {
               type: 'assignError',
-              params: ({event: {error}}) => ({error: error as ReporterError}),
+              params: ({event: {error}}) => error as ReporterError,
             },
           ],
         },
@@ -187,7 +272,7 @@ export const ReporterMachine = setup({
           actions: [
             {
               type: 'assignError',
-              params: ({event: {error}}) => ({error: error as ReporterError}),
+              params: ({event: {error}}) => error as ReporterError,
             },
           ],
         },
@@ -205,20 +290,20 @@ export const ReporterMachine = setup({
           actions: [
             {
               type: 'assignError',
-              params: ({event: {error}}) => ({error: error as ReporterError}),
+              params: ({event: {error}}) => error as ReporterError,
             },
           ],
         },
       },
     },
     done: {
-      type: 'final',
+      type: FINAL,
     },
     errored: {
       entry: [log(({context: {error}}) => error)],
-      type: 'final',
+      type: FINAL,
     },
   },
   output: ({context: {error}, self: {id}}) =>
-    error ? {type: 'ERROR', error, id} : {type: 'OK', id},
+    error ? {type: ERROR, error, id} : {type: OK, id},
 });
