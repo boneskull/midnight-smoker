@@ -27,8 +27,8 @@
     "#reporter/*": "./component/reporter/*.ts",
     "#rule": "./component/rule/index.ts",
     "#rule/*": "./component/rule/*.ts",
-    "#schema": "./component/schema/index.ts",
-    "#schema/*": "./component/schema/*.ts",
+    "#schema": "./schema/index.ts",
+    "#schema/*": "./schema/*.ts",
     "#smoker": "./smoker.ts",
     "#util": "./util/index.ts",
     "#util/*": "./util/*.ts"

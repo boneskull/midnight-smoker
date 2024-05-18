@@ -25,8 +25,8 @@
       "#reporter/*": ["../src/component/reporter/*.js"],
       "#rule": ["../src/component/rule/index.js"],
       "#rule/*": ["../src/component/rule/*.js"],
-      "#schema": ["../src/component/schema/index.js"],
-      "#schema/*": ["../src/component/schema/*.js"],
+      "#schema": ["../src/schema/index.js"],
+      "#schema/*": ["../src/schema/*.js"],
       "#smoker": ["../src/smoker.js"],
       "#util": ["../src/util/index.js"],
       "#util/*": ["../src/util/*.js"]

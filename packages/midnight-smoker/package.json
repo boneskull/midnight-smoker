@@ -44,8 +44,8 @@
     "#reporter/*": "./dist/component/reporter/*.js",
     "#rule": "./dist/component/rule/index.js",
     "#rule/*": "./dist/component/rule/*.js",
-    "#schema": "./dist/component/schema/index.js",
-    "#schema/*": "./dist/component/schema/*.js",
+    "#schema": "./dist/schema/index.js",
+    "#schema/*": "./dist/schema/*.js",
     "#smoker": "./dist/smoker.js",
     "#util": "./dist/util/index.js",
     "#util/*": "./dist/util/*.js"

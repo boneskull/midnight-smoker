@@ -1,5 +1,5 @@
-import {LintManifest} from '#schema/lint-manifest';
-import {StaticRuleContext, StaticRuleDef} from '#schema/rule-static';
+import {type LintManifest} from '#schema/lint-manifest';
+import {type StaticRuleContext, type StaticRuleDef} from '#schema/rule-static';
 
 export interface BaseLintResult {
   rule: StaticRuleDef;
