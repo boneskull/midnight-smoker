@@ -3,9 +3,6 @@ import {
   DEFAULT_COMPONENT_ID,
   type ComponentKind,
 } from '#constants';
-import * as EventNS from '#event';
-import * as ExecutorNS from '#executor';
-import * as PkgManagerNS from '#pkg-manager';
 import {
   type DefineExecutorFn,
   type DefinePackageManagerFn,
@@ -15,7 +12,6 @@ import {
 } from '#plugin/plugin-api';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
 import {type StaticPluginMetadata} from '#plugin/static-metadata';
-import * as RuleNS from '#rule';
 import {ExecutorSchema} from '#schema/executor';
 import {PkgManagerDefSchema} from '#schema/pkg-manager-def';
 import {assertReporterDef} from '#schema/reporter-def';
@@ -23,8 +19,8 @@ import {RuleDefSchema, type RuleDef} from '#schema/rule-def';
 import {type RuleDefSchemaValue} from '#schema/rule-options';
 import * as SchemaUtils from '#util/schema-util';
 // import Debug from 'debug';
+import {type ComponentObject} from '#plugin/component';
 import {z} from 'zod';
-import {type ComponentObject} from '../component';
 import {Helpers} from './helpers';
 
 // const debug = Debug('midnight-smoker:plugin:api');
@@ -88,10 +84,6 @@ export const createPluginAPI = (
   const pluginApi: PluginAPI = {
     SchemaUtils,
     Helpers,
-    Rule: RuleNS,
-    PkgManager: PkgManagerNS,
-    Executor: ExecutorNS,
-    Event: EventNS,
     z,
     zod: z,
 

@@ -12,7 +12,7 @@
  */
 
 import {OptionParser} from '#options';
-import {Blessed, PluginRegistry} from '#plugin';
+import {BLESSED_PLUGINS, PluginRegistry} from '#plugin';
 import {RuleSeveritySchema} from '#schema/rule-severity';
 import {
   DefaultFalseSchema,
@@ -28,8 +28,8 @@ const DEST = normalize(`${__dirname}/../schema/midnight-smoker.schema.json`);
 
 async function main() {
   const registry = PluginRegistry.create();
-  await registry.loadPlugins(Blessed.BLESSED_PLUGINS);
-  const SmokerOptsSchema = OptionParser.buildSmokerOptions(registry);
+  await registry.registerPlugins(BLESSED_PLUGINS);
+  const SmokerOptsSchema = OptionParser.buildSmokerOptionsSchema(registry);
 
   const jsonSchema = zodToJsonSchema(SmokerOptsSchema, {
     definitions: {

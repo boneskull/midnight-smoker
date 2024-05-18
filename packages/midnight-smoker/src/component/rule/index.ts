@@ -8,8 +8,6 @@
 
 export {DEFAULT_RULE_SEVERITY, RuleSeverities} from '#constants';
 
-export * from '#schema/rule';
-
 export * from '#schema/rule-def';
 
 export * from '#schema/rule-options';

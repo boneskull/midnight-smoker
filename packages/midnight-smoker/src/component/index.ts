@@ -4,10 +4,6 @@
  * @packageDocumentation
  */
 
-export * from './executor';
-
 export * from './pkg-manager';
 
 export * from './rule';
-
-export * from './schema';

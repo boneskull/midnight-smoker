@@ -1,1 +1,1 @@
-export {type Plugin, type PluginFactory} from '#plugin/plugin';
+export {type Plugin, type PluginFactory} from '#schema/plugin';

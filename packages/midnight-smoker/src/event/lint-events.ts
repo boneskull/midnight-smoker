@@ -1,14 +1,16 @@
 import type {RuleError} from '#error';
-import type {
-  BaseRuleConfigRecord,
-  LintManifest,
-  LintResult,
-  LintResultOk,
-  RuleResultFailed,
-  RuleResultOk,
-  SomeRuleConfig,
-  StaticPkgManagerSpec,
-} from '../component';
+import {type LintManifest} from '#schema/lint-manifest';
+import {
+  type BaseRuleConfigRecord,
+  type SomeRuleConfig,
+} from '#schema/rule-options';
+import {
+  type LintResult,
+  type LintResultOk,
+  type RuleResultFailed,
+  type RuleResultOk,
+} from '#schema/rule-result';
+import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import type {LintEvent} from './event-constants';
 import type {PkgManagerEventBase} from './pkg-manager-events';
 

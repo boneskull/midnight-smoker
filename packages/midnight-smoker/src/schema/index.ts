@@ -22,8 +22,6 @@ export * from './pkg-manager-install-manifest';
 
 export * from './reporter-def';
 
-export * from './rule';
-
 export * from './rule-def';
 
 export * from './rule-options';
