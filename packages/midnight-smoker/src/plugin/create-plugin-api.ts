@@ -3,6 +3,7 @@ import {
   DEFAULT_COMPONENT_ID,
   type ComponentKind,
 } from '#constants';
+import {type ComponentObject} from '#plugin/component';
 import {
   type DefineExecutorFn,
   type DefinePackageManagerFn,
@@ -11,18 +12,18 @@ import {
   type PluginAPI,
 } from '#plugin/plugin-api';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
-import {type StaticPluginMetadata} from '#plugin/static-metadata';
 import {ExecutorSchema} from '#schema/executor';
 import {PkgManagerDefSchema} from '#schema/pkg-manager-def';
-import {assertReporterDef} from '#schema/reporter-def';
+import {ReporterDefSchema} from '#schema/reporter-def';
 import {RuleDefSchema, type RuleDef} from '#schema/rule-def';
 import {type RuleDefSchemaValue} from '#schema/rule-options';
+import {type StaticPluginMetadata} from '#schema/static-plugin-metadata';
 import * as SchemaUtils from '#util/schema-util';
-// import Debug from 'debug';
-import {type ComponentObject} from '#plugin/component';
-import {z} from 'zod';
+import {z, type ZodError} from 'zod';
+import {fromZodError} from 'zod-validation-error';
 import {Helpers} from './helpers';
 
+// import Debug from 'debug';
 // const debug = Debug('midnight-smoker:plugin:api');
 
 /**
@@ -45,7 +46,11 @@ export const createPluginAPI = (
   >(
     ruleDef: RuleDef<Schema>,
   ) => {
-    RuleDefSchema.parse(ruleDef);
+    try {
+      RuleDefSchema.parse(ruleDef);
+    } catch (err) {
+      throw fromZodError(err as ZodError);
+    }
     metadata.addRuleDef(ruleDef);
     registerComponent(ComponentKinds.RuleDef, ruleDef, ruleDef.name);
     return pluginApi;
@@ -55,7 +60,11 @@ export const createPluginAPI = (
     pkgManagerDef,
     name = DEFAULT_COMPONENT_ID,
   ) => {
-    PkgManagerDefSchema.parse(pkgManagerDef);
+    try {
+      PkgManagerDefSchema.parse(pkgManagerDef);
+    } catch (err) {
+      throw fromZodError(err as ZodError);
+    }
     metadata.addPkgManagerDef(name, pkgManagerDef);
     registerComponent(ComponentKinds.PkgManagerDef, pkgManagerDef, name);
     return pluginApi;
@@ -65,13 +74,22 @@ export const createPluginAPI = (
     executor,
     name = DEFAULT_COMPONENT_ID,
   ) => {
-    metadata.addExecutor(name, ExecutorSchema.parse(executor));
+    try {
+      ExecutorSchema.parse(executor);
+    } catch (err) {
+      throw fromZodError(err as ZodError);
+    }
+    metadata.addExecutor(name, executor);
     registerComponent(ComponentKinds.Executor, executor, name); //?
     return pluginApi;
   };
 
   const defineReporter: DefineReporterFn = (reporterDef) => {
-    assertReporterDef(reporterDef);
+    try {
+      ReporterDefSchema.parse(reporterDef);
+    } catch (err) {
+      throw fromZodError(err as ZodError);
+    }
     metadata.addReporterDef(reporterDef);
     registerComponent(
       ComponentKinds.ReporterDef,

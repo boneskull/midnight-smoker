@@ -14,8 +14,7 @@ import {
   VoidOrPromiseVoidSchema,
 } from '#util/schema-util';
 import {type PackageJson} from 'type-fest';
-import {z, type ZodError} from 'zod';
-import {fromZodError} from 'zod-validation-error';
+import {z} from 'zod';
 
 /**
  * Before instantiation of `Smoker`, this callback will be executed with a
@@ -207,15 +206,5 @@ export const ReporterDefSchema = z
       VoidOrPromiseVoidSchema,
     ),
   );
-
-export function assertReporterDef<Ctx = unknown>(
-  value: unknown,
-): asserts value is ReporterDef<Ctx> {
-  try {
-    ReporterDefSchema.parse(value);
-  } catch (err) {
-    throw fromZodError(err as ZodError);
-  }
-}
 
 export type SomeReporterDef = ReporterDef<any>;
