@@ -33,7 +33,7 @@
     "#error/*": "./dist/error/*.js",
     "#event": "./dist/event/index.js",
     "#event/*": "./dist/event/*.js",
-    "#executor": "./dist/component/executor/index.js",
+    "#executor": "./dist/executor/index.js",
     "#options": "./dist/options/index.js",
     "#options/*": "./dist/options/*.js",
     "#pkg-manager": "./dist/component/pkg-manager/index.js",

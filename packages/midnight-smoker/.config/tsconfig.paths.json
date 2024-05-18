@@ -12,7 +12,7 @@
       "#error/*": ["../src/error/*.js"],
       "#event": ["../src/event/index.js"],
       "#event/*": ["../src/event/*.js"],
-      "#executor": ["../src/component/executor/index.js"],
+      "#executor": ["../src/executor/index.js"],
       "#machine": ["../src/machine/index.js"],
       "#machine/*": ["../src/machine/*/index.js"],
       "#options": ["../src/options/index.js"],

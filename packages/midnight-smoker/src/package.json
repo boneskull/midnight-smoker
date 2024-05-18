@@ -16,7 +16,7 @@
     "#error/*": "./error/*.ts",
     "#event": "./event/index.ts",
     "#event/*": "./event/*.ts",
-    "#executor": "./component/executor/index.ts",
+    "#executor": "./executor/index.ts",
     "#options": "./options/index.ts",
     "#options/*": "./options/*.ts",
     "#pkg-manager": "./component/pkg-manager/index.ts",
