@@ -7,7 +7,6 @@
   "imports": {
     "#cli": "./cli/index.ts",
     "#cli/*": "./cli/*.ts",
-    "#component": "./component/component/index.ts",
     "#config-file": "./config-file.ts",
     "#constants": "./constants.ts",
     "#machine": "./machine/index.ts",
@@ -34,54 +33,17 @@
     "#util/*": "./util/*.ts"
   },
   "exports": {
-    ".": {
-      "default": "./index.ts"
-    },
-    "./plugin": {
-      "default": "./plugin/index.ts"
-    },
-    "./plugin/helpers": {
-      "default": "./plugin/helpers.ts"
-    },
-    "./plugin/blessed": {
-      "default": "./plugin/blessed.ts"
-    },
-    "./component": {
-      "default": "./component/component/index.ts"
-    },
-    "./error": {
-      "default": "./error/index.ts"
-    },
-    "./event": {
-      "default": "./event/index.ts"
-    },
-    "./rule": {
-      "default": "./component/rule/index.ts"
-    },
-    "./reporter": {
-      "default": "./component/reporter/index.ts"
-    },
-    "./executor": {
-      "default": "./component/executor/index.ts"
-    },
-    "./pkg-manager": {
-      "default": "./component/pkg-manager/index.ts"
-    },
-    "./rule-runner": {
-      "default": "./component/rule-runner/index.ts"
-    },
-    "./script-runner": {
-      "default": "./component/script-runner/index.ts"
-    },
+    ".": "./src/index.ts",
+    "./plugin": "./src/plugin/index.ts",
+    "./error": "./src/error/index.ts",
+    "./event": "./src/event/index.ts",
+    "./rule": "./src/component/rule/index.ts",
+    "./reporter": "./src/component/reporter/index.ts",
+    "./executor": "./src/executor/index.ts",
+    "./pkg-manager": "./src/component/pkg-manager/index.ts",
     "./package.json": "./package.json",
-    "./constants": {
-      "default": "./constants.ts"
-    },
-    "./controller": {
-      "default": "./controller/index.ts"
-    },
-    "./util": {
-      "default": "./util/index.ts"
-    }
+    "./smoker": "./bin/smoker.js",
+    "./constants": "./src/constants.ts",
+    "./util": "./src/util/index.ts"
   }
 }

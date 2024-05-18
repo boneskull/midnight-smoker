@@ -24,7 +24,6 @@
   "imports": {
     "#cli": "./dist/cli/index.js",
     "#cli/*": "./dist/cli/*.js",
-    "#component": "./dist/component/component/index.js",
     "#config-file": "./dist/config-file.js",
     "#constants": "./dist/constants.js",
     "#machine": "./dist/machine/index.js",
@@ -61,21 +60,6 @@
       "typedoc": "./src/plugin/index.ts",
       "default": "./dist/plugin/index.js"
     },
-    "./plugin/helpers": {
-      "types": "./dist/plugin/helpers.d.ts",
-      "typedoc": "./src/plugin/helpers.ts",
-      "default": "./dist/plugin/helpers.js"
-    },
-    "./plugin/blessed": {
-      "types": "./dist/plugin/blessed.d.ts",
-      "typedoc": "./src/plugin/blessed.ts",
-      "default": "./dist/plugin/blessed.js"
-    },
-    "./component": {
-      "types": "./dist/component/component/index.d.ts",
-      "typedoc": "./src/component/component/index.ts",
-      "default": "./dist/component/component/index.js"
-    },
     "./error": {
       "types": "./dist/error/index.d.ts",
       "typedoc": "./src/error/index.ts",
@@ -106,27 +90,12 @@
       "typedoc": "./src/component/pkg-manager/index.ts",
       "default": "./dist/component/pkg-manager/index.js"
     },
-    "./rule-runner": {
-      "types": "./dist/component/rule-runner/index.d.ts",
-      "typedoc": "./src/component/rule-runner/index.ts",
-      "default": "./dist/component/rule-runner/index.js"
-    },
-    "./script-runner": {
-      "types": "./dist/component/script-runner/index.d.ts",
-      "typedoc": "./src/component/script-runner/index.ts",
-      "default": "./dist/component/script-runner/index.js"
-    },
     "./package.json": "./package.json",
     "./smoker": "./bin/smoker.js",
     "./constants": {
       "types": "./dist/constants.d.ts",
       "typedoc": "./src/constants.ts",
       "default": "./dist/constants.js"
-    },
-    "./controller": {
-      "types": "./dist/controller/index.d.ts",
-      "typedoc": "./src/controller/index.ts",
-      "default": "./dist/controller/index.js"
     },
     "./util": {
       "types": "./dist/util/index.d.ts",
