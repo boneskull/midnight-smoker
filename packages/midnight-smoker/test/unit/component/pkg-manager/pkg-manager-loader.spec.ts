@@ -1,15 +1,61 @@
-import {ErrorCodes} from '#error';
-import type * as PMLoader from '#pkg-manager/pkg-manager-loader';
-import {nullPmDef} from '@midnight-smoker/test-util';
+import {scheduler} from 'node:timers/promises';
 import rewiremock from 'rewiremock/node';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
+import type * as PMLoader from '../../../../src/component/pkg-manager/pkg-manager-loader';
+import {type PkgManagerDef} from '../../../../src/component/schema/pkg-manager-def';
 import {
   DEFAULT_PKG_MANAGER_BIN,
   DEFAULT_PKG_MANAGER_VERSION,
 } from '../../../../src/constants';
+import {ErrorCodes} from '../../../../src/error';
 import {createFsMocks} from '../../mocks/fs';
+
+const TEST_TMPDIR = '/some/tmp/dir/';
+
+export const nullPmDef: PkgManagerDef = {
+  bin: 'nullpm',
+  accepts(value: string) {
+    return value;
+  },
+  lockfile: 'nullpm.lock',
+  async install() {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({
+          stdout: '',
+          stderr: '',
+          command: 'something',
+          exitCode: 0,
+          failed: false,
+        });
+      }, 500);
+    });
+  },
+  async pack() {
+    await scheduler.wait(1500);
+    return {
+      pkgSpec: `${TEST_TMPDIR}/bar.tgz`,
+      pkgName: 'bar',
+      cwd: TEST_TMPDIR,
+      installPath: `${TEST_TMPDIR}/node_modules/bar`,
+    };
+  },
+  async runScript() {
+    await scheduler.wait(1500);
+    return {
+      rawResult: {
+        stdout: '',
+        stderr: '',
+        command: '',
+        exitCode: 0,
+        failed: false,
+      },
+      skipped: false,
+    };
+  },
+};
 
 const expect = unexpected.clone().use(unexpectedSinon);
 

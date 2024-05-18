@@ -1,5 +1,9 @@
 {
   "name": "midnight-smoker",
+  "engines": {
+    "node": "^16.20.0 || ^18.0.0 || ^20.0.0",
+    "npm": ">=7.0.0"
+  },
   "imports": {
     "#cli": "./cli/index.ts",
     "#cli/*": "./cli/*.ts",
@@ -69,7 +73,7 @@
     "./script-runner": {
       "default": "./component/script-runner/index.ts"
     },
-    "./package.json": "./package.kson",
+    "./package.json": "./package.json",
     "./constants": {
       "default": "./constants.ts"
     },

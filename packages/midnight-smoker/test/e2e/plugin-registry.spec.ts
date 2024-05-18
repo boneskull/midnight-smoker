@@ -9,7 +9,7 @@ describe('midnight-smoker [E2E]', function () {
       describe('when loading the @midnight-smoker/plugin-default plugin', function () {
         let registry: PluginRegistry;
         beforeEach(async function () {
-          registry = await PluginRegistry.create().loadPlugins([
+          registry = await PluginRegistry.create().registerPlugins([
             '@midnight-smoker/plugin-default',
           ]);
         });

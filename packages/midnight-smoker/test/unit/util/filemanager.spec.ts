@@ -1,13 +1,13 @@
+import {type Volume} from 'memfs/lib/volume';
+import sinon from 'sinon';
+import unexpected from 'unexpected';
+import unexpectedSinon from 'unexpected-sinon';
 import {
   FileManager,
   type Importer,
   type NormalizedPackageJson,
   type Resolver,
-} from '#util/filemanager';
-import {type Volume} from 'memfs/lib/volume';
-import sinon from 'sinon';
-import unexpected from 'unexpected';
-import unexpectedSinon from 'unexpected-sinon';
+} from '../../../src/util/filemanager';
 import {createFsMocks} from '../mocks/fs';
 
 const expect = unexpected.clone().use(unexpectedSinon);
@@ -163,6 +163,14 @@ describe('midnight-smoker', function () {
               {recursive: true, force: true},
             ]);
           });
+        });
+
+        describe('readPkgJson()', function () {
+          it('should be tested');
+        });
+
+        describe('findPkgUp()', function () {
+          it('should be tested');
         });
 
         describe('findUp()', function () {

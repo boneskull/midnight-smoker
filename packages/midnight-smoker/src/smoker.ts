@@ -6,17 +6,11 @@
  * @packageDocumentation
  */
 
-/* eslint-disable no-labels */
-import {RuleSeverities} from '#constants';
-import {
-  InvalidArgError,
-  type InstallError,
-  type PackError,
-  type PackParseError,
-  type RuleError,
-  type ScriptError,
-} from '#error';
+import {type ComponentKind} from '#constants';
+import {InvalidArgError} from '#error';
 import {type SmokeResults} from '#event';
+import {ControlMachine, type CtrlMachineOutput} from '#machine/control';
+import {isActorOutputOk} from '#machine/util';
 import type {RawSmokerOptions, SmokerOptions} from '#options/options';
 import {OptionParser} from '#options/parser';
 import {
@@ -25,29 +19,12 @@ import {
   isBlessedPlugin,
   type StaticPluginMetadata,
 } from '#plugin';
-import {type LintResult} from '#schema/rule-result';
-import type {RunScriptResult} from '#schema/run-script-result';
+import {type Component, type ComponentObject} from '#plugin/component';
+import {type PkgManagerDef, type ReporterDef, type SomeRuleDef} from '#schema';
+import {FileManager} from '#util/filemanager';
 import {castArray} from '#util/schema-util';
 import Debug from 'debug';
-import {createActor, toPromise} from 'xstate';
-import {
-  type Component,
-  type PkgManagerDef,
-  type ReporterDef,
-  type SomeRuleDef,
-} from './component';
-import {
-  ControlMachine,
-  type CtrlMachineOutput,
-} from './machine/control/control-machine';
-import {isActorOutputOk} from './machine/util';
-import {FileManager} from './util/filemanager';
-
-type SetupResult =
-  | {
-      error: Error;
-    }
-  | undefined;
+import {createActor, toPromise, type AnyStateMachine} from 'xstate';
 
 /**
  * Currently, capabilities are for testing purposes because it's a huge pain to
@@ -57,8 +34,10 @@ type SetupResult =
  * {@link Smoker} instance.
  */
 export interface SmokerCapabilities {
-  pluginRegistry?: PluginRegistry;
   fileManager?: FileManager;
+  pluginRegistry?: PluginRegistry;
+
+  controlMachine?: AnyStateMachine;
 }
 
 /**
@@ -66,33 +45,10 @@ export interface SmokerCapabilities {
  */
 export class Smoker {
   /**
-   * List of extra dependencies to install
+   * FileManager instance; all FS operations go through this (including dynamic
+   * imports)
    */
-  private readonly add: string[];
-
-  /**
-   * Whether to run against all workspaces
-   */
-  private readonly allWorkspaces: boolean;
-
-  /**
-   * Whether to bail on the first script failure
-   */
-  private readonly bail: boolean;
-
-  // /**
-  //  * Whether to include the workspace root
-  //  */
-  // private readonly includeWorkspaceRoot;
-
-  /**
-   * Whether to keep temp dirs around (debugging purposes)
-   */
-  private readonly linger: boolean;
-
-  /**
-   * @internal
-   */
+  private readonly fileManager: FileManager;
 
   /**
    * Mapping of plugin identifiers (names) to plugin "instances", which can
@@ -101,53 +57,30 @@ export class Smoker {
   private readonly pluginRegistry: PluginRegistry;
 
   /**
-   * Whether or not to run checks
-   */
-  private readonly shouldLint: boolean;
-
-  /**
-   * List of specific workspaces to run against
-   */
-  private readonly workspaces: string[];
-
-  /**
    * Used for emitting {@link SmokerEvent.SmokeOk} or
    * {@link SmokerEvent.SmokeFailed}
    */
   public readonly opts: Readonly<SmokerOptions>;
 
-  /**
-   * List of scripts to run in each workspace
-   */
-  public readonly scripts: string[];
-
-  private readonly fileManager: FileManager;
-
-  public readonly cwd: string;
+  private readonly controlMachine: AnyStateMachine;
 
   private constructor(
     opts: SmokerOptions,
     {
       pluginRegistry = PluginRegistry.create(),
       fileManager = FileManager.create(),
+      controlMachine = ControlMachine,
     }: SmokerCapabilities = {},
   ) {
-    const {script, linger, add, bail, all, workspace, lint, cwd} = opts;
+    const {all, workspace} = opts;
     this.opts = Object.freeze(opts);
-    this.scripts = script;
-    this.cwd = cwd;
-    this.linger = linger;
-    this.add = add;
-    this.bail = bail;
-    this.allWorkspaces = all;
-    this.workspaces = workspace;
-    this.shouldLint = lint;
     this.fileManager = fileManager;
+    this.controlMachine = controlMachine;
 
     /**
      * Normally, the CLI will intercept this before we get here
      */
-    if (this.allWorkspaces && this.workspaces.length) {
+    if (all && workspace.length) {
       throw new InvalidArgError(
         'Option "workspace" is mutually exclusive with "all"',
       );
@@ -157,8 +90,6 @@ export class Smoker {
 
     debug(`Smoker instantiated with registry: ${this.pluginRegistry}`);
   }
-
-  public [Symbol.dispose]() {}
 
   /**
    * Initializes a {@link Smoker} instance.
@@ -200,7 +131,7 @@ export class Smoker {
     opts?: RawSmokerOptions,
   ): Promise<StaticPluginMetadata[]> {
     const smoker = await Smoker.create(opts);
-    return smoker.pluginRegistry.plugins;
+    return smoker.getAllPlugins();
   }
 
   /**
@@ -244,77 +175,9 @@ export class Smoker {
     return smoker.smoke();
   }
 
-  private getComponent(def: object) {
-    return this.pluginRegistry.getComponent(def);
-  }
-
   public getPkgManagerDefs() {
     return this.pluginRegistry.pkgManagerDefs;
   }
-
-  public async lint(): Promise<SmokeResults | undefined> {
-    try {
-      const ruleResults: LintResult[] = [];
-      const runScriptResults: RunScriptResult[] = [];
-      // await this.runLint();
-
-      return await this.postRun(undefined, ruleResults, runScriptResults);
-    } catch (err) {
-      // await this.eventBus.emit(SmokerEvent.UnknownError, {
-      //   error: fromUnknownError(err),
-      // });
-    } finally {
-      // await this.cleanup();
-    }
-  }
-
-  // private async cleanup() {
-  //   await this.pkgManagerController.destroy();
-  //   await this.eventBus.emit(SmokerEvent.BeforeExit, {});
-  // }
-
-  // /**
-  //  * For each package manager, creates a tarball for one or more packages
-  //  */
-  // public async pack(): Promise<void> {
-  //   await this.pkgManagerController.pack({
-  //     allWorkspaces: this.allWorkspaces,
-  //     workspaces: this.workspaces,
-  //     includeWorkspaceRoot: this.includeWorkspaceRoot,
-  //   });
-  // }
-
-  // /**
-  //  * Runs automated checks against the installed packages
-  //  *
-  //  * @param installResults - The result of {@link Smoker.install}
-  //  * @returns Result of running all enabled rules on all installed packages
-  //  */
-  // public async runLint(): Promise<LintResult> {
-  //   const lintController =
-  //     this.lintController ??
-  //     LintController.create(
-  //       this.pluginRegistry,
-  //       this.eventBus,
-  //       this.pkgManagerController.pkgManagers,
-  //       this.getEnabledRules(),
-  //       this.opts.rules,
-  //     );
-  //   debug(
-  //     'Running enabled rules: %s',
-  //     lintController.rules.map((rule) => rule.id).join(', '),
-  //   );
-  //   return lintController.lint();
-  // }
-
-  // /**
-  //  * Runs the script for each package in `packItems`
-  //  */
-  // public async runScripts(): Promise<RunScriptResult[]> {
-  //   return this.pkgManagerController.runScripts(this.scripts, {
-  //     bail: this.bail,
-  //   });
-  // }
 
   /**
    * Pack, install, run checks (optionally), and run scripts (optionally)
@@ -323,15 +186,15 @@ export class Smoker {
    */
   public async smoke(): Promise<SmokeResults | undefined> {
     const {pluginRegistry, fileManager, opts: smokerOptions} = this;
-
-    const controller = createActor(ControlMachine, {
+    const {controlMachine} = this;
+    const controller = createActor(controlMachine, {
       id: 'smoke',
       input: {
         fileManager,
         smokerOptions,
         pluginRegistry,
       },
-      logger: Debug('midnight-smoker:controller'),
+      logger: Debug('midnight-smoker:ControlMachine'),
       inspect(evt) {
         if (evt.type === '@xstate.event') {
           // debug(evt.event);
@@ -367,7 +230,7 @@ export class Smoker {
    * Several things have to happen, in order, before we can start smoking:
    *
    * 1. Assuming we have no prebuilt registry, built-in plugins must
-   *    {@link PluginRegistry.loadPlugins be loaded}
+   *    {@link PluginRegistry.registerPlugins be registered}
    * 2. Assuming we have no prebuilt registry, external plugins then must be
    *    loaded.
    * 3. The registry must refuse further registrations.
@@ -398,14 +261,14 @@ export class Smoker {
     if (!pluginRegistry) {
       pluginRegistry = PluginRegistry.create({fileManager});
       // this must be done in sequence to protect the blessed plugins
-      await pluginRegistry.loadPlugins(BLESSED_PLUGINS);
-      await pluginRegistry.loadPlugins(plugins);
+      await pluginRegistry.registerPlugins(BLESSED_PLUGINS);
+      await pluginRegistry.registerPlugins(plugins);
     }
 
     // disable new registrations
     pluginRegistry.close();
 
-    debug('Loaded %d plugin(s)', pluginRegistry.plugins.length);
+    debug('Registered %d plugin(s)', pluginRegistry.plugins.length);
 
     return {
       fileManager,
@@ -416,96 +279,48 @@ export class Smoker {
 
   private getAllPkgManagers(): (PkgManagerDef & Component)[] {
     return this.pluginRegistry.plugins.flatMap((plugin) => {
-      return plugin.pkgManagerDefs.map((def) => ({
-        ...def,
-        ...this.getComponent(def),
-      }));
+      return plugin.pkgManagerDefs.map(
+        (def) =>
+          ({
+            ...def,
+            ...this.getComponent(def),
+          }) as PkgManagerDef & Component,
+      );
     });
+  }
+
+  private getAllPlugins(): StaticPluginMetadata[] {
+    return this.pluginRegistry.plugins;
   }
 
   private getAllReporters(): (ReporterDef & Component)[] {
     return this.pluginRegistry.plugins.flatMap((plugin) => {
-      return plugin.reporterDefs.map((def) => ({
-        ...def,
-        ...this.getComponent(def),
-      }));
+      return plugin.reporterDefs.map(
+        (def) =>
+          ({
+            ...def,
+            ...this.getComponent(def),
+          }) as ReporterDef & Component,
+      );
     });
   }
 
   private getAllRules(): (SomeRuleDef & Component)[] {
     return this.pluginRegistry.plugins.flatMap((plugin) => {
-      return plugin.ruleDefs.map((def) => ({
-        ...def,
-        ...this.getComponent(def),
-      }));
+      return plugin.ruleDefs.map(
+        (def) =>
+          ({
+            ...def,
+            ...this.getComponent(def),
+          }) as SomeRuleDef & Component,
+      );
     });
   }
 
-  /**
-   * @param setupResult
-   * @param lintResults
-   * @param runScriptResults
-   * @returns
-   * @todo Fix this, I hate this
-   */
-  private async postRun(
-    setupResult: SetupResult,
-    lintResults?: LintResult[],
-    runScriptResults: RunScriptResult[] = [],
-  ) {
-    // END
-    const smokeResults: SmokeResults = {
-      scripts: runScriptResults,
-      lint: lintResults,
-      plugins: this.pluginRegistry.plugins,
-      opts: this.opts,
-    };
-
-    const aggregateErrors = () => {
-      const runScriptErrors = runScriptResults.reduce<ScriptError[]>(
-        (acc, result) => (result.error ? [...acc, result.error] : acc),
-        [],
-      );
-
-      const ruleErrors =
-        lintResults?.flatMap<RuleError>((result) => {
-          return result.type === 'FAILED'
-            ? result.results.reduce<RuleError[]>((acc, result) => {
-                return result.type === 'FAILED' &&
-                  result.ctx.severity === RuleSeverities.Error
-                  ? [...acc, result.error as RuleError]
-                  : acc;
-              }, [])
-            : [];
-        }) ?? [];
-
-      const errors: Array<
-        InstallError | PackError | PackParseError | ScriptError | RuleError
-      > = [];
-      if (setupResult) {
-        errors.push(
-          setupResult.error as InstallError | PackError | PackParseError,
-        );
-      }
-      errors.push(...runScriptErrors, ...ruleErrors);
-      return errors;
-    };
-
-    const errors = aggregateErrors();
-
-    if (errors.length) {
-      // await this.eventBus.emit(SmokerEvent.SmokeFailed, {
-      //   plugins: this.pluginRegistry.plugins,
-      //   opts: this.opts,
-      //   error: new SmokeFailedError('🤮 Maurice!', errors, {
-      //     results: smokeResults,
-      //   }),
-      // });
-    } else {
-      // await this.eventBus.emit(SmokerEvent.SmokeOk, smokeResults);
-    }
-
-    return smokeResults;
+  private getComponent<T extends ComponentKind>(
+    def: ComponentObject<T>,
+  ): Component<T> {
+    return this.pluginRegistry.getComponent(def);
   }
 }
 

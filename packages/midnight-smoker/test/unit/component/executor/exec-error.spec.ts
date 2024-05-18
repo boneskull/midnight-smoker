@@ -1,8 +1,8 @@
-import type * as E from '#error/exec-error';
 import {type ExecaError} from 'execa';
 import {pick} from 'lodash';
 import rewiremock from 'rewiremock/node';
 import unexpected from 'unexpected';
+import type * as E from '../../../../src/error/exec-error';
 import {createFsMocks} from '../../mocks';
 
 const expect = unexpected.clone();

@@ -1,4 +1,3 @@
-import {type PkgManagerDef} from '#schema/pkg-manager-def';
 import {type Volume} from 'memfs/lib/volume';
 import path from 'node:path';
 import {scheduler} from 'node:timers/promises';
@@ -6,6 +5,7 @@ import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
 import {PkgManagerOracle} from '../../../../src/component/pkg-manager/pkg-manager-spec';
+import {type PkgManagerDef} from '../../../../src/component/schema/pkg-manager-def';
 import {
   DEFAULT_PKG_MANAGER_BIN,
   DEFAULT_PKG_MANAGER_VERSION,

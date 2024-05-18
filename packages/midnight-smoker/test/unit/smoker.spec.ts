@@ -1,94 +1,28 @@
-import {PluginRegistry} from '#plugin/plugin-registry';
-// import {NullPkgManagerController} from '@midnight-smoker/test-util/controller';
-import {
-  createExecaMock,
-  type ExecaMock,
-} from '@midnight-smoker/test-util/execa';
-// import {NullPm} from '@midnight-smoker/test-util/pkg-manager';
-// import {
-//   LintController,
-//   PkgManagerController,
-//   ReporterController,
-// } from '#controller';
-import type * as MS from '#smoker';
-import {registerRule} from '@midnight-smoker/test-util/register';
-import rewiremock from 'rewiremock/node';
+import {memfs} from 'memfs';
+import {type Volume} from 'memfs/lib/volume';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
-import unexpectedEventEmitter from 'unexpected-eventemitter';
 import unexpectedSinon from 'unexpected-sinon';
-import {z} from 'zod';
-import * as Mocks from './mocks';
-import {createFsMocks, type FsMocks} from './mocks/fs';
+import {type ExecResult} from '../../src/component/executor';
+import {DEFAULT_COMPONENT_ID, SYSTEM_EXECUTOR_ID} from '../../src/constants';
+import {PluginRegistry} from '../../src/plugin/plugin-registry';
+import {Smoker} from '../../src/smoker';
+import {FileManager} from '../../src/util';
 
-const expect = unexpected
-  .clone()
-  .use(unexpectedSinon)
-  .use(unexpectedEventEmitter);
-
-// const {MOCK_TMPDIR} = Mocks;
-
-interface SmokerSpecMocks extends FsMocks {
-  'node:console': sinon.SinonStubbedInstance<typeof console>;
-  debug?: Mocks.DebugMock;
-  execa: ExecaMock;
-}
+const expect = unexpected.clone().use(unexpectedSinon);
 
 describe('midnight-smoker', function () {
   let sandbox: sinon.SinonSandbox;
-  let Smoker: typeof MS.Smoker;
-  let mocks: SmokerSpecMocks;
-  // let pkgManagerController: sinon.SinonStubbedInstance<PkgManagerController>;
-  // let reporterController: sinon.SinonStubbedInstance<ReporterController>;
-
-  // let rmStub: sinon.SinonStubbedMember<typeof fs.promises.rm>;
-  let fsMocks: FsMocks;
-  // let lintController: sinon.SinonStubbedInstance<LintController>;
+  let fs: Volume;
+  let fileManager: FileManager;
 
   let pluginRegistry: PluginRegistry;
   beforeEach(function () {
     sandbox = createSandbox();
-    const execaMock = createExecaMock();
-    ({mocks: fsMocks} = createFsMocks());
-    // reporterController = sandbox.createStubInstance(ReporterController, {
-    //   init: sandbox.stub<[]>().resolves(),
-    // });
-    // pkgManagerController = Object.assign(
-    //   sandbox.createStubInstance(PkgManagerController),
-    //   {
-    //     init: sandbox.stub<[]>().resolves(),
-    //   },
-    // );
-    // lintController = sandbox.createStubInstance(LintController);
-    mocks = {
-      ...fsMocks,
-      execa: execaMock,
-      'node:console': sandbox.stub(console),
-      debug: Mocks.mockDebug,
-      // '#controller': {
-      //   LintController: {create: sandbox.stub().returns(lintController)},
-      //   PkgManagerController: {
-      //     create: sandbox.stub().returns(pkgManagerController),
-      //   },
-      //   ReporterController: {
-      //     create: sandbox.stub().returns(reporterController),
-      //   },
-      // },
-    };
-    // rmStub = sandbox.stub(fs.promises, 'rm');
-
-    // don't stub out debug statements if running in wallaby
-    if (process.env.WALLABY) {
-      delete mocks.debug;
-    }
-
-    pluginRegistry = PluginRegistry.create();
-
-    // lintController = Object.assign(sandbox.createStubInstance(LintController), {
-    //   rules: [],
-    // });
-
-    ({Smoker} = rewiremock.proxy(() => require('../../src/smoker'), mocks));
+    const {vol} = memfs();
+    fs = vol;
+    fileManager = FileManager.create({fs: fs as any});
+    pluginRegistry = PluginRegistry.create({fileManager});
   });
 
   afterEach(function () {
@@ -97,41 +31,26 @@ describe('midnight-smoker', function () {
 
   describe('class Smoker', function () {
     describe('method', function () {
-      let smoker: MS.Smoker;
+      let smoker: Smoker;
 
       beforeEach(async function () {
+        await pluginRegistry.registerPlugin('@midnight-smoker/plugin-default', {
+          plugin: ({defineExecutor}) => {
+            defineExecutor(async () => {
+              return {} as ExecResult;
+            }, DEFAULT_COMPONENT_ID);
+            defineExecutor(async () => {
+              return {} as ExecResult;
+            }, SYSTEM_EXECUTOR_ID);
+          },
+        });
         smoker = await Smoker.createWithCapabilities(
           {script: 'foo'},
           {
+            fileManager,
             pluginRegistry,
           },
         );
-      });
-
-      describe('pack()', function () {
-        beforeEach(async function () {
-          // await smoker.pack();
-        });
-
-        // it('should delegate to the PkgManagerController', function () {
-        //   expect(pkgManagerController.pack, 'to have a call satisfying', [
-        //     {
-        //       allWorkspaces: false,
-        //       workspaces: [],
-        //       includeWorkspaceRoot: false,
-        //     },
-        //   ]);
-        // });
-      });
-
-      describe('install()', function () {
-        beforeEach(async function () {
-          // await smoker.install();
-        });
-
-        // it('should delegate to the PkgManagerController', function () {
-        //   expect(pkgManagerController.install, 'was called once');
-        // });
       });
 
       describe('smoke()', function () {
@@ -184,19 +103,21 @@ describe('midnight-smoker', function () {
     });
 
     describe('static method', function () {
-      let registry: PluginRegistry;
+      let pluginRegistry: PluginRegistry;
 
       beforeEach(async function () {
-        registry = PluginRegistry.create();
-        await registerRule(registry, {
-          name: 'test-rule',
-          schema: z.object({foo: z.string().default('bar')}),
-        });
-        sandbox.stub(registry, 'loadPlugins').resolves(registry);
+        pluginRegistry = PluginRegistry.create();
+        // await registerRule(registry, {
+        //   name: 'test-rule',
+        //   schema: z.object({foo: z.string().default('bar')}),
+        // });
+        sandbox
+          .stub(pluginRegistry, 'registerPlugins')
+          .resolves(pluginRegistry);
       });
 
       describe('smoke()', function () {
-        let smokerStub: sinon.SinonStubbedInstance<MS.Smoker>;
+        let smokerStub: sinon.SinonStubbedInstance<Smoker>;
 
         beforeEach(async function () {
           smokerStub = sandbox.createStubInstance(Smoker);
@@ -249,7 +170,7 @@ describe('midnight-smoker', function () {
           await expect(
             Smoker.createWithCapabilities(
               {workspace: ['foo'], all: true},
-              {pluginRegistry: registry},
+              {pluginRegistry},
             ),
             'to be rejected with error satisfying',
             /Option "workspace" is mutually exclusive with "all"/,
@@ -259,7 +180,7 @@ describe('midnight-smoker', function () {
         describe('when not passed any scripts at all', function () {
           it('should not throw', async function () {
             await expect(
-              Smoker.createWithCapabilities({}, {pluginRegistry: registry}),
+              Smoker.createWithCapabilities({}, {pluginRegistry}),
               'to be fulfilled',
             );
           });
@@ -267,7 +188,7 @@ describe('midnight-smoker', function () {
 
         it('should return a Smoker instance', async function () {
           await expect(
-            Smoker.createWithCapabilities({}, {pluginRegistry: registry}),
+            Smoker.createWithCapabilities({}, {pluginRegistry}),
             'to be fulfilled with value satisfying',
             expect.it('to be a', Smoker),
           );

@@ -1,4 +1,3 @@
-import {ComponentRegistry, type ComponentObject} from '#component';
 import {
   ComponentKinds,
   DEFAULT_COMPONENT_ID,
@@ -25,6 +24,8 @@ import {
   type Executor,
   type PkgManagerDef,
   type ReporterDef,
+  type SomeReporterDef,
+  type SomeRuleDef,
   type StaticPluginMetadata,
 } from '#schema';
 import {PluginSchema, type Plugin} from '#schema/plugin';
@@ -42,6 +43,12 @@ import {type PackageJson} from 'type-fest';
 import {z} from 'zod';
 import {fromZodError} from 'zod-validation-error';
 import {isBlessedPlugin, type BlessedPlugin} from './blessed';
+import {
+  type Component,
+  type ComponentObject,
+  type SomeComponent,
+  type SomeComponentObject,
+} from './component';
 
 const debug = Debug('midnight-smoker:plugin-registry');
 
@@ -65,7 +72,14 @@ export class PluginRegistry {
 
   private blessedMetadata?: Readonly<Record<BlessedPlugin, PluginMetadata>>;
 
-  public readonly componentRegistry: ComponentRegistry;
+  private componentRegistry: WeakMap<SomeComponentObject, SomeComponent>;
+
+  private defsByKind = {
+    [ComponentKinds.RuleDef]: new Map<string, SomeRuleDef>(),
+    [ComponentKinds.ReporterDef]: new Map<string, SomeReporterDef>(),
+    [ComponentKinds.PkgManagerDef]: new Map<string, PkgManagerDef>(),
+    [ComponentKinds.Executor]: new Map<string, Executor>(),
+  } as const;
 
   private _isClosed = false;
 
@@ -77,15 +91,22 @@ export class PluginRegistry {
     this.pluginMap = new Map();
     this.seenRawPlugins = new Map();
     this._fm = fileManager;
-    this.componentRegistry = ComponentRegistry.create();
+    this.componentRegistry = new WeakMap();
   }
 
-  public getComponentId(def: object) {
-    return this.componentRegistry.getId(def);
+  public getComponentId<T extends ComponentKind>(
+    def: ComponentObject<T>,
+  ): string {
+    return this.getComponent(def).id;
   }
 
-  public getComponent(def: object) {
-    return this.componentRegistry.getComponent(def);
+  public getComponent<T extends ComponentKind>(
+    def: ComponentObject<T>,
+  ): Component<T> {
+    if (this.componentRegistry.has(def)) {
+      return this.componentRegistry.get(def) as Component<T>;
+    }
+    throw new InvalidComponentError('Component not found', def);
   }
 
   public static create(opts?: PluginRegistryCapabilities) {
@@ -116,19 +137,19 @@ export class PluginRegistry {
   public clear(): void {
     this.pluginMap.clear();
     this.seenRawPlugins.clear();
-    this.componentRegistry.clear();
+    this.componentRegistry = new WeakMap();
+    for (const kind of Object.keys(this.defsByKind)) {
+      this.defsByKind[kind as ComponentKind].clear();
+    }
     this._isClosed = false;
   }
 
   public getExecutor(componentId = DEFAULT_COMPONENT_ID): Executor {
-    const value = this.componentRegistry.getComponentByKind(
-      ComponentKinds.Executor,
-      componentId,
-    )?.def;
+    const value = this.defsByKind[ComponentKinds.Executor].get(componentId);
+
     if (!value) {
       throw new InvalidComponentError(
         `Executor with component ID ${componentId} not found`,
-        ComponentKinds.Executor,
         componentId,
       );
     }
@@ -161,13 +182,13 @@ export class PluginRegistry {
   }
 
   /**
-   * Loads all plugins
+   * Registers all plugins
    *
    * @param cwd Current working directory
    * @returns This {@link PluginRegistry}
    */
 
-  public async loadPlugins(
+  public async registerPlugins(
     pluginIds: readonly string[] | string[] = [],
     cwd?: string,
   ): Promise<this> {
@@ -326,18 +347,46 @@ export class PluginRegistry {
     return this.pluginMap.has(metadata.id);
   }
 
+  private createComponent<T extends ComponentKind>(
+    plugin: Readonly<PluginMetadata>,
+    kind: T,
+    componentName = DEFAULT_COMPONENT_ID,
+  ): Component<T> {
+    const pluginName = plugin.id;
+    const isBlessed = isBlessedPlugin(pluginName);
+    const id = isBlessed
+      ? componentName
+      : `${pluginName}/${componentName ?? DEFAULT_COMPONENT_ID}`;
+    return {
+      id,
+      kind,
+      pluginName,
+      componentName,
+      isBlessed,
+      plugin: plugin.toJSON(),
+    };
+  }
+
+  private getDefsByKind<T extends ComponentKind>(
+    kind: T,
+  ): Map<string, ComponentObject<T>> {
+    return this.defsByKind[kind] as Map<string, ComponentObject<T>>;
+  }
+
   public registerComponent<T extends ComponentKind>(
     plugin: Readonly<PluginMetadata>,
     kind: T,
     def: ComponentObject<T>,
     name?: string,
-  ) {
-    this.componentRegistry.registerComponent(
-      kind,
-      plugin,
-      name ?? DEFAULT_COMPONENT_ID,
-      def,
-    );
+  ): Readonly<Component<T>> {
+    const component = this.createComponent(plugin, kind, name);
+
+    this.componentRegistry.set(def, component);
+
+    const map = this.getDefsByKind(kind);
+    map.set(component.id, def);
+
+    return Object.freeze(component);
   }
 
   /**

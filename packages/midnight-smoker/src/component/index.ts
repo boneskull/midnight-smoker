@@ -4,8 +4,6 @@
  * @packageDocumentation
  */
 
-export * from './component';
-
 export * from './executor';
 
 export * from './pkg-manager';

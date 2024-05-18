@@ -1,5 +1,3 @@
-import {DEFAULT_PKG_MANAGER_VERSION} from '#constants';
-import type * as PkgUtil from '#util/pkg-util';
 import {type IFs} from 'memfs';
 import {type Volume} from 'memfs/lib/volume';
 import type {execFile} from 'node:child_process';
@@ -10,6 +8,8 @@ import rewiremock from 'rewiremock/node';
 import sinon from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
+import {DEFAULT_PKG_MANAGER_VERSION} from '../../../src/constants';
+import type * as PkgUtil from '../../../src/util/pkg-util';
 import {createFsMocks, type FsMocks} from '../mocks/fs';
 
 const expect = unexpected.clone().use(unexpectedSinon);

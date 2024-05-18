@@ -249,7 +249,7 @@ export const LoaderMachine = setup({
                       params: ({event: {output}}) => output,
                     },
                   ],
-                  target: '#LoaderMachine.materializing.selectPkgManagers.done',
+                  target: '#LoaderMachine.selecting.selectPkgManagers.done',
                 },
                 onError: {
                   actions: [
@@ -345,12 +345,12 @@ export const LoaderMachine = setup({
         {
           guard: not('hasError'),
           target: 'done',
-          actions: log('materializing complete'),
+          actions: log('selecting complete'),
         },
         {
           guard: 'hasError',
           target: 'errored',
-          actions: log('materializing errored'),
+          actions: log('selecting errored'),
         },
       ],
     },

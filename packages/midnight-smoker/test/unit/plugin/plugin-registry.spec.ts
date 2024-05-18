@@ -1,20 +1,17 @@
-import {ComponentKinds, DEFAULT_COMPONENT_ID} from '#constants';
-import {ErrorCodes} from '#error/codes';
-import {PLUGIN_DEFAULT_ID} from '#plugin/blessed';
-import {PluginMetadata} from '#plugin/plugin-metadata';
-import type * as Reg from '#plugin/plugin-registry';
-import {DEFAULT_TEST_PLUGIN_NAME} from '@midnight-smoker/test-util/constants';
-import {
-  registerExecutor,
-  registerPlugin,
-} from '@midnight-smoker/test-util/register';
 import {memoize} from 'lodash';
 import {type IFs} from 'memfs';
 import rewiremock from 'rewiremock/node';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import {ZodError} from 'zod';
+import {ComponentKinds, DEFAULT_COMPONENT_ID} from '../../../src/constants';
+import {ErrorCodes} from '../../../src/error/codes';
+import {PLUGIN_DEFAULT_ID} from '../../../src/plugin/blessed';
+import {PluginMetadata} from '../../../src/plugin/plugin-metadata';
+import type * as Reg from '../../../src/plugin/plugin-registry';
 import {createFsMocks, type FsMocks} from '../mocks';
+
+const DEFAULT_TEST_PLUGIN_NAME = 'test-plugin';
 
 const expect = unexpected.clone();
 
@@ -38,11 +35,12 @@ describe('midnight-smoker', function () {
         let mocks: FsMocks;
         ({mocks, fs} = createFsMocks());
 
+        // TODO: replace with FileManager
         ({PluginRegistry} = rewiremock.proxy(
           () => require('../../../src/plugin/plugin-registry'),
           {
             ...mocks,
-            '#util/loader-util': {
+            '../../../src/util/loader-util': {
               /**
                * This thing loads and evals files via the in-memory filesystem.
                *
@@ -120,7 +118,10 @@ describe('midnight-smoker', function () {
 
           describe('when a plugin has been registered', function () {
             beforeEach(async function () {
-              await registerPlugin(registry);
+              await registry.registerPlugin(DEFAULT_TEST_PLUGIN_NAME, {
+                plugin: () => {},
+                description: 'some description',
+              });
             });
 
             it('should return a non-empty array of StaticPluginMetadata objects', function () {
@@ -266,7 +267,9 @@ describe('midnight-smoker', function () {
         describe('clear()', function () {
           beforeEach(async function () {
             // Register a plugin to populate the maps
-            await registerPlugin(registry);
+            await registry.registerPlugin(DEFAULT_TEST_PLUGIN_NAME, {
+              plugin: () => {},
+            });
             expect(registry.plugins, 'not to be empty');
             registry.close();
             registry.clear();
@@ -294,7 +297,11 @@ describe('midnight-smoker', function () {
 
           describe('when a Executor with the provided componentId exists', function () {
             beforeEach(async function () {
-              await registerExecutor(registry, sandbox.stub());
+              await registry.registerPlugin(DEFAULT_TEST_PLUGIN_NAME, {
+                plugin: ({defineExecutor}) => {
+                  defineExecutor(sandbox.stub());
+                },
+              });
             });
 
             it('should return the Executor', function () {
@@ -324,8 +331,10 @@ describe('midnight-smoker', function () {
           describe('when no componentId is provided', function () {
             describe('and a Executor with the default componentId exists', function () {
               beforeEach(async function () {
-                await registerExecutor(registry, sandbox.stub(), {
-                  pluginName: PLUGIN_DEFAULT_ID,
+                await registry.registerPlugin(PLUGIN_DEFAULT_ID, {
+                  plugin: ({defineExecutor}) => {
+                    defineExecutor(sandbox.stub());
+                  },
                 });
               });
 
@@ -340,8 +349,7 @@ describe('midnight-smoker', function () {
                 expect(() => registry.getExecutor(), 'to throw', {
                   code: ErrorCodes.InvalidComponentError,
                   context: {
-                    id: DEFAULT_COMPONENT_ID,
-                    kind: ComponentKinds.Executor,
+                    def: DEFAULT_COMPONENT_ID,
                   },
                 });
               });

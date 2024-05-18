@@ -1,10 +1,13 @@
-import {RuleSeverities} from '#constants';
-import {RuleError} from '#error/rule-error';
-import type * as I from '#rule/issue';
-import type * as IS from '#schema/rule-result';
-import type {StaticRuleContext, StaticRuleDef} from '#schema/rule-static';
 import rewiremock from 'rewiremock/node';
 import unexpected from 'unexpected';
+import type * as I from '../../../../src/component/rule/issue';
+import type * as IS from '../../../../src/component/schema/rule-result';
+import type {
+  StaticRuleContext,
+  StaticRuleDef,
+} from '../../../../src/component/schema/rule-static';
+import {RuleSeverities} from '../../../../src/constants';
+import {RuleError} from '../../../../src/error/rule-error';
 import {createFsMocks} from '../../mocks/fs';
 
 const expect = unexpected.clone();

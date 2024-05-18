@@ -70,7 +70,7 @@ export const createPluginAPI = (
     name = DEFAULT_COMPONENT_ID,
   ) => {
     metadata.addExecutor(name, ExecutorSchema.parse(executor));
-    registerComponent(ComponentKinds.Executor, executor, name);
+    registerComponent(ComponentKinds.Executor, executor, name); //?
     return pluginApi;
   };
 

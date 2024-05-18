@@ -1,6 +1,6 @@
-import type * as E from '#executor';
 import rewiremock from 'rewiremock/node';
 import unexpected from 'unexpected';
+import type * as E from '../../../../src/component/executor';
 import {createFsMocks} from '../../mocks/fs';
 
 const expect = unexpected.clone();

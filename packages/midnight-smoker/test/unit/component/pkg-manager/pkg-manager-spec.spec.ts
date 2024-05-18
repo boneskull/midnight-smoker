@@ -1,11 +1,14 @@
-import {DEFAULT_PKG_MANAGER_BIN, DEFAULT_PKG_MANAGER_VERSION} from '#constants';
-import type * as PMS from '#pkg-manager/pkg-manager-spec';
-import {type getSystemPkgManagerVersion} from '#util/pkg-util';
 import rewiremock from 'rewiremock/node';
 import {SemVer} from 'semver';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
+import type * as PMS from '../../../../src/component/pkg-manager/pkg-manager-spec';
+import {
+  DEFAULT_PKG_MANAGER_BIN,
+  DEFAULT_PKG_MANAGER_VERSION,
+} from '../../../../src/constants';
+import {type getSystemPkgManagerVersion} from '../../../../src/util/pkg-util';
 import {createFsMocks} from '../../mocks/fs';
 
 const expect = unexpected.clone().use(unexpectedSinon);
@@ -30,7 +33,7 @@ describe('midnight-smoker', function () {
               require('../../../../src/component/pkg-manager/pkg-manager-spec'),
             {
               ...mocks,
-              '#util/pkg-util': {
+              '../../../../src/util/pkg-util': {
                 getSystemPkgManagerVersion: getSystemPkgManagerVersionStub,
               },
             },

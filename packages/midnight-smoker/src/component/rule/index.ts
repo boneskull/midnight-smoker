@@ -23,5 +23,3 @@ export * from '#schema/rule-static';
 export * from './context';
 
 export * from './issue';
-
-export * from './rule';

@@ -2,7 +2,6 @@
  * @module midnight-smoker/pkg-manager
  */
 
-// export * from '#schema/pkg-manager';
 export * from '#error/pkg-manager';
 
 export type {ExecResult} from '#schema/exec-result';
@@ -23,7 +22,7 @@ export * from '#schema/pkg-manager-spec';
 
 export * from '#schema/static-pkg-manager-spec';
 
-export * as Util from 'midnight-smoker/util';
+export * as Util from '#util';
 
 export {SemVer} from 'semver';
 

@@ -1,22 +1,19 @@
-import {RuleSeverities} from '#constants';
-import type * as OP from '#options/parser';
-import type * as PR from '#plugin/plugin-registry';
-import {type SomeRuleDef} from '#schema/rule-def';
-import {
-  DEFAULT_TEST_PLUGIN_NAME,
-  DEFAULT_TEST_RULE_NAME,
-} from '@midnight-smoker/test-util/constants';
-import {registerRule} from '@midnight-smoker/test-util/register';
 import {memoize} from 'lodash';
 import rewiremock from 'rewiremock/node';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import {z} from 'zod';
 import {isValidationError} from 'zod-validation-error';
+import {type SomeRuleDef} from '../../src/component/schema/rule-def';
+import {RuleSeverities} from '../../src/constants';
+import type * as OP from '../../src/options/parser';
+import type * as PR from '../../src/plugin/plugin-registry';
 import {createFsMocks} from './mocks/fs';
 
 const expect = unexpected.clone();
 
+const DEFAULT_TEST_PLUGIN_NAME = 'test-plugin';
+const DEFAULT_TEST_RULE_NAME = 'test-rule';
 const RULE_ID = `${DEFAULT_TEST_PLUGIN_NAME}/${DEFAULT_TEST_RULE_NAME}`;
 
 describe('midnight-smoker', function () {
@@ -31,6 +28,7 @@ describe('midnight-smoker', function () {
         sandbox = createSandbox();
         const {fs, mocks} = createFsMocks();
 
+        // TODO: replace with FileManager
         const PMM = rewiremock.proxy(
           () => require('../../src/plugin/plugin-metadata'),
           mocks,
@@ -138,8 +136,15 @@ describe('midnight-smoker', function () {
             before(async function () {
               registry = PluginRegistry.create();
               sandbox.stub(registry, 'getBlessedMetadata').resolves();
-
-              await registerRule(registry, {name: DEFAULT_TEST_RULE_NAME});
+              await registry.registerPlugin('test-plugin', {
+                plugin: ({defineRule}) => {
+                  defineRule({
+                    check: () => {},
+                    description: 'desc',
+                    name: DEFAULT_TEST_RULE_NAME,
+                  });
+                },
+              });
               parser = OptionParser.create(registry);
             });
 
@@ -167,17 +172,21 @@ describe('midnight-smoker', function () {
             before(async function () {
               registry = PluginRegistry.create();
               sandbox.stub(registry, 'getBlessedMetadata').resolves();
-              rule = await registerRule(
-                registry,
-                {
-                  name: DEFAULT_TEST_RULE_NAME,
-                  schema: z.object({
-                    foo: z.string().default('bar'),
-                  }),
-                  defaultSeverity: RuleSeverities.Error,
+              const plugin = await registry.registerPlugin('test-plugin', {
+                plugin: ({defineRule}) => {
+                  defineRule({
+                    check: () => {},
+                    description: 'desc',
+                    name: DEFAULT_TEST_RULE_NAME,
+                    schema: z.object({
+                      foo: z.string().default('bar'),
+                    }),
+                    defaultSeverity: RuleSeverities.Error,
+                  });
                 },
-                DEFAULT_TEST_PLUGIN_NAME,
-              );
+              });
+              rule = plugin.ruleDefs[0]!;
+
               parser = OptionParser.create(registry);
             });
 
