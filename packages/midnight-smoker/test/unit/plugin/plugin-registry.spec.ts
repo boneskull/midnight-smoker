@@ -1,6 +1,7 @@
 import {ComponentKinds, DEFAULT_COMPONENT_ID} from '#constants';
 import {ErrorCodes} from '#error/codes';
 import {PLUGIN_DEFAULT_ID} from '#plugin/blessed';
+import {PluginMetadata} from '#plugin/plugin-metadata';
 import type * as Reg from '#plugin/plugin-registry';
 import {DEFAULT_TEST_PLUGIN_NAME} from '@midnight-smoker/test-util/constants';
 import {
@@ -13,8 +14,6 @@ import rewiremock from 'rewiremock/node';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import {ZodError} from 'zod';
-import type * as PM from '../../../dist/plugin/plugin-metadata';
-import {ComponentRegistry} from '../../../src/component';
 import {createFsMocks, type FsMocks} from '../mocks';
 
 const expect = unexpected.clone();
@@ -33,15 +32,11 @@ describe('midnight-smoker', function () {
 
     describe('PluginRegistry', function () {
       let PluginRegistry: typeof Reg.PluginRegistry;
-      let PluginMetadata: typeof PM.PluginMetadata;
-      let componentRegistry: ComponentRegistry;
       let fs: IFs;
 
       beforeEach(async function () {
         let mocks: FsMocks;
         ({mocks, fs} = createFsMocks());
-
-        componentRegistry = sandbox.createStubInstance(ComponentRegistry);
 
         ({PluginRegistry} = rewiremock.proxy(
           () => require('../../../src/plugin/plugin-registry'),
@@ -62,9 +57,6 @@ describe('midnight-smoker', function () {
                 }),
               ),
             },
-            // this is horrid, but otherwise the PluginRegistry won't have the same
-            // PluginMetadata class as we use here in the test file
-            // '#plugin/plugin-metadata': PMM,
           },
         ));
       });

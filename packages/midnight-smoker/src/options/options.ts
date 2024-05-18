@@ -1,5 +1,5 @@
 import {DEFAULT_COMPONENT_ID} from '#constants';
-import {BaseRuleOptionsRecordSchema} from '#schema/rule-options';
+import {RawRuleOptionsRecordSchema} from '#schema/rule-options';
 import {
   DefaultFalseSchema,
   DefaultTrueSchema,
@@ -97,7 +97,7 @@ const smokerOptionsShape = {
   /**
    * Rule config
    */
-  rules: BaseRuleOptionsRecordSchema.default({}),
+  rules: RawRuleOptionsRecordSchema.default({}),
 
   /**
    * Script(s) to run.

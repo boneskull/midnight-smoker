@@ -9,7 +9,6 @@ import {
   RuleDefSchema,
   type RuleDef,
   type RuleDefSchemaValue,
-  type SomeRule,
   type SomeRuleDef,
 } from 'midnight-smoker/rule';
 import {
@@ -38,7 +37,7 @@ export async function registerRule(
   registry: PluginRegistry,
   factoryOrRuleDef: PluginFactory | Partial<SomeRuleDef>,
   pluginName = DEFAULT_TEST_PLUGIN_NAME,
-): Promise<SomeRule> {
+): Promise<SomeRuleDef> {
   const blessedMetadata = await registry.getBlessedMetadata();
   let phonyMetadata: PluginMetadata | undefined;
   if (isBlessedPlugin(pluginName)) {
@@ -71,9 +70,6 @@ export async function registerRule(
     ? await registry.registerPlugin(phonyMetadata, plugin)
     : await registry.registerPlugin(pluginName, plugin);
 
-  if (ruleDef) {
-    return metadata.ruleMap.get(ruleDef.name)!;
-  }
-
-  return metadata.rules[0]!;
+  // @ts-expect-error TODO fix
+  return metadata.ruleDefMap.get(ruleDef.name)!;
 }

@@ -14,9 +14,8 @@ import {
   type PackParseError,
   type PkgManagerSpec,
 } from '#pkg-manager';
-import {type PluginMetadata} from '#plugin/plugin-metadata';
 import {
-  type BaseNormalizedRuleOptionsRecord,
+  type BaseRuleConfigRecord,
   type LintResultFailed,
   type LintResultOk,
   type RuleResult,
@@ -33,7 +32,8 @@ import {
   type PkgManagerOpts,
   type RunScriptManifest,
   type RunScriptResult,
-  type SomeRule,
+  type SomeRuleConfig,
+  type SomeRuleDef,
   type WorkspaceInfo,
 } from '#schema';
 import {isSmokerError, type FileManager} from '#util';
@@ -48,6 +48,7 @@ import {
   raise,
   sendTo,
   setup,
+  type ActorRefFrom,
   type AnyActorRef,
 } from 'xstate';
 import {type CtrlLingeredEvent} from '../control/control-machine-events';
@@ -85,7 +86,6 @@ import {
   type CtrlRunScriptSkippedEvent,
 } from '../control/script-events';
 import {
-  check,
   createTempDir,
   install,
   pack,
@@ -103,6 +103,7 @@ import {
   type PkgManagerMachineRuleEndEvent,
   type RunScriptOutput,
 } from './pkg-manager-machine-events';
+import {RuleMachine} from './rule-machine';
 
 export type PkgManagerMachineOutput = ActorOutput;
 
@@ -189,6 +190,7 @@ export interface PkgManagerMachineContext extends PkgManagerMachineInput {
   shouldShutdown: boolean;
 
   tmpdir?: string;
+  ruleMachineRefs?: Record<string, ActorRefFrom<typeof RuleMachine>>;
 }
 
 export interface PkgManagerMachineInput {
@@ -208,11 +210,11 @@ export interface PkgManagerMachineInput {
 
   parentRef: AnyActorRef;
 
-  plugin: Readonly<PluginMetadata>;
+  ruleConfigs: BaseRuleConfigRecord;
 
-  ruleConfigs: BaseNormalizedRuleOptionsRecord;
+  ruleDefs?: SomeRuleDef[];
 
-  rules?: SomeRule[];
+  ruleIds?: WeakMap<SomeRuleDef, string>;
 
   scripts?: string[];
 
@@ -243,9 +245,9 @@ export const PkgManagerMachine = setup({
     output: {} as PkgManagerMachineOutput,
   },
   actors: {
+    RuleMachine,
     teardownPkgManager,
     setupPkgManager,
-    check,
     createTempDir,
     prepareLintItem,
     runScript,
@@ -256,7 +258,8 @@ export const PkgManagerMachine = setup({
   actions: {
     sendLingered: sendTo(
       ({context: {parentRef}}) => parentRef,
-      ({context: {tmpdir}}): CtrlLingeredEvent => {
+      ({context}): CtrlLingeredEvent => {
+        const {tmpdir} = context;
         assert.ok(tmpdir);
         return {
           type: 'LINGERED',
@@ -267,26 +270,37 @@ export const PkgManagerMachine = setup({
     sendRuleEnd: sendTo(
       ({context: {parentRef}}) => parentRef,
       (
-        {self: {id: sender}, context: {spec}},
-        {result, type, rule, ...output}: CheckOutput,
-      ): CtrlRuleFailedEvent | CtrlRuleOkEvent =>
-        type === OK
+        {self, context},
+        {
+          result,
+          type,
+          ruleId,
+          config,
+          ...output
+        }: CheckOutput & {config: SomeRuleConfig},
+      ): CtrlRuleFailedEvent | CtrlRuleOkEvent => {
+        const {id: sender} = self;
+        const {spec} = context;
+        return type === OK
           ? {
               ...output,
+              config,
               result,
               pkgManager: spec.toJSON(),
-              rule: rule.id,
+              rule: ruleId,
               sender,
               type: 'LINT.RULE_OK',
             }
           : {
               ...output,
+              config,
               result,
               pkgManager: spec.toJSON(),
-              rule: rule.id,
+              rule: ruleId,
               sender,
               type: 'LINT.RULE_FAILED',
-            },
+            };
+      },
     ),
 
     /**
@@ -446,9 +460,10 @@ export const PkgManagerMachine = setup({
     raiseRuleEnd: raise(
       (
         {self: {id: sender}},
-        output: CheckOutput,
+        {output, config}: {output: CheckOutput; config: SomeRuleConfig},
       ): PkgManagerMachineRuleEndEvent => ({
         type: 'RULE_END',
+        config,
         output,
         sender,
       }),
@@ -624,28 +639,55 @@ export const PkgManagerMachine = setup({
       ({
         self: {id: sender},
         enqueue,
-        context: {spec, ruleConfigs, lintQueue, rules, parentRef},
+        context: {
+          spec,
+          ruleMachineRefs,
+          ruleIds,
+          ruleConfigs,
+          lintQueue,
+          ruleDefs,
+          parentRef,
+        },
       }) => {
         assert.ok(lintQueue);
+        assert.ok(ruleDefs);
+        assert.ok(ruleIds);
+        assert.ok(ruleMachineRefs);
+
         const queue = [...lintQueue];
         while (queue.length) {
           const job = queue.shift();
           assert.ok(job);
-          assert.ok(rules);
-          for (const rule of rules) {
-            const config = ruleConfigs[rule.id];
+
+          for (const def of ruleDefs) {
+            const ruleId = ruleIds.get(def);
+            assert.ok(ruleId);
+            const config = ruleConfigs[ruleId];
             const evt: CtrlRuleBeginEvent = {
               sender,
               type: 'LINT.RULE_BEGIN',
               manifest: job.manifest,
-              rule: rule.id,
+              rule: ruleId,
               config,
               pkgManager: spec.toJSON(),
             };
             enqueue.sendTo(parentRef, evt);
-            enqueue.spawnChild('check', {
-              id: `check.${job.manifest.pkgName}-${rule.id}`,
-              input: {...job, config, pkgManager: spec, rule},
+
+            const ref = ruleMachineRefs[ruleId];
+            assert(ref);
+
+            const {pkgJson, pkgJsonPath, manifest} = job;
+            enqueue.sendTo(ref, {
+              type: 'CHECK',
+              ctx: {
+                ...manifest,
+                ruleId,
+                severity: config.severity,
+                pkgJson,
+                pkgJsonPath,
+                pkgManager: `${spec}`,
+              },
+              manifest,
             });
           }
         }
@@ -859,20 +901,17 @@ export const PkgManagerMachine = setup({
       ruleResultMap: ({context: {ruleResultMap}}, output: CheckOutput) => {
         // ☠️
         const ruleResultsForManifestMap =
-          ruleResultMap.get(output.manifest.installPath) ??
+          ruleResultMap.get(output.ctx.installPath) ??
           new Map<string, RuleResult[]>();
         const ruleResultsForRuleIdMap =
-          ruleResultsForManifestMap.get(output.rule.id) ?? [];
+          ruleResultsForManifestMap.get(output.ruleId) ?? [];
         if (output.type === OK) {
           ruleResultsForRuleIdMap.push(output.result);
         } else {
           ruleResultsForRuleIdMap.push(...output.result);
         }
-        ruleResultsForManifestMap.set(output.rule.id, ruleResultsForRuleIdMap);
-        ruleResultMap.set(
-          output.manifest.installPath,
-          ruleResultsForManifestMap,
-        );
+        ruleResultsForManifestMap.set(output.ruleId, ruleResultsForRuleIdMap);
+        ruleResultMap.set(output.ctx.installPath, ruleResultsForManifestMap);
         return new Map(ruleResultMap);
       },
     }),
@@ -906,7 +945,7 @@ export const PkgManagerMachine = setup({
         installManifests.length ===
         additionalDeps.length + workspaceInfo.length,
     ]),
-    hasRules: ({context: {rules}}) => !isEmpty(rules),
+    hasRules: ({context: {ruleDefs: rules}}) => !isEmpty(rules),
     shouldLint: and(['hasRules', ({context: {shouldLint}}) => shouldLint]),
     shouldRunScripts: ({context: {scripts}}) => !isEmpty(scripts),
     isLintableInstallManifest: (
@@ -930,7 +969,7 @@ export const PkgManagerMachine = setup({
           !installManifest.isAdditional,
       ),
     didRunAllRulesForManifest: (
-      {context: {ruleResultMap, rules}},
+      {context: {ruleResultMap, ruleDefs: rules}},
       manifest: LintManifest,
     ) => {
       return Boolean(
@@ -940,7 +979,9 @@ export const PkgManagerMachine = setup({
     isLintingComplete: and([
       not('hasLintJobs'),
       'hasRules',
-      ({context: {lintManifests = [], ruleResultMap, rules = []}}) => {
+      ({
+        context: {lintManifests = [], ruleResultMap, ruleDefs: rules = []},
+      }) => {
         if (isEmpty(lintManifests) || !ruleResultMap.size || isEmpty(rules)) {
           return false;
         }
@@ -1338,7 +1379,6 @@ export const PkgManagerMachine = setup({
             },
           },
         },
-
         [S.Linting]: {
           initial: S.Idle,
           on: {
@@ -1350,17 +1390,19 @@ export const PkgManagerMachine = setup({
                 },
               ],
             },
-            'xstate.done.actor.check.*': {
+            CHECK_RESULT: {
+              description:
+                'Once a RuleMachine has completed a rule check, it will send this event; we want to raise it locally as a RULE_END event to avoid duplication, since we must conditionally take a different action if all checks have been completed',
               actions: [
                 log(
                   ({
                     event: {
                       output: {
-                        rule: {id},
-                        manifest: {pkgName},
+                        ruleId,
+                        ctx: {pkgName},
                       },
                     },
-                  }) => `ran rule ${id} on ${pkgName}`,
+                  }) => `ran rule ${ruleId} on ${pkgName}`,
                 ),
                 {
                   type: 'updateRuleResultMap',
@@ -1368,15 +1410,7 @@ export const PkgManagerMachine = setup({
                 },
                 {
                   type: 'raiseRuleEnd',
-                  params: ({event: {output}}) => output,
-                },
-              ],
-            },
-            'xstate.error.actor.check.*': {
-              actions: [
-                {
-                  type: 'assignError',
-                  params: ({event: {error}}) => error,
+                  params: ({event: {output, config}}) => ({output, config}),
                 },
               ],
             },
@@ -1398,7 +1432,37 @@ export const PkgManagerMachine = setup({
             },
             // TODO error handling
             [S.LintingPkgs]: {
-              entry: [{type: 'sendPkgManagerLintBegin'}],
+              entry: [
+                {type: 'sendPkgManagerLintBegin'},
+                assign({
+                  ruleMachineRefs: ({
+                    self,
+                    spawn,
+                    context: {ruleDefs, ruleIds, ruleConfigs},
+                  }) => {
+                    assert.ok(ruleDefs);
+                    assert.ok(ruleIds);
+                    return Object.fromEntries(
+                      ruleDefs.map((def) => {
+                        const ruleId = ruleIds.get(def);
+                        assert.ok(ruleId);
+                        const id = `rule.${makeId()}-${ruleId}`;
+                        const actorRef = spawn('RuleMachine', {
+                          id,
+                          input: {
+                            def,
+                            ruleId,
+                            config: ruleConfigs[ruleId],
+                            parentRef: self,
+                          },
+                        });
+                        // INDEXED BY RULE ID
+                        return [ruleId, actorRef];
+                      }),
+                    );
+                  },
+                }),
+              ],
               always: [
                 {
                   guard: {type: 'hasLintJobs'},
@@ -1431,7 +1495,10 @@ export const PkgManagerMachine = setup({
                     actions: [
                       {
                         type: 'sendRuleEnd',
-                        params: ({event}) => event.output,
+                        params: ({event}) => ({
+                          ...event.output,
+                          config: event.config,
+                        }),
                       },
                     ],
                   },
@@ -1441,7 +1508,10 @@ export const PkgManagerMachine = setup({
                     actions: [
                       {
                         type: 'sendRuleEnd',
-                        params: ({event}) => event.output,
+                        params: ({event}) => ({
+                          ...event.output,
+                          config: event.config,
+                        }),
                       },
                     ],
                   },

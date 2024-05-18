@@ -1,4 +1,4 @@
-import {ComponentKinds} from '#constants';
+import {RuleSeverities} from '#constants';
 import {fromUnknownError} from '#error';
 import {
   ERROR,
@@ -11,17 +11,16 @@ import {
 import {type SmokerOptions} from '#options';
 import {type PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
 import {type PluginMetadata, type PluginRegistry} from '#plugin';
-import {Rule} from '#rule';
 import {
   type Executor,
   type PkgManagerDef,
   type PkgManagerOpts,
-  type ReporterDef,
-  type SomeRule,
+  type SomeReporterDef,
   type SomeRuleDef,
   type WorkspaceInfo,
 } from '#schema';
 import {type FileManager} from '#util';
+import {isFunction} from 'lodash';
 import assert from 'node:assert';
 import {type PackageJson} from 'type-fest';
 import {assign, log, not, setup} from 'xstate';
@@ -58,11 +57,11 @@ export interface PkgManagerInitPayload extends BaseInitPayload {
 }
 
 export interface ReporterInitPayload extends BaseInitPayload {
-  def: ReporterDef;
+  def: SomeReporterDef;
 }
 
 export interface RuleInitPayload extends BaseInitPayload {
-  rule: SomeRule;
+  def: SomeRuleDef;
 }
 
 export interface BaseLoaderMachineInput {
@@ -89,14 +88,11 @@ export type LoaderMachineInput =
   | LoaderMachineInputForPkgManagers;
 
 export type LoaderMachineContext = LoaderMachineInput & {
-  enabledReporterDefs: ReporterDef[];
-  enabledRuleDefs: SomeRuleDef[];
   pkgManagerInitPayloads: PkgManagerInitPayload[];
   reporterInitPayloads: ReporterInitPayload[];
   ruleInitPayloads: RuleInitPayload[];
   error?: Error;
   smokerPkgJson?: PackageJson;
-  rules?: SomeRule[];
 };
 
 export type LoaderMachineOutputOk = ActorOutputOk<{
@@ -123,29 +119,39 @@ export const LoaderMachine = setup({
     }),
 
     assignRuleInitPayloads: assign({
-      ruleInitPayloads: ({
-        context: {plugin, pluginRegistry, enabledRuleDefs: ruleDefs = []},
-      }) => {
-        const rules = ruleDefs.map((def) => {
-          const {id, componentName} = pluginRegistry.getComponent(def);
-          const rule = Rule.create(id, def, plugin);
-          pluginRegistry.registerComponent(
-            plugin,
-            ComponentKinds.Rule,
-            rule,
-            rule.name ?? componentName,
-          );
-          return rule;
+      ruleInitPayloads: ({context}) => {
+        const {plugin, smokerOptions, pluginRegistry} = context;
+        const {ruleDefs} = plugin;
+
+        const enabledRuleDefs = ruleDefs.filter((def) => {
+          const id = pluginRegistry.getComponentId(def);
+          return smokerOptions.rules[id]?.severity !== RuleSeverities.Off;
         });
-        assert.ok(rules);
-        return rules.map((rule) => ({rule, plugin}));
+
+        return enabledRuleDefs.map((def) => ({def, plugin}));
       },
     }),
 
     assignReporterInitPayloads: assign({
-      reporterInitPayloads: ({context: {plugin, smokerOptions}}) => {
-        const defs = plugin.getEnabledReporterDefs(smokerOptions);
-        return defs.map((def) => ({def, plugin}));
+      reporterInitPayloads: ({context}) => {
+        const {plugin, smokerOptions, pluginRegistry} = context;
+        const {reporterDefs} = plugin;
+        const desiredReporters = new Set(smokerOptions.reporter);
+        const enabledReporterDefs = reporterDefs.filter((def) => {
+          const id = pluginRegistry.getComponentId(def);
+          if (desiredReporters.has(id)) {
+            return true;
+          }
+          if (isFunction(def.when)) {
+            try {
+              const result = def.when(smokerOptions);
+              return result;
+            } catch {}
+          }
+          return false;
+        });
+
+        return enabledReporterDefs.map((def) => ({def, plugin}));
       },
     }),
 
@@ -183,36 +189,24 @@ export const LoaderMachine = setup({
     actions: [log(({context: {error}}) => `ERROR: ${error?.message}`)],
   },
   context: ({
-    input: {
-      component = LoadableComponents.All,
-      plugin,
-      pluginRegistry,
-      smokerOptions: smokerOpts,
-      ...input
-    },
+    input: {component = LoadableComponents.All, ...input},
   }): LoaderMachineContext => {
-    const enabledReporterDefs = plugin.getEnabledReporterDefs(smokerOpts);
-    const enabledRuleDefs = plugin.getEnabledRuleDefs(smokerOpts);
-
     return {
       pkgManagerInitPayloads: [],
       reporterInitPayloads: [],
       ruleInitPayloads: [],
       component,
-      plugin,
-      pluginRegistry,
-      smokerOptions: smokerOpts,
       ...input,
-      enabledReporterDefs,
-      enabledRuleDefs,
     };
   },
-  initial: 'materializing',
+  initial: 'selecting',
   states: {
-    materializing: {
+    selecting: {
       type: PARALLEL,
       states: {
-        materializePkgManagers: {
+        selectPkgManagers: {
+          description:
+            'Determines which package managers, as defined by plugins, to load, based on user options and environment',
           initial: 'gate',
           states: {
             gate: {
@@ -230,6 +224,8 @@ export const LoaderMachine = setup({
               ],
             },
             loadingPkgManagers: {
+              description:
+                'Invokes the loadPkgManagers actor; selecting package managers is more in-depth than reporters or rules, which are only based on user options',
               invoke: {
                 src: 'loadPkgManagers',
                 input: ({context}): LoadPkgManagersInput => {
@@ -253,8 +249,7 @@ export const LoaderMachine = setup({
                       params: ({event: {output}}) => output,
                     },
                   ],
-                  target:
-                    '#LoaderMachine.materializing.materializePkgManagers.done',
+                  target: '#LoaderMachine.materializing.selectPkgManagers.done',
                 },
                 onError: {
                   actions: [
@@ -278,7 +273,7 @@ export const LoaderMachine = setup({
           },
         },
 
-        materializeReporters: {
+        selectReporters: {
           initial: 'gate',
           states: {
             gate: {
@@ -315,7 +310,7 @@ export const LoaderMachine = setup({
             },
           },
         },
-        materializeRules: {
+        selectRules: {
           initial: 'gate',
           states: {
             gate: {

@@ -26,6 +26,7 @@ export interface FromPkgManagerDefsOpts {
 export interface PkgManagerOracleOpts {
   fileManagerOpts?: FileManagerOpts;
   getSystemPkgManagerVersion?: (bin: string) => Promise<string>;
+  cwd?: string;
 }
 
 /**
@@ -60,14 +61,17 @@ export interface PkgManagerSpecOpts {
  * @todo The coupling here sucks. do something about it
  */
 export class PkgManagerOracle {
-  #fm: FileManager;
+  private fm: FileManager;
 
-  #getSystemPkgManagerVersion: (bin: string) => Promise<string>;
+  private getSystemPkgManagerVersion: (bin: string) => Promise<string>;
+
+  public readonly cwd: string;
 
   constructor(opts: PkgManagerOracleOpts = {}) {
-    this.#getSystemPkgManagerVersion =
+    this.getSystemPkgManagerVersion =
       opts.getSystemPkgManagerVersion ?? getSystemPkgManagerVersion;
-    this.#fm = FileManager.create(opts.fileManagerOpts);
+    this.fm = FileManager.create(opts.fileManagerOpts);
+    this.cwd = opts.cwd ?? process.cwd();
   }
 
   public static guessPackageManager(
@@ -75,7 +79,7 @@ export class PkgManagerOracle {
     pkgManagerDefs: PkgManagerDef[],
     cwd?: string,
   ): Promise<Readonly<PkgManagerSpec>> {
-    return new PkgManagerOracle().guessPackageManager(pkgManagerDefs, cwd);
+    return new PkgManagerOracle({cwd}).guessPackageManager(pkgManagerDefs);
   }
 
   /**
@@ -85,14 +89,12 @@ export class PkgManagerOracle {
    * Returns the first found.
    *
    * @param pkgManagerDefs - An array of `PkgManagerDef` objects.
-   * @param cwd - Path with ancestor `package.json` file
    * @returns Package manager bin, if found
    */
   public async getPkgManagerFromLockfiles(
     pkgManagerDefs: PkgManagerDef[],
-    cwd = process.cwd(),
   ): Promise<string | undefined> {
-    // each PkgManagerDef is responsible for setting its lockfile
+    const cwd = this.cwd;
     const lockfileMap = new Map(
       pkgManagerDefs
         .filter((def) => Boolean(def.lockfile))
@@ -102,7 +104,7 @@ export class PkgManagerOracle {
     const patterns = [...lockfileMap.keys()];
 
     for await (const match of globIterate(patterns, {
-      fs: this.#fm.fs,
+      fs: this.fm.fs,
       cwd,
       absolute: false,
     })) {
@@ -118,14 +120,13 @@ export class PkgManagerOracle {
    *
    * This should _not_ be a "system" package manager.
    *
-   * @param cwd Path with ancestor `package.json` file.
    * @returns Package manager spec, if found
    */
-  public async getPkgManagerFromPackageJson(
-    cwd = process.cwd(),
-  ): Promise<Readonly<PkgManagerSpec> | undefined> {
-    const result = await this.#fm.findPkgUp(cwd);
-
+  public async getPkgManagerFromPackageJson(): Promise<
+    Readonly<PkgManagerSpec> | undefined
+  > {
+    const result = await this.fm.findPkgUp(this.cwd);
+    this.fm.id; //?
     const pkgManager = result?.packageJson.packageManager;
 
     if (pkgManager) {
@@ -156,18 +157,14 @@ export class PkgManagerOracle {
    */
   public async guessPackageManager(
     pkgManagerDefs: PkgManagerDef[],
-    cwd = process.cwd(),
   ): Promise<Readonly<PkgManagerSpec>> {
     // this should be tried first, as it's "canonical"
-    let spec = await this.getPkgManagerFromPackageJson(cwd);
-
+    let spec = await this.getPkgManagerFromPackageJson();
     if (!spec) {
-      const pkgManager = await this.getPkgManagerFromLockfiles(
-        pkgManagerDefs,
-        cwd,
-      );
+      // pkgManagerDefs //?
+      const pkgManager = await this.getPkgManagerFromLockfiles(pkgManagerDefs);
       if (pkgManager) {
-        const version = await this.#getSystemPkgManagerVersion(pkgManager);
+        const version = await this.getSystemPkgManagerVersion(pkgManager);
         spec = PkgManagerSpec.create({pkgManager, version, isSystem: true});
       }
     }

@@ -8,7 +8,7 @@ import {type PackageJson} from 'type-fest';
 import {MissingPackageJsonError, fromUnknownError} from '../error';
 import {UnreadablePackageJsonError} from '../error/unreadable-pkg-json-error';
 import {justImport, resolveFrom} from './loader-util';
-import {memoize} from './util';
+import {memoize, uniqueIdFactoryFactory} from './util';
 
 const debug = Debug('midnight-smoker:filemanager');
 
@@ -60,17 +60,22 @@ export interface ReadPkgJsonNormalizedResult extends ReadPkgJsonResult {
 }
 
 export class FileManager {
+  static uniqueIdFactory = uniqueIdFactoryFactory('file-manager-');
+
   public readonly fs: FsApi;
 
   public readonly getTempDirRoot: GetTempDirRoot;
 
   public readonly tempDirs: Set<string> = new Set();
 
+  public readonly id: string;
+
   #importer: Importer;
 
   #resolver: Resolver;
 
   constructor(opts?: FileManagerOpts) {
+    this.id = FileManager.uniqueIdFactory();
     const anyOpts = opts ?? ({} as FileManagerOpts);
     // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-assignment
     this.fs = anyOpts.fs ?? (require('node:fs') as FsApi);
@@ -209,16 +214,20 @@ export class FileManager {
     };
   }
 
+  /**
+   * Find a file in current or ancestor directory
+   *
+   * @param filename File to find
+   * @param from Directory or file to start searching from
+   * @param opts Options
+   * @returns Path to file, or `undefined` if not found
+   */
   public async findUp(
     filename: string,
     from: string,
     {followSymlinks}: {followSymlinks?: boolean} = {},
   ): Promise<string | undefined> {
     const method = followSymlinks ? 'lstat' : 'stat';
-    const {root} = path.parse(from);
-    if (from.endsWith(filename)) {
-      from = path.dirname(from);
-    }
     do {
       const allegedPath = path.join(from, filename);
       try {
@@ -231,8 +240,13 @@ export class FileManager {
           throw err;
         }
       }
-      from = path.dirname(from);
-    } while (from !== root);
+      const nextFrom = path.dirname(from);
+      // this happens when you call path.dirname() on the filesystem root
+      if (nextFrom === from) {
+        break;
+      }
+      from = nextFrom;
+    } while (true);
   }
 
   public static create(this: void, opts?: FileManagerOpts): FileManager {

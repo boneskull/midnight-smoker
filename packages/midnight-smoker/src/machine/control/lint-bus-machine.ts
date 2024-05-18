@@ -6,7 +6,7 @@ import {type SmokerOptions} from '#options/options';
 import {
   type LintResult,
   type LintResultOk,
-  type SomeRule,
+  type SomeRuleDef,
   type StaticPkgManagerSpec,
   type WorkspaceInfo,
 } from '#schema';
@@ -25,7 +25,7 @@ export interface LintBusMachineInput {
   pkgManagers: StaticPkgManagerSpec[];
   uniquePkgNames: string[];
   parentRef: AnyActorRef;
-  rules: SomeRule[];
+  ruleDefs: SomeRuleDef[];
 }
 
 export interface LintBusMachineContext extends LintBusMachineInput {
@@ -139,7 +139,7 @@ export const LintBusMachine = setup({
             {
               type: 'report',
               params: ({
-                context: {rules},
+                context: {ruleDefs: rules},
                 event,
               }): DataForEvent<typeof SmokerEvent.RuleBegin> => {
                 return {
@@ -156,7 +156,7 @@ export const LintBusMachine = setup({
             {
               type: 'report',
               params: ({
-                context: {rules},
+                context: {ruleDefs: rules},
                 event,
               }): DataForEvent<typeof SmokerEvent.RuleOk> => {
                 return {
@@ -173,7 +173,7 @@ export const LintBusMachine = setup({
             {
               type: 'report',
               params: ({
-                context: {rules},
+                context: {ruleDefs: rules},
                 event,
               }): DataForEvent<typeof SmokerEvent.RuleError> => {
                 return {
@@ -194,7 +194,7 @@ export const LintBusMachine = setup({
             {
               type: 'report',
               params: ({
-                context: {rules},
+                context: {ruleDefs: rules},
                 event,
               }): DataForEvent<typeof SmokerEvent.RuleFailed> => {
                 return {
@@ -211,7 +211,7 @@ export const LintBusMachine = setup({
             {
               type: 'report',
               params: ({
-                context: {pkgManagers = [], rules = []},
+                context: {pkgManagers = [], ruleDefs: rules = []},
                 event: {pkgManager},
               }): DataForEvent<typeof SmokerEvent.PkgManagerLintBegin> => {
                 return {
@@ -237,7 +237,7 @@ export const LintBusMachine = setup({
             {
               type: 'report',
               params: ({
-                context: {pkgManagers = [], rules = []},
+                context: {pkgManagers = [], ruleDefs: rules = []},
                 event: {pkgManager, results},
               }): DataForEvent<typeof SmokerEvent.PkgManagerLintFailed> => {
                 return {
@@ -264,7 +264,7 @@ export const LintBusMachine = setup({
             {
               type: 'report',
               params: ({
-                context: {pkgManagers = [], rules = []},
+                context: {pkgManagers = [], ruleDefs: rules = []},
                 event: {pkgManager, results},
               }): DataForEvent<typeof SmokerEvent.PkgManagerLintOk> => {
                 return {
@@ -286,7 +286,7 @@ export const LintBusMachine = setup({
             context: {
               pkgManagers = [],
               uniquePkgNames = [],
-              rules = [],
+              ruleDefs: rules = [],
               lintResults = [],
               smokerOptions: {rules: config},
             },

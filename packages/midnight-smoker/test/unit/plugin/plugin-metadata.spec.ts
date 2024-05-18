@@ -1,11 +1,11 @@
+import {TRANSIENT} from '#constants';
 import {ErrorCodes} from '#error/codes';
+import type * as PM from '#plugin/plugin-metadata';
 import path from 'node:path';
 import rewiremock from 'rewiremock/node';
 import {createSandbox} from 'sinon';
 import type {PackageJson} from 'type-fest';
 import unexpected from 'unexpected';
-import {isValidationError} from 'zod-validation-error';
-import type * as PM from '../../../dist/plugin/plugin-metadata';
 import {createFsMocks} from '../mocks/fs';
 
 const expect = unexpected.clone();
@@ -21,14 +21,13 @@ const TEST_OPTS = {
 describe('midnight-smoker', function () {
   describe('plugin', function () {
     describe('PluginMetadata', function () {
-      let TRANSIENT: typeof PM.TRANSIENT;
       let PluginMetadata: typeof PM.PluginMetadata;
       let sandbox: sinon.SinonSandbox;
 
       beforeEach(function () {
         const {mocks} = createFsMocks();
         sandbox = createSandbox();
-        ({PluginMetadata, TRANSIENT} = rewiremock.proxy(
+        ({PluginMetadata} = rewiremock.proxy(
           () => require('../../../src/plugin/plugin-metadata'),
           mocks,
         ));
@@ -117,11 +116,7 @@ describe('midnight-smoker', function () {
                 expect(
                   () => PluginMetadata.create('entryPoint.js'),
                   'to throw',
-                  expect.it(
-                    'when passed as parameter to',
-                    isValidationError,
-                    'to be true',
-                  ),
+                  {code: ErrorCodes.InvalidArgError},
                 );
               });
             });
@@ -184,11 +179,7 @@ describe('midnight-smoker', function () {
                     pkgJson: [], // <-- no
                   }),
                 'to throw',
-                expect.it(
-                  'when passed as parameter to',
-                  isValidationError,
-                  'to be true',
-                ),
+                {code: ErrorCodes.InvalidArgError},
               );
             });
           });

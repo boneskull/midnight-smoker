@@ -1,12 +1,12 @@
 import type {RuleError} from '#error';
 import type {
-  BaseNormalizedRuleOptions,
-  BaseNormalizedRuleOptionsRecord,
+  BaseRuleConfigRecord,
   LintManifest,
   LintResult,
   LintResultOk,
   RuleResultFailed,
   RuleResultOk,
+  SomeRuleConfig,
   StaticPkgManagerSpec,
 } from '../component';
 import type {LintEvent} from './event-constants';
@@ -44,7 +44,7 @@ export interface PkgManagerLintOkEventData extends PkgManagerLintEventDataBase {
 export interface RuleEventDataBase {
   manifest: LintManifest;
   rule: string;
-  config: BaseNormalizedRuleOptions;
+  config: SomeRuleConfig;
   totalRules: number;
   pkgManager: StaticPkgManagerSpec;
 }
@@ -64,7 +64,7 @@ export interface RuleOkEventData extends RuleEventDataBase {
 }
 
 export interface LintEventDataBase {
-  config: BaseNormalizedRuleOptionsRecord;
+  config: BaseRuleConfigRecord;
   totalRules: number;
   totalPkgManagers: number;
   totalUniquePkgs: number;

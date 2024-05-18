@@ -1,10 +1,15 @@
 import {fromUnknownError} from '#error';
 import {RuleError} from '#error/rule-error';
-import {type SomeRule} from '#schema/rule';
-import {type StaticRuleContext} from '#schema/rule-static';
+import {type SomeRuleDef} from '#schema';
+import {type StaticRuleContext, type StaticRuleDef} from '#schema/rule-static';
 import {serialize} from '#util/util';
-import {type PackageJson, type SetOptional} from 'type-fest';
+import {type PackageJson} from 'type-fest';
 import {RuleIssue} from './issue';
+
+export interface AddIssueOptions {
+  filepath?: string | URL;
+  data?: unknown;
+}
 
 /**
  * The `addIssue` function that a {@link RuleCheckFn} uses to create a
@@ -12,11 +17,7 @@ import {RuleIssue} from './issue';
  *
  * Member of a {@link RuleContext}.
  */
-export type AddIssueFn = (
-  message: string,
-  filepath?: string | URL,
-  data?: unknown,
-) => void;
+export type AddIssueFn = (message: string, opts?: AddIssueOptions) => void;
 
 /**
  * A context object which is provided to a {@link RuleCheckFn}, containing
@@ -33,21 +34,26 @@ export class RuleContext implements StaticRuleContext {
   private readonly staticCtx: Readonly<StaticRuleContext>;
 
   /**
-   * List of any issues which were raised by the execution of this {@link rule}.
+   * List of any issues which were raised by the execution of this
+   * {@link ruleId}.
    */
   readonly #issues: RuleIssue[] = [];
 
+  public readonly staticRuleDef: StaticRuleDef;
+
   protected constructor(
-    public readonly rule: SomeRule,
+    public readonly ruleId: string,
+    ruleDef: SomeRuleDef,
     staticCtx: StaticRuleContext,
   ) {
-    this.staticCtx = Object.freeze({...staticCtx});
+    this.staticRuleDef = serialize(ruleDef);
+    this.staticCtx = Object.freeze(serialize(staticCtx));
     this.addIssue = this.addIssue.bind(this);
     this.addIssueFromError = this.addIssueFromError.bind(this);
   }
 
-  public get ruleName() {
-    return this.staticCtx.ruleName;
+  public get ruleName(): string {
+    return this.staticRuleDef.name;
   }
 
   /**
@@ -109,18 +115,11 @@ export class RuleContext implements StaticRuleContext {
    * Creates a {@link RuleContext}.
    */
   public static create(
-    rule: SomeRule,
-    staticCtx: SetOptional<StaticRuleContext, 'ruleName'>,
+    ruleDef: SomeRuleDef,
+    staticCtx: StaticRuleContext,
+    id: string,
   ): Readonly<RuleContext> {
-    return Object.freeze(
-      new RuleContext(
-        rule,
-        serialize({
-          ...staticCtx,
-          ruleName: staticCtx.ruleName ?? rule.name,
-        }),
-      ),
-    );
+    return Object.freeze(new RuleContext(id, ruleDef, staticCtx));
   }
 
   /**
@@ -132,22 +131,21 @@ export class RuleContext implements StaticRuleContext {
    */
   public addIssueFromError(err: unknown): void {
     const error = new RuleError(
-      `Rule "${this.rule.id}" threw an exception`,
+      `Rule "${this.ruleId}" threw an exception`,
       this.toJSON(),
-      this.rule.id,
+      this.ruleId,
       fromUnknownError(err),
     );
 
     const {message} = error;
-    const rule = serialize(this.rule);
-    const context = serialize(this);
+    const ctx = serialize(this);
 
     this.#addIssue(
       RuleIssue.create({
         message,
         error,
-        rule,
-        ctx: context,
+        rule: this.staticRuleDef,
+        ctx,
       }),
     );
   }
@@ -164,14 +162,13 @@ export class RuleContext implements StaticRuleContext {
   public addIssue: AddIssueFn = function (
     this: RuleContext,
     message,
-    filepath,
-    data,
+    {data, filepath} = {},
   ) {
     this.#addIssue(
       RuleIssue.create({
         message,
         data,
-        rule: serialize(this.rule),
+        rule: this.staticRuleDef,
         ctx: serialize(this),
         filepath,
       }),

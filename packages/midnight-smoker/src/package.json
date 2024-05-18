@@ -1,0 +1,83 @@
+{
+  "name": "midnight-smoker",
+  "imports": {
+    "#cli": "./cli/index.ts",
+    "#cli/*": "./cli/*.ts",
+    "#component": "./component/component/index.ts",
+    "#config-file": "./config-file.ts",
+    "#constants": "./constants.ts",
+    "#machine": "./machine/index.ts",
+    "#machine/*": "./machine/*/index.ts",
+    "#error": "./error/index.ts",
+    "#error/*": "./error/*.ts",
+    "#event": "./event/index.ts",
+    "#event/*": "./event/*.ts",
+    "#executor": "./component/executor/index.ts",
+    "#options": "./options/index.ts",
+    "#options/*": "./options/*.ts",
+    "#pkg-manager": "./component/pkg-manager/index.ts",
+    "#pkg-manager/*": "./component/pkg-manager/*.ts",
+    "#plugin": "./plugin/index.ts",
+    "#plugin/*": "./plugin/*.ts",
+    "#reporter": "./component/reporter/index.ts",
+    "#reporter/*": "./component/reporter/*.ts",
+    "#rule": "./component/rule/index.ts",
+    "#rule/*": "./component/rule/*.ts",
+    "#schema": "./component/schema/index.ts",
+    "#schema/*": "./component/schema/*.ts",
+    "#smoker": "./smoker.ts",
+    "#util": "./util/index.ts",
+    "#util/*": "./util/*.ts"
+  },
+  "exports": {
+    ".": {
+      "default": "./index.ts"
+    },
+    "./plugin": {
+      "default": "./plugin/index.ts"
+    },
+    "./plugin/helpers": {
+      "default": "./plugin/helpers.ts"
+    },
+    "./plugin/blessed": {
+      "default": "./plugin/blessed.ts"
+    },
+    "./component": {
+      "default": "./component/component/index.ts"
+    },
+    "./error": {
+      "default": "./error/index.ts"
+    },
+    "./event": {
+      "default": "./event/index.ts"
+    },
+    "./rule": {
+      "default": "./component/rule/index.ts"
+    },
+    "./reporter": {
+      "default": "./component/reporter/index.ts"
+    },
+    "./executor": {
+      "default": "./component/executor/index.ts"
+    },
+    "./pkg-manager": {
+      "default": "./component/pkg-manager/index.ts"
+    },
+    "./rule-runner": {
+      "default": "./component/rule-runner/index.ts"
+    },
+    "./script-runner": {
+      "default": "./component/script-runner/index.ts"
+    },
+    "./package.json": "./package.kson",
+    "./constants": {
+      "default": "./constants.ts"
+    },
+    "./controller": {
+      "default": "./controller/index.ts"
+    },
+    "./util": {
+      "default": "./util/index.ts"
+    }
+  }
+}

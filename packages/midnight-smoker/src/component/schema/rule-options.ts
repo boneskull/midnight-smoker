@@ -3,34 +3,30 @@ import {RuleSeveritySchema} from '#schema/rule-severity';
 import {EmptyObjectSchema} from '#util/schema-util';
 import {z} from 'zod';
 
-export const BaseRuleOptionsSchema = createRuleOptionsSchema(
-  EmptyObjectSchema.passthrough(),
+export const SomeRuleOptionsSchema = EmptyObjectSchema.passthrough();
+
+export const RawRuleOptionsSchema = createRuleOptionsSchema(
+  SomeRuleOptionsSchema,
 );
 
-export const BaseRuleOptionsRecordSchema = z
-  .record(BaseRuleOptionsSchema)
+export const RawRuleOptionsRecordSchema = z
+  .record(RawRuleOptionsSchema)
   .describe('Rule configuration for automated checks');
 
-export const BaseNormalizedRuleOptionsSchema = z.strictObject({
+export const BaseRuleConfigSchema = z.strictObject({
   severity: RuleSeveritySchema,
-  opts: z.object({}).passthrough(),
+  opts: SomeRuleOptionsSchema,
 });
 
-export const BaseNormalizedRuleOptionsRecordSchema = z
-  .record(BaseNormalizedRuleOptionsSchema)
+export type SomeRuleOptions = z.infer<typeof SomeRuleOptionsSchema>;
+
+export const BaseRuleConfigRecordSchema = z
+  .record(BaseRuleConfigSchema)
   .describe('Rule configuration for automated checks');
 
-export type BaseRuleOptionsRecord = z.input<typeof BaseRuleOptionsRecordSchema>;
+export type SomeRuleConfig = z.infer<typeof BaseRuleConfigSchema>;
 
-export type BaseNormalizedRuleOptions = z.infer<
-  typeof BaseNormalizedRuleOptionsSchema
->;
-
-export type SomeRuleConfig = BaseNormalizedRuleOptions;
-
-export type BaseNormalizedRuleOptionsRecord = z.infer<
-  typeof BaseNormalizedRuleOptionsRecordSchema
->;
+export type BaseRuleConfigRecord = z.infer<typeof BaseRuleConfigRecordSchema>;
 
 /**
  * A schema for a rule's options; this is the {@link RuleDef.schema} prop as

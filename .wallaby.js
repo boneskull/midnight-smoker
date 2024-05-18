@@ -19,69 +19,98 @@ module.exports = () => {
         instrument: false,
       },
       {
-        pattern: './packages/*/data/*.json',
+        pattern: './packages/midnight-smoker/data/*.json',
         instrument: false,
       },
       {
-        pattern: './packages/*/test/**/*.ts',
+        pattern: './packages/midnight-smoker/test/**/*.ts',
         instrument: false,
       },
       {
-        pattern: './packages/*/test/**/fixture/**/*',
+        pattern: './packages/midnight-smoker/test/**/fixture/**/*',
         instrument: false,
       },
-      {
-        pattern: './packages/*/dist/**/*',
-        instrument: false,
-      },
-      './packages/*/src/**/*.ts',
-      './packages/*/package.json',
-      '!./packages/*/test/**/*.spec.ts',
-      '!./packages/docs/**/*',
+      './packages/midnight-smoker/src/**/*.ts',
+      './packages/midnight-smoker/package.json',
+      // './packages/midnight-smoker/src/package.json',
+      '!./packages/midnight-smoker/test/**/*.spec.ts',
+      // '!./packages/docs/**/*',
     ],
     testFramework: 'mocha',
     tests: [
-      './packages/*/test/**/*.spec.ts',
-      '!./packages/*/test/e2e/**/*.spec.ts',
-      '!./packages/docs/test/**/*',
+      './packages/midnight-smoker/test/**/*.spec.ts',
+      '!./packages/midnight-smoker/test/e2e/**/*.spec.ts',
+      // '!./packages/docs/test/**/*',
     ],
     runMode: 'onsave',
     workers: {recycle: true},
     setup(wallaby) {
       process.env.WALLABY = '1';
-      // const Module = require('module');
-      // const path = require('path');
-      // const {imports} = require(
-      //   path.join(
-      //     wallaby.projectCacheDir,
-      //     'packages',
-      //     'midnight-smoker',
-      //     'package.json',
-      //   ),
-      // );
-      // const mappedImports = Object.fromEntries(
-      //   Object.entries(imports).map(([key, value]) => [
-      //     key,
-      //     value.replace('dist', 'src'),
-      //   ]),
-      // );
 
-      // const originalResolveFilename = Module._resolveFilename;
+      const minimatch = require('minimatch');
+      const path = require('path');
+      const Module = require('module');
+      const pkgJsonPath = path.join(
+        wallaby.projectCacheDir,
+        'packages',
+        'midnight-smoker',
+        'package.json',
+      );
+      const pkgJson = require(pkgJsonPath);
+      const mappedImports = Object.fromEntries(
+        Object.entries(pkgJson.imports).map(([key, value]) => [
+          key,
+          value.replace('dist', 'src'),
+        ]),
+      );
 
-      // Module._resolveFilename = function (request, _parent) {
-      //   console.log('Resolving %s', request);
-      //   if (request in mappedImports) {
-      //     const newRequest = path.join(
-      //       wallaby.projectCacheDir,
-      //       'packages',
-      //       'midnight-smoker',
-      //       mappedImports[request],
-      //     );
-      //     return originalResolveFilename.call(this, newRequest, _parent);
-      //   }
+      const originalResolveFilename = Module._resolveFilename;
 
-      //   return originalResolveFilename.call(this, request, _parent);
-      // };
+      /**
+       * @param {string} request
+       * @param {unknown} _parent
+       * @returns {unknown}
+       */
+      Module._resolveFilename = function (request, _parent) {
+        if (request in mappedImports) {
+          const newRequest = path.join(
+            wallaby.projectCacheDir,
+            'packages',
+            'midnight-smoker',
+            mappedImports[request],
+          );
+          return originalResolveFilename.call(this, newRequest, _parent);
+        } else if (request.startsWith('#')) {
+          // minimatch does not like a leading #
+          const trimmedRequest = request.slice(1);
+
+          const key = Object.keys(mappedImports).find((key) => {
+            return minimatch(trimmedRequest, key.slice(1));
+          });
+          if (key) {
+            const pattern = mappedImports[key];
+            // zap leading #
+            const trimmedKey = key.slice(1);
+            // where is the magic?
+            const magicIndex = trimmedKey.indexOf('*');
+            // strip everything that matches _before_ the magic
+            const wildname = trimmedRequest.slice(magicIndex);
+            const newValue = pattern.replace('*', wildname);
+            // given a request of `#foo/bar` matching `#foo/*`, this will be `bar`,
+            // which is injected into the value matching `#foo/*` (e.g., `./src/foo/*.js`)
+            // replace the magic with the rest of the request
+            const newRequest = path.join(
+              wallaby.projectCacheDir,
+              'packages',
+              'midnight-smoker',
+              newValue,
+            );
+            return originalResolveFilename.call(this, newRequest, _parent);
+          }
+        }
+
+        return originalResolveFilename.call(this, request, _parent);
+      };
     },
   };
 };

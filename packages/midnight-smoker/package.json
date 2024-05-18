@@ -137,12 +137,12 @@
   "types": "./dist/index.d.ts",
   "files": [
     "./bin",
-    "./data",
     "./dist",
     "./schema",
     "./src",
     "CHANGELOG.md",
     "!**/*.tsbuildinfo",
+    "!jsconfig.json",
     "!tsconfig.json"
   ],
   "keywords": [
@@ -214,6 +214,7 @@
     "@types/yargs": "17.0.32",
     "memfs": "4.6.0",
     "strip-ansi": "5.2.0",
+    "tsconfig-paths": "4.2.0",
     "unexpected-eventemitter": "2.4.0",
     "zod-to-json-schema": "3.22.3"
   },

@@ -27,8 +27,6 @@ export * as Util from 'midnight-smoker/util';
 
 export {SemVer} from 'semver';
 
-export * from './pkg-manager';
-
 export * from './pkg-manager-loader';
 
 export * from './pkg-manager-spec';

@@ -1,8 +1,8 @@
-import type * as Event from '#event';
-import type * as Executor from '#executor';
-import type * as PkgManager from '#pkg-manager';
-import type * as Reporter from '#reporter';
-import type * as Rule from '#rule';
+import {type Executor} from '#schema/executor';
+import {type PkgManagerDef} from '#schema/pkg-manager-def';
+import {type ReporterDef} from '#schema/reporter-def';
+import {type RuleDef} from '#schema/rule-def';
+import {type RuleDefSchemaValue} from '#schema/rule-options';
 import type * as SchemaUtils from '#util/schema-util';
 import type {z} from 'zod';
 import type * as Helpers from './helpers';
@@ -12,30 +12,25 @@ import type {StaticPluginMetadata} from './static-metadata';
 /**
  * Defines a new {@link Rule} component
  */
-export type DefineRuleFn = <
-  Schema extends Rule.RuleDefSchemaValue | void = void,
->(
-  ruleDef: Rule.RuleDef<Schema>,
+export type DefineRuleFn = <Schema extends RuleDefSchemaValue | void = void>(
+  ruleDef: RuleDef<Schema>,
 ) => PluginAPI;
 
 /**
  * Defines a new {@link PackageManager} component
  */
 export type DefinePackageManagerFn = (
-  packageManager: PkgManager.PkgManagerDef,
+  packageManager: PkgManagerDef,
   name?: string,
 ) => PluginAPI;
 
 /**
  * Defines a new {@link Executor} component
  */
-export type DefineExecutorFn = (
-  executor: Executor.Executor,
-  name?: string,
-) => PluginAPI;
+export type DefineExecutorFn = (executor: Executor, name?: string) => PluginAPI;
 
 export type DefineReporterFn<Ctx = any> = (
-  reporter: Reporter.ReporterDef<Ctx>,
+  reporter: ReporterDef<Ctx>,
   name?: string,
 ) => PluginAPI;
 
@@ -46,35 +41,15 @@ export type DefineReporterFn<Ctx = any> = (
  */
 export interface PluginAPI {
   /**
-   * Types related to `Executor`s.
-   */
-  Executor: typeof Executor;
-
-  /**
    * Collection of helpers for various components
    */
   Helpers: Helpers.PluginHelpers;
-
-  /**
-   * Namespace related to `PackageManager`s.
-   */
-  PkgManager: typeof PkgManager;
-
-  /**
-   * Namespace related to `Rule`s.
-   */
-  Rule: typeof Rule;
 
   /**
    * Some useful pre-rolled {@link z zod} schemas; mainly useful for {@link Rule}
    * schemas.
    */
   SchemaUtils: typeof SchemaUtils;
-
-  /**
-   * Namespace related to events
-   */
-  Event: typeof Event;
 
   /**
    * Basic information about other plugins.

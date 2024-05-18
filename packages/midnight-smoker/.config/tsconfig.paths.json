@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
     "paths": {
-      "@midnight-smoker/plugin-default": ["../../plugin-default"],
-      "@midnight-smoker/test-util": ["../../test-util"],
+      "@midnight-smoker/plugin-default": ["../../plugin-default/src/index.js"],
+      "@midnight-smoker/test-util": ["../../test-util/src/index.js"],
       "#cli": ["../src/cli/index.js"],
       "#cli/*": ["../src/cli/*.js"],
       "#component": ["../src/component/component/index.js"],

@@ -1,11 +1,9 @@
-import {type RuleError} from '#error';
 import {
   type PackError,
   type PackParseError,
   type ScriptError,
 } from '#error/pkg-manager';
 import {type FAILED, type OK} from '#machine/util';
-import {type PkgManagerSpec} from '#pkg-manager';
 import {
   type InstallManifest,
   type LintManifest,
@@ -13,8 +11,10 @@ import {
   type RuleResultOk,
   type RunScriptManifest,
   type RunScriptResult,
-  type SomeRule,
   type SomeRuleConfig,
+  type SomeRuleDef,
+  type SomeRuleOptions,
+  type StaticRuleContext,
 } from '#schema';
 import {type PackageJson} from 'type-fest';
 
@@ -24,24 +24,24 @@ export type PkgManagerMachineEvents =
   | PkgManagerMachinePackDoneEvent
   | PkgManagerMachineLintItemEvent
   | PkgManagerMachinePackErrorEvent
-  | PkgManagerMachineCheckDoneEvent
   | PkgManagerMachineHaltEvent
-  | PkgManagerMachineCheckErrorEvent
   | PkgManagerMachineRunScriptDoneEvent
   | PkgManagerMachineLintEvent
   | PkgManagerMachineRunScriptEvent
+  | PkgManagerMachineCheckResultEvent
   | PkgManagerMachineRunScriptErrorEvent
   | PkgManagerMachineRuleEndEvent;
 
-/**
- * Represents a single package to be linted and contains some global metadata
- *
- * Used to create a `PkgManagerContext`
- */
-export interface CheckInput extends CheckItem {
-  config: SomeRuleConfig;
-  pkgManager: PkgManagerSpec;
-  rule: SomeRule;
+export interface CheckInput {
+  ctx: StaticRuleContext;
+  def: SomeRuleDef;
+  opts: SomeRuleOptions;
+  ruleId: string;
+
+  /**
+   * This is for round-tripping
+   */
+  manifest: LintManifest;
 }
 
 /**
@@ -64,14 +64,10 @@ export interface CheckOutputOk extends CheckInput {
   type: typeof OK;
 }
 
-export interface PkgManagerMachineCheckDoneEvent {
+export interface PkgManagerMachineCheckResultEvent {
   output: CheckOutput;
-  type: 'xstate.done.actor.check.*';
-}
-
-export interface PkgManagerMachineCheckErrorEvent {
-  error: RuleError;
-  type: 'xstate.error.actor.check.*';
+  config: SomeRuleConfig;
+  type: 'CHECK_RESULT';
 }
 
 export interface PkgManagerMachineHaltEvent {
@@ -100,6 +96,7 @@ export interface PkgManagerMachinePackErrorEvent {
 
 export interface PkgManagerMachineRuleEndEvent {
   output: CheckOutput;
+  config: SomeRuleConfig;
   sender: string;
   type: 'RULE_END';
 }

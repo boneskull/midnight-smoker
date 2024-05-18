@@ -8,7 +8,7 @@ import {PACKAGE_JSON, RuleSeverities} from '#constants';
 import type {RuleError} from '#error/rule-error';
 import {type RuleResultFailed} from '#schema/rule-result';
 import {type StaticRuleContext, type StaticRuleDef} from '#schema/rule-static';
-import {uniqueIdFactoryFactory} from '#util/util';
+import {serialize, uniqueIdFactoryFactory} from '#util/util';
 import path from 'node:path';
 import {fileURLToPath} from 'url';
 
@@ -97,14 +97,14 @@ export class RuleIssue implements RuleResultFailed {
 
   public constructor({
     rule,
-    ctx: context,
+    ctx,
     message,
     data,
     error,
     filepath,
   }: RuleIssueParams<StaticRuleContext, StaticRuleDef>) {
     this.rule = rule;
-    this.ctx = context;
+    this.ctx = ctx;
     this.message = message;
     this.data = data;
     this.error = error;
@@ -114,7 +114,7 @@ export class RuleIssue implements RuleResultFailed {
         ? fileURLToPath(filepath)
         : filepath
           ? filepath
-          : path.join(context.localPath, PACKAGE_JSON);
+          : path.join(ctx.localPath, PACKAGE_JSON);
   }
 
   public get pkgManager() {
@@ -162,7 +162,7 @@ export class RuleIssue implements RuleResultFailed {
       rule,
       ctx,
       message,
-      data,
+      data: serialize(data),
       error,
       id,
       failed,

@@ -55,13 +55,10 @@ export const DEFAULT_RULE_SEVERITY = RuleSeverities.Error;
  * Represents the kinds of components in the system.
  */
 export const ComponentKinds = {
-  Rule: 'Rule',
   RuleDef: 'RuleDef',
   PkgManagerDef: 'PkgManagerDef',
-  PkgManager: 'PkgManager',
   Executor: 'Executor',
   ReporterDef: 'ReporterDef',
-  Reporter: 'Reporter',
 } as const;
 
 /**
@@ -76,3 +73,12 @@ export const MIDNIGHT_SMOKER = 'midnight-smoker';
 export const UNKNOWN_TMPDIR_PREFIX = 'unknown';
 
 export const PACKAGE_JSON = 'package.json';
+
+/**
+ * Serves as the {@link entryPoint} for plugins which exist only in memory (as
+ * far as this package is concerned)
+ *
+ * @internal
+ */
+
+export const TRANSIENT = '<transient>';

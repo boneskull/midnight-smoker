@@ -114,7 +114,7 @@ export function memoize<
   TThis extends object,
   TArgs extends any[] = unknown[],
   TReturn = unknown,
->(resolver?: (...args: TArgs) => any) {
+>(resolver?: (this: TThis, ...args: TArgs) => any) {
   return function (
     target: (this: TThis, ...args: TArgs) => TReturn,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -123,6 +123,10 @@ export function memoize<
       (this: TThis, ...args: TArgs) => TReturn
     >,
   ) {
-    return _memoize(target, resolver);
+    context.addInitializer(function (this: TThis) {
+      const func = context.access.get(this);
+      // @ts-expect-error blah
+      this[context.name] = _memoize(func, resolver);
+    });
   };
 }

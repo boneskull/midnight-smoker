@@ -2,8 +2,9 @@ import rewiremock from 'rewiremock/node';
 import unexpected from 'unexpected';
 
 import type * as Ctx from '#rule/context';
-import {type SomeRule} from '#schema/rule';
+import {type SomeRuleDef} from '#schema/rule-def';
 import {type StaticRuleContext} from '#schema/rule-static';
+import {fileURLToPath} from 'url';
 import {createFsMocks} from '../../mocks/fs';
 
 const expect = unexpected.clone();
@@ -22,13 +23,13 @@ describe('midnight-smoker', function () {
       });
 
       describe('RuleContext', function () {
-        const rule = {
-          id: 'example-rule',
+        const ruleId = 'example-rule';
+        const ruleDef = {
           name: 'example-rule',
           description: 'This is an example rule',
           defaultSeverity: 'error',
           url: 'https://example.com/rules/example-rule',
-        } as SomeRule;
+        } as SomeRuleDef;
         const staticCtx: StaticRuleContext = {
           pkgName: 'example-package',
           pkgJson: {
@@ -39,9 +40,9 @@ describe('midnight-smoker', function () {
           pkgJsonPath: '/path/to/example-package/package.json',
           installPath: '/path/to/example-package',
           localPath: '/path/to/example-package',
-          ruleName: rule.name,
           pkgManager: 'smthing',
           severity: 'error',
+          ruleId,
         };
 
         describe('static method', function () {
@@ -49,7 +50,7 @@ describe('midnight-smoker', function () {
             let context: Readonly<Ctx.RuleContext>;
 
             beforeEach(function () {
-              context = RuleContext.create(rule, staticCtx);
+              context = RuleContext.create(ruleDef, staticCtx, ruleId);
             });
 
             it('should return a frozen instance of RuleContext', function () {
@@ -64,7 +65,7 @@ describe('midnight-smoker', function () {
               expect(
                 staticCtx,
                 'to equal',
-                RuleContext.create(rule, context).toJSON(),
+                RuleContext.create(ruleDef, context, ruleId).toJSON(),
               );
             });
 
@@ -78,12 +79,12 @@ describe('midnight-smoker', function () {
           let context: Readonly<Ctx.RuleContext>;
 
           beforeEach(function () {
-            context = RuleContext.create(rule, staticCtx);
+            context = RuleContext.create(ruleDef, staticCtx, ruleId);
           });
 
           describe('addIssue()', function () {
             it('should add a RuleIssue to the issues array', function () {
-              context.addIssue('foo', 'bar');
+              context.addIssue('foo', {data: 'bar'});
               expect(context.issues, 'to satisfy', [
                 {message: 'foo', data: 'bar'},
               ]).and('to have length', 1);
@@ -91,9 +92,31 @@ describe('midnight-smoker', function () {
 
             it('should be bound to the RuleContext', function () {
               const addIssue = context.addIssue;
-              addIssue('foo', 'bar');
+              addIssue('foo', {data: 'bar'});
               expect(context.issues, 'to satisfy', [
                 {message: 'foo', data: 'bar'},
+              ]).and('to have length', 1);
+            });
+
+            it('should allow a filepath as a string', function () {
+              context.addIssue('foo', {data: 'bar', filepath: '/path/to/file'});
+              expect(context.issues, 'to satisfy', [
+                {message: 'foo', data: 'bar', filepath: '/path/to/file'},
+              ]).and('to have length', 1);
+            });
+
+            it('should allow a filepath as a URL (and convert it to a path)', function () {
+              const filepath = new URL('file:///some-file');
+              context.addIssue('foo', {
+                data: 'bar',
+                filepath,
+              });
+              expect(context.issues, 'to satisfy', [
+                {
+                  message: 'foo',
+                  data: 'bar',
+                  filepath: fileURLToPath(filepath),
+                },
               ]).and('to have length', 1);
             });
           });
@@ -112,8 +135,8 @@ describe('midnight-smoker', function () {
                 {
                   message: 'Rule "example-rule" threw an exception',
                   error: {cause: error},
-                  rule,
-                  context: staticCtx,
+                  rule: ruleDef,
+                  ctx: staticCtx,
                 },
               ]).and('to have length', 1);
             });
@@ -126,8 +149,8 @@ describe('midnight-smoker', function () {
                 {
                   message: 'Rule "example-rule" threw an exception',
                   error: {cause: error},
-                  rule,
-                  context: staticCtx,
+                  rule: ruleDef,
+                  ctx: staticCtx,
                 },
               ]).and('to have length', 1);
             });
@@ -147,14 +170,14 @@ describe('midnight-smoker', function () {
           describe('finalize()', function () {
             describe('when issues were collected', function () {
               it('should return the collected issues', function () {
-                context.addIssue('foo', 'bar');
+                context.addIssue('foo', {data: 'bar'});
                 const issues = context.finalize();
                 expect(issues, 'to satisfy', [
                   {
                     message: 'foo',
-                    rule,
+                    rule: ruleDef,
                     data: 'bar',
-                    context: staticCtx,
+                    ctx: staticCtx,
                   },
                 ]);
               });
@@ -173,7 +196,7 @@ describe('midnight-smoker', function () {
           let context: Readonly<Ctx.RuleContext>;
 
           beforeEach(function () {
-            context = RuleContext.create(rule, staticCtx);
+            context = RuleContext.create(ruleDef, staticCtx, ruleId);
           });
 
           describe('pkgJson', function () {

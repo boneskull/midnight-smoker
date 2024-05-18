@@ -14,14 +14,22 @@ import {
   PluginResolutionError,
   UnresolvablePluginError,
 } from '#error';
+import {createPluginAPI} from '#plugin/create-plugin-api';
+import {PluginMetadata, initBlessedMetadata} from '#plugin/plugin-metadata';
 import {
-  BaseRuleOptionsSchema,
+  createRuleOptionsSchema,
+  getDefaultRuleOptions,
+} from '#rule/create-rule-options';
+import {
+  RawRuleOptionsSchema,
   type Executor,
   type PkgManagerDef,
   type ReporterDef,
-  type SomeRule,
+  type StaticPluginMetadata,
 } from '#schema';
+import {PluginSchema, type Plugin} from '#schema/plugin';
 import {
+  EmptyObjectSchema,
   FileManager,
   NonEmptyNonEmptyStringArraySchema,
   isErrnoException,
@@ -33,16 +41,9 @@ import util from 'node:util';
 import {type PackageJson} from 'type-fest';
 import {z} from 'zod';
 import {fromZodError} from 'zod-validation-error';
-import {getDefaultRuleOptions} from '../component/rule/create-rule-options';
 import {isBlessedPlugin, type BlessedPlugin} from './blessed';
-import {createPluginAPI} from './create-plugin-api';
-import {zPlugin, type Plugin} from './plugin';
-import {PluginMetadata, initBlessedMetadata} from './plugin-metadata';
-import {type StaticPluginMetadata} from './static-metadata';
 
 const debug = Debug('midnight-smoker:plugin-registry');
-
-export type RuleFilter = (rule: SomeRule) => boolean;
 
 /**
  * Static metadata about a {@link PluginRegistry}
@@ -117,10 +118,6 @@ export class PluginRegistry {
     this.seenRawPlugins.clear();
     this.componentRegistry.clear();
     this._isClosed = false;
-  }
-
-  public getRules() {
-    return this.plugins.flatMap((plugin) => [...plugin.ruleMap.values()]);
   }
 
   public getExecutor(componentId = DEFAULT_COMPONENT_ID): Executor {
@@ -238,18 +235,28 @@ export class PluginRegistry {
    * @returns A Zod schema representing the merged rule schemas--options _and_
    *   severity--of all loaded plugins
    * @internal
+   * @todo This might want to move adjacent to `OptionsParser`
    */
   public mergeRuleSchemas() {
     return [...this.pluginMap.values()]
       .reduce(
         (pluginRuleSchema, metadata) =>
           pluginRuleSchema.merge(
-            [...metadata.ruleMap.values()].reduce(
-              (ruleSchema, rule) => ruleSchema.setKey(rule.id, rule.ruleSchema),
-              z.object({}).catchall(BaseRuleOptionsSchema),
-            ),
+            [...metadata.ruleDefMap.values()].reduce((ruleSchema, ruleDef) => {
+              const id = this.getComponentId(ruleDef);
+              const schema = ruleDef.schema
+                ? createRuleOptionsSchema(
+                    ruleDef.schema,
+                    ruleDef.defaultSeverity,
+                  )
+                : createRuleOptionsSchema(
+                    EmptyObjectSchema,
+                    ruleDef.defaultSeverity,
+                  );
+              return ruleSchema.setKey(id, schema);
+            }, z.object({}).catchall(RawRuleOptionsSchema)),
           ),
-        z.object({}).catchall(BaseRuleOptionsSchema),
+        z.object({}).catchall(RawRuleOptionsSchema),
       )
       .describe('Rule configuration for automated checks');
   }
@@ -537,7 +544,7 @@ export class PluginRegistry {
    * {@link Plugin}.
    */
   public static normalizePlugin(rawPlugin: unknown): Plugin {
-    return zPlugin.parse(rawPlugin);
+    return PluginSchema.parse(rawPlugin);
   }
 
   toString() {

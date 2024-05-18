@@ -18,11 +18,9 @@ export const debug = Debug('midnight-smoker:options');
  */
 
 export class OptionParser {
-  private parseResultCache: WeakSet<SmokerOptions>;
+  private parseResultCache: WeakSet<SmokerOptions> = new WeakSet();
 
-  private constructor(private readonly registry: PluginRegistry) {
-    this.parseResultCache = new WeakSet();
-  }
+  private constructor(private readonly registry: PluginRegistry) {}
 
   /**
    * Parses options for `Smoker`.

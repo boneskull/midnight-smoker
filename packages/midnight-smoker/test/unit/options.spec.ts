@@ -1,6 +1,7 @@
 import {RuleSeverities} from '#constants';
+import type * as OP from '#options/parser';
 import type * as PR from '#plugin/plugin-registry';
-import type {SomeRule} from '#schema/rule';
+import {type SomeRuleDef} from '#schema/rule-def';
 import {
   DEFAULT_TEST_PLUGIN_NAME,
   DEFAULT_TEST_RULE_NAME,
@@ -12,7 +13,6 @@ import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import {z} from 'zod';
 import {isValidationError} from 'zod-validation-error';
-import type * as OP from '../../src/options/parser';
 import {createFsMocks} from './mocks/fs';
 
 const expect = unexpected.clone();
@@ -162,7 +162,7 @@ describe('midnight-smoker', function () {
           describe('"rules" property', function () {
             let registry: PR.PluginRegistry;
             let parser: OP.OptionParser;
-            let rule: SomeRule;
+            let rule: SomeRuleDef;
 
             before(async function () {
               registry = PluginRegistry.create();
@@ -174,6 +174,7 @@ describe('midnight-smoker', function () {
                   schema: z.object({
                     foo: z.string().default('bar'),
                   }),
+                  defaultSeverity: RuleSeverities.Error,
                 },
                 DEFAULT_TEST_PLUGIN_NAME,
               );

@@ -1,4 +1,3 @@
-import {FAILED, OK} from '#machine/util';
 import {
   type InstallManifest,
   type InstallResult,
@@ -9,14 +8,11 @@ import {
   type PkgManagerRunScriptContext,
   type PkgManagerSpec,
 } from '#pkg-manager';
-import {RuleContext, type RuleResultOk} from '#rule';
 import type {FileManager} from '#util';
-import {isEmpty, isFunction} from 'lodash';
+import {isFunction} from 'lodash';
 import {fromPromise} from 'xstate';
 import {
-  type CheckInput,
   type CheckItem,
-  type CheckOutput,
   type RunScriptOutput,
 } from './pkg-manager-machine-events';
 
@@ -164,37 +160,3 @@ export const prepareLintItem = fromPromise<CheckItem, PrepareLintItemInput>(
     return {...lintItem, pkgJson, pkgJsonPath};
   },
 );
-
-/**
- * Runs a single rule's check against an installed package using user-provided
- * configuration
- */
-export const check = fromPromise<CheckOutput, CheckInput>(async ({input}) => {
-  const {pkgManager, pkgJson, pkgJsonPath, manifest, rule, config} = input;
-
-  const ctx = RuleContext.create(rule, {
-    ...manifest,
-    pkgJson,
-    pkgJsonPath,
-    severity: config.severity,
-    pkgManager: `${pkgManager}`,
-  });
-
-  try {
-    await rule.check(ctx, config.opts);
-  } catch (err) {
-    ctx.addIssueFromError(err);
-  }
-  const issues = ctx.finalize() ?? [];
-  if (isEmpty(issues)) {
-    const ok: RuleResultOk = {type: OK, ctx, rule: rule.toJSON()};
-    return {...input, result: ok, type: OK};
-  }
-  return {
-    ...input,
-    // TODO fix this readonly disagreement.  it _should_ be read-only, but that breaks somewhere down the line
-    result: [...issues],
-    ctx,
-    type: FAILED,
-  };
-});

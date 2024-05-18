@@ -93,7 +93,15 @@ export interface CtrlMachineContext extends CtrlMachineInput {
   reporterInitPayloads: ReporterInitPayload[];
   reporterMachineRefs: Record<string, ActorRefFrom<typeof ReporterMachine>>;
   ruleInitPayloads: RuleInitPayload[];
-  shouldHalt: boolean;
+
+  /**
+   * If `true`, the machine should shutdown after completing its work
+   */
+  shouldShutdown: boolean;
+
+  /**
+   * If `true`, the machine will tell each package manager to lint its packages
+   */
   shouldLint: boolean;
   startTime: number;
   systemExecutor: Executor;
@@ -168,7 +176,7 @@ export const ControlMachine = setup({
     /**
      * If `true`, then the `HALT` event was received.
      */
-    shouldHalt: ({context: {shouldHalt}}) => shouldHalt,
+    shouldShutdown: ({context: {shouldShutdown}}) => shouldShutdown,
 
     isWorkComplete: ({context: {pkgManagerMachineRefs}}) =>
       pkgManagerMachineRefs !== undefined && isEmpty(pkgManagerMachineRefs),
@@ -423,7 +431,7 @@ export const ControlMachine = setup({
     ),
 
     shouldLint: assign({shouldLint: true}),
-    shouldHalt: assign({shouldHalt: true}),
+    shouldShutdown: assign({shouldShutdown: true}),
 
     spawnComponentMachines: assign({
       reporterMachineRefs: ({
@@ -477,13 +485,13 @@ export const ControlMachine = setup({
           pkgManagerInitPayloads,
           ruleInitPayloads,
           shouldLint,
-          shouldHalt,
+          shouldShutdown,
         },
       }) => {
         const useWorkspaces = all || !isEmpty(workspace);
         const signal = new AbortController().signal;
         const newRefs = Object.fromEntries(
-          pkgManagerInitPayloads.map(({def, spec, plugin}, index) => {
+          pkgManagerInitPayloads.map(({def, spec}, index) => {
             const executor = spec.isSystem ? systemExecutor : defaultExecutor;
             const id = `PkgManagerMachine.${MachineUtil.makeId()}-${spec}`;
             const actorRef = spawn('PkgManagerMachine', {
@@ -499,13 +507,12 @@ export const ControlMachine = setup({
                 useWorkspaces,
                 index: index + 1,
                 signal,
-                plugin,
                 additionalDeps: [...new Set(additionalDeps)],
                 scripts,
                 ruleConfigs: rules,
-                rules: ruleInitPayloads.map(({rule}) => rule),
+                ruleDefs: ruleInitPayloads.map(({def}) => def),
                 shouldLint,
-                shouldShutdown: shouldHalt,
+                shouldShutdown,
               },
             });
             return [id, MachineUtil.monkeypatchActorLogger(actorRef, id)];
@@ -636,7 +643,7 @@ export const ControlMachine = setup({
       shouldLint: smokerOptions.lint,
       loaderMachineRefs: {},
       reporterMachineRefs: {},
-      shouldHalt: false,
+      shouldShutdown: false,
       startTime: performance.now(),
       workspaceInfo: [],
       pkgManagerInitPayloads: [],
@@ -655,8 +662,8 @@ export const ControlMachine = setup({
   on: {
     HALT: {
       description:
-        'Tells the machine to halt after finishing its work. Does NOT halt immediately',
-      actions: [{type: 'shouldHalt'}],
+        'Tells the machine to shutdown after finishing its work. Does NOT abort nor halt immediately',
+      actions: [{type: 'shouldShutdown'}],
     },
 
     'xstate.done.actor.ReporterMachine.*': [
@@ -884,9 +891,14 @@ export const ControlMachine = setup({
                   smokerOptions,
                   pkgManagers,
                   uniquePkgNames,
+                  shouldLint,
                 },
                 self: parentRef,
               }) => {
+                // refuse to spawn if we shouldn't be linting anyway
+                if (!shouldLint) {
+                  return undefined;
+                }
                 assert.ok(pkgManagers);
                 assert.ok(uniquePkgNames);
                 const input: LintBusMachineInput = {
@@ -895,7 +907,7 @@ export const ControlMachine = setup({
                   pkgManagers,
                   uniquePkgNames,
                   parentRef,
-                  rules: [],
+                  ruleDefs: [],
                 };
                 const actor = spawn('LintBusMachine', {
                   input,
@@ -911,6 +923,10 @@ export const ControlMachine = setup({
                 context: {smokerOptions, pkgManagers, uniquePkgNames},
                 self: parentRef,
               }) => {
+                // refuse to spawn anything if there are no scripts requested
+                if (isEmpty(smokerOptions.script)) {
+                  return undefined;
+                }
                 assert.ok(pkgManagers);
                 assert.ok(uniquePkgNames);
                 const input: ScriptBusMachineInput = {
@@ -1241,14 +1257,15 @@ export const ControlMachine = setup({
       },
       always: [
         {
-          // we halt when 1. the shouldHalt flag is true, and 2. when all pkg managers have shut themselves down.
-          guard: and(['shouldHalt', 'isWorkComplete']),
+          // we begin the shutdown process when 1. the shouldShutdown flag is true, and 2. when all pkg managers have shut themselves down.
+          guard: and(['shouldShutdown', 'isWorkComplete']),
           target: '#ControlMachine.shutdown',
         },
       ],
     },
     shutdown: {
-      description: 'Graceful shutdown process',
+      description:
+        'Graceful shutdown process; sends final events to reporters and tells them to gracefully shut themselves down. At this point, all package manager machines should have shut down gracefully',
       initial: 'idle',
       states: {
         idle: {

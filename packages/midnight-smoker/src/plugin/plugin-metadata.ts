@@ -4,7 +4,7 @@
  * @packageDocumentation
  * @see {@link PluginMetadata}
  */
-import {isZodError} from '#error/base-error';
+import {DEFAULT_COMPONENT_ID, RuleSeverities, TRANSIENT} from '#constants';
 import {InvalidArgError} from '#error/invalid-arg-error';
 import {type SmokerOptions} from '#options/options';
 import {loadPackageManagers, type LoadPackageManagersOpts} from '#pkg-manager';
@@ -13,99 +13,34 @@ import {
   type BlessedPlugin,
   type StaticPluginMetadata,
 } from '#plugin';
-import type {ReporterDef} from '#schema';
 import {
   type Executor,
   type PkgManagerDef,
   type PkgManagerDefSpec,
+  type ReporterDef,
   type RuleDef,
   type RuleDefSchemaValue,
-  type SomeRule,
   type SomeRuleDef,
 } from '#schema';
-import {
-  assertNonEmptyArray,
-  NonEmptyStringSchema,
-  PackageJsonSchema,
-  type FileManager,
-  type NonEmptyArray,
-} from '#util';
+import {assertNonEmptyArray, type FileManager, type NonEmptyArray} from '#util';
 import Debug from 'debug';
-import {curry, isFunction, isString} from 'lodash';
+import {curry, isFunction, isPlainObject, isString} from 'lodash';
 import path from 'node:path';
-import type {LiteralUnion, PackageJson} from 'type-fest';
-import {z} from 'zod';
-import {fromZodError} from 'zod-validation-error';
-import {DEFAULT_COMPONENT_ID, RuleSeverities} from '../constants';
+import type {LiteralUnion, PackageJson, SetRequired} from 'type-fest';
 
 const debug = Debug('midnight-smoker:plugin:metadata');
 
-/**
- * Serves as the {@link entryPoint} for plugins which exist only in memory (as
- * far as this package is concerned)
- *
- * @internal
- */
-export const TRANSIENT = '<transient>';
-
-/**
- * Plugin ID.
- */
-const PluginIdSchema = NonEmptyStringSchema.describe(
-  'The plugin (package) name, derived from its `package.json` if possible',
-);
-
-/**
- * Validation for {@link PluginMetadataOpts} as optionally passsed to
- * {@link PluginMetadata.create}
- */
-const PluginMetadataOptsInputSchema = z.object({
-  entryPoint: z
-    .literal(TRANSIENT)
-    .or(
-      NonEmptyStringSchema.refine((entryPoint) => path.isAbsolute(entryPoint), {
-        message: 'Must be an absolute path',
-      }),
-    )
-    .describe('The entry point of the plugin as an absolute path'),
-  description: NonEmptyStringSchema.optional().describe('Plugin description'),
-  version: NonEmptyStringSchema.optional().describe('Plugin version'),
-  id: PluginIdSchema.optional(),
-  requestedAs: NonEmptyStringSchema.optional().describe(
-    'The module name as requested by the user. Must be resolvable by Node.js and may differ from id',
-  ),
-  pkgJson: PackageJsonSchema.optional(),
-});
-
-/**
- * If `id` is undefined, this sets the `id` prop to a relative path based on the
- * `entryPoint` prop.
- *
- * It needs to alter the schema to declare that `id` is no longer optional
- * (allowed to be `undefined`)
- *
- * @todo Is there a better way to do this?
- */
-export const PluginMetadataOptsSchema = PluginMetadataOptsInputSchema.transform(
-  (opts) =>
-    opts.entryPoint === TRANSIENT
-      ? opts
-      : {
-          ...opts,
-          id:
-            opts.id ??
-            opts.pkgJson?.name ??
-            path.relative(process.cwd(), opts.entryPoint),
-        },
-)
-  // `id` no longer optional
-  .pipe(PluginMetadataOptsInputSchema.setKey('id', PluginIdSchema))
-  .describe('Options for PluginMetadata.create()');
-
-/**
- * Options for {@link PluginMetadata.create}
- */
-export type PluginMetadataOpts = z.input<typeof PluginMetadataOptsSchema>;
+export interface PluginMetadataOpts {
+  /**
+   * Path to plugin entry point. If a `string`, it should be absolute
+   */
+  entryPoint: LiteralUnion<typeof TRANSIENT, string>;
+  description?: string;
+  version?: string;
+  id?: string;
+  requestedAs?: string;
+  pkgJson?: PackageJson;
+}
 
 const shouldEnableReporter = curry(
   (
@@ -148,41 +83,15 @@ export class PluginMetadata implements StaticPluginMetadata {
   public static readonly Transient = TRANSIENT;
 
   /**
+   * Plugin description. May be derived from {@link pkgJson} or provided in
+   * {@link PluginMetadataOpts}.
+   */
+  public readonly description?: string;
+
+  /**
    * Plugin entry point. Usually a path and resolved from {@link requestedAs}.
    */
   public readonly entryPoint: LiteralUnion<typeof TRANSIENT, string>;
-
-  /**
-   * {@inheritDoc StaticPluginMetadata.id}
-   */
-  public readonly id: string;
-
-  /**
-   * The name of the plugin as requested by the user
-   */
-  public readonly requestedAs: string;
-
-  /**
-   * The contents of the plugin's `package.json`.
-   */
-  public readonly pkgJson?: PackageJson;
-
-  /**
-   * A map of rule names to {@link SomeRule} objects contained in the plugin
-   *
-   * @group Component Map
-   */
-  public readonly ruleMap: Map<string, SomeRule>;
-
-  public readonly ruleDefMap: Map<string, SomeRuleDef>;
-
-  /**
-   * A map of package manager names to {@link PackageManager} objects contained
-   * in the plugin
-   *
-   * @group Component Map
-   */
-  public readonly pkgManagerDefMap: Map<string, PkgManagerDef>;
 
   /**
    * A map of executor names to {@link SomeExecutor} objects contained in the
@@ -193,6 +102,24 @@ export class PluginMetadata implements StaticPluginMetadata {
   public readonly executorMap: Map<string, Executor>;
 
   /**
+   * {@inheritDoc StaticPluginMetadata.id}
+   */
+  public readonly id: string;
+
+  /**
+   * The contents of the plugin's `package.json`.
+   */
+  public readonly pkgJson?: PackageJson;
+
+  /**
+   * A map of package manager names to {@link PackageManager} objects contained
+   * in the plugin
+   *
+   * @group Component Map
+   */
+  public readonly pkgManagerDefMap: Map<string, PkgManagerDef>;
+
+  /**
    * A map of reporter names to {@link ReporterDef} objects contained in the
    * plugin
    *
@@ -201,10 +128,11 @@ export class PluginMetadata implements StaticPluginMetadata {
   public readonly reporterDefMap: Map<string, ReporterDef>;
 
   /**
-   * Plugin description. May be derived from {@link pkgJson} or provided in
-   * {@link PluginMetadataOpts}.
+   * The name of the plugin as requested by the user
    */
-  public readonly description?: string;
+  public readonly requestedAs: string;
+
+  public readonly ruleDefMap: Map<string, SomeRuleDef>;
 
   /**
    * Version of plugin. May be derived from {@link pkgJson} or provided in
@@ -225,33 +153,63 @@ export class PluginMetadata implements StaticPluginMetadata {
     optsOrEntryPoint: PluginMetadataOpts | string,
     id?: string,
   ) {
-    try {
-      const opts = isString(optsOrEntryPoint)
-        ? PluginMetadataOptsSchema.parse({
-            entryPoint: optsOrEntryPoint,
-            requestedAs: optsOrEntryPoint,
-            id,
-          })
-        : PluginMetadataOptsSchema.parse(optsOrEntryPoint);
+    // this processing used to be a Zod schema, but it wasn't really necessary
+    const opts: SetRequired<PluginMetadataOpts, 'id'> = isString(
+      optsOrEntryPoint,
+    )
+      ? {
+          entryPoint: optsOrEntryPoint,
+          requestedAs: optsOrEntryPoint,
+          id: id ?? path.basename(optsOrEntryPoint),
+        }
+      : {
+          ...optsOrEntryPoint,
+          id:
+            optsOrEntryPoint.id ??
+            optsOrEntryPoint.pkgJson?.name ??
+            path.basename(optsOrEntryPoint.entryPoint),
+        };
 
-      // basic information
-      this.id = opts.id;
-      this.requestedAs = opts.requestedAs ?? opts.entryPoint;
-      this.entryPoint = opts.entryPoint;
-      this.pkgJson = opts.pkgJson;
-      this.description = opts.description || opts.pkgJson?.description;
-
-      // component maps
-      this.ruleMap = new Map();
-      this.pkgManagerDefMap = new Map();
-      this.executorMap = new Map();
-      this.reporterDefMap = new Map();
-      this.ruleDefMap = new Map();
-      this.version = this.version ?? this.pkgJson?.version;
-    } catch (err) {
-      // TODO: throw SmokerError
-      throw isZodError(err) ? fromZodError(err) : err;
+    if (opts.entryPoint !== TRANSIENT && !path.isAbsolute(opts.entryPoint)) {
+      throw new InvalidArgError('entryPoint must be an absolute path', {
+        argName: 'entryPoint',
+      });
     }
+    if (opts.pkgJson && !isPlainObject(opts.pkgJson)) {
+      throw new InvalidArgError('pkgJson must be an object', {
+        argName: 'pkgJson',
+      });
+    }
+
+    // basic information
+    this.id = opts.id;
+    this.requestedAs = opts.requestedAs ?? opts.entryPoint;
+    this.entryPoint = opts.entryPoint;
+    this.pkgJson = opts.pkgJson;
+    this.description = opts.description || opts.pkgJson?.description;
+
+    // component maps
+    this.pkgManagerDefMap = new Map();
+    this.executorMap = new Map();
+    this.reporterDefMap = new Map();
+    this.ruleDefMap = new Map();
+    this.version = this.version ?? this.pkgJson?.version;
+  }
+
+  public get isBlessed() {
+    return BLESSED_PLUGINS.includes(this.id as BlessedPlugin);
+  }
+
+  public get pkgManagerDefs() {
+    return [...this.pkgManagerDefMap.values()];
+  }
+
+  public get reporterDefs() {
+    return [...this.reporterDefMap.values()];
+  }
+
+  public get ruleDefs() {
+    return [...this.ruleDefMap.values()];
   }
 
   /**
@@ -292,7 +250,6 @@ export class PluginMetadata implements StaticPluginMetadata {
     metadata: Readonly<PluginMetadata>,
     opts: Partial<PluginMetadataOpts> | string,
   ): Readonly<PluginMetadata>;
-
   public static create(
     optsEntryPtOrMetadata:
       | PluginMetadataOpts
@@ -327,25 +284,6 @@ export class PluginMetadata implements StaticPluginMetadata {
   }
 
   /**
-   * Returns {@link Rule} components within this plugin, if any
-   */
-  public get rules() {
-    return [...this.ruleMap.values()];
-  }
-
-  public get reporterDefs() {
-    return [...this.reporterDefMap.values()];
-  }
-
-  public get ruleDefs() {
-    return [...this.ruleDefMap.values()];
-  }
-
-  public get pkgManagerDefs() {
-    return [...this.pkgManagerDefMap.values()];
-  }
-
-  /**
    * Creates a _transient_ {@link PluginMetadata} object, which is considered to
    * be an in-memory plugin.
    *
@@ -368,29 +306,8 @@ export class PluginMetadata implements StaticPluginMetadata {
     });
   }
 
-  public get isBlessed() {
-    return BLESSED_PLUGINS.includes(this.id as BlessedPlugin);
-  }
-
-  /**
-   * Serializes this object to a brief {@link StaticPluginMetadata} object.
-   */
-  public toJSON(): StaticPluginMetadata {
-    return {
-      id: this.id,
-      version: this.version,
-      description: this.description,
-      entryPoint: this.entryPoint,
-    };
-  }
-
-  /**
-   * Returns a string representation of this metadata
-   */
-  public toString(): string {
-    return `[PluginMetadata] ${this.id}${
-      this.version ? `@${this.version}` : ''
-    } (${this.entryPoint})`;
+  public addExecutor(name: string, value: Executor): void {
+    this.executorMap.set(name, value);
   }
 
   /**
@@ -403,27 +320,15 @@ export class PluginMetadata implements StaticPluginMetadata {
     debug('Plugin %s added pkg manager "%s"', this, name);
   }
 
+  public addReporterDef(value: ReporterDef): void {
+    this.reporterDefMap.set(value.name, value);
+  }
+
   public addRuleDef<Schema extends RuleDefSchemaValue | void = void>(
     def: RuleDef<Schema>,
   ): void {
     const {name} = def;
     this.ruleDefMap.set(name, def);
-  }
-
-  public addExecutor(name: string, value: Executor): void {
-    this.executorMap.set(name, value);
-  }
-
-  public addReporterDef(value: ReporterDef): void {
-    this.reporterDefMap.set(value.name, value);
-  }
-
-  public async loadPkgManagers(
-    opts: LoadPackageManagersOpts,
-  ): Promise<NonEmptyArray<PkgManagerDefSpec>> {
-    const pkgManagerDefs = [...this.pkgManagerDefMap.values()];
-    assertNonEmptyArray(pkgManagerDefs);
-    return loadPackageManagers(pkgManagerDefs, opts);
   }
 
   /**
@@ -458,6 +363,35 @@ export class PluginMetadata implements StaticPluginMetadata {
       return opts.rules[id].severity !== RuleSeverities.Off;
     });
   }
+
+  public async loadPkgManagers(
+    opts: LoadPackageManagersOpts,
+  ): Promise<NonEmptyArray<PkgManagerDefSpec>> {
+    const pkgManagerDefs = [...this.pkgManagerDefMap.values()];
+    assertNonEmptyArray(pkgManagerDefs);
+    return loadPackageManagers(pkgManagerDefs, opts);
+  }
+
+  /**
+   * Serializes this object to a brief {@link StaticPluginMetadata} object.
+   */
+  public toJSON(): StaticPluginMetadata {
+    return {
+      id: this.id,
+      version: this.version,
+      description: this.description,
+      entryPoint: this.entryPoint,
+    };
+  }
+
+  /**
+   * Returns a string representation of this metadata
+   */
+  public toString(): string {
+    return `[PluginMetadata] ${this.id}${
+      this.version ? `@${this.version}` : ''
+    } (${this.entryPoint})`;
+  }
 }
 
 export type {LiteralUnion};
@@ -476,6 +410,8 @@ export type {LiteralUnion};
  * @todo Should probably memoize/singleton-ize this, so that _every_
  *   `PluginRegistry` instance gets the same one. That isn't the same as "this
  *   should only run once"--it should run once per `PluginRegistry` instance.
+ *
+ * @todo Move this somewhere else
  */
 export async function initBlessedMetadata(fm: FileManager) {
   const entries = await Promise.all(

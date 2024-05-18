@@ -1,7 +1,7 @@
 import {RuleSeverities} from '#constants';
 import {RuleError} from '#error/rule-error';
 import type * as I from '#rule/issue';
-import * as IS from '#schema/rule-result';
+import type * as IS from '#schema/rule-result';
 import type {StaticRuleContext, StaticRuleDef} from '#schema/rule-static';
 import rewiremock from 'rewiremock/node';
 import unexpected from 'unexpected';
@@ -23,6 +23,7 @@ describe('midnight-smoker', function () {
       });
       describe('RuleIssue', function () {
         let params: I.RuleIssueParams<StaticRuleContext, StaticRuleDef>;
+        const ruleId = 'example-rule';
         const exampleStaticRule: StaticRuleDef = {
           name: 'example-rule',
           description: 'This is an example rule',
@@ -39,16 +40,15 @@ describe('midnight-smoker', function () {
           installPath: '/path/to/example-package',
           localPath: '/path/to/example-package',
           severity: 'error',
-          ruleName: exampleStaticRule.name,
           pkgManager: 'bebebebebee',
+          ruleId,
         };
         let issue: I.RuleIssue;
 
         beforeEach(function () {
           params = {
             rule: exampleStaticRule,
-            // @ts-expect-error FIX
-            context: exampleStaticRuleContext,
+            ctx: exampleStaticRuleContext,
             message: 'Test message',
             data: {foo: 'bar'},
             error: new RuleError(
@@ -65,8 +65,7 @@ describe('midnight-smoker', function () {
           it('should correctly initialize properties', function () {
             expect(issue, 'to satisfy', {
               rule: params.rule,
-              // @ts-expect-error FIX
-              context: params.context,
+              ctx: params.ctx,
               message: params.message,
               data: params.data,
               error: params.error,
@@ -79,16 +78,14 @@ describe('midnight-smoker', function () {
           describe('failed', function () {
             describe('when severity is Error', function () {
               it('should return true', function () {
-                // @ts-expect-error FIX
-                params.context.severity = RuleSeverities.Error;
+                params.ctx.severity = RuleSeverities.Error;
                 expect(issue.failed, 'to be true');
               });
             });
 
             describe('when severity is Warn', function () {
               it('should return false', function () {
-                // @ts-expect-error FIX
-                params.context.severity = RuleSeverities.Warn;
+                params.ctx.severity = RuleSeverities.Warn;
                 expect(issue.failed, 'to be false');
               });
             });
@@ -96,8 +93,7 @@ describe('midnight-smoker', function () {
 
           describe('severity', function () {
             it('should return the severity from the context', function () {
-              // @ts-expect-error FIX
-              expect(issue.severity, 'to be', params.context.severity);
+              expect(issue.severity, 'to be', params.ctx.severity);
             });
           });
         });
@@ -130,24 +126,16 @@ describe('midnight-smoker', function () {
             it('should return a StaticRuleIssue', function () {
               const expected: IS.RuleResultFailed = {
                 rule: params.rule,
-                // @ts-expect-error FIX
-                context: params.context,
+                ctx: params.ctx,
                 message: params.message,
                 data: params.data,
                 error: params.error,
                 id: issue.id,
                 failed: issue.failed,
-                severity: issue.severity,
-                pkgManager: issue.pkgManager,
                 filepath: issue.filepath,
+                type: 'FAILED',
               };
-              expect(issue.toJSON(), 'to equal', expected).and(
-                'when passed as parameter to',
-                // @ts-expect-error FIX
-                IS.RuleResultFailedSchema.parse,
-                'to equal',
-                expected,
-              );
+              expect(issue.toJSON(), 'to equal', expected);
             });
           });
         });
