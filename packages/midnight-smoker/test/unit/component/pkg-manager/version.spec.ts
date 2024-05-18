@@ -1,7 +1,7 @@
 import rewiremock from 'rewiremock/node';
 import {parse} from 'semver';
 import unexpected from 'unexpected';
-import type * as V from '../../../../src/component/pkg-manager/pkg-manager-version';
+import type * as V from '../../../../src/pkg-manager/pkg-manager-version';
 import {createFsMocks} from '../../mocks/fs';
 const expect = unexpected.clone();
 // TODO: Fix
@@ -14,8 +14,7 @@ describe('midnight-smoker', function () {
       beforeEach(function () {
         const {mocks} = createFsMocks();
         ({normalizeVersion} = rewiremock.proxy(
-          () =>
-            require('../../../../src/component/pkg-manager/pkg-manager-version'),
+          () => require('../../../../src/pkg-manager/pkg-manager-version'),
           mocks,
         ));
       });

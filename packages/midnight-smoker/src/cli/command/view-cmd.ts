@@ -3,12 +3,12 @@
  *
  * @packageDocumentation
  */
-
-import {bold} from 'chalk';
 // eslint-disable-next-line @typescript-eslint/no-restricted-imports
+import {inspect} from 'node:util';
+
 import {guessPackageManager} from '#pkg-manager/pkg-manager-spec';
 import {Smoker} from '#smoker';
-import {inspect} from 'node:util';
+import {bold} from 'chalk';
 import {type Writable} from 'type-fest';
 import {
   type ArgumentsCamelCase,

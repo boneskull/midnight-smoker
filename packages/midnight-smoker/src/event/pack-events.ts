@@ -1,11 +1,10 @@
+import {type PackError, type PackParseError} from '#error';
 import type {
   InstallManifest,
-  PackError,
   PackOptions,
-  PackParseError,
   StaticPkgManagerSpec,
   WorkspaceInfo,
-} from '../component';
+} from '#schema';
 import type {PackEvent} from './event-constants';
 import type {PkgManagerEventBase} from './pkg-manager-events';
 

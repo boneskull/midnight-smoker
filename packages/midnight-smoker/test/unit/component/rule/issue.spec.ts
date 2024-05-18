@@ -1,8 +1,8 @@
 import rewiremock from 'rewiremock/node';
 import unexpected from 'unexpected';
-import type * as I from '../../../../src/component/rule/issue';
 import {RuleSeverities} from '../../../../src/constants';
 import {RuleError} from '../../../../src/error/rule-error';
+import type * as I from '../../../../src/rule/issue';
 import type * as IS from '../../../../src/schema/rule-result';
 import type {
   StaticRuleContext,
@@ -20,7 +20,7 @@ describe('midnight-smoker', function () {
       beforeEach(function () {
         const {mocks} = createFsMocks();
         ({RuleIssue} = rewiremock.proxy(
-          () => require('../../../../src/component/rule/issue'),
+          () => require('../../../../src/rule/issue'),
           mocks,
         ));
       });

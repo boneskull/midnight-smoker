@@ -2,7 +2,7 @@ import rewiremock from 'rewiremock/node';
 import unexpected from 'unexpected';
 
 import {fileURLToPath} from 'url';
-import type * as Ctx from '../../../../src/component/rule/context';
+import type * as Ctx from '../../../../src/rule/context';
 import {type SomeRuleDef} from '../../../../src/schema/rule-def';
 import {type StaticRuleContext} from '../../../../src/schema/rule-static';
 import {createFsMocks} from '../../mocks/fs';
@@ -17,7 +17,7 @@ describe('midnight-smoker', function () {
       beforeEach(function () {
         const {mocks} = createFsMocks();
         RuleContext = rewiremock.proxy(
-          () => require('../../../../src/component/rule/context'),
+          () => require('../../../../src/rule/context'),
           mocks,
         ).RuleContext;
       });

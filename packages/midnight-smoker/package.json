@@ -35,14 +35,14 @@
     "#executor": "./dist/executor/index.js",
     "#options": "./dist/options/index.js",
     "#options/*": "./dist/options/*.js",
-    "#pkg-manager": "./dist/component/pkg-manager/index.js",
-    "#pkg-manager/*": "./dist/component/pkg-manager/*.js",
+    "#pkg-manager": "./dist/pkg-manager/index.js",
+    "#pkg-manager/*": "./dist/pkg-manager/*.js",
     "#plugin": "./dist/plugin/index.js",
     "#plugin/*": "./dist/plugin/*.js",
-    "#reporter": "./dist/component/reporter/index.js",
-    "#reporter/*": "./dist/component/reporter/*.js",
-    "#rule": "./dist/component/rule/index.js",
-    "#rule/*": "./dist/component/rule/*.js",
+    "#reporter": "./dist/reporter/index.js",
+    "#reporter/*": "./dist/reporter/*.js",
+    "#rule": "./dist/rule/index.js",
+    "#rule/*": "./dist/rule/*.js",
     "#schema": "./dist/schema/index.js",
     "#schema/*": "./dist/schema/*.js",
     "#smoker": "./dist/smoker.js",
@@ -71,14 +71,14 @@
       "default": "./dist/event/index.js"
     },
     "./rule": {
-      "types": "./dist/component/rule/index.d.ts",
-      "typedoc": "./src/component/rule/index.ts",
-      "default": "./dist/component/rule/index.js"
+      "types": "./dist/rule/index.d.ts",
+      "typedoc": "./src/rule/index.ts",
+      "default": "./dist/rule/index.js"
     },
     "./reporter": {
-      "types": "./dist/component/reporter/index.d.ts",
-      "typedoc": "./src/component/reporter/index.ts",
-      "default": "./dist/component/reporter/index.js"
+      "types": "./dist/reporter/index.d.ts",
+      "typedoc": "./src/reporter/index.ts",
+      "default": "./dist/reporter/index.js"
     },
     "./executor": {
       "types": "./dist/executor/index.d.ts",
@@ -86,9 +86,9 @@
       "default": "./dist/executor/index.js"
     },
     "./pkg-manager": {
-      "types": "./dist/component/pkg-manager/index.d.ts",
-      "typedoc": "./src/component/pkg-manager/index.ts",
-      "default": "./dist/component/pkg-manager/index.js"
+      "types": "./dist/pkg-manager/index.d.ts",
+      "typedoc": "./src/pkg-manager/index.ts",
+      "default": "./dist/pkg-manager/index.js"
     },
     "./package.json": "./package.json",
     "./smoker": "./bin/smoker.js",

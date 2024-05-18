@@ -4,11 +4,11 @@ import {scheduler} from 'node:timers/promises';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
-import {PkgManagerOracle} from '../../../../src/component/pkg-manager/pkg-manager-spec';
 import {
   DEFAULT_PKG_MANAGER_BIN,
   DEFAULT_PKG_MANAGER_VERSION,
 } from '../../../../src/constants';
+import {PkgManagerOracle} from '../../../../src/pkg-manager/pkg-manager-spec';
 import {type PkgManagerDef} from '../../../../src/schema/pkg-manager-def';
 import {createFsMocks} from '../../mocks/fs';
 const expect = unexpected.clone().use(unexpectedSinon);

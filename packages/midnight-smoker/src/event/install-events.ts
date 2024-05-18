@@ -1,11 +1,11 @@
-import type {
-  ExecResult,
-  InstallError,
-  InstallManifest,
-  StaticPkgManagerSpec,
-} from '../component';
-import type {InstallEvent} from './event-constants';
-import type {PkgManagerEventBase} from './pkg-manager-events';
+import {type InstallError} from '#error/install-error';
+import {
+  type ExecResult,
+  type InstallManifest,
+  type StaticPkgManagerSpec,
+} from '#schema';
+import {type InstallEvent} from './event-constants';
+import {type PkgManagerEventBase} from './pkg-manager-events';
 
 export interface InstallEventData {
   /**

@@ -3,11 +3,11 @@ import {SemVer} from 'semver';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
-import type * as PMS from '../../../../src/component/pkg-manager/pkg-manager-spec';
 import {
   DEFAULT_PKG_MANAGER_BIN,
   DEFAULT_PKG_MANAGER_VERSION,
 } from '../../../../src/constants';
+import type * as PMS from '../../../../src/pkg-manager/pkg-manager-spec';
 import {type getSystemPkgManagerVersion} from '../../../../src/util/pkg-util';
 import {createFsMocks} from '../../mocks/fs';
 
@@ -29,8 +29,7 @@ describe('midnight-smoker', function () {
             .stub<[string], Promise<string>>()
             .resolves('1.22.10');
           ({PkgManagerSpec} = rewiremock.proxy(
-            () =>
-              require('../../../../src/component/pkg-manager/pkg-manager-spec'),
+            () => require('../../../../src/pkg-manager/pkg-manager-spec'),
             {
               ...mocks,
               '../../../../src/util/pkg-util': {
