@@ -97,9 +97,9 @@
       "default": "./dist/component/reporter/index.js"
     },
     "./executor": {
-      "types": "./dist/component/executor/index.d.ts",
-      "typedoc": "./src/component/executor/index.ts",
-      "default": "./dist/component/executor/index.js"
+      "types": "./dist/executor/index.d.ts",
+      "typedoc": "./src/executor/index.ts",
+      "default": "./dist/executor/index.js"
     },
     "./pkg-manager": {
       "types": "./dist/component/pkg-manager/index.d.ts",

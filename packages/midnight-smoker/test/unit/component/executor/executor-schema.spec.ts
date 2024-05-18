@@ -1,6 +1,6 @@
 import rewiremock from 'rewiremock/node';
 import unexpected from 'unexpected';
-import type * as E from '../../../../src/component/executor';
+import type * as E from '../../../../src/executor';
 import {createFsMocks} from '../../mocks/fs';
 
 const expect = unexpected.clone();
@@ -16,7 +16,7 @@ describe('midnight-smoker', function () {
         beforeEach(function () {
           const {mocks} = createFsMocks();
           ({ExecError, ExecErrorSchema, ExecResultSchema} = rewiremock.proxy(
-            () => require('../../../../src/component/executor'),
+            () => require('../../../../src/executor'),
             mocks,
           ));
         });

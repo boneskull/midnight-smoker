@@ -4,12 +4,12 @@ import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
 import type * as PMLoader from '../../../../src/component/pkg-manager/pkg-manager-loader';
-import {type PkgManagerDef} from '../../../../src/component/schema/pkg-manager-def';
 import {
   DEFAULT_PKG_MANAGER_BIN,
   DEFAULT_PKG_MANAGER_VERSION,
 } from '../../../../src/constants';
 import {ErrorCodes} from '../../../../src/error';
+import {type PkgManagerDef} from '../../../../src/schema/pkg-manager-def';
 import {createFsMocks} from '../../mocks/fs';
 
 const TEST_TMPDIR = '/some/tmp/dir/';

@@ -1,8 +1,8 @@
-import type {ExecResult} from '#schema/exec-result';
 import {execSmoker, fixupOutput} from '@midnight-smoker/test-util';
 import path from 'node:path';
 import snapshot from 'snap-shot-it';
 import unexpected from 'unexpected';
+import type {ExecResult} from '../../src/schema/exec-result';
 import assertions from '../assertions';
 
 const expect = unexpected.clone().use(assertions);

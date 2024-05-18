@@ -1,6 +1,6 @@
-// import {PLUGIN_DEFAULT_ID} from '#plugin/blessed';
-// import {PluginRegistry} from '#plugin/plugin-registry';
-// import {type SomeRule} from '#schema/rule';
+// import {PLUGIN_DEFAULT_ID} from '../../src/plugin/blessed';
+// import {PluginRegistry} from '../../src/plugin/plugin-registry';
+// import {type SomeRule} from '../../src/schema/rule';
 // import {registerRule} from '@midnight-smoker/test-util';
 // import unexpected from 'unexpected';
 

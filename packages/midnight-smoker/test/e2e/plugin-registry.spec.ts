@@ -1,5 +1,5 @@
-import {PluginRegistry} from '#plugin/plugin-registry';
 import unexpected from 'unexpected';
+import {PluginRegistry} from '../../src/plugin/plugin-registry';
 
 const expect = unexpected.clone();
 

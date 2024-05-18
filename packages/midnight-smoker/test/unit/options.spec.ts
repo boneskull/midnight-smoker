@@ -4,10 +4,10 @@ import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import {z} from 'zod';
 import {isValidationError} from 'zod-validation-error';
-import {type SomeRuleDef} from '../../src/component/schema/rule-def';
 import {RuleSeverities} from '../../src/constants';
 import type * as OP from '../../src/options/parser';
 import type * as PR from '../../src/plugin/plugin-registry';
+import {type SomeRuleDef} from '../../src/schema/rule-def';
 import {createFsMocks} from './mocks/fs';
 
 const expect = unexpected.clone();

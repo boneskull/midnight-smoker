@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
-import {readPackageJsonSync} from '#util/pkg-util';
 import type {ExecaReturnValue} from 'execa';
 import {isBoolean, isInteger, isObject, isString} from 'lodash';
 import type unexpected from 'unexpected';
+import {readPackageJsonSync} from '../src/util/pkg-util';
 
 const {packageJson} = readPackageJsonSync({cwd: __dirname, strict: true});
 

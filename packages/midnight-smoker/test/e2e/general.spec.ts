@@ -1,12 +1,12 @@
-import {DEFAULT_PKG_MANAGER_BIN} from '#constants';
-import type {ExecResult} from '#schema/exec-result';
-import {resolveFrom} from '#util/loader-util';
-import {readPackageJson} from '#util/pkg-util';
 import {execSmoker, fixupOutput} from '@midnight-smoker/test-util';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import snapshot from 'snap-shot-it';
 import unexpected from 'unexpected';
+import {DEFAULT_PKG_MANAGER_BIN} from '../../src/constants';
+import type {ExecResult} from '../../src/schema/exec-result';
+import {resolveFrom} from '../../src/util/loader-util';
+import {readPackageJson} from '../../src/util/pkg-util';
 import assertions from '../assertions';
 
 const expect = unexpected.clone().use(assertions);
