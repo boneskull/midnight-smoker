@@ -109,7 +109,7 @@ export function handleInstallError(
       const parsedError = parseNpmError(errOrResult.stdout);
       return new InstallError(
         parsedError.summary,
-        `${spec}`,
+        spec.spec,
         pkgSpec,
         tmpdir,
         {
@@ -122,7 +122,7 @@ export function handleInstallError(
     } catch (e) {
       return new InstallError(
         `Unable to parse npm output. Use --verbose for more information`,
-        `${spec}`,
+        spec.spec,
         pkgSpec,
         tmpdir,
         {
@@ -135,7 +135,7 @@ export function handleInstallError(
   } else if (errOrResult.exitCode > 0 || errOrResult instanceof Error) {
     return new InstallError(
       `Use --verbose for more information`,
-      `${spec}`,
+      spec.spec,
       pkgSpec,
       tmpdir,
       {
@@ -146,6 +146,11 @@ export function handleInstallError(
   }
 }
 
+/**
+ * This is an incomplete implementation of a `PkgManagerDef` for `npm`. It
+ * functions as namespace for common behaviors which actual implementations can
+ * use.
+ */
 export const BaseNpmPackageManager = {
   bin: 'npm',
 
@@ -192,7 +197,7 @@ export const BaseNpmPackageManager = {
         if (parsedError) {
           throw new PackError(
             parsedError.summary,
-            `${ctx.spec}`,
+            ctx.spec.spec,
             workspace,
             ctx.tmpdir,
             {
@@ -205,7 +210,7 @@ export const BaseNpmPackageManager = {
 
         throw new PackError(
           `Use --verbose for more information`,
-          `${ctx.spec}`,
+          ctx.spec.spec,
           workspace,
           ctx.tmpdir,
           {error: err},
@@ -225,7 +230,7 @@ export const BaseNpmPackageManager = {
       throw isError(err)
         ? new PackParseError(
             `Failed to parse JSON result of "npm pack"`,
-            `${ctx.spec}`,
+            ctx.spec.spec,
             workspace,
             err,
             packOutput,
@@ -274,7 +279,7 @@ export const BaseNpmPackageManager = {
         if (loose && /missing script:/i.test(err.stderr)) {
           skipped = true;
         } else {
-          error = new RunScriptError(err, script, pkgName, `${spec}`);
+          error = new RunScriptError(err, script, pkgName, spec.spec);
         }
       } else {
         throw err;
@@ -304,7 +309,7 @@ export const BaseNpmPackageManager = {
           error = new ScriptFailedError(message, {
             script,
             pkgName,
-            pkgManager: `${spec}`,
+            pkgManager: spec.spec,
             command,
             exitCode,
             output: all || stderr || stdout,
@@ -364,4 +369,4 @@ export const BaseNpmPackageManager = {
     }
     return installResult;
   },
-};
+} as const;
