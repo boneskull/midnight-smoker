@@ -60,6 +60,8 @@ export const queryWorkspaces = fromPromise<
             return {
               pkgName: workspacePkgJson.name,
               localPath: fullpath,
+              pkgJson: workspacePkgJson,
+              pkgJsonPath,
             } as WorkspaceInfo;
           }),
       );

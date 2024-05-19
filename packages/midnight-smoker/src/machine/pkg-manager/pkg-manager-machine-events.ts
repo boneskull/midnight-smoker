@@ -12,7 +12,6 @@ import {type StaticRuleContext} from '#schema/rule-static';
 import {type RunScriptManifest} from '#schema/run-script-manifest';
 import {type RunScriptResult} from '#schema/run-script-result';
 import {type SomeRuleDef} from '#schema/some-rule-def';
-import {type PackageJson} from 'type-fest';
 
 export type CheckOutput = CheckOutputOk | CheckOutputFailed;
 
@@ -45,8 +44,6 @@ export interface CheckInput {
  */
 export interface CheckItem {
   manifest: LintManifest;
-  pkgJson: PackageJson;
-  pkgJsonPath: string;
   signal: AbortSignal;
 }
 

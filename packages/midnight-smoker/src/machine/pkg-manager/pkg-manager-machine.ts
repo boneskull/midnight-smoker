@@ -89,7 +89,6 @@ import {
   createTempDir,
   install,
   pack,
-  prepareLintItem,
   pruneTempDir,
   runScript,
   setupPkgManager,
@@ -249,7 +248,6 @@ export const PkgManagerMachine = setup({
     teardownPkgManager,
     setupPkgManager,
     createTempDir,
-    prepareLintItem,
     runScript,
     pack,
     pruneTempDir,
@@ -331,20 +329,6 @@ export const PkgManagerMachine = setup({
         runScriptResult: RunScriptResult,
       ) => [...runScriptResults, runScriptResult],
     }),
-    prepareLintItem: enqueueActions(
-      ({enqueue, context: {fileManager}}, manifest: LintManifest) => {
-        enqueue.spawnChild('prepareLintItem', {
-          id: `prepareLintItem.${manifest.installPath}`,
-          input: {
-            lintItem: {
-              signal: new AbortController().signal,
-              manifest,
-            },
-            fileManager,
-          },
-        });
-      },
-    ),
     createPkgManagerContext: assign({
       ctx: ({
         context: {spec, tmpdir, executor, workspaceInfo, useWorkspaces, opts},
@@ -676,15 +660,13 @@ export const PkgManagerMachine = setup({
             const ref = ruleMachineRefs[ruleId];
             assert(ref);
 
-            const {pkgJson, pkgJsonPath, manifest} = job;
+            const {manifest} = job;
             enqueue.sendTo(ref, {
               type: 'CHECK',
               ctx: {
                 ...manifest,
                 ruleId,
                 severity: config.severity,
-                pkgJson,
-                pkgJsonPath,
                 pkgManager: `${spec}`,
               },
               manifest,
@@ -707,31 +689,39 @@ export const PkgManagerMachine = setup({
     }),
     handleInstallResult: enqueueActions(
       (
-        {enqueue, context: {shouldLint, scripts = []}},
+        {enqueue, context: {workspaceInfo, shouldLint, scripts = []}},
         installResult: InstallResult,
       ) => {
         const {installManifest} = installResult;
         if (isWorkspaceManifest(installManifest)) {
           const {localPath, pkgName, installPath} = installManifest;
+          const workspace = workspaceInfo.find(
+            ({localPath, pkgName}) =>
+              localPath === installManifest.localPath &&
+              pkgName === installManifest.pkgName,
+          );
+          assert.ok(workspace);
+
+          const lintManifest: LintManifest = {...workspace, installPath};
           if (shouldLint) {
             enqueue.raise({
               type: 'LINT',
-              manifest: {
-                pkgName,
-                installPath,
-                localPath,
-              },
+              manifest: lintManifest,
             });
           }
           for (const script of scripts) {
+            const runScriptManifest: RunScriptManifest = {
+              pkgName,
+              cwd: installPath,
+              pkgJson: workspace.pkgJson,
+              pkgJsonPath: workspace.pkgJsonPath,
+              localPath,
+              script,
+            };
+
             enqueue.raise({
               type: 'RUN_SCRIPT',
-              manifest: {
-                pkgName,
-                cwd: installPath,
-                localPath,
-                script,
-              },
+              manifest: runScriptManifest,
             });
           }
         }
@@ -740,25 +730,23 @@ export const PkgManagerMachine = setup({
     sendPkgInstallOk: sendTo(
       ({context: {parentRef}}) => parentRef,
       (
-        {self: {id: sender}, context: {spec}},
+        {self, context},
         {installManifest, rawResult}: InstallResult,
       ): CtrlPkgInstallOkEvent => ({
-        sender,
+        sender: self.id,
         rawResult,
         type: 'INSTALL.PKG_INSTALL_OK',
         installManifest,
-        pkgManager: spec.toJSON(),
+        pkgManager: context.spec.toJSON(),
       }),
     ),
     sendPkgManagerLintBegin: sendTo(
       ({context: {parentRef}}) => parentRef,
-      ({self: {id: sender}, context: {spec}}): CtrlPkgManagerLintBeginEvent => {
-        return {
-          type: 'LINT.PKG_MANAGER_LINT_BEGIN',
-          pkgManager: spec.toJSON(),
-          sender,
-        };
-      },
+      ({self, context}): CtrlPkgManagerLintBeginEvent => ({
+        type: 'LINT.PKG_MANAGER_LINT_BEGIN',
+        pkgManager: context.spec.toJSON(),
+        sender: self.id,
+      }),
     ),
     sendPkgManagerLintEnd: sendTo(
       ({context: {parentRef}}) => parentRef,
@@ -1382,14 +1370,6 @@ export const PkgManagerMachine = setup({
         [S.Linting]: {
           initial: S.Idle,
           on: {
-            'xstate.done.actor.prepareLintItem.*': {
-              actions: [
-                {
-                  type: 'enqueueLintItem',
-                  params: ({event: {output}}) => output,
-                },
-              ],
-            },
             CHECK_RESULT: {
               description:
                 'Once a RuleMachine has completed a rule check, it will send this event; we want to raise it locally as a RULE_END event to avoid duplication, since we must conditionally take a different action if all checks have been completed',
@@ -1481,8 +1461,11 @@ export const PkgManagerMachine = setup({
                       params: ({event: {manifest}}) => manifest,
                     },
                     {
-                      type: 'prepareLintItem',
-                      params: ({event: {manifest}}) => manifest,
+                      type: 'enqueueLintItem',
+                      params: ({event: {manifest}}) => ({
+                        manifest,
+                        signal: new AbortController().signal,
+                      }),
                     },
                   ],
                 },

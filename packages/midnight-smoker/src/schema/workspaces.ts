@@ -1,6 +1,7 @@
 import {
   NonEmptyStringArraySchema,
   NonEmptyStringSchema,
+  PackageJsonSchema,
 } from '#util/schema-util';
 import type {Opaque} from 'type-fest';
 import {z} from 'zod';
@@ -19,9 +20,11 @@ export const WorkspacesConfigSchema = WorkspacesSchema.or(
 export const WorkspaceInfoSchema = z.object({
   pkgName: NonEmptyStringSchema,
   localPath: NonEmptyStringSchema,
+  pkgJson: PackageJsonSchema,
+  pkgJsonPath: NonEmptyStringSchema,
 });
 
 export type WorkspaceInfo = Opaque<
-  {pkgName: string; localPath: string},
+  z.infer<typeof WorkspaceInfoSchema>,
   'WorkspaceInfo'
 >;
