@@ -1,8 +1,8 @@
-import {type ReporterError} from '#error';
+import {type ReporterError} from '#error/reporter-error';
 import {type CtrlMachineEmitted} from '#machine/control';
 import {ERROR, FINAL, OK, type ActorOutput} from '#machine/util';
 import {type SmokerOptions} from '#options/options';
-import {type PluginMetadata} from '#plugin';
+import {type PluginMetadata} from '#plugin/plugin-metadata';
 import {
   type SomeReporterContext,
   type SomeReporterDef,

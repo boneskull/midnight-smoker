@@ -17,5 +17,3 @@ export * from './plugin-api';
 export * from './plugin-metadata';
 
 export * from './plugin-registry';
-
-export * from './static-metadata';

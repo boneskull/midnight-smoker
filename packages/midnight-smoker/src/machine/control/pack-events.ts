@@ -8,12 +8,11 @@ import type {
   PkgPackBeginEventData,
   PkgPackFailedEventData,
   PkgPackOkEventData,
-} from '#event';
+} from '#event/pack-events';
 import type {MachineEvent} from '#machine/util';
+import {type ComputedPkgEventFields} from './pkg-events';
 
 export type AnyPackEvent = CtrlPackEvents & {type: 'PACK.*'};
-
-export type ComputedPkgEventFields = 'currentPkg' | 'totalPkgs';
 
 export type ComputedPkgManagerPackFields = 'totalPkgs' | 'totalPkgManagers';
 

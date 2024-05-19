@@ -1,4 +1,4 @@
-import type {PluginMetadata} from '#plugin/plugin-metadata';
+import type {StaticPluginMetadata} from '#schema/static-plugin-metadata';
 import {BaseSmokerError} from './base-error';
 
 /**
@@ -9,11 +9,11 @@ import {BaseSmokerError} from './base-error';
  */
 
 export class DisallowedPluginError extends BaseSmokerError<{
-  metadata?: PluginMetadata;
+  metadata?: StaticPluginMetadata;
 }> {
   public readonly id = 'DisallowedPluginError';
 
-  constructor(metadata?: PluginMetadata) {
+  constructor(metadata?: StaticPluginMetadata) {
     super(
       metadata
         ? `Plugin ${metadata.id} from ${metadata.entryPoint} disallowed`

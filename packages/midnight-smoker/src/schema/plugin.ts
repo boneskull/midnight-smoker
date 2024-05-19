@@ -1,5 +1,5 @@
 import type {PluginAPI} from '#plugin/plugin-api';
-import {NonEmptyStringSchema, VoidOrPromiseVoidSchema} from '#util';
+import {NonEmptyStringSchema, VoidOrPromiseVoidSchema} from '#util/schema-util';
 import {isObject} from 'lodash';
 import {z} from 'zod';
 

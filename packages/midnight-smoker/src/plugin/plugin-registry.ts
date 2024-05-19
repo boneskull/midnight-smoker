@@ -3,38 +3,33 @@ import {
   DEFAULT_COMPONENT_ID,
   type ComponentKind,
 } from '#constants';
-import {
-  DisallowedPluginError,
-  DuplicatePluginError,
-  InvalidComponentError,
-  PluginConflictError,
-  PluginImportError,
-  PluginInitError,
-  PluginResolutionError,
-  UnresolvablePluginError,
-} from '#error';
+import {DisallowedPluginError} from '#error/disallowed-plugin-error';
+import {DuplicatePluginError} from '#error/duplicate-plugin-error';
+import {InvalidComponentError} from '#error/invalid-component-error';
+import {PluginConflictError} from '#error/plugin-conflict-error';
+import {PluginImportError} from '#error/plugin-import-error';
+import {PluginInitError} from '#error/plugin-init-error';
+import {PluginResolutionError} from '#error/plugin-resolution-error';
+import {UnresolvablePluginError} from '#error/unresolvable-plugin-error';
 import {createPluginAPI} from '#plugin/create-plugin-api';
 import {PluginMetadata, initBlessedMetadata} from '#plugin/plugin-metadata';
-import {
-  createRuleOptionsSchema,
-  getDefaultRuleOptions,
-} from '#rule/create-rule-options';
+import {getDefaultRuleOptions} from '#rule/create-rule-options';
+import {type Executor} from '#schema/executor';
+import {type PkgManagerDef} from '#schema/pkg-manager-def';
+import {PluginSchema, type Plugin} from '#schema/plugin';
+import {type SomeReporterDef} from '#schema/reporter-def';
 import {
   RawRuleOptionsSchema,
-  type Executor,
-  type PkgManagerDef,
-  type ReporterDef,
-  type SomeReporterDef,
-  type SomeRuleDef,
-  type StaticPluginMetadata,
-} from '#schema';
-import {PluginSchema, type Plugin} from '#schema/plugin';
+  createRuleOptionsSchema,
+} from '#schema/rule-options';
+import {type SomeRuleDef} from '#schema/some-rule-def';
+import {type StaticPluginMetadata} from '#schema/static-plugin-metadata';
+import {isErrnoException} from '#util/error-util';
+import {FileManager} from '#util/filemanager';
 import {
   EmptyObjectSchema,
-  FileManager,
   NonEmptyNonEmptyStringArraySchema,
-  isErrnoException,
-} from '#util';
+} from '#util/schema-util';
 import Debug from 'debug';
 import {isEmpty, isError, isString} from 'lodash';
 import {dirname} from 'node:path';
@@ -162,12 +157,6 @@ export class PluginRegistry {
     ]);
   }
 
-  public get reporters(): ReporterDef[] {
-    return this.plugins.flatMap((plugin) => [
-      ...plugin.reporterDefMap.values(),
-    ]);
-  }
-
   private validateRequestedPluginIds(pluginIds: string[] = []): string[] {
     const RequestedPluginsSchema = NonEmptyNonEmptyStringArraySchema.transform(
       (plugins) => [...new Set([...plugins])],
@@ -187,7 +176,6 @@ export class PluginRegistry {
    * @param cwd Current working directory
    * @returns This {@link PluginRegistry}
    */
-
   public async registerPlugins(
     pluginIds: readonly string[] | string[] = [],
     cwd?: string,
@@ -510,7 +498,7 @@ export class PluginRegistry {
       await plugin.plugin(pluginApi);
     } catch (err) {
       debug(err);
-      throw isError(err) ? new PluginInitError(err, metadata, plugin) : err;
+      throw isError(err) ? new PluginInitError(err, metadata) : err;
     }
 
     this.pluginMap.set(metadata.id, metadata);

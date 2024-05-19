@@ -1,10 +1,8 @@
-import {
-  type ExecResult,
-  type RunScriptManifest,
-  type RunScriptResult,
-  type ScriptError,
-  type StaticPkgManagerSpec,
-} from '#schema';
+import {type ExecResult} from '#schema/exec-result';
+import {type RunScriptManifest} from '#schema/run-script-manifest';
+import {type RunScriptResult} from '#schema/run-script-result';
+import {type ScriptError} from '#schema/script-error';
+import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {type ScriptEvent} from './event-constants';
 import {type PkgManagerEventBase} from './pkg-manager-events';
 

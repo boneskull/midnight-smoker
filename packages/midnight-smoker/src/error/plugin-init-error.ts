@@ -1,5 +1,4 @@
-import type {Plugin} from '#plugin/plugin';
-import type {PluginMetadata} from '#plugin/plugin-metadata';
+import type {StaticPluginMetadata} from '#schema/static-plugin-metadata';
 import {BaseSmokerError} from './base-error';
 
 /**
@@ -12,23 +11,17 @@ import {BaseSmokerError} from './base-error';
 
 export class PluginInitError extends BaseSmokerError<
   {
-    metadata: Readonly<PluginMetadata>;
-    plugin: Plugin;
+    metadata: StaticPluginMetadata;
   },
   Error
 > {
   public readonly id = 'PluginInitError';
 
-  constructor(
-    error: Error,
-    metadata: Readonly<PluginMetadata>,
-    plugin: Plugin,
-  ) {
+  constructor(error: Error, metadata: StaticPluginMetadata) {
     super(
-      `Plugin ${metadata} failed to initialize: ${error.message}`,
+      `Plugin ${metadata.id} failed to initialize: ${error.message}`,
       {
         metadata,
-        plugin,
       },
       error,
     );

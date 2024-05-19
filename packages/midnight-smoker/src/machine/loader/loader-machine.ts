@@ -1,5 +1,5 @@
 import {RuleSeverities} from '#constants';
-import {fromUnknownError} from '#error';
+import {fromUnknownError} from '#error/from-unknown-error';
 import {
   ERROR,
   FINAL,
@@ -8,18 +8,13 @@ import {
   type ActorOutputError,
   type ActorOutputOk,
 } from '#machine/util';
-import {type SmokerOptions} from '#options';
-import {type PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
-import {type PluginMetadata, type PluginRegistry} from '#plugin';
-import {
-  type Executor,
-  type PkgManagerDef,
-  type PkgManagerOpts,
-  type SomeReporterDef,
-  type SomeRuleDef,
-  type WorkspaceInfo,
-} from '#schema';
-import {type FileManager} from '#util';
+import {type SmokerOptions} from '#options/options';
+import {type PluginMetadata} from '#plugin/plugin-metadata';
+import {type PluginRegistry} from '#plugin/plugin-registry';
+import {type Executor} from '#schema/executor';
+import {type PkgManagerOpts} from '#schema/pkg-manager-def';
+import {type WorkspaceInfo} from '#schema/workspaces';
+import {type FileManager} from '#util/filemanager';
 import {isFunction} from 'lodash';
 import assert from 'node:assert';
 import {type PackageJson} from 'type-fest';
@@ -28,6 +23,11 @@ import {
   loadPkgManagers,
   type LoadPkgManagersInput,
 } from './loader-machine-actors';
+import {
+  type PkgManagerInitPayload,
+  type ReporterInitPayload,
+  type RuleInitPayload,
+} from './loader-machine-types';
 
 export const LoadableComponents = {
   All: 'all',
@@ -45,23 +45,6 @@ export interface LoaderPkgManagerParams {
   defaultExecutor?: Executor;
   systemExecutor?: Executor;
   pkgManagerOpts?: PkgManagerOpts;
-}
-
-export interface BaseInitPayload {
-  plugin: Readonly<PluginMetadata>;
-}
-
-export interface PkgManagerInitPayload extends BaseInitPayload {
-  def: PkgManagerDef;
-  spec: PkgManagerSpec;
-}
-
-export interface ReporterInitPayload extends BaseInitPayload {
-  def: SomeReporterDef;
-}
-
-export interface RuleInitPayload extends BaseInitPayload {
-  def: SomeRuleDef;
 }
 
 export interface BaseLoaderMachineInput {

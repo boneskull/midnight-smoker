@@ -1,12 +1,13 @@
 import {MIDNIGHT_SMOKER, PACKAGE_JSON, UNKNOWN_TMPDIR_PREFIX} from '#constants';
 import {DirCreationError} from '#error/create-dir-error';
+import {fromUnknownError} from '#error/from-unknown-error';
+import {MissingPackageJsonError} from '#error/missing-pkg-json-error';
+import {UnreadablePackageJsonError} from '#error/unreadable-pkg-json-error';
 import Debug from 'debug';
 import type nodeFsPromises from 'node:fs/promises';
 import path from 'node:path';
 import normalizePkgData from 'normalize-package-data';
 import {type PackageJson} from 'type-fest';
-import {MissingPackageJsonError, fromUnknownError} from '../error';
-import {UnreadablePackageJsonError} from '../error/unreadable-pkg-json-error';
 import {justImport, resolveFrom} from './loader-util';
 import {memoize, uniqueIdFactoryFactory} from './util';
 
@@ -246,6 +247,7 @@ export class FileManager {
         break;
       }
       from = nextFrom;
+      // eslint-disable-next-line no-constant-condition
     } while (true);
   }
 

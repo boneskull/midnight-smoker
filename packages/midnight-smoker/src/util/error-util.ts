@@ -1,4 +1,4 @@
-import {type SmokerError} from '#error';
+import {type SmokerError} from '#error/base-error';
 import {ExecaErrorSchema} from '#schema/execa-error';
 import {type ExecaError} from 'execa';
 import {isError} from 'lodash';

@@ -1,8 +1,6 @@
-import {
-  RunScriptError,
-  ScriptFailedError,
-  UnknownScriptError,
-} from '#error/script-error';
+import {RunScriptError} from '#error/run-script-error';
+import {ScriptFailedError} from '#error/script-failed-error';
+import {UnknownScriptError} from '#error/unknown-script-error';
 import {instanceofSchema} from '#util/schema-util';
 import {z} from 'zod';
 

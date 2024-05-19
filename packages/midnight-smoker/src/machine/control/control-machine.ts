@@ -1,13 +1,12 @@
 import {DEFAULT_EXECUTOR_ID, SYSTEM_EXECUTOR_ID} from '#constants';
-import {fromUnknownError} from '#error';
-import {SmokerEvent, type DataForEvent} from '#event';
+import {fromUnknownError} from '#error/from-unknown-error';
+import {SmokerEvent} from '#event/event-constants';
+import {type DataForEvent} from '#event/events';
+import {type Executor} from '#executor';
 import {
   LoadableComponents,
   LoaderMachine,
   type LoaderMachineOutputOk,
-  type PkgManagerInitPayload,
-  type ReporterInitPayload,
-  type RuleInitPayload,
 } from '#machine/loader';
 import {PkgManagerMachine} from '#machine/pkg-manager';
 import {
@@ -17,14 +16,11 @@ import {
 } from '#machine/reporter';
 import * as MachineUtil from '#machine/util';
 import {type SmokerOptions} from '#options/options';
-import {type PluginRegistry} from '#plugin';
-import {
-  type Executor,
-  type LintResult,
-  type RunScriptResult,
-  type StaticPkgManagerSpec,
-  type WorkspaceInfo,
-} from '#schema';
+import {type PluginRegistry} from '#plugin/plugin-registry';
+import {type LintResult} from '#schema/rule-result';
+import {type RunScriptResult} from '#schema/run-script-result';
+import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
+import {type WorkspaceInfo} from '#schema/workspaces';
 import {FileManager} from '#util/filemanager';
 import {isEmpty, map, uniqBy} from 'lodash';
 import assert from 'node:assert';
@@ -39,6 +35,11 @@ import {
   setup,
   type ActorRefFrom,
 } from 'xstate';
+import {
+  type PkgManagerInitPayload,
+  type ReporterInitPayload,
+  type RuleInitPayload,
+} from '../loader/loader-machine-types';
 import {queryWorkspaces, readSmokerPkgJson} from './control-machine-actors';
 import type * as Event from './control-machine-events';
 import {

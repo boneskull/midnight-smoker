@@ -1,7 +1,7 @@
-import {type SmokerOptions} from '#options';
-import {type PluginMetadata} from '#plugin';
+import {type SmokerOptions} from '#options/options';
+import {type PluginMetadata} from '#plugin/plugin-metadata';
 import {fromPromise} from 'xstate';
-import {type PkgManagerInitPayload} from './loader-machine';
+import {type PkgManagerInitPayload} from './loader-machine-types';
 
 export interface LoadPkgManagersInput {
   cwd?: string;

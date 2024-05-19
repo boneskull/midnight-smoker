@@ -7,22 +7,23 @@
 import {DEFAULT_COMPONENT_ID, RuleSeverities, TRANSIENT} from '#constants';
 import {InvalidArgError} from '#error/invalid-arg-error';
 import {type SmokerOptions} from '#options/options';
-import {loadPackageManagers, type LoadPackageManagersOpts} from '#pkg-manager';
 import {
-  BLESSED_PLUGINS,
-  type BlessedPlugin,
-  type StaticPluginMetadata,
-} from '#plugin';
+  loadPackageManagers,
+  type LoadPackageManagersOpts,
+} from '#pkg-manager/pkg-manager-loader';
+import {BLESSED_PLUGINS, type BlessedPlugin} from '#plugin/blessed';
+import {type Executor} from '#schema/executor';
 import {
-  type Executor,
   type PkgManagerDef,
   type PkgManagerDefSpec,
-  type ReporterDef,
-  type RuleDef,
-  type RuleDefSchemaValue,
-  type SomeRuleDef,
-} from '#schema';
-import {assertNonEmptyArray, type FileManager, type NonEmptyArray} from '#util';
+} from '#schema/pkg-manager-def';
+import {type ReporterDef} from '#schema/reporter-def';
+import {type RuleDef} from '#schema/rule-def';
+import {type RuleDefSchemaValue} from '#schema/rule-options';
+import {type SomeRuleDef} from '#schema/some-rule-def';
+import {type StaticPluginMetadata} from '#schema/static-plugin-metadata';
+import {type FileManager} from '#util/filemanager';
+import {assertNonEmptyArray, type NonEmptyArray} from '#util/util';
 import Debug from 'debug';
 import {curry, isFunction, isPlainObject, isString} from 'lodash';
 import path from 'node:path';

@@ -6,7 +6,7 @@ import {
   type RuleFailedEventData,
   type RunScriptFailedEventData,
 } from 'midnight-smoker/event';
-import {isBlessedPlugin} from 'midnight-smoker/plugin/blessed';
+import {isBlessedPlugin} from 'midnight-smoker/plugin';
 import {type ReporterDef} from 'midnight-smoker/reporter';
 import pluralize from 'pluralize';
 

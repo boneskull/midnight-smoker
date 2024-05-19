@@ -22,31 +22,20 @@
   },
   "main": "./dist/index.js",
   "imports": {
-    "#cli": "./dist/cli/index.js",
     "#cli/*": "./dist/cli/*.js",
     "#config-file": "./dist/config-file.js",
     "#constants": "./dist/constants.js",
-    "#machine": "./dist/machine/index.js",
     "#machine/*": "./dist/machine/*/index.js",
-    "#error": "./dist/error/index.js",
     "#error/*": "./dist/error/*.js",
-    "#event": "./dist/event/index.js",
     "#event/*": "./dist/event/*.js",
     "#executor": "./dist/executor/index.js",
-    "#options": "./dist/options/index.js",
     "#options/*": "./dist/options/*.js",
-    "#pkg-manager": "./dist/pkg-manager/index.js",
     "#pkg-manager/*": "./dist/pkg-manager/*.js",
-    "#plugin": "./dist/plugin/index.js",
     "#plugin/*": "./dist/plugin/*.js",
-    "#reporter": "./dist/reporter/index.js",
     "#reporter/*": "./dist/reporter/*.js",
-    "#rule": "./dist/rule/index.js",
     "#rule/*": "./dist/rule/*.js",
-    "#schema": "./dist/schema/index.js",
     "#schema/*": "./dist/schema/*.js",
     "#smoker": "./dist/smoker.js",
-    "#util": "./dist/util/index.js",
     "#util/*": "./dist/util/*.js"
   },
   "exports": {
@@ -69,6 +58,11 @@
       "types": "./dist/event/index.d.ts",
       "typedoc": "./src/event/index.ts",
       "default": "./dist/event/index.js"
+    },
+    "./machine": {
+      "types": "./dist/machine/index.d.ts",
+      "typedoc": "./src/machine/index.ts",
+      "default": "./dist/machine/index.js"
     },
     "./rule": {
       "types": "./dist/rule/index.d.ts",
@@ -172,7 +166,6 @@
     "zod-validation-error": "2.1.0"
   },
   "devDependencies": {
-    "@midnight-smoker/test-util": "file:../test-util",
     "@types/debug": "4.1.12",
     "@types/is-file-esm": "1.0.3",
     "@types/json-stable-stringify": "1.0.35",

@@ -52,8 +52,4 @@ export const RuleCheckFnSchema = z
 export const RuleDefSchema = StaticRuleDefSchema.extend({
   schema: RuleDefSchemaValueSchema.optional(),
   check: RuleCheckFnSchema,
-}); /**
- * Some {@link RuleDef}
- */
-
-export type SomeRuleDef = RuleDef<RuleDefSchemaValue | void>;
+});

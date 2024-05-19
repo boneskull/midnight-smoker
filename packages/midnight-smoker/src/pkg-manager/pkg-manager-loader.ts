@@ -6,8 +6,10 @@
  * @packageDocumentation
  */
 
-import {type PkgManagerDef} from '#schema/pkg-manager-def';
-import {type PkgManagerDefSpec} from '#schema/pkg-manager-def-spec';
+import {
+  type PkgManagerDef,
+  type PkgManagerDefSpec,
+} from '#schema/pkg-manager-def';
 import {type NonEmptyArray} from '#util/util';
 import {matchPkgManagers} from './pkg-manager-matcher';
 import {PkgManagerSpec} from './pkg-manager-spec';

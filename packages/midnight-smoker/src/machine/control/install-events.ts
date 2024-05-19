@@ -5,9 +5,9 @@ import {
   type PkgManagerInstallBeginEventData,
   type PkgManagerInstallFailedEventData,
   type PkgManagerInstallOkEventData,
-} from '#event';
+} from '#event/install-events';
 import {type MachineEvent} from '#machine/util';
-import {type ComputedPkgEventFields} from './control-machine-events';
+import {type ComputedPkgEventFields} from './pkg-events';
 
 export type AnyInstallEvent = CtrlInstallEvents & {type: 'INSTALL.*'};
 

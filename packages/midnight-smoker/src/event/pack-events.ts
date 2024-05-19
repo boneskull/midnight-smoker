@@ -1,10 +1,8 @@
-import {type PackError, type PackParseError} from '#error';
-import type {
-  InstallManifest,
-  PackOptions,
-  StaticPkgManagerSpec,
-  WorkspaceInfo,
-} from '#schema';
+import {type PackError, type PackParseError} from '#error/pack-error';
+import {type InstallManifest} from '#schema/install-manifest';
+import {type PackOptions} from '#schema/pack-options';
+import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
+import {type WorkspaceInfo} from '#schema/workspaces';
 import type {PackEvent} from './event-constants';
 import type {PkgManagerEventBase} from './pkg-manager-events';
 

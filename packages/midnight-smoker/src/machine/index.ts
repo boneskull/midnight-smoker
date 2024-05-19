@@ -1,10 +1,15 @@
 /**
- * Only `ControlMachine` and `LoaderMachine` are intended to be consumed as the
- * root of a statechart.
- *
- * @packageDocumentation
+ * @module midnight-smoker/machine
  */
+
+export {createActor, toPromise} from 'xstate';
 
 export * from './loader';
 
 export * from './control';
+
+export * from './pkg-manager';
+
+export * from './reporter';
+
+export * from './util';

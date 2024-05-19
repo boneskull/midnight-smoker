@@ -2,7 +2,7 @@ import {type ComponentKind, type ComponentKinds} from '#constants';
 import {type Executor} from '#schema/executor';
 import {type PkgManagerDef} from '#schema/pkg-manager-def';
 import {type SomeReporterDef} from '#schema/reporter-def';
-import {type SomeRuleDef} from '#schema/rule-def';
+import {type SomeRuleDef} from '#schema/some-rule-def';
 import {type StaticPluginMetadata} from '#schema/static-plugin-metadata';
 // import Debug from 'debug';
 

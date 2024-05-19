@@ -1,6 +1,6 @@
 import {PACKAGE_JSON} from '#constants';
-import {WorkspacesConfigSchema, type WorkspaceInfo} from '#schema';
-import {type FileManager} from '#util';
+import {WorkspacesConfigSchema, type WorkspaceInfo} from '#schema/workspaces';
+import {type FileManager} from '#util/filemanager';
 import assert from 'assert';
 import {glob} from 'glob';
 import {isEmpty, partition} from 'lodash';

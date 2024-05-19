@@ -1,4 +1,3 @@
-import {execSmoker, fixupOutput} from '@midnight-smoker/test-util';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import snapshot from 'snap-shot-it';
@@ -8,6 +7,7 @@ import type {ExecResult} from '../../src/schema/exec-result';
 import {resolveFrom} from '../../src/util/loader-util';
 import {readPackageJson} from '../../src/util/pkg-util';
 import assertions from '../assertions';
+import {execSmoker, fixupOutput} from './cli-helpers';
 
 const expect = unexpected.clone().use(assertions);
 

@@ -1,25 +1,25 @@
-import {registerRule} from '@midnight-smoker/test-util';
-import {PluginRegistry} from 'midnight-smoker/plugin';
-import {RuleSeverities, type SomeRule} from 'midnight-smoker/rule';
+import {partial} from 'lodash';
+import {type CheckOutput} from 'midnight-smoker/machine';
+import {RuleSeverities, type SomeRuleOptions} from 'midnight-smoker/rule';
 import {normalize} from 'node:path';
 import unexpected from 'unexpected';
-import noMissingPkgFilesDef from '../../../src/rules/no-missing-pkg-files';
-import {applyRule} from './helpers';
+import noMissingPkgFiles from '../../../src/rules/no-missing-pkg-files';
+import {createRuleRunner} from './helpers';
 
 const expect = unexpected.clone();
 
 describe('@midnight-smoker/plugin-default', function () {
-  let noMissingPkgFiles: SomeRule;
-
   describe('rule', function () {
     describe('no-missing-pkg-files', function () {
-      before(async function () {
-        noMissingPkgFiles = await registerRule(
-          PluginRegistry.create(),
-          noMissingPkgFilesDef,
-        );
-      });
+      let applyRule: (
+        installPath: string,
+        opts?: SomeRuleOptions,
+      ) => Promise<CheckOutput[]>;
 
+      before(async function () {
+        const runner = await createRuleRunner(noMissingPkgFiles);
+        applyRule = partial(runner, 'no-missing-pkg-files');
+      });
       describe('when run without options', function () {
         describe('when the "bin" field is an object', function () {
           describe('when the file is missing', function () {
@@ -29,11 +29,11 @@ describe('@midnight-smoker/plugin-default', function () {
 
             it('should return a failure', async function () {
               await expect(
-                applyRule(noMissingPkgFiles, fixture),
+                applyRule(fixture),
                 'to be fulfilled with value satisfying',
                 [
                   {
-                    rule: noMissingPkgFiles.toJSON(),
+                    rule: 'no-missing-pkg-files',
                     message:
                       'File "no-missing-pkg-files" from "bin" field unreadable at path: ./bin/no-missing-pkg-files.js',
                     context: {
@@ -55,7 +55,7 @@ describe('@midnight-smoker/plugin-default', function () {
 
             it('should not return a failure', async function () {
               await expect(
-                applyRule(noMissingPkgFiles, fixture),
+                applyRule(fixture),
                 'to be fulfilled with',
                 undefined,
               );
@@ -70,11 +70,11 @@ describe('@midnight-smoker/plugin-default', function () {
 
           it('should return a failure', async function () {
             await expect(
-              applyRule(noMissingPkgFiles, fixture),
+              applyRule(fixture),
               'to be fulfilled with value satisfying',
               [
                 {
-                  rule: noMissingPkgFiles.toJSON(),
+                  rule: 'no-missing-pkg-files',
                   message:
                     'File from "bin" field unreadable at path: ./bin/no-missing-pkg-files.js',
                   context: {
@@ -96,11 +96,11 @@ describe('@midnight-smoker/plugin-default', function () {
 
           it('should return a failure', async function () {
             await expect(
-              applyRule(noMissingPkgFiles, fixture),
+              applyRule(fixture),
               'to be fulfilled with value satisfying',
               [
                 {
-                  rule: noMissingPkgFiles.toJSON(),
+                  rule: 'no-missing-pkg-files',
                   message:
                     'File from "types" field unreadable at path: index.d.ts',
                   context: {
@@ -122,11 +122,11 @@ describe('@midnight-smoker/plugin-default', function () {
 
           it('should return a failure', async function () {
             await expect(
-              applyRule(noMissingPkgFiles, fixture),
+              applyRule(fixture),
               'to be fulfilled with value satisfying',
               [
                 {
-                  rule: noMissingPkgFiles.toJSON(),
+                  rule: 'no-missing-pkg-files',
                   message:
                     'File from "browser" field unreadable at path: index.browser.js',
                   context: {
@@ -151,7 +151,7 @@ describe('@midnight-smoker/plugin-default', function () {
 
             it('should return no failures', async function () {
               await expect(
-                applyRule(noMissingPkgFiles, fixture, {bin: false}),
+                applyRule(fixture, {bin: false}),
                 'to be fulfilled with',
                 undefined,
               );

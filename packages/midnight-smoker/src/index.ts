@@ -17,15 +17,13 @@
 
 import {Smoker} from './smoker';
 
-export type {SmokeResults} from '#event';
+export type {SmokeResults} from '#event/smoker-events';
 
 export {
   BaseSmokerOptionsSchema as zBaseSmokerOptions,
   type RawSmokerOptions,
   type SmokerOptions,
 } from './options';
-
-export type * from './plugin/plugin-registry';
 
 export type {SmokerCapabilities} from './smoker';
 

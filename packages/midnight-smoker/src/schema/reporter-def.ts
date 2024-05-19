@@ -4,9 +4,9 @@
  *
  * @packageDocumentation
  */
-import {type DataForEvent, type EventData, type EventName} from '#event';
+import {type DataForEvent, type EventData, type EventName} from '#event/events';
 import {BaseSmokerOptionsSchema, type SmokerOptions} from '#options/options';
-import {type StaticPluginMetadata} from '#plugin/static-metadata';
+import {type StaticPluginMetadata} from '#schema/static-plugin-metadata';
 import {
   DefaultFalseSchema,
   NonEmptyStringSchema,

@@ -1,15 +1,14 @@
-import {fromUnknownError} from '#error';
-import {SmokerEvent, type DataForEvent, type LintEventData} from '#event';
+import {fromUnknownError} from '#error/from-unknown-error';
+import {SmokerEvent} from '#event/event-constants';
+import {type DataForEvent} from '#event/events';
+import {type LintEventData} from '#event/lint-events';
 import {type ReporterMachine} from '#machine/reporter';
 import {FAILED, FINAL} from '#machine/util';
 import {type SmokerOptions} from '#options/options';
-import {
-  type LintResult,
-  type LintResultOk,
-  type SomeRuleDef,
-  type StaticPkgManagerSpec,
-  type WorkspaceInfo,
-} from '#schema';
+import {type LintResult, type LintResultOk} from '#schema/rule-result';
+import {type SomeRuleDef} from '#schema/some-rule-def';
+import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
+import {type WorkspaceInfo} from '#schema/workspaces';
 import {
   assign,
   enqueueActions,

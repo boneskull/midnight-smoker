@@ -1,14 +1,14 @@
+import {type PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
+import {type InstallManifest} from '#schema/install-manifest';
+import {type InstallResult} from '#schema/install-result';
 import {
-  type InstallManifest,
-  type InstallResult,
   type PkgManagerContext,
   type PkgManagerDef,
   type PkgManagerInstallContext,
   type PkgManagerPackContext,
   type PkgManagerRunScriptContext,
-  type PkgManagerSpec,
-} from '#pkg-manager';
-import type {FileManager} from '#util';
+} from '#schema/pkg-manager-def';
+import {type FileManager} from '#util/filemanager';
 import {isFunction} from 'lodash';
 import {fromPromise} from 'xstate';
 import {

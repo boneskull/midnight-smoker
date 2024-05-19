@@ -1,5 +1,5 @@
 import {DEFAULT_PKG_MANAGER_VERSION} from '#constants';
-import {fromUnknownError} from '#error/base-error';
+import {fromUnknownError} from '#error/from-unknown-error';
 import {MissingPackageJsonError} from '#error/missing-pkg-json-error';
 import {UnreadablePackageJsonError} from '#error/unreadable-pkg-json-error';
 import Debug from 'debug';

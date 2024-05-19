@@ -1,17 +1,17 @@
-import type {PluginMetadata} from '#plugin/plugin-metadata';
+import type {StaticPluginMetadata} from '#schema/static-plugin-metadata';
 import {BaseSmokerError} from './base-error';
 
 export class PluginImportError extends BaseSmokerError<
   {
-    metadata: Readonly<PluginMetadata>;
+    metadata: StaticPluginMetadata;
   },
   Error
 > {
   public readonly id = 'PluginImportError';
 
-  constructor(error: Error, metadata: Readonly<PluginMetadata>) {
+  constructor(error: Error, metadata: StaticPluginMetadata) {
     super(
-      `Plugin ${metadata} failed to import: ${error.message}`,
+      `Plugin ${metadata.id} failed to import: ${error.message}`,
       {
         metadata,
       },

@@ -1,4 +1,5 @@
-import {type DataForEvent, type EventData, type SmokerEvent} from '#event';
+import {type SmokerEvent} from '#event/event-constants';
+import {type DataForEvent, type EventData} from '#event/events';
 import {type LoaderMachineOutput} from '#machine/loader';
 import {type PkgManagerMachineOutput} from '#machine/pkg-manager';
 import {type ReporterMachineOutput} from '#machine/reporter';
@@ -6,8 +7,6 @@ import {type AnyInstallEvent, type CtrlInstallEvents} from './install-events';
 import {type AnyLintEvent, type CtrlLintEvents} from './lint-events';
 import {type AnyPackEvent, type CtrlPackEvents} from './pack-events';
 import {type AnyScriptEvent, type CtrlScriptEvents} from './script-events';
-
-export type ComputedPkgEventFields = 'currentPkg' | 'totalPkgs';
 
 export type EventMap = {
   'SCRIPT.RUN_SCRIPT_BEGIN': typeof SmokerEvent.RunScriptBegin;

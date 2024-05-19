@@ -1,6 +1,6 @@
-import {fromUnknownError, ReporterError} from '#error';
-import {type DataForEvent, type EventName} from '#event';
-import {type CtrlMachineEmitted} from '#machine/control';
+import {fromUnknownError} from '#error/from-unknown-error';
+import {ReporterError} from '#error/reporter-error';
+import {type DataForEvent, type EventData, type EventName} from '#event/events';
 import {
   type ReporterListener,
   type ReporterListeners,
@@ -11,7 +11,7 @@ import {isFunction} from 'lodash';
 import {fromPromise} from 'xstate';
 
 export interface DrainQueueInput {
-  queue: CtrlMachineEmitted[];
+  queue: DataForEvent<keyof EventData>[];
   def: SomeReporterDef;
 
   ctx: SomeReporterContext;

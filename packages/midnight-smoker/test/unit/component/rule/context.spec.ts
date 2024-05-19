@@ -3,8 +3,8 @@ import unexpected from 'unexpected';
 
 import {fileURLToPath} from 'url';
 import type * as Ctx from '../../../../src/rule/context';
-import {type SomeRuleDef} from '../../../../src/schema/rule-def';
 import {type StaticRuleContext} from '../../../../src/schema/rule-static';
+import {type SomeRuleDef} from '../../../../src/schema/some-rule-def';
 import {createFsMocks} from '../../mocks/fs';
 
 const expect = unexpected.clone();

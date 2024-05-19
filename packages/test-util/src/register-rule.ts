@@ -1,10 +1,10 @@
 import {
+  isBlessedPlugin,
   type Plugin,
   type PluginFactory,
   type PluginMetadata,
   type PluginRegistry,
 } from 'midnight-smoker/plugin';
-import {isBlessedPlugin} from 'midnight-smoker/plugin/blessed';
 import {
   RuleDefSchema,
   type RuleDef,

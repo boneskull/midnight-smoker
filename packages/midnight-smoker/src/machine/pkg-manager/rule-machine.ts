@@ -1,19 +1,20 @@
-import {FAILED, makeId, OK} from '#machine/util';
+import {FAILED, FINAL, makeId, OK} from '#machine/util';
 import {RuleContext} from '#rule/context';
-import {
-  type LintManifest,
-  type RuleResultOk,
-  type SomeRuleConfig,
-  type SomeRuleDef,
-  type StaticRuleContext,
-} from '#schema';
+import {type LintManifest} from '#schema/lint-manifest';
+import {type SomeRuleConfig} from '#schema/rule-options';
+import {type RuleResultOk} from '#schema/rule-result';
+import {type StaticRuleContext} from '#schema/rule-static';
+import {type SomeRuleDef} from '#schema/some-rule-def';
 import {serialize} from '#util/util';
-import {isEmpty} from 'lodash';
+import {isEmpty, isNumber} from 'lodash';
 import {
+  and,
+  assign,
   enqueueActions,
   fromPromise,
-  sendTo,
+  not,
   setup,
+  type ActorRefFrom,
   type AnyActorRef,
 } from 'xstate';
 import {
@@ -26,10 +27,14 @@ export interface RuleMachineInput {
   def: SomeRuleDef;
   ruleId: string;
   config: SomeRuleConfig;
-  parentRef: AnyActorRef;
+  parentRef?: AnyActorRef;
+  plan?: number;
 }
 
-export interface RuleMachineContext extends RuleMachineInput {}
+export interface RuleMachineContext extends RuleMachineInput {
+  results: CheckOutput[];
+  checkRefs?: Record<string, ActorRefFrom<typeof check>>;
+}
 
 export interface RuleMachineCheckEvent {
   type: 'CHECK';
@@ -37,88 +42,171 @@ export interface RuleMachineCheckEvent {
   manifest: LintManifest;
 }
 
-export interface RuleMachineCheckDoneEvent {
+export interface RuleMachineCheckActorDoneEvent {
   type: 'xstate.done.actor.check.*';
   output: CheckOutput;
 }
 
+export interface RuleMachineCheckResultEvent {
+  output: CheckOutput;
+  config: SomeRuleConfig;
+  type: 'CHECK_RESULT';
+}
+
 export type RuleMachineEvents =
   | RuleMachineCheckEvent
-  | RuleMachineCheckDoneEvent;
+  | RuleMachineCheckActorDoneEvent
+  | RuleMachineCheckResultEvent;
 
 /**
  * Runs a single rule's check against an installed package using user-provided
  * configuration
  */
-export const check = fromPromise<CheckOutput, CheckInput>(async ({input}) => {
-  const {ctx: staticCtx, opts, def, ruleId} = input;
+export const check = fromPromise<CheckOutput, CheckInput>(
+  async ({self, input}) => {
+    const {ctx: staticCtx, opts, def, ruleId} = input;
 
-  const ctx = RuleContext.create(def, staticCtx, ruleId);
+    const ctx = RuleContext.create(def, staticCtx, ruleId);
 
-  try {
-    await def.check(ctx, opts);
-  } catch (err) {
-    ctx.addIssueFromError(err);
-  }
-  const issues = ctx.finalize() ?? [];
-  if (isEmpty(issues)) {
-    const ok: RuleResultOk = {type: OK, ctx, rule: serialize(def)};
-    return {...input, result: ok, type: OK};
-  }
-  return {
-    ...input,
-    // TODO fix this readonly disagreement.  it _should_ be read-only, but that breaks somewhere down the line
-    result: [...issues],
-    ctx,
-    type: FAILED,
-  };
-});
+    try {
+      await def.check(ctx, opts);
+    } catch (err) {
+      ctx.addIssueFromError(err);
+    }
+    const issues = ctx.finalize() ?? [];
+    if (isEmpty(issues)) {
+      const ok: RuleResultOk = {type: OK, ctx, rule: serialize(def)};
+      return {...input, result: ok, type: OK, actorId: self.id};
+    }
+    return {
+      ...input,
+      // TODO fix this readonly disagreement.  it _should_ be read-only, but that breaks somewhere down the line
+      result: [...issues],
+      actorId: self.id,
+      ctx,
+      type: FAILED,
+    };
+  },
+);
+
+export type RuleMachineOutput = CheckOutput[];
 
 export const RuleMachine = setup({
   types: {
     context: {} as RuleMachineContext,
     input: {} as RuleMachineInput,
     events: {} as RuleMachineEvents,
+    output: {} as RuleMachineOutput,
   },
-  guards: {},
-  actions: {},
+  guards: {
+    isChecking: ({context: {checkRefs}}) => !isEmpty(checkRefs),
+    shouldHalt: ({context: {results = [], plan}}) => {
+      return isNumber(plan) && results.length >= plan;
+    },
+  },
+  actions: {
+    enqueueCheck: assign({
+      checkRefs: (
+        {
+          spawn,
+          context: {
+            def,
+            config: {opts},
+            checkRefs = {},
+            ruleId,
+          },
+        },
+        {ctx, manifest}: {ctx: StaticRuleContext; manifest: LintManifest},
+      ) => {
+        const id = `check.${makeId()}-${ruleId}`;
+        const actor = spawn('check', {
+          id,
+          input: {def, ruleId, opts, ctx, manifest},
+        });
+        return {
+          ...checkRefs,
+          [id]: actor,
+        };
+      },
+    }),
+    report: enqueueActions(({enqueue, context}, output: CheckOutput) => {
+      const {parentRef, config} = context;
+      const evt: PkgManagerMachineCheckResultEvent = {
+        type: 'CHECK_RESULT',
+        output,
+        config,
+      };
+      if (parentRef) {
+        enqueue.sendTo(parentRef, evt);
+      }
+      enqueue.emit(evt as RuleMachineCheckResultEvent);
+    }),
+    stopCheckActor: enqueueActions(
+      ({enqueue, context: {checkRefs = {}}}, actorId: string) => {
+        const actor = checkRefs[actorId];
+        if (actor) {
+          enqueue.stopChild(actor);
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const {[actorId]: _, ...rest} = checkRefs;
+        enqueue.assign({checkRefs: rest});
+      },
+    ),
+    appendCheckResult: assign({
+      results: ({context: {results}}, output: CheckOutput) => [
+        ...results,
+        output,
+      ],
+    }),
+  },
   actors: {
     check,
   },
 }).createMachine({
-  context: ({input}) => input,
-  initial: 'idle',
-  on: {
-    'xstate.done.actor.check.*': {
-      actions: [
-        sendTo(
-          ({context: {parentRef}}) => parentRef,
-          ({context, event}): PkgManagerMachineCheckResultEvent => {
-            const {output} = event;
-            const {config} = context;
-            return {type: 'CHECK_RESULT', output, config};
-          },
-        ),
+  id: 'RuleMachine',
+  context: ({input}) => ({...input, results: []}),
+  initial: 'ready',
+  states: {
+    ready: {
+      always: [
+        {
+          guard: and([not('isChecking'), 'shouldHalt']),
+          target: 'done',
+        },
       ],
-    },
-    CHECK: {
-      actions: [
-        enqueueActions(
-          ({
-            enqueue,
-            context: {
-              ruleId,
-              def,
-              config: {opts},
+      on: {
+        'xstate.done.actor.check.*': {
+          actions: [
+            {
+              type: 'report',
+              params: ({event: {output}}) => output,
             },
-            event: {ctx, manifest},
-          }) => {
-            const id = `check.${makeId()}-${ruleId}`;
-            const input: CheckInput = {def, ruleId, opts, ctx, manifest};
-            enqueue.spawnChild('check', {id, input});
-          },
-        ),
-      ],
+            {
+              type: 'appendCheckResult',
+              params: ({event: {output}}) => output,
+            },
+            {
+              type: 'stopCheckActor',
+              params: ({
+                event: {
+                  output: {actorId},
+                },
+              }) => actorId,
+            },
+          ],
+        },
+        CHECK: {
+          actions: [
+            {
+              type: 'enqueueCheck',
+              params: ({event}) => event,
+            },
+          ],
+        },
+      },
     },
+    done: {type: FINAL},
   },
+  output: ({context: {results}}) => results,
 });

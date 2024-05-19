@@ -1,4 +1,4 @@
-import type {PluginHelpers} from '#plugin';
+import type {PluginHelpers} from '#plugin/helpers';
 import {customSchema} from '#util/schema-util';
 
 /**

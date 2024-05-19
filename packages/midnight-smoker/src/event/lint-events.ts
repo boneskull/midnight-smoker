@@ -1,4 +1,4 @@
-import type {RuleError} from '#error';
+import type {RuleError} from '#error/rule-error';
 import {type LintManifest} from '#schema/lint-manifest';
 import {
   type BaseRuleConfigRecord,

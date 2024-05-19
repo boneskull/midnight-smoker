@@ -1,7 +1,7 @@
-import {fromUnknownError} from '#error';
+import {fromUnknownError} from '#error/from-unknown-error';
 import {RuleError} from '#error/rule-error';
-import {type SomeRuleDef} from '#schema';
 import {type StaticRuleContext, type StaticRuleDef} from '#schema/rule-static';
+import {type SomeRuleDef} from '#schema/some-rule-def';
 import {serialize} from '#util/util';
 import {type PackageJson} from 'type-fest';
 import {RuleIssue} from './issue';

@@ -8,7 +8,7 @@ import {fromZodError, type ZodError} from 'zod-validation-error';
 import type {SmokerErrorCode, SmokerErrorId} from './codes';
 import {ErrorCodes} from './codes';
 
-const debug = Debug('midnight-smoker:error');
+export const debug = Debug('midnight-smoker:error');
 
 /**
  * Lookup an error code for a given `SmokerError` subclass instance.
@@ -199,20 +199,6 @@ export interface SmokerError<
  */
 export function isZodError(value: unknown): value is ZodError {
   return isError(value) && value.name === 'ZodError';
-}
-
-/**
- * Converts something that was thrown to an `Error` instance, if not already.
- *
- * @param err - A thrown thing
- * @returns The original thing (if an `Error`) otherwise a new `Error`
- */
-export function fromUnknownError(err?: unknown): Error {
-  if (isError(err)) {
-    return err;
-  }
-  debug('Handling unknown error: %o', err);
-  return new Error(`Unknown error: ${err}`);
 }
 
 export type SomeSmokerError = SmokerError<any, any>;

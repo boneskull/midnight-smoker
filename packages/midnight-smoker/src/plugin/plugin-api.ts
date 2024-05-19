@@ -3,11 +3,11 @@ import {type PkgManagerDef} from '#schema/pkg-manager-def';
 import {type ReporterDef} from '#schema/reporter-def';
 import {type RuleDef} from '#schema/rule-def';
 import {type RuleDefSchemaValue} from '#schema/rule-options';
+import type {StaticPluginMetadata} from '#schema/static-plugin-metadata';
 import type * as SchemaUtils from '#util/schema-util';
 import type {z} from 'zod';
 import type * as Helpers from './helpers';
 import type {PluginMetadata} from './plugin-metadata';
-import type {StaticPluginMetadata} from './static-metadata';
 
 /**
  * Defines a new {@link Rule} component

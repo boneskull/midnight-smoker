@@ -1,4 +1,7 @@
-import {type SomeSmokerError} from '#error';
+import {type SomeSmokerError} from '#error/base-error';
+import {InstallError} from '#error/install-error';
+import {type PackError, type PackParseError} from '#error/pack-error';
+import {type Executor} from '#executor';
 import {
   ERROR,
   FAILED,
@@ -8,35 +11,32 @@ import {
   makeId,
   type ActorOutput,
 } from '#machine/util';
-import {
-  InstallError,
-  type PackError,
-  type PackParseError,
-  type PkgManagerSpec,
-} from '#pkg-manager';
-import {
-  type BaseRuleConfigRecord,
-  type LintResultFailed,
-  type LintResultOk,
-  type RuleResult,
-} from '#rule';
+import {type PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
+import {type InstallManifest} from '#schema/install-manifest';
+import {type InstallResult} from '#schema/install-result';
+import {type LintManifest} from '#schema/lint-manifest';
 import {
   PkgManagerContextSchema,
-  type Executor,
-  type InstallManifest,
-  type InstallResult,
-  type LintManifest,
-  type LintResult,
   type PkgManagerContext,
   type PkgManagerDef,
   type PkgManagerOpts,
-  type RunScriptManifest,
-  type RunScriptResult,
+} from '#schema/pkg-manager-def';
+import {
+  type BaseRuleConfigRecord,
   type SomeRuleConfig,
-  type SomeRuleDef,
-  type WorkspaceInfo,
-} from '#schema';
-import {isSmokerError, type FileManager} from '#util';
+} from '#schema/rule-options';
+import {
+  type LintResult,
+  type LintResultFailed,
+  type LintResultOk,
+  type RuleResult,
+} from '#schema/rule-result';
+import {type RunScriptManifest} from '#schema/run-script-manifest';
+import {type RunScriptResult} from '#schema/run-script-result';
+import {type SomeRuleDef} from '#schema/some-rule-def';
+import {type WorkspaceInfo} from '#schema/workspaces';
+import {isSmokerError} from '#util/error-util';
+import {type FileManager} from '#util/filemanager';
 import {head, isEmpty, keyBy, partition} from 'lodash';
 import assert from 'node:assert';
 import {

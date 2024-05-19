@@ -1,9 +1,12 @@
-import {fromUnknownError} from '#error';
-import {SmokerEvent, type DataForEvent, type ScriptEventData} from '#event';
+import {fromUnknownError} from '#error/from-unknown-error';
+import {SmokerEvent} from '#event/event-constants';
+import {type DataForEvent} from '#event/events';
+import {type ScriptEventData} from '#event/script-events';
 import {type ReporterMachine} from '#machine/reporter';
 import {FINAL} from '#machine/util';
 import {type SmokerOptions} from '#options/options';
-import {type RunScriptResult, type StaticPkgManagerSpec} from '#schema';
+import {type RunScriptResult} from '#schema/run-script-result';
+import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {partition} from 'lodash';
 import assert from 'node:assert';
 import {

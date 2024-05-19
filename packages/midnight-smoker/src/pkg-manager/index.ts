@@ -22,8 +22,6 @@ export * from '#schema/pkg-manager-spec';
 
 export * from '#schema/static-pkg-manager-spec';
 
-export * as Util from '#util';
-
 export {SemVer} from 'semver';
 
 export * from './pkg-manager-loader';

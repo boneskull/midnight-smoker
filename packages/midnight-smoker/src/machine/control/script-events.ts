@@ -6,7 +6,7 @@ import type {
   RunScriptFailedEventData,
   RunScriptOkEventData,
   RunScriptSkippedEventData,
-} from '#event';
+} from '#event/script-events';
 import {type MachineEvent} from '#machine/util';
 
 export type AnyScriptEvent = CtrlScriptEvents & {type: 'SCRIPT.*'};

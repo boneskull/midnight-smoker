@@ -7,24 +7,22 @@
  */
 
 import {type ComponentKind} from '#constants';
-import {InvalidArgError} from '#error';
-import {type SmokeResults} from '#event';
+import {InvalidArgError} from '#error/invalid-arg-error';
 import {ControlMachine, type CtrlMachineOutput} from '#machine/control';
 import {isActorOutputOk} from '#machine/util';
 import type {RawSmokerOptions, SmokerOptions} from '#options/options';
 import {OptionParser} from '#options/parser';
-import {
-  BLESSED_PLUGINS,
-  PluginRegistry,
-  isBlessedPlugin,
-  type StaticPluginMetadata,
-} from '#plugin';
 import {type Component, type ComponentObject} from '#plugin/component';
-import {type PkgManagerDef, type ReporterDef, type SomeRuleDef} from '#schema';
+import {type SomeRuleDef} from '#schema/some-rule-def';
+import {type StaticPluginMetadata} from '#schema/static-plugin-metadata';
 import {FileManager} from '#util/filemanager';
 import {castArray} from '#util/schema-util';
 import Debug from 'debug';
 import {createActor, toPromise, type AnyStateMachine} from 'xstate';
+import {type SmokeResults} from './event';
+import {type PkgManagerDef} from './pkg-manager';
+import {BLESSED_PLUGINS, PluginRegistry, isBlessedPlugin} from './plugin';
+import {type ReporterDef} from './reporter';
 
 /**
  * Currently, capabilities are for testing purposes because it's a huge pain to
@@ -279,13 +277,10 @@ export class Smoker {
 
   private getAllPkgManagers(): (PkgManagerDef & Component)[] {
     return this.pluginRegistry.plugins.flatMap((plugin) => {
-      return plugin.pkgManagerDefs.map(
-        (def) =>
-          ({
-            ...def,
-            ...this.getComponent(def),
-          }) as PkgManagerDef & Component,
-      );
+      return plugin.pkgManagerDefs.map((def) => ({
+        ...def,
+        ...this.getComponent(def),
+      }));
     });
   }
 
@@ -295,13 +290,10 @@ export class Smoker {
 
   private getAllReporters(): (ReporterDef & Component)[] {
     return this.pluginRegistry.plugins.flatMap((plugin) => {
-      return plugin.reporterDefs.map(
-        (def) =>
-          ({
-            ...def,
-            ...this.getComponent(def),
-          }) as ReporterDef & Component,
-      );
+      return plugin.reporterDefs.map((def) => ({
+        ...def,
+        ...this.getComponent(def),
+      }));
     });
   }
 

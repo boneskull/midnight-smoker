@@ -6,7 +6,7 @@ import type {
   RuleErrorEventData,
   RuleFailedEventData,
   RuleOkEventData,
-} from '#event';
+} from '#event/lint-events';
 import type {MachineEvent} from '#machine/util';
 
 export type AnyLintEvent = CtrlLintEvents & {type: 'LINT.*'};

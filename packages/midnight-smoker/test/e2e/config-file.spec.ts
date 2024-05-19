@@ -1,7 +1,7 @@
-import {execSmoker} from '@midnight-smoker/test-util';
 import path from 'node:path';
 import unexpected from 'unexpected';
 import assertions from '../assertions';
+import {execSmoker} from './cli-helpers';
 
 const expect = unexpected.clone().use(assertions);
 

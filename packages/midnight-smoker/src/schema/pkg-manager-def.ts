@@ -1,9 +1,11 @@
+import {type PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
 import {ExecResultSchema} from '#schema/exec-result';
 import {ExecutorSchema} from '#schema/executor';
 import {InstallManifestSchema} from '#schema/install-manifest';
 import {PkgManagerSpecSchema} from '#schema/pkg-manager-spec';
 import {RunScriptManifestSchema} from '#schema/run-script-manifest';
 import {RunScriptResultSchema} from '#schema/run-script-result';
+import {WorkspaceInfoSchema} from '#schema/workspaces';
 import {
   AbortSignalSchema,
   NonEmptyStringSchema,
@@ -13,7 +15,6 @@ import {
   fancyObjectSchema,
 } from '#util/schema-util';
 import {z} from 'zod';
-import {WorkspaceInfoSchema} from './workspaces';
 
 export type PkgManagerAcceptsResult = z.infer<
   typeof PkgManagerAcceptsResultSchema
@@ -67,9 +68,6 @@ export const PkgManagerContextSchema = z.object({
 export const PkgManagerPackContextSchema = PkgManagerContextSchema.merge(
   WorkspaceInfoSchema,
 ).extend({
-  // allWorkspaces: z.boolean().optional(),
-  // includeWorkspaceRoot: z.boolean().optional(),
-  // workspaces: z.array(NonEmptyStringSchema).optional(),
   timeout: z.number().optional(),
   signal: AbortSignalSchema,
 });
@@ -211,3 +209,8 @@ export const PkgManagerDefSchema = fancyObjectSchema(
 );
 
 export type PkgManagerDef = z.infer<typeof PkgManagerDefSchema>;
+
+export interface PkgManagerDefSpec {
+  def: PkgManagerDef;
+  spec: Readonly<PkgManagerSpec>;
+}

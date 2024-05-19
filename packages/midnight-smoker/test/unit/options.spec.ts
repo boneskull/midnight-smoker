@@ -7,7 +7,7 @@ import {isValidationError} from 'zod-validation-error';
 import {RuleSeverities} from '../../src/constants';
 import type * as OP from '../../src/options/parser';
 import type * as PR from '../../src/plugin/plugin-registry';
-import {type SomeRuleDef} from '../../src/schema/rule-def';
+import {type SomeRuleDef} from '../../src/schema/some-rule-def';
 import {createFsMocks} from './mocks/fs';
 
 const expect = unexpected.clone();

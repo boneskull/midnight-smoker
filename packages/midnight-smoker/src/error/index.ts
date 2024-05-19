@@ -73,3 +73,5 @@ export * from './unreadable-pkg-json-error';
 export * from './unresolvable-plugin-error';
 
 export * from './unsupported-pkg-manager-error';
+
+export * from './from-unknown-error';

@@ -1,4 +1,4 @@
-import type {PluginMetadata} from '#plugin/plugin-metadata';
+import type {StaticPluginMetadata} from '#schema/static-plugin-metadata';
 import {BaseSmokerError} from './base-error';
 
 /**
@@ -10,14 +10,18 @@ import {BaseSmokerError} from './base-error';
 
 export class InvalidPluginError extends BaseSmokerError<
   {
-    metadata: PluginMetadata;
+    metadata: StaticPluginMetadata;
     rawPlugin?: unknown;
   },
   Error
 > {
   public readonly id = 'InvalidPluginError';
 
-  constructor(error: Error, metadata: PluginMetadata, rawPlugin?: unknown) {
+  constructor(
+    error: Error,
+    metadata: StaticPluginMetadata,
+    rawPlugin?: unknown,
+  ) {
     super(
       `Alleged plugin at ${metadata.entryPoint} is invalid`,
       {

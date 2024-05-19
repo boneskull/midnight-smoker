@@ -7,7 +7,7 @@
 import {DEFAULT_PKG_MANAGER_BIN, DEFAULT_PKG_MANAGER_VERSION} from '#constants';
 import {type PkgManagerDef} from '#schema/pkg-manager-def';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
-import {FileManager, type FileManagerOpts} from '#util';
+import {FileManager, type FileManagerOpts} from '#util/filemanager';
 import {getSystemPkgManagerVersion} from '#util/pkg-util';
 import type {NonEmptyArray} from '#util/util';
 import {globIterate} from 'glob';
@@ -161,7 +161,6 @@ export class PkgManagerOracle {
     // this should be tried first, as it's "canonical"
     let spec = await this.getPkgManagerFromPackageJson();
     if (!spec) {
-      // pkgManagerDefs //?
       const pkgManager = await this.getPkgManagerFromLockfiles(pkgManagerDefs);
       if (pkgManager) {
         const version = await this.getSystemPkgManagerVersion(pkgManager);
