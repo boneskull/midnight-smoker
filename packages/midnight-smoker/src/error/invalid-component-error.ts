@@ -1,11 +1,11 @@
 import {BaseSmokerError} from './base-error';
 
 export class InvalidComponentError extends BaseSmokerError<{
-  def: unknown;
+  value: unknown;
 }> {
   public readonly id = 'InvalidComponentError';
 
-  constructor(message: string, def: unknown) {
-    super(message, {def});
+  constructor(message: string, value: unknown) {
+    super(message, {value});
   }
 }

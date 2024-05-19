@@ -20,12 +20,14 @@ export const PluginSchema = z
       isObject(value) && 'default' in value && !('plugin' in value)
         ? value.default
         : value,
-    z.object({
-      plugin: PluginFactorySchema,
-      name: NonEmptyStringSchema.optional(),
-      description: NonEmptyStringSchema.optional(),
-      version: NonEmptyStringSchema.optional(),
-    }),
+    z
+      .object({
+        plugin: PluginFactorySchema,
+        name: NonEmptyStringSchema.optional(),
+        description: NonEmptyStringSchema.optional(),
+        version: NonEmptyStringSchema.optional(),
+      })
+      .passthrough(),
   )
   .describe(
     'An object with a "plugin" property and optionally a name and description',

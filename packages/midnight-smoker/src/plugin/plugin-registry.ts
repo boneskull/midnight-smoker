@@ -33,7 +33,7 @@ import {isEmpty, isError, isString} from 'lodash';
 import {dirname} from 'node:path';
 import util from 'node:util';
 import {type PackageJson} from 'type-fest';
-import {z} from 'zod';
+import {z, type ZodError} from 'zod';
 import {fromZodError} from 'zod-validation-error';
 import {isBlessedPlugin, type BlessedPlugin} from './blessed';
 import {
@@ -147,12 +147,6 @@ export class PluginRegistry {
       );
     }
     return value;
-  }
-
-  public get pkgManagerDefs(): PkgManagerDef[] {
-    return this.plugins.flatMap((plugin) => [
-      ...plugin.pkgManagerDefMap.values(),
-    ]);
   }
 
   private validateRequestedPluginIds(pluginIds: string[] = []): string[] {
@@ -579,7 +573,11 @@ export class PluginRegistry {
    * {@link Plugin}.
    */
   public static normalizePlugin(rawPlugin: unknown): Plugin {
-    return PluginSchema.parse(rawPlugin);
+    try {
+      return PluginSchema.parse(rawPlugin);
+    } catch (err) {
+      throw fromZodError(err as ZodError);
+    }
   }
 
   toString() {

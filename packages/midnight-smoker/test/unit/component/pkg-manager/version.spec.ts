@@ -1,11 +1,11 @@
+import {npmVersionData} from '@midnight-smoker/plugin-default/data';
 import rewiremock from 'rewiremock/node';
 import {parse} from 'semver';
 import unexpected from 'unexpected';
 import type * as V from '../../../../src/pkg-manager/pkg-manager-version';
 import {createFsMocks} from '../../mocks/fs';
 const expect = unexpected.clone();
-// TODO: Fix
-const npmDistTags: any = {};
+const npmDistTags = npmVersionData.tags;
 
 describe('midnight-smoker', function () {
   describe('package manager', function () {
@@ -21,7 +21,7 @@ describe('midnight-smoker', function () {
       describe('when provided a known package manager', function () {
         let normalize: (value: string) => ReturnType<typeof V.normalizeVersion>;
         beforeEach(function () {
-          normalize = normalizeVersion([]);
+          normalize = normalizeVersion(npmVersionData);
         });
         describe('when provided a version range', function () {
           describe('when the range is valid semver', function () {

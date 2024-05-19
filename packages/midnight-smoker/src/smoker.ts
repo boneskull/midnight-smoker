@@ -19,6 +19,7 @@ import {FileManager} from '#util/filemanager';
 import {castArray} from '#util/schema-util';
 import Debug from 'debug';
 import {createActor, toPromise, type AnyStateMachine} from 'xstate';
+import {SmokeFailedError} from './error';
 import {type SmokeResults} from './event';
 import {type PkgManagerDef} from './pkg-manager';
 import {BLESSED_PLUGINS, PluginRegistry, isBlessedPlugin} from './plugin';
@@ -173,52 +174,43 @@ export class Smoker {
     return smoker.smoke();
   }
 
-  public getPkgManagerDefs() {
-    return this.pluginRegistry.pkgManagerDefs;
-  }
-
   /**
    * Pack, install, run checks (optionally), and run scripts (optionally)
    *
    * @returns Results
    */
-  public async smoke(): Promise<SmokeResults | undefined> {
-    const {pluginRegistry, fileManager, opts: smokerOptions} = this;
-    const {controlMachine} = this;
+  public async smoke(): Promise<SmokeResults> {
+    const {
+      controlMachine,
+      pluginRegistry,
+      fileManager,
+      opts: smokerOptions,
+    } = this;
+    // TODO: trace logging; use xstate's inspector
     const controller = createActor(controlMachine, {
       id: 'smoke',
       input: {
         fileManager,
         smokerOptions,
         pluginRegistry,
+        shouldShutdown: true,
       },
       logger: Debug('midnight-smoker:ControlMachine'),
-      inspect(evt) {
-        if (evt.type === '@xstate.event') {
-          // debug(evt.event);
-        }
-      },
     }).start();
-
-    controller.send({type: 'HALT'});
 
     const output = (await toPromise(controller)) as CtrlMachineOutput;
 
     if (isActorOutputOk(output)) {
-      debug({
-        scripts: output.runScriptResults,
-        lint: output.lintResults,
-        plugins: pluginRegistry.plugins,
-        opts: smokerOptions,
-      });
-      return {
+      const results: SmokeResults = {
         scripts: output.runScriptResults,
         lint: output.lintResults,
         plugins: pluginRegistry.plugins,
         opts: smokerOptions,
       };
+      debug('completed with results: %o', results);
+      return results;
     } else {
-      debug('no results');
+      throw new SmokeFailedError('Failure!', output.error, {results: output});
     }
   }
 

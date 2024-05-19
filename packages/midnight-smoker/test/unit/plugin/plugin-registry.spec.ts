@@ -3,8 +3,8 @@ import {type IFs} from 'memfs';
 import rewiremock from 'rewiremock/node';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
-import {ZodError} from 'zod';
-import {ComponentKinds, DEFAULT_COMPONENT_ID} from '../../../src/constants';
+import {ValidationError} from 'zod-validation-error';
+import {DEFAULT_COMPONENT_ID} from '../../../src/constants';
 import {ErrorCodes} from '../../../src/error/codes';
 import {PLUGIN_DEFAULT_ID} from '../../../src/plugin/blessed';
 import {PluginMetadata} from '../../../src/plugin/plugin-metadata';
@@ -70,23 +70,24 @@ describe('midnight-smoker', function () {
         describe('normalizePlugin()', function () {
           describe('when passed a PluginObject', function () {
             it('should return a shallow clone of the PluginObject', function () {
-              const rawPlugin = {plugin: () => {}};
-              expect(
-                PluginRegistry.normalizePlugin(rawPlugin),
-                'to equal',
-                rawPlugin,
-              );
+              const rawPlugin = {plugin: () => {}, name: 'foo'};
+              expect(PluginRegistry.normalizePlugin(rawPlugin), 'to satisfy', {
+                name: 'foo',
+                plugin: expect.it('to be a function'),
+              });
             });
           });
 
           describe('when passed a Babelized PluginObject', function () {
-            it('should return a shallow clone of the PluginObject', function () {
-              const rawPlugin = {__esModule: true, default: {plugin: () => {}}};
-              expect(
-                PluginRegistry.normalizePlugin(rawPlugin),
-                'to equal',
-                rawPlugin.default,
-              );
+            it('should resolve the exports and return a shallow clone of the PluginObject', function () {
+              const rawPlugin = {
+                __esModule: true,
+                default: {plugin: () => {}, name: 'foo'},
+              };
+              expect(PluginRegistry.normalizePlugin(rawPlugin), 'to satisfy', {
+                name: 'foo',
+                plugin: expect.it('to be a function'),
+              });
             });
           });
 
@@ -95,7 +96,7 @@ describe('midnight-smoker', function () {
               expect(
                 () => PluginRegistry.normalizePlugin({}),
                 'to throw a',
-                ZodError,
+                ValidationError,
               );
             });
           });
@@ -121,6 +122,7 @@ describe('midnight-smoker', function () {
               await registry.registerPlugin(DEFAULT_TEST_PLUGIN_NAME, {
                 plugin: () => {},
                 description: 'some description',
+                version: '0.0.0',
               });
             });
 
@@ -280,14 +282,15 @@ describe('midnight-smoker', function () {
             expect(registry.isClosed, 'to be false');
           });
 
-          it('should clear out internal maps', function () {
+          it('should clear out internal maps and re-open registration', function () {
             // best we can do given visibility
             expect(registry, 'to satisfy', {
               plugins: expect.it('to be empty'),
-              reporters: expect.it('to be empty'),
+              isClosed: false,
             });
           });
         });
+
         describe('getExecutor()', function () {
           let registry: Reg.PluginRegistry;
 
@@ -320,8 +323,7 @@ describe('midnight-smoker', function () {
                 {
                   code: ErrorCodes.InvalidComponentError,
                   context: {
-                    id: 'nonexistent-component',
-                    kind: ComponentKinds.Executor,
+                    value: 'nonexistent-component',
                   },
                 },
               );
@@ -349,7 +351,7 @@ describe('midnight-smoker', function () {
                 expect(() => registry.getExecutor(), 'to throw', {
                   code: ErrorCodes.InvalidComponentError,
                   context: {
-                    def: DEFAULT_COMPONENT_ID,
+                    value: DEFAULT_COMPONENT_ID,
                   },
                 });
               });

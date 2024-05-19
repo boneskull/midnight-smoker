@@ -44,8 +44,7 @@ export class ViewCommand extends BaseCommand {
   public static async viewDefaultPkgManager(
     opts: ArgumentsCamelCase<ViewOptionTypes>,
   ) {
-    const smoker = await Smoker.create(opts);
-    const pkgManagerDefs = smoker.getPkgManagerDefs();
+    const pkgManagerDefs = await Smoker.getPkgManagers();
     const pkgManager = await guessPackageManager(pkgManagerDefs);
 
     if (opts.json) {

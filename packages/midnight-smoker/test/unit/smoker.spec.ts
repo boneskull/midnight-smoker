@@ -3,8 +3,15 @@ import {type Volume} from 'memfs/lib/volume';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
+import {setup, type AnyStateMachine} from 'xstate';
 import {DEFAULT_COMPONENT_ID, SYSTEM_EXECUTOR_ID} from '../../src/constants';
+import {ErrorCodes} from '../../src/error';
+import {type SmokeResults} from '../../src/event';
 import {type ExecResult} from '../../src/executor';
+import {type CtrlMachineOutput} from '../../src/machine/control';
+import {FINAL} from '../../src/machine/util';
+import {type RawSmokerOptions} from '../../src/options/options';
+import {OptionParser} from '../../src/options/parser';
 import {PluginRegistry} from '../../src/plugin/plugin-registry';
 import {Smoker} from '../../src/smoker';
 import {FileManager} from '../../src/util';
@@ -15,14 +22,48 @@ describe('midnight-smoker', function () {
   let sandbox: sinon.SinonSandbox;
   let fs: Volume;
   let fileManager: FileManager;
-
   let pluginRegistry: PluginRegistry;
+
+  let mockControlMachine: AnyStateMachine;
+  let outputStub: sinon.SinonStub<any[], CtrlMachineOutput>;
+  let controlOutput: CtrlMachineOutput;
   beforeEach(function () {
     sandbox = createSandbox();
     const {vol} = memfs();
     fs = vol;
     fileManager = FileManager.create({fs: fs as any});
     pluginRegistry = PluginRegistry.create({fileManager});
+    controlOutput = {
+      runScriptResults: [],
+      lintResults: [],
+      type: 'OK',
+      id: 'test',
+    };
+    outputStub = sandbox.stub().returns(controlOutput);
+    mockControlMachine = setup({
+      types: {input: {} as {shouldShutdown: boolean}},
+    }).createMachine({
+      id: 'test',
+      context: ({input: {shouldShutdown}}) => ({shouldShutdown}),
+      initial: 'ready',
+      states: {
+        ready: {
+          always: {
+            guard: ({context: {shouldShutdown}}) => shouldShutdown,
+            target: 'delay',
+          },
+        },
+        delay: {
+          after: {
+            50: 'done',
+          },
+        },
+        done: {
+          type: FINAL,
+        },
+      },
+      output: outputStub,
+    });
   });
 
   afterEach(function () {
@@ -32,6 +73,7 @@ describe('midnight-smoker', function () {
   describe('class Smoker', function () {
     describe('method', function () {
       let smoker: Smoker;
+      let opts: RawSmokerOptions;
 
       beforeEach(async function () {
         await pluginRegistry.registerPlugin('@midnight-smoker/plugin-default', {
@@ -44,60 +86,46 @@ describe('midnight-smoker', function () {
             }, SYSTEM_EXECUTOR_ID);
           },
         });
-        smoker = await Smoker.createWithCapabilities(
-          {script: 'foo'},
-          {
-            fileManager,
-            pluginRegistry,
-          },
-        );
+        opts = {script: 'foo'};
+        smoker = await Smoker.createWithCapabilities(opts, {
+          fileManager,
+          pluginRegistry,
+          controlMachine: mockControlMachine,
+        });
       });
 
       describe('smoke()', function () {
+        let result: SmokeResults;
         beforeEach(async function () {
-          // sandbox.stub(smoker, 'runScripts').resolves([]);
-          // sandbox.stub(smoker, 'runLint').resolves({passed: [], issues: []});
-          // sandbox.stub(smoker, 'pack').resolves();
-          // sandbox.stub(smoker, 'install').resolves();
-          await smoker.smoke();
+          result = await smoker.smoke();
         });
 
-        // it('should initialize the PkgManagerController', function () {
-        //   expect(pkgManagerController.init, 'was called once');
-        // });
-
-        // it('should initialize the ReporterController', function () {
-        //   expect(reporterController.init, 'was called once');
-        // });
-
-        it('should install packages', function () {
-          // expect(smoker.pack, 'was called once');
-        });
-
-        it('should pack packages', function () {
-          // expect(smoker.pack, 'was called once');
-        });
-
-        describe('when provided scripts', function () {
-          it('should run scripts', function () {
-            // expect(smoker.runScripts, 'was called once');
+        describe('when completed successfully', function () {
+          it('should fulfill with a SmokeResults object', function () {
+            expect(result, 'to satisfy', {
+              scripts: [],
+              lint: [],
+              plugins: pluginRegistry.plugins,
+              opts: OptionParser.create(pluginRegistry).parse(opts),
+            });
           });
         });
 
-        describe('when checks enabled', function () {
-          it('it should run checks', function () {
-            // expect(smoker.runLint, 'was called once');
+        describe('when completed unsuccessfully', function () {
+          it('should reject with an error', async function () {
+            outputStub.returns({
+              type: 'ERROR',
+              error: new Error('test'),
+              id: 'test',
+            });
+            await expect(
+              smoker.smoke(),
+              'to be rejected with error satisfying',
+              {
+                code: ErrorCodes.SmokeFailedError,
+              },
+            );
           });
-        });
-      });
-
-      describe('runLint()', function () {
-        beforeEach(async function () {
-          // await smoker.runLint();
-        });
-
-        it('should delegate to the LintController', function () {
-          // expect(lintController.lint, 'was called once');
         });
       });
     });
@@ -161,6 +189,73 @@ describe('midnight-smoker', function () {
             Smoker.create({}),
             'to be fulfilled with value satisfying',
             expect.it('to be a', Smoker),
+          );
+        });
+      });
+
+      describe('getPkgManagers()', function () {
+        it('should return an array of objects of type `PkgManagerDef & Component`', async function () {
+          await expect(
+            Smoker.getPkgManagers(),
+            'when fulfilled',
+            'to have items satisfying',
+            {
+              bin: expect.it('to be a string'),
+              lockfile: expect.it('to be a string'),
+              install: expect.it('to be a function'),
+              pack: expect.it('to be a function'),
+              runScript: expect.it('to be a function'),
+              id: expect.it('to be a string'),
+              pluginName: expect.it('to be a string'),
+            },
+          );
+        });
+      });
+
+      describe('getReporters()', function () {
+        it('should return an array of objects of type `SomeReporterDef & Component`', async function () {
+          await expect(
+            Smoker.getReporters(),
+            'when fulfilled',
+            'to have items satisfying',
+            {
+              name: expect.it('to be a string'),
+              description: expect.it('to be a string'),
+              id: expect.it('to be a string'),
+              pluginName: expect.it('to be a string'),
+            },
+          );
+        });
+      });
+
+      describe('getPlugins()', function () {
+        it('should return an array of StaticPluginMetadata objects', async function () {
+          await expect(
+            Smoker.getPlugins(),
+            'when fulfilled',
+            'to have items satisfying',
+            {
+              description: expect.it('to be a string'),
+              id: expect.it('to be a string'),
+              entryPoint: expect.it('to be a string'),
+            },
+          );
+        });
+      });
+
+      describe('getRules()', function () {
+        it('should return an array of objects of type `SomeRuleDef & Component`', async function () {
+          await expect(
+            Smoker.getRules(),
+            'when fulfilled',
+            'to have items satisfying',
+            {
+              name: expect.it('to be a string'),
+              description: expect.it('to be a string'),
+              check: expect.it('to be a function'),
+              id: expect.it('to be a string'),
+              pluginName: expect.it('to be a string'),
+            },
           );
         });
       });

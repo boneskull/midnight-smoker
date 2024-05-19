@@ -133,6 +133,11 @@ export interface CtrlMachineInput {
   pluginRegistry: PluginRegistry;
   smokerOptions: SmokerOptions;
   systemExecutor?: Executor;
+
+  /**
+   * If `true`, the machine should shutdown after completing its work
+   */
+  shouldShutdown?: boolean;
 }
 
 function delta(startTime: number): string {
@@ -629,6 +634,7 @@ export const ControlMachine = setup({
       defaultExecutor,
       systemExecutor,
       smokerOptions,
+      shouldShutdown = false,
       ...rest
     },
   }): CtrlMachineContext => {
@@ -644,7 +650,7 @@ export const ControlMachine = setup({
       shouldLint: smokerOptions.lint,
       loaderMachineRefs: {},
       reporterMachineRefs: {},
-      shouldShutdown: false,
+      shouldShutdown,
       startTime: performance.now(),
       workspaceInfo: [],
       pkgManagerInitPayloads: [],

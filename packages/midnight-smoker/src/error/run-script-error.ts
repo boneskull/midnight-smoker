@@ -33,7 +33,7 @@ export class RunScriptError extends BaseSmokerError<
       yellow(error.exitCode),
     );
     if (typeof pkgManager === 'object') {
-      pkgManager = `${pkgManager.pkgManager}@${pkgManager.version}`;
+      pkgManager = pkgManager.spec;
     }
     super(
       message,
