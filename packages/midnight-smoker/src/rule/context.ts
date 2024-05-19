@@ -1,7 +1,6 @@
 import {fromUnknownError} from '#error/from-unknown-error';
 import {RuleError} from '#error/rule-error';
 import {type StaticRuleContext, type StaticRuleDef} from '#schema/rule-static';
-import {type SomeRuleDef} from '#schema/some-rule-def';
 import {serialize} from '#util/util';
 import {type PackageJson} from 'type-fest';
 import {RuleIssue} from './issue';
@@ -43,10 +42,10 @@ export class RuleContext implements StaticRuleContext {
 
   protected constructor(
     public readonly ruleId: string,
-    ruleDef: SomeRuleDef,
+    staticRuleDef: StaticRuleDef,
     staticCtx: StaticRuleContext,
   ) {
-    this.staticRuleDef = serialize(ruleDef);
+    this.staticRuleDef = staticRuleDef;
     this.staticCtx = Object.freeze(serialize(staticCtx));
     this.addIssue = this.addIssue.bind(this);
     this.addIssueFromError = this.addIssueFromError.bind(this);
@@ -115,11 +114,11 @@ export class RuleContext implements StaticRuleContext {
    * Creates a {@link RuleContext}.
    */
   public static create(
-    ruleDef: SomeRuleDef,
+    staticRuleDef: StaticRuleDef,
     staticCtx: StaticRuleContext,
     id: string,
   ): Readonly<RuleContext> {
-    return Object.freeze(new RuleContext(id, ruleDef, staticCtx));
+    return Object.freeze(new RuleContext(id, staticRuleDef, staticCtx));
   }
 
   /**

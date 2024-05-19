@@ -1,7 +1,8 @@
 import {type RuleContext} from '#rule/context';
-import {type RuleDefSchemaValue, type RuleOptions} from '#schema/rule-options';
+import {type RuleDefSchemaValue} from '#schema/rule-def-schema-value';
 import {StaticRuleDefSchema, type StaticRuleDef} from '#schema/rule-static';
 import {z} from 'zod';
+import {type RuleOptions} from './rule-options';
 
 /**
  * The raw definition of a {@link Rule}, as defined by a implementor.

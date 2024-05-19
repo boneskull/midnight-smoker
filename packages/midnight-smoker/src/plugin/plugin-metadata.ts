@@ -11,15 +11,13 @@ import {
   loadPackageManagers,
   type LoadPackageManagersOpts,
 } from '#pkg-manager/pkg-manager-loader';
+import {type PkgManagerDefSpec} from '#pkg-manager/pkg-manager-spec';
 import {BLESSED_PLUGINS, type BlessedPlugin} from '#plugin/blessed';
 import {type Executor} from '#schema/executor';
-import {
-  type PkgManagerDef,
-  type PkgManagerDefSpec,
-} from '#schema/pkg-manager-def';
+import {type PkgManagerDef} from '#schema/pkg-manager-def';
 import {type ReporterDef} from '#schema/reporter-def';
 import {type RuleDef} from '#schema/rule-def';
-import {type RuleDefSchemaValue} from '#schema/rule-options';
+import {type RuleDefSchemaValue} from '#schema/rule-def-schema-value';
 import {type SomeRuleDef} from '#schema/some-rule-def';
 import {type StaticPluginMetadata} from '#schema/static-plugin-metadata';
 import {type FileManager} from '#util/filemanager';

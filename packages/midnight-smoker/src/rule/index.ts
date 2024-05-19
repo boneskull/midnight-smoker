@@ -23,3 +23,5 @@ export * from './context';
 export * from './issue';
 
 export * from '#schema/some-rule-def';
+
+export * from '#schema/rule-def-schema-value';

@@ -7,9 +7,7 @@
  * @packageDocumentation
  */
 
-import {type PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
 import {ExecResultSchema, type ExecResult} from '#schema/exec-result';
-import {PkgManagerSpecSchema} from '#schema/pkg-manager-spec';
 import {
   AbortSignalSchema,
   NonEmptyStringArraySchema,
@@ -19,6 +17,10 @@ import type execa from 'execa';
 import type {SpawnOptions} from 'node:child_process';
 import type {SimpleMerge} from 'type-fest/source/merge';
 import {z} from 'zod';
+import {
+  StaticPkgManagerSpecSchema,
+  type StaticPkgManagerSpec,
+} from './static-pkg-manager-spec';
 
 /**
  * Options to pass along to the underlying child process spawner.
@@ -87,7 +89,7 @@ export type ExecutorOpts = z.infer<typeof ExecutorOptsSchema>;
  * @param spawnOpts - Options for the underlying child process spawner
  */
 export type Executor = (
-  spec: PkgManagerSpec,
+  spec: StaticPkgManagerSpec,
   args: string[],
   opts?: ExecutorOpts,
   spawnOpts?: SpawnOpts,
@@ -105,19 +107,19 @@ export type Executor = (
 export const ExecutorSchema = customSchema<Executor>(
   z.union([
     z.function(
-      z.tuple([PkgManagerSpecSchema, NonEmptyStringArraySchema] as [
-        spec: typeof PkgManagerSpecSchema,
+      z.tuple([StaticPkgManagerSpecSchema, NonEmptyStringArraySchema] as [
+        spec: typeof StaticPkgManagerSpecSchema,
         args: typeof NonEmptyStringArraySchema,
       ]),
       z.promise(ExecResultSchema),
     ),
     z.function(
       z.tuple([
-        PkgManagerSpecSchema,
+        StaticPkgManagerSpecSchema,
         NonEmptyStringArraySchema,
         ExecutorOptsSchema,
       ] as [
-        spec: typeof PkgManagerSpecSchema,
+        spec: typeof StaticPkgManagerSpecSchema,
         args: typeof NonEmptyStringArraySchema,
         opts: typeof ExecutorOptsSchema,
       ]),
@@ -125,12 +127,12 @@ export const ExecutorSchema = customSchema<Executor>(
     ),
     z.function(
       z.tuple([
-        PkgManagerSpecSchema,
+        StaticPkgManagerSpecSchema,
         NonEmptyStringArraySchema,
         ExecutorOptsSchema,
         SpawnOptsSchema,
       ] as [
-        spec: typeof PkgManagerSpecSchema,
+        spec: typeof StaticPkgManagerSpecSchema,
         args: typeof NonEmptyStringArraySchema,
         opts: typeof ExecutorOptsSchema,
         spawnOpts: typeof SpawnOptsSchema,

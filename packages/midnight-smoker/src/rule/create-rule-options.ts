@@ -1,4 +1,4 @@
-import {type RuleDefSchemaValue} from '#schema/rule-options';
+import {type RuleDefSchemaValue} from '#schema/rule-def-schema-value';
 import {memoize} from 'lodash';
 import {type z} from 'zod';
 

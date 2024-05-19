@@ -1,8 +1,6 @@
-import {type PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
 import {ExecResultSchema} from '#schema/exec-result';
 import {ExecutorSchema} from '#schema/executor';
 import {InstallManifestSchema} from '#schema/install-manifest';
-import {PkgManagerSpecSchema} from '#schema/pkg-manager-spec';
 import {RunScriptManifestSchema} from '#schema/run-script-manifest';
 import {RunScriptResultSchema} from '#schema/run-script-result';
 import {WorkspaceInfoSchema} from '#schema/workspaces';
@@ -15,6 +13,7 @@ import {
   fancyObjectSchema,
 } from '#util/schema-util';
 import {z} from 'zod';
+import {StaticPkgManagerSpecSchema} from './static-pkg-manager-spec';
 
 export type PkgManagerAcceptsResult = z.infer<
   typeof PkgManagerAcceptsResultSchema
@@ -57,7 +56,7 @@ export const PkgManagerOptsSchema = z
 
 export const PkgManagerContextSchema = z.object({
   useWorkspaces: z.boolean().optional(),
-  spec: PkgManagerSpecSchema.readonly(),
+  spec: StaticPkgManagerSpecSchema,
   tmpdir: NonEmptyStringSchema.readonly(),
   executor: ExecutorSchema,
   loose: z.boolean().optional(),
@@ -209,8 +208,3 @@ export const PkgManagerDefSchema = fancyObjectSchema(
 );
 
 export type PkgManagerDef = z.infer<typeof PkgManagerDefSchema>;
-
-export interface PkgManagerDefSpec {
-  def: PkgManagerDef;
-  spec: Readonly<PkgManagerSpec>;
-}

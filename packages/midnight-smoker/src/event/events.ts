@@ -27,3 +27,5 @@ export type EventName = keyof EventData;
 export type DataForEvent<T extends EventName> = {
   [K in T]: {type: K} & EventData[K];
 }[T];
+
+export type SomeDataForEvent = DataForEvent<EventName>;

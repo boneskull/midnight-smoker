@@ -1,13 +1,10 @@
 import {AggregateUnsupportedPkgManagerError} from '#error/aggregate-pkg-manager-error';
 import {UnsupportedPackageManagerError} from '#error/unsupported-pkg-manager-error';
-import {
-  type PkgManagerDef,
-  type PkgManagerDefSpec,
-} from '#schema/pkg-manager-def';
+import {type PkgManagerDef} from '#schema/pkg-manager-def';
 import {assertNonEmptyArray, type NonEmptyArray} from '#util/util';
 import {curry} from 'lodash';
 import {type SemVer} from 'semver';
-import {type PkgManagerSpec} from './pkg-manager-spec';
+import {type PkgManagerDefSpec, type PkgManagerSpec} from './pkg-manager-spec';
 
 /**
  * Determines whether a package manager definition can serve as a package

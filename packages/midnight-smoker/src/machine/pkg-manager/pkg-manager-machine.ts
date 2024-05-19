@@ -51,7 +51,6 @@ import {
   type ActorRefFrom,
   type AnyActorRef,
 } from 'xstate';
-import {type CtrlLingeredEvent} from '../control/control-machine-events';
 import {
   type CtrlPkgInstallBeginEvent,
   type CtrlPkgInstallFailedEvent,
@@ -85,6 +84,7 @@ import {
   type CtrlRunScriptOkEvent,
   type CtrlRunScriptSkippedEvent,
 } from '../control/script-events';
+import {type CtrlLingeredEvent} from '../control/smoker-events';
 import {
   createTempDir,
   install,

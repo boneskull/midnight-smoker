@@ -16,7 +16,7 @@ import {ExecutorSchema} from '#schema/executor';
 import {PkgManagerDefSchema} from '#schema/pkg-manager-def';
 import {ReporterDefSchema} from '#schema/reporter-def';
 import {RuleDefSchema, type RuleDef} from '#schema/rule-def';
-import {type RuleDefSchemaValue} from '#schema/rule-options';
+import {type RuleDefSchemaValue} from '#schema/rule-def-schema-value';
 import {type StaticPluginMetadata} from '#schema/static-plugin-metadata';
 import * as SchemaUtils from '#util/schema-util';
 import {z, type ZodError} from 'zod';

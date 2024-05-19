@@ -1,5 +1,5 @@
 import {type SmokerEvent} from '#event/event-constants';
-import {type DataForEvent, type EventData} from '#event/events';
+import {type DataForEvent, type SomeDataForEvent} from '#event/events';
 import {type LoaderMachineOutput} from '#machine/loader';
 import {type PkgManagerMachineOutput} from '#machine/pkg-manager';
 import {type ReporterMachineOutput} from '#machine/reporter';
@@ -7,6 +7,7 @@ import {type AnyInstallEvent, type CtrlInstallEvents} from './install-events';
 import {type AnyLintEvent, type CtrlLintEvents} from './lint-events';
 import {type AnyPackEvent, type CtrlPackEvents} from './pack-events';
 import {type AnyScriptEvent, type CtrlScriptEvents} from './script-events';
+import {type CtrlSmokerEvents} from './smoker-events';
 
 export type EventMap = {
   'SCRIPT.RUN_SCRIPT_BEGIN': typeof SmokerEvent.RunScriptBegin;
@@ -37,16 +38,6 @@ export type EventMap = {
   'LINT.PKG_MANAGER_LINT_OK': typeof SmokerEvent.PkgManagerLintOk;
 };
 
-export type BusEvent =
-  | CtrlInstallEvents
-  | CtrlLintEvents
-  | CtrlPackEvents
-  | CtrlScriptEvents;
-
-export type ToSmokerEvent<T extends BusEvent> = DataForEvent<
-  EventMap[T['type']]
->;
-
 export type CtrlEvents =
   | AnyInstallEvent
   | AnyLintEvent
@@ -54,7 +45,7 @@ export type CtrlEvents =
   | AnyScriptEvent
   | CtrlHaltEvent
   | CtrlInstallEvents
-  | CtrlLingeredEvent
+  | CtrlSmokerEvents
   | CtrlLintEvents
   | CtrlLoaderMachineDoneEvent
   | CtrlPackEvents
@@ -63,7 +54,7 @@ export type CtrlEvents =
   | CtrlScriptEvents
   | VerbatimEventData;
 
-export type CtrlMachineEmitted = DataForEvent<keyof EventData>;
+export type CtrlMachineEmitted = SomeDataForEvent;
 
 /**
  * These events are emitted by the bus machines, and are identical to the "real"
@@ -83,11 +74,6 @@ export type VerbatimEventNames =
 
 export interface CtrlHaltEvent {
   type: 'HALT';
-}
-
-export interface CtrlLingeredEvent {
-  directory: string;
-  type: 'LINGERED';
 }
 
 export interface CtrlLoaderMachineDoneEvent {

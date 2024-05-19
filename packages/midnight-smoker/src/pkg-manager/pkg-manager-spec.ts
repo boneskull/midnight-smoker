@@ -416,3 +416,8 @@ const PKG_MANAGER_SPEC_REGEX = /^([^@]+?)(?:@([^@]+))?$/;
 const semvers = new WeakMap<PkgManagerSpec, SemVer>();
 
 export const {guessPackageManager} = PkgManagerOracle;
+
+export interface PkgManagerDefSpec {
+  def: PkgManagerDef;
+  spec: Readonly<PkgManagerSpec>;
+}

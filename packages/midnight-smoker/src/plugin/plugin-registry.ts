@@ -14,14 +14,12 @@ import {UnresolvablePluginError} from '#error/unresolvable-plugin-error';
 import {createPluginAPI} from '#plugin/create-plugin-api';
 import {PluginMetadata, initBlessedMetadata} from '#plugin/plugin-metadata';
 import {getDefaultRuleOptions} from '#rule/create-rule-options';
+import {createRuleOptionsSchema} from '#schema/create-rule-options';
 import {type Executor} from '#schema/executor';
 import {type PkgManagerDef} from '#schema/pkg-manager-def';
 import {PluginSchema, type Plugin} from '#schema/plugin';
 import {type SomeReporterDef} from '#schema/reporter-def';
-import {
-  RawRuleOptionsSchema,
-  createRuleOptionsSchema,
-} from '#schema/rule-options';
+import {RawRuleOptionsSchema} from '#schema/rule-options';
 import {type SomeRuleDef} from '#schema/some-rule-def';
 import {type StaticPluginMetadata} from '#schema/static-plugin-metadata';
 import {isErrnoException} from '#util/error-util';

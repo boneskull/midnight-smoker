@@ -1,5 +1,5 @@
 import {type ReporterError} from '#error/reporter-error';
-import {type CtrlMachineEmitted} from '#machine/control';
+import {type SomeDataForEvent} from '#event/events';
 import {ERROR, FINAL, OK, type ActorOutput} from '#machine/util';
 import {type SmokerOptions} from '#options/options';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
@@ -44,7 +44,7 @@ export interface ReporterMachineContext
    * The machine uses a guard to check if the queue is non-empty; if it is, it
    * transitions to the `draining` state, which invokes {@link drainQueue}.
    */
-  queue: CtrlMachineEmitted[];
+  queue: SomeDataForEvent[];
 
   /**
    * If this is `true`, then the reporter will halt after draining its queue via
@@ -151,7 +151,7 @@ export const ReporterMachine = setup({
      * Enqueues any event emitted by the event bus machines
      */
     enqueue: assign({
-      queue: ({context: {queue}}, {event}: {event: CtrlMachineEmitted}) => [
+      queue: ({context: {queue}}, {event}: {event: SomeDataForEvent}) => [
         ...queue,
         event,
       ],
