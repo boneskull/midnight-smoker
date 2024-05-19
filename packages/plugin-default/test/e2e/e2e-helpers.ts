@@ -1,6 +1,6 @@
 import {execSmoker, fixupOutput} from '@midnight-smoker/test-util';
 import unexpected from 'unexpected';
-import type {SmokerJsonSuccess} from '../../src/reporter/json';
+import type {SmokerJsonSuccess} from '../../src/json-types';
 
 const expect = unexpected.clone();
 

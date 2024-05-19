@@ -73,7 +73,7 @@ export async function createRuleRunner(fn: PluginFactory) {
   try {
     await fn(pluginApi);
   } catch (err) {
-    throw new PluginInitError(fromUnknownError(err), metadata, {plugin: fn});
+    throw new PluginInitError(fromUnknownError(err), metadata);
   }
 
   return (name: string, installPath: string, opts?: SomeRuleOptions) => {
@@ -121,7 +121,13 @@ export function applyRule<T extends SomeRuleDef>(
       pkgJsonPath: '',
       pkgManager: `${DEFAULT_PKG_MANAGER_BIN}@${DEFAULT_PKG_MANAGER_VERSION}`,
     },
-    manifest: {installPath, localPath: '', pkgName: ''},
+    manifest: {
+      installPath,
+      pkgJsonPath: '',
+      pkgJson: {},
+      localPath: '',
+      pkgName: '',
+    },
   });
   return toPromise(ruleMachine);
 }

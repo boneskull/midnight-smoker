@@ -7,6 +7,7 @@ import {
 } from 'midnight-smoker/pkg-manager';
 import {Range} from 'semver';
 import {npmVersionData} from './data';
+import {install} from './npm';
 import Npm7 from './npm7';
 
 const Npm9 = {
@@ -20,7 +21,7 @@ const Npm9 = {
     }
   },
   async install(ctx: PkgManagerInstallContext): Promise<ExecResult> {
-    return Npm7._install(ctx, [
+    return install(ctx, [
       '--no-audit',
       '--no-package-lock',
       '--install-strategy=shallow',

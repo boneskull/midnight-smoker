@@ -11,6 +11,7 @@ import {
   UnknownScriptError,
   type ExecResult,
   type InstallManifest,
+  type PkgManagerDef,
   type PkgManagerInstallContext,
   type PkgManagerPackContext,
   type PkgManagerRunScriptContext,
@@ -146,6 +147,38 @@ export function handleInstallError(
   }
 }
 
+export async function install(
+  ctx: PkgManagerInstallContext,
+  args: string[],
+): Promise<ExecResult> {
+  const {executor, installManifest, spec, tmpdir} = ctx;
+  const {pkgSpec, pkgName, isAdditional} = installManifest;
+
+  let err: InstallError | undefined;
+  const installArgs = ['install', pkgSpec, ...args];
+
+  let installResult: ExecResult;
+  try {
+    installResult = await executor(spec, installArgs, {}, {cwd: tmpdir});
+    err = handleInstallError(ctx, installResult, pkgSpec);
+  } catch (e) {
+    if (isSmokerError(ExecError, e)) {
+      throw handleInstallError(ctx, e, pkgSpec);
+    }
+    throw fromUnknownError(e);
+  }
+  if (err) {
+    throw err;
+  }
+
+  if (isAdditional) {
+    debug('Installed additional dep "%s"', pkgName);
+  } else {
+    debug('Installed package "%s" from tarball', pkgName);
+  }
+  return installResult;
+}
+
 /**
  * This is an incomplete implementation of a `PkgManagerDef` for `npm`. It
  * functions as namespace for common behaviors which actual implementations can
@@ -167,17 +200,6 @@ export const BaseNpmPackageManager = {
     if (ctx.useWorkspaces) {
       packArgs.push('-w', ctx.localPath);
     }
-    // if (ctx.workspaces?.length) {
-    //   packArgs = [
-    //     ...packArgs,
-    //     ...ctx.workspaces.map((w) => `--workspace=${w}`),
-    //   ];
-    // } else if (ctx.allWorkspaces) {
-    //   packArgs = [...packArgs, '--workspaces'];
-    //   if (ctx.includeWorkspaceRoot) {
-    //     packArgs = [...packArgs, '--include-workspace-root'];
-    //   }
-    // }
 
     let packResult: ExecResult;
 
@@ -338,35 +360,4 @@ export const BaseNpmPackageManager = {
 
     return result;
   },
-  async _install(
-    ctx: PkgManagerInstallContext,
-    args: string[],
-  ): Promise<ExecResult> {
-    const {executor, installManifest, spec, tmpdir} = ctx;
-    const {pkgSpec, pkgName, isAdditional} = installManifest;
-
-    let err: InstallError | undefined;
-    const installArgs = ['install', pkgSpec, ...args];
-
-    let installResult: ExecResult;
-    try {
-      installResult = await executor(spec, installArgs, {}, {cwd: tmpdir});
-      err = handleInstallError(ctx, installResult, pkgSpec);
-    } catch (e) {
-      if (isSmokerError(ExecError, e)) {
-        throw handleInstallError(ctx, e, pkgSpec);
-      }
-      throw fromUnknownError(e);
-    }
-    if (err) {
-      throw err;
-    }
-
-    if (isAdditional) {
-      debug('Installed additional dep "%s"', pkgName);
-    } else {
-      debug('Installed package "%s" from tarball', pkgName);
-    }
-    return installResult;
-  },
-} as const;
+} as const satisfies Partial<PkgManagerDef>;

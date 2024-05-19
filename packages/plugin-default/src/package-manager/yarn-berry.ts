@@ -2,31 +2,30 @@ import Debug from 'debug';
 import {
   ExecError,
   InstallError,
-  Util,
   type ExecResult,
-  type InstallManifest,
   type PkgManagerInstallContext,
-  type PkgManagerPackContext,
   type PkgManagerRunScriptContext,
   type RunScriptResult,
 } from 'midnight-smoker/pkg-manager';
 
+import {isSmokerError} from 'midnight-smoker/util';
 import {Range} from 'semver';
-import {YarnClassic} from './yarn-classic';
-interface WorkspaceInfo {
-  location: string;
+import {accepts, runScript, YarnClassic} from './yarn-classic';
 
-  [key: string]: any;
-}
+const debug = Debug('midnight-smoker:pm:yarn-berry');
 
-export class YarnBerry extends YarnClassic {
-  protected override debug = Debug('midnight-smoker:pm:yarn2');
+const supportedVersionRange = new Range('>=2.0.0');
 
-  public override readonly supportedVersionRange = new Range('>=2.0.0');
+export const YarnBerry = {
+  ...YarnClassic,
+  accepts: accepts(supportedVersionRange),
+  async runScript(ctx: PkgManagerRunScriptContext): Promise<RunScriptResult> {
+    return runScript(ctx, (value) =>
+      /Couldn't find a script named/i.test(value),
+    );
+  },
 
-  public override async install(
-    ctx: PkgManagerInstallContext,
-  ): Promise<ExecResult> {
+  async install(ctx: PkgManagerInstallContext): Promise<ExecResult> {
     const {installManifest, executor, spec, tmpdir} = ctx;
 
     /*
@@ -87,7 +86,6 @@ export class YarnBerry extends YarnClassic {
       },
     );
 
-    // const additionalDeps = manifest.additionalDeps ?? [];
     const {pkgSpec} = installManifest;
 
     let installResult: ExecResult;
@@ -101,8 +99,8 @@ export class YarnBerry extends YarnClassic {
         },
       );
     } catch (err) {
-      if (Util.isSmokerError(ExecError, err)) {
-        throw new InstallError(err.message, `${spec}`, pkgSpec, tmpdir, {
+      if (isSmokerError(ExecError, err)) {
+        throw new InstallError(err.message, spec.spec, pkgSpec, tmpdir, {
           error: err,
           exitCode: err.exitCode,
           output: err.all || err.stderr || err.stdout,
@@ -111,176 +109,10 @@ export class YarnBerry extends YarnClassic {
       throw err;
     }
 
-    this.debug('(install) Installed package "%s"', installManifest.pkgName);
+    debug('(install) Installed package "%s"', installManifest.pkgName);
 
     return installResult;
-  }
-
-  public override async pack(
-    ctx: PkgManagerPackContext,
-    // @ts-expect-error messed up
-  ): Promise<InstallManifest[]> {
-    // interface PackCommand {
-    //   command: string[];
-    //   cwd: string;
-    //   tarball: string;
-    //   pkgName: string;
-    // }
-    // const {
-    //   executor,
-    //   tmpdir,
-    //   spec,
-    //   allWorkspaces,
-    //   workspaces,
-    //   includeWorkspaceRoot,
-    // } = ctx;
-    // const seenSlugs = new Set();
-    // const computeSlug = (info: WorkspaceInfo) => {
-    //   let slug = path.basename(info.location);
-    //   for (let i = 0; i++; seenSlugs.has(slug)) {
-    //     slug = `${slug}-${i}`;
-    //   }
-    //   seenSlugs.add(slug);
-    //   return slug;
-    // };
-    // const finalizePackCommand = (
-    //   info: WorkspaceInfo,
-    //   pkgName: string,
-    // ): PackCommand => {
-    //   const slug = computeSlug(info);
-    //   const tarball = path.join(tmpdir, `${slug}.tgz`);
-    //   const cwd = path.isAbsolute(info.location)
-    //     ? info.location
-    //     : path.join(process.cwd(), info.location);
-    //   return {
-    //     command: [...basePackArgs, '--filename', tarball],
-    //     cwd,
-    //     tarball,
-    //     pkgName,
-    //   };
-    // };
-    // const getWorkspaceRootPackageName = async (): Promise<string> => {
-    //   const {packageJson} = await Helpers.readPackageJson({
-    //     cwd: process.cwd(),
-    //     strict: true,
-    //   });
-    //   const {name = path.dirname(process.cwd())} = packageJson;
-    //   return name;
-    // };
-    // const commands: PackCommand[] = [];
-    // const basePackArgs = ['pack', '--json'];
-    // const shouldUseWorkspaces = Boolean(allWorkspaces || workspaces?.length);
-    // if (shouldUseWorkspaces) {
-    //   let workspaceInfo: Record<string, WorkspaceInfo>;
-    //   try {
-    //     const {stdout} = await executor(
-    //       spec,
-    //       ['workspaces', 'list', '--json'],
-    //       {},
-    //       {},
-    //     );
-    //     const lines = stdout.split(/\r?\n/);
-    //     workspaceInfo = lines.reduce<Record<string, WorkspaceInfo>>(
-    //       (acc, line) => {
-    //         const {name, location} = JSON.parse(line) as WorkspaceInfo;
-    //         return {...acc, [name]: {location}};
-    //       },
-    //       {},
-    //     );
-    //   } catch (err) {
-    //     if (err instanceof ExecError) {
-    //       throw new PackError(
-    //         'Unable to read workspace information',
-    //         `${spec}`,
-    //         tmpdir,
-    //         {
-    //           error: err,
-    //           exitCode: err.exitCode,
-    //           output: err.all || err.stderr || err.stdout,
-    //         },
-    //       );
-    //     }
-    //     throw err;
-    //   }
-    //   if (workspaces?.length) {
-    //     commands.push(
-    //       ...workspaces.map((workspace) => {
-    //         let info = workspaceInfo[workspace] as WorkspaceInfo | undefined;
-    //         let name: string;
-    //         if (!info) {
-    //           [name, info] = Object.entries(workspaceInfo).find(
-    //             ([, info]) => info.location === workspace,
-    //           );
-    //           if (!info) {
-    //             throw new PackError(
-    //               `Unable to find workspace "${workspace}`,
-    //               `${spec}`,
-    //               tmpdir,
-    //             );
-    //           }
-    //         } else {
-    //           name = workspace;
-    //         }
-    //         return finalizePackCommand(info, name);
-    //       }),
-    //     );
-    //   } else {
-    //     // allWorkspaces must be true
-    //     commands.push(
-    //       ...Object.entries(workspaceInfo).map(([name, info]) =>
-    //         finalizePackCommand(info, name),
-    //       ),
-    //     );
-    //     if (includeWorkspaceRoot) {
-    //       commands.push(
-    //         finalizePackCommand(
-    //           {location: process.cwd()},
-    //           await getWorkspaceRootPackageName(),
-    //         ),
-    //       );
-    //     }
-    //   }
-    // } else {
-    //   commands.push(
-    //     finalizePackCommand(
-    //       {location: process.cwd()},
-    //       await getWorkspaceRootPackageName(),
-    //     ),
-    //   );
-    // }
-    // this.debug(commands);
-    // const installManifests: InstallManifest[] = [];
-    // for await (const {command, cwd, tarball, pkgName} of commands) {
-    //   try {
-    //     await executor(spec, command, {}, {cwd});
-    //   } catch (err) {
-    //     if (err instanceof ExecError) {
-    //       throw new PackError(err.message, `${spec}`, tmpdir, {
-    //         error: err,
-    //         exitCode: err.exitCode,
-    //         output: err.all || err.stderr || err.stdout,
-    //       });
-    //     }
-    //     throw err;
-    //   }
-    //   installManifests.push({
-    //     pkgSpec: tarball,
-    //     cwd: tmpdir,
-    //     installPath: path.join(tmpdir, 'node_modules', pkgName),
-    //     pkgName,
-    //   });
-    // }
-    // this.debug('Packed %d packages', installManifests.length);
-    // return installManifests;
-  }
-
-  public override async runScript(
-    ctx: PkgManagerRunScriptContext,
-  ): Promise<RunScriptResult> {
-    return this._runScript(ctx, (value) =>
-      /Couldn't find a script named/i.test(value),
-    );
-  }
-}
+  },
+};
 
 export default YarnBerry;

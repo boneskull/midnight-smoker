@@ -7,7 +7,7 @@ import {
 } from 'midnight-smoker/pkg-manager';
 import {Range} from 'semver';
 import {npmVersionData} from './data';
-import {BaseNpmPackageManager} from './npm';
+import {BaseNpmPackageManager, install} from './npm';
 
 const Npm7 = {
   ...BaseNpmPackageManager,
@@ -22,7 +22,7 @@ const Npm7 = {
   },
 
   async install(ctx: PkgManagerInstallContext): Promise<ExecResult> {
-    return BaseNpmPackageManager._install(ctx, [
+    return install(ctx, [
       '--no-audit',
       '--no-package-lock',
       '--global-style',
