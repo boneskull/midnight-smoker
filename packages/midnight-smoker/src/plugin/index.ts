@@ -4,6 +4,8 @@
  * @module midnight-smoker/plugin
  */
 
+export * from './create-plugin-api';
+
 export * from './blessed';
 
 export * from './fs-helpers';
