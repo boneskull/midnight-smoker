@@ -1,5 +1,3 @@
-import {head} from 'lodash';
-import {type SmokerOptions} from 'midnight-smoker';
 import {
   ComponentKinds,
   DEFAULT_PKG_MANAGER_BIN,
@@ -11,61 +9,38 @@ import {
   PluginMetadata,
   createPluginAPI,
   type PluginFactory,
-  type PluginRegistry,
 } from 'midnight-smoker/plugin';
 import {
   DEFAULT_RULE_SEVERITY,
   getDefaultRuleOptions,
+  type CheckResultFailed,
+  type CheckResultOk,
   type RuleDefSchemaValue,
   type RuleOptions,
-  type RuleResultFailed,
-  type RuleResultOk,
   type SomeRuleDef,
   type SomeRuleOptions,
 } from 'midnight-smoker/rule';
-import {type FileManager, type FileManagerOpts} from 'midnight-smoker/util';
 
 /**
- * Runs a {@link Rule} against a fixture.
+ * A rule runner function which can only run a single rule.
  *
- * @param rule - Rule to apply
- * @param installPath - Path to installed package dir (test fixture)
- * @param opts - Rule-specific options (not including `severity`). Will be
- *   merged over default options
- * @returns This will be empty if there were no issues raised
+ * @see {@link createRuleRunner}
  */
-// export async function applyRule<R extends SomeRule>(
-//   rule: R,
-//   installPath: string,
-//   opts?: RuleOptions<R['schema']>,
-// ): Promise<readonly RuleIssue[] | undefined> {
-// const config = {
-//   severity: rule.defaultSeverity,
-//   opts: {...rule.defaultOptions, ...opts},
-// };
-// // const ctx = await LintController.createRuleContext(rule, installPath, config);
-// // await LintController.runRule(ctx, rule, config);
-// return ctx.finalize();
-//   return;
-// }
-
-export interface CreateRuleRunnerOptions {
-  pluginRegistry?: PluginRegistry;
-  fileManager?: FileManager;
-  fileManagerOpts?: FileManagerOpts;
-  smokerOpts?: SmokerOptions;
-}
-
 export type NamedRuleRunner = (
   installPath: string,
   opts?: SomeRuleOptions,
-) => Promise<RuleResultOk | RuleResultFailed[]>;
+) => Promise<CheckResultOk | CheckResultFailed[]>;
 
+/**
+ * A rule runner function which can run any rule defined by the plugin factory.
+ *
+ * @see {@link createRuleRunner}
+ */
 export type RuleRunner = (
   name: string,
   installPath: string,
   opts?: SomeRuleOptions,
-) => Promise<RuleResultOk | RuleResultFailed[]>;
+) => Promise<CheckResultOk | CheckResultFailed[]>;
 
 /**
  * Factory function which creates a {@link NamedRuleRunner}.
@@ -79,13 +54,13 @@ export type RuleRunner = (
  * If you have a `RuleDef` instead of a `PluginFactory`, use {@link runRule}
  * instead.
  *
- * @param fn Plugin factory function
+ * @param factory Plugin factory function
  * @param name Rule name
  * @returns Rule runner function (can only run the rule specified by the `name`
  *   parameter)
  */
 export async function createRuleRunner(
-  fn: PluginFactory,
+  factory: PluginFactory,
   name: string,
 ): Promise<NamedRuleRunner>;
 
@@ -101,13 +76,15 @@ export async function createRuleRunner(
  * If you have a `RuleDef` instead of a `PluginFactory`, use {@link runRule}
  * instead.
  *
- * @param fn Plugin factory function
+ * @param factory Plugin factory function
  * @returns Rule runner function (can run any rule defined by the plugin
  *   factory)
  */
-export async function createRuleRunner(fn: PluginFactory): Promise<RuleRunner>;
+export async function createRuleRunner(
+  factory: PluginFactory,
+): Promise<RuleRunner>;
 
-export async function createRuleRunner(fn: PluginFactory, name?: string) {
+export async function createRuleRunner(factory: PluginFactory, name?: string) {
   const ruleDefs: Map<string, SomeRuleDef> = new Map();
   const metadata = PluginMetadata.createTransient('test-plugin');
   const pluginApi = createPluginAPI(
@@ -120,7 +97,7 @@ export async function createRuleRunner(fn: PluginFactory, name?: string) {
     metadata,
   );
   try {
-    await fn(pluginApi);
+    await factory(pluginApi);
   } catch (err) {
     throw new PluginInitError(fromUnknownError(err), metadata);
   }
@@ -156,7 +133,7 @@ export async function runRule<T extends SomeRuleDef>(
   def: T,
   installPath: string,
   opts?: RuleOptions<T['schema']>,
-): Promise<RuleResultOk | RuleResultFailed[]> {
+): Promise<CheckResultOk | CheckResultFailed[]> {
   const plan = 1;
   const defaultOpts = getDefaultRuleOptions(def.schema as RuleDefSchemaValue);
   const someConfig = {
@@ -195,5 +172,5 @@ export async function runRule<T extends SomeRuleDef>(
   if (output.length !== plan) {
     throw new Error(`Expected exactly ${plan} result(s)`);
   }
-  return head(output)!.result;
+  return output.shift()!.result;
 }

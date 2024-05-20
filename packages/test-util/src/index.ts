@@ -11,3 +11,5 @@ export * from './null-pkg-manager';
 export * from './register';
 
 export * from './snapshot';
+
+export * from './lint';

@@ -1,7 +1,10 @@
+import {
+  createRuleRunner,
+  type NamedRuleRunner,
+} from '@midnight-smoker/test-util';
 import {normalize} from 'node:path';
 import unexpected from 'unexpected';
 import noMissingExports from '../../../src/rules/no-missing-exports';
-import {createRuleRunner, type NamedRuleRunner} from './helpers';
 
 const expect = unexpected.clone();
 

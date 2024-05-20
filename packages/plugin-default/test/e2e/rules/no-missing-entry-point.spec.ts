@@ -1,8 +1,11 @@
+import {
+  createRuleRunner,
+  type NamedRuleRunner,
+} from '@midnight-smoker/test-util';
 import {RuleSeverities} from 'midnight-smoker/rule';
 import {normalize} from 'node:path';
 import unexpected from 'unexpected';
 import noMissingEntryPoint from '../../../src/rules/no-missing-entry-point';
-import {createRuleRunner, type NamedRuleRunner} from './helpers';
 
 const expect = unexpected.clone();
 
