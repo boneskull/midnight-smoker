@@ -22,18 +22,19 @@
     "#util/*": "./util/*.ts"
   },
   "exports": {
-    ".": "./src/index.ts",
-    "./plugin": "./src/plugin/index.ts",
-    "./error": "./src/error/index.ts",
-    "./event": "./src/event/index.ts",
-    "./machine": "./src/machine/index.ts",
-    "./rule": "./src/rule/index.ts",
-    "./reporter": "./src/reporter/index.ts",
-    "./executor": "./src/executor/index.ts",
-    "./pkg-manager": "./src/pkg-manager/index.ts",
+    ".": "./index.ts",
+    "./plugin": "./plugin/index.ts",
+    "./error": "./error/index.ts",
+    "./event": "./event/index.ts",
+    "./machine": "./machine/index.ts",
+    "./options": "./options/index.ts",
+    "./rule": "./rule/index.ts",
+    "./reporter": "./reporter/index.ts",
+    "./executor": "./executor/index.ts",
+    "./pkg-manager": "./pkg-manager/index.ts",
     "./package.json": "./package.json",
     "./smoker": "./bin/smoker.js",
-    "./constants": "./src/constants.ts",
-    "./util": "./src/util/index.ts"
+    "./constants": "./constants.ts",
+    "./util": "./util/index.ts"
   }
 }

@@ -79,6 +79,11 @@
       "typedoc": "./src/executor/index.ts",
       "default": "./dist/executor/index.js"
     },
+    "./options": {
+      "types": "./dist/options/index.d.ts",
+      "typedoc": "./src/options/index.ts",
+      "default": "./dist/options/index.js"
+    },
     "./pkg-manager": {
       "types": "./dist/pkg-manager/index.d.ts",
       "typedoc": "./src/pkg-manager/index.ts",
