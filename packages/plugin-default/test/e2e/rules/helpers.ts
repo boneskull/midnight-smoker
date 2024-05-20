@@ -1,3 +1,4 @@
+import {head} from 'lodash';
 import {type SmokerOptions} from 'midnight-smoker';
 import {
   ComponentKinds,
@@ -5,27 +6,24 @@ import {
   DEFAULT_PKG_MANAGER_VERSION,
 } from 'midnight-smoker/constants';
 import {PluginInitError, fromUnknownError} from 'midnight-smoker/error';
-import {
-  RuleMachine,
-  createActor,
-  toPromise,
-  type CheckOutput,
-} from 'midnight-smoker/machine';
+import {RuleMachine, createActor, toPromise} from 'midnight-smoker/machine';
 import {
   PluginMetadata,
+  createPluginAPI,
   type PluginFactory,
   type PluginRegistry,
 } from 'midnight-smoker/plugin';
 import {
   DEFAULT_RULE_SEVERITY,
+  getDefaultRuleOptions,
   type RuleDefSchemaValue,
   type RuleOptions,
+  type RuleResultFailed,
+  type RuleResultOk,
   type SomeRuleDef,
   type SomeRuleOptions,
 } from 'midnight-smoker/rule';
 import {type FileManager, type FileManagerOpts} from 'midnight-smoker/util';
-import {createPluginAPI} from '../../../../midnight-smoker/src/plugin/create-plugin-api';
-import {getDefaultRuleOptions} from '../../../../midnight-smoker/src/rule/create-rule-options';
 
 /**
  * Runs a {@link Rule} against a fixture.
@@ -58,7 +56,58 @@ export interface CreateRuleRunnerOptions {
   smokerOpts?: SmokerOptions;
 }
 
-export async function createRuleRunner(fn: PluginFactory) {
+export type NamedRuleRunner = (
+  installPath: string,
+  opts?: SomeRuleOptions,
+) => Promise<RuleResultOk | RuleResultFailed[]>;
+
+export type RuleRunner = (
+  name: string,
+  installPath: string,
+  opts?: SomeRuleOptions,
+) => Promise<RuleResultOk | RuleResultFailed[]>;
+
+/**
+ * Factory function which creates a {@link NamedRuleRunner}.
+ *
+ * Since a {@link PluginFactory} can define multiple rules, this function allows
+ * you to specify which rule to run.
+ *
+ * If you wish to test multiple rules, omit the `name` parameter; you will
+ * receive a {@link RuleRunner} instead.
+ *
+ * If you have a `RuleDef` instead of a `PluginFactory`, use {@link runRule}
+ * instead.
+ *
+ * @param fn Plugin factory function
+ * @param name Rule name
+ * @returns Rule runner function (can only run the rule specified by the `name`
+ *   parameter)
+ */
+export async function createRuleRunner(
+  fn: PluginFactory,
+  name: string,
+): Promise<NamedRuleRunner>;
+
+/**
+ * Factory function which creates a {@link RuleRunner}.
+ *
+ * Since a {@link PluginFactory} can define multiple rules, this function allows
+ * you to run any rule defined by the plugin.
+ *
+ * If you only wish to test a single rule, supply a `name` property for the
+ * second parameter.
+ *
+ * If you have a `RuleDef` instead of a `PluginFactory`, use {@link runRule}
+ * instead.
+ *
+ * @param fn Plugin factory function
+ * @returns Rule runner function (can run any rule defined by the plugin
+ *   factory)
+ */
+export async function createRuleRunner(fn: PluginFactory): Promise<RuleRunner>;
+
+export async function createRuleRunner(fn: PluginFactory, name?: string) {
   const ruleDefs: Map<string, SomeRuleDef> = new Map();
   const metadata = PluginMetadata.createTransient('test-plugin');
   const pluginApi = createPluginAPI(
@@ -76,26 +125,39 @@ export async function createRuleRunner(fn: PluginFactory) {
     throw new PluginInitError(fromUnknownError(err), metadata);
   }
 
-  return (name: string, installPath: string, opts?: SomeRuleOptions) => {
+  if (name) {
     const def = ruleDefs.get(name);
     if (!def) {
-      throw new ReferenceError(`Rule "${name}" not found`);
+      throw new ReferenceError(`RuleDef "${name}" not found`);
     }
-    return applyRule(def, installPath, opts);
+    return async (installPath: string, opts?: SomeRuleOptions) =>
+      runRule(def, installPath, opts);
+  }
+
+  return async (name: string, installPath: string, opts?: SomeRuleOptions) => {
+    const def = ruleDefs.get(name);
+    if (!def) {
+      throw new ReferenceError(`RuleDef "${name}" not found`);
+    }
+    return runRule(def, installPath, opts);
   };
 }
 
-export function applyRule<T extends SomeRuleDef>(
+/**
+ * Given a rule definition, runs the rule against a package dir with the
+ * specified options (if given).
+ *
+ * @param def Rule definition
+ * @param installPath Path to package dir to test
+ * @param opts Rule-specific options
+ * @returns A `CheckOutput` object
+ */
+export async function runRule<T extends SomeRuleDef>(
   def: T,
   installPath: string,
   opts?: RuleOptions<T['schema']>,
-): Promise<CheckOutput[]>;
-
-export function applyRule<T extends SomeRuleDef>(
-  def: T,
-  installPath: string,
-  opts?: RuleOptions<T['schema']>,
-): Promise<CheckOutput[]> {
+): Promise<RuleResultOk | RuleResultFailed[]> {
+  const plan = 1;
   const defaultOpts = getDefaultRuleOptions(def.schema as RuleDefSchemaValue);
   const someConfig = {
     opts: {...defaultOpts, ...opts},
@@ -106,7 +168,7 @@ export function applyRule<T extends SomeRuleDef>(
       def,
       ruleId: def.name,
       config: someConfig,
-      plan: 1,
+      plan,
     },
   });
   ruleMachine.send({
@@ -129,5 +191,9 @@ export function applyRule<T extends SomeRuleDef>(
       pkgName: '',
     },
   });
-  return toPromise(ruleMachine);
+  const output = await toPromise(ruleMachine);
+  if (output.length !== plan) {
+    throw new Error(`Expected exactly ${plan} result(s)`);
+  }
+  return head(output)!.result;
 }

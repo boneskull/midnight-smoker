@@ -108,10 +108,19 @@ describe('@midnight-smoker/plugin-default', function () {
               stdout: JSON.stringify(npmPackItems),
             } as any);
             ctx = {
-              workspaceInfo: [{pkgName: 'foo', localPath: '/some/path'}],
+              workspaceInfo: [
+                {
+                  pkgName: 'foo',
+                  localPath: '/some/path',
+                  pkgJson: {},
+                  pkgJsonPath: '/some/path/to/package.json',
+                },
+              ],
+              pkgJson: {},
+              pkgJsonPath: '/some/path/to/package.json',
               localPath: '/some/path',
               pkgName: 'foo',
-              spec,
+              spec: spec.toJSON(),
               tmpdir: MOCK_TMPDIR,
               executor,
               signal: new AbortController().signal,
@@ -133,60 +142,6 @@ describe('@midnight-smoker/plugin-default', function () {
               ]);
             });
           });
-
-          // describe('when called with context containing "workspaces" option', function () {
-          //   it('should call exec with --workspace args', async function () {
-          //     await Npm7.pack({...ctx, workspaces: ['bar', 'baz']});
-          //     expect(executor, 'to have a call satisfying', [
-          //       spec,
-          //       [
-          //         'pack',
-          //         '--json',
-          //         `--pack-destination=${MOCK_TMPDIR}`,
-          //         '--foreground-scripts=false',
-          //         '--workspace=bar',
-          //         '--workspace=baz',
-          //       ],
-          //     ]);
-          //   });
-          // });
-
-          // describe('when called with context containing "allWorkspaces" option', function () {
-          //   it('should call exec with --workspaces flag', async function () {
-          //     await Npm7.pack({...ctx, allWorkspaces: true});
-          //     expect(executor, 'to have a call satisfying', [
-          //       spec,
-          //       [
-          //         'pack',
-          //         '--json',
-          //         `--pack-destination=${MOCK_TMPDIR}`,
-          //         '--foreground-scripts=false',
-          //         '--workspaces',
-          //       ],
-          //     ]);
-          //   });
-
-          //   describe('when called with contxt containing "includeWorkspaceRoot" option', function () {
-          //     it('should call exec with --workspaces flag and --include-workspace-root flag', async function () {
-          //       await Npm7.pack({
-          //         ...ctx,
-          //         allWorkspaces: true,
-          //         includeWorkspaceRoot: true,
-          //       });
-          //       expect(executor, 'to have a call satisfying', [
-          //         spec,
-          //         [
-          //           'pack',
-          //           '--json',
-          //           `--pack-destination=${MOCK_TMPDIR}`,
-          //           '--foreground-scripts=false',
-          //           '--workspaces',
-          //           '--include-workspace-root',
-          //         ],
-          //       ]);
-          //     });
-          //   });
-          // });
 
           describe('when Npm7 failed to spawn', function () {
             beforeEach(async function () {
@@ -263,7 +218,7 @@ describe('@midnight-smoker/plugin-default', function () {
             executor.resolves({stdout: 'stuff', exitCode: 0} as any);
             ctx = {
               workspaceInfo: [],
-              spec,
+              spec: spec.toJSON(),
               tmpdir: MOCK_TMPDIR,
               executor,
               signal: new AbortController().signal,
@@ -329,15 +284,17 @@ describe('@midnight-smoker/plugin-default', function () {
           beforeEach(function () {
             executor.resolves({failed: false, stdout: 'stuff'} as any);
             ctx = {
-              workspaceInfo: [{pkgName: 'foo', localPath: '/some/path'}],
+              workspaceInfo: [],
               signal: new AbortController().signal,
-              spec,
+              spec: spec.toJSON(),
               executor,
               tmpdir: MOCK_TMPDIR,
               loose: false,
               runScriptManifest: {
                 cwd: `${MOCK_TMPDIR}/node_modules/foo`,
                 pkgName: 'foo',
+                pkgJson: {},
+                pkgJsonPath: '',
                 script: 'some-script',
                 localPath: '/some/path',
               },

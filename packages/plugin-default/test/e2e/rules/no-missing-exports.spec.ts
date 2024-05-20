@@ -1,23 +1,18 @@
-import {registerRule} from '@midnight-smoker/test-util';
-import {PluginRegistry} from 'midnight-smoker/plugin';
-import {type SomeRule} from 'midnight-smoker/rule';
 import {normalize} from 'node:path';
 import unexpected from 'unexpected';
-import noMissingExportsDef from '../../../src/rules/no-missing-exports';
-import {applyRule} from './helpers';
+import noMissingExports from '../../../src/rules/no-missing-exports';
+import {createRuleRunner, type NamedRuleRunner} from './helpers';
 
 const expect = unexpected.clone();
 
 describe('@midnight-smoker/plugin-default', function () {
-  let noMissingExports: SomeRule;
-
   describe('rule', function () {
     describe('no-missing-exports', function () {
+      const name = 'no-missing-exports';
+      let runRule: NamedRuleRunner;
+
       before(async function () {
-        noMissingExports = await registerRule(
-          PluginRegistry.create(),
-          noMissingExportsDef,
-        );
+        runRule = await createRuleRunner(noMissingExports, name);
       });
 
       describe('when the package contains no "exports" field', function () {
@@ -26,11 +21,7 @@ describe('@midnight-smoker/plugin-default', function () {
         );
 
         it('should not return a failure', async function () {
-          await expect(
-            applyRule(noMissingExports, fixture),
-            'to be fulfilled with',
-            undefined,
-          );
+          await expect(runRule(fixture), 'to be fulfilled with', undefined);
         });
       });
 
@@ -42,11 +33,11 @@ describe('@midnight-smoker/plugin-default', function () {
 
           it('should return a failure', async function () {
             await expect(
-              applyRule(noMissingExports, fixture),
+              runRule(fixture),
               'to be fulfilled with value satisfying',
               [
                 {
-                  rule: noMissingExports.toJSON(),
+                  rule: name,
                   message: /.exports. unreadable at path: \.\/index\.js$/,
                 },
               ],
@@ -60,11 +51,7 @@ describe('@midnight-smoker/plugin-default', function () {
           );
 
           it('should not return a failure', async function () {
-            await expect(
-              applyRule(noMissingExports, fixture),
-              'to be fulfilled with',
-              undefined,
-            );
+            await expect(runRule(fixture), 'to be fulfilled with', undefined);
           });
         });
       });
@@ -77,11 +64,11 @@ describe('@midnight-smoker/plugin-default', function () {
 
           it('should return a failure', async function () {
             await expect(
-              applyRule(noMissingExports, fixture),
+              runRule(fixture),
               'to be fulfilled with value satisfying',
               [
                 {
-                  rule: noMissingExports.toJSON(),
+                  rule: name,
                   message:
                     /\.\/missing\.js. unreadable at path: \.\/index-missing\.js$/,
                 },
@@ -96,11 +83,7 @@ describe('@midnight-smoker/plugin-default', function () {
           );
 
           it('should not return a failure', async function () {
-            await expect(
-              applyRule(noMissingExports, fixture),
-              'to be fulfilled with',
-              undefined,
-            );
+            await expect(runRule(fixture), 'to be fulfilled with', undefined);
           });
         });
 
@@ -112,7 +95,7 @@ describe('@midnight-smoker/plugin-default', function () {
           describe('when all files are missing', function () {
             it('should return a failure', async function () {
               await expect(
-                applyRule(noMissingExports, fixture),
+                runRule(fixture),
                 'to be fulfilled with value satisfying',
                 [
                   {
@@ -130,11 +113,7 @@ describe('@midnight-smoker/plugin-default', function () {
             );
 
             it('should not return a failure', async function () {
-              await expect(
-                applyRule(noMissingExports, fixture),
-                'to be fulfilled with',
-                undefined,
-              );
+              await expect(runRule(fixture), 'to be fulfilled with', undefined);
             });
           });
 
@@ -145,7 +124,7 @@ describe('@midnight-smoker/plugin-default', function () {
 
             it('should return a failure', async function () {
               await expect(
-                applyRule(noMissingExports, fixture, {glob: false}),
+                runRule(fixture, {glob: false}),
                 'to be fulfilled with value satisfying',
                 [
                   {
@@ -166,11 +145,11 @@ describe('@midnight-smoker/plugin-default', function () {
 
           it('should return a failure', async function () {
             await expect(
-              applyRule(noMissingExports, fixture),
+              runRule(fixture),
               'to be fulfilled with value satisfying',
               [
                 {
-                  rule: noMissingExports.toJSON(),
+                  rule: name,
                   message:
                     /require. unreadable at path: \.\/index-missing\.js$/,
                 },
@@ -186,11 +165,11 @@ describe('@midnight-smoker/plugin-default', function () {
 
           it('should return a failure', async function () {
             await expect(
-              applyRule(noMissingExports, fixture),
+              runRule(fixture),
               'to be fulfilled with value satisfying',
               [
                 {
-                  rule: noMissingExports.toJSON(),
+                  rule: name,
                   message: /\[1\]. unreadable at path: \.\/index-missing\.js$/,
                 },
               ],
@@ -204,11 +183,7 @@ describe('@midnight-smoker/plugin-default', function () {
           );
 
           it('should not return a failure', async function () {
-            await expect(
-              applyRule(noMissingExports, fixture),
-              'to be fulfilled with',
-              undefined,
-            );
+            await expect(runRule(fixture), 'to be fulfilled with', undefined);
           });
 
           describe('when a "require" export is present', function () {
@@ -219,11 +194,11 @@ describe('@midnight-smoker/plugin-default', function () {
             describe('when the file is ESM', function () {
               it('should return a failure', async function () {
                 await expect(
-                  applyRule(noMissingExports, fixture),
+                  runRule(fixture),
                   'to be fulfilled with value satisfying',
                   [
                     {
-                      rule: noMissingExports.toJSON(),
+                      rule: name,
                       message:
                         /require. to be a CJS script at path: \.\/index\.js$/,
                     },
@@ -240,11 +215,11 @@ describe('@midnight-smoker/plugin-default', function () {
             describe('when the file is not ESM', function () {
               it('should return a failure', async function () {
                 await expect(
-                  applyRule(noMissingExports, fixture),
+                  runRule(fixture),
                   'to be fulfilled with value satisfying',
                   [
                     {
-                      rule: noMissingExports.toJSON(),
+                      rule: name,
                       message:
                         /import. to be an ESM module at path: \.\/index\.js$/,
                     },
@@ -262,11 +237,11 @@ describe('@midnight-smoker/plugin-default', function () {
             describe('when the file does not have a .d.ts extension', function () {
               it('should return a failure', async function () {
                 await expect(
-                  applyRule(noMissingExports, fixture),
+                  runRule(fixture),
                   'to be fulfilled with value satisfying',
                   [
                     {
-                      rule: noMissingExports.toJSON(),
+                      rule: name,
                       message:
                         /types. to be a \.d\.ts file at path: \.\/index\.js$/,
                     },
@@ -284,11 +259,11 @@ describe('@midnight-smoker/plugin-default', function () {
 
               it('should return a failure', async function () {
                 await expect(
-                  applyRule(noMissingExports, fixture),
+                  runRule(fixture),
                   'to be fulfilled with value satisfying',
                   [
                     {
-                      rule: noMissingExports.toJSON(),
+                      rule: name,
                       message: /must be the last export$/,
                     },
                   ],
@@ -302,7 +277,7 @@ describe('@midnight-smoker/plugin-default', function () {
               );
               it('should not return a failure', async function () {
                 await expect(
-                  applyRule(noMissingExports, fixture),
+                  runRule(fixture),
                   'to be fulfilled with',
                   undefined,
                 );
@@ -316,7 +291,7 @@ describe('@midnight-smoker/plugin-default', function () {
 
               it('should not return a failure', async function () {
                 await expect(
-                  applyRule(noMissingExports, fixture, {order: false}),
+                  runRule(fixture, {order: false}),
                   'to be fulfilled with',
                   undefined,
                 );
@@ -334,7 +309,7 @@ describe('@midnight-smoker/plugin-default', function () {
 
           it('should return a failure', async function () {
             await expect(
-              applyRule(noMissingExports, fixture),
+              runRule(fixture),
               'to be fulfilled with value satisfying',
               expect.it('to be an array'),
             );

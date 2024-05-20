@@ -1,24 +1,19 @@
-import {partial} from 'lodash';
-import {type CheckOutput} from 'midnight-smoker/machine';
-import {RuleSeverities, type SomeRuleOptions} from 'midnight-smoker/rule';
+import {RuleSeverities} from 'midnight-smoker/rule';
 import {normalize} from 'node:path';
 import unexpected from 'unexpected';
 import noMissingPkgFiles from '../../../src/rules/no-missing-pkg-files';
-import {createRuleRunner} from './helpers';
+import {createRuleRunner, type NamedRuleRunner} from './helpers';
 
 const expect = unexpected.clone();
 
 describe('@midnight-smoker/plugin-default', function () {
   describe('rule', function () {
     describe('no-missing-pkg-files', function () {
-      let applyRule: (
-        installPath: string,
-        opts?: SomeRuleOptions,
-      ) => Promise<CheckOutput[]>;
+      const name = 'no-missing-pkg-files';
+      let runRule: NamedRuleRunner;
 
       before(async function () {
-        const runner = await createRuleRunner(noMissingPkgFiles);
-        applyRule = partial(runner, 'no-missing-pkg-files');
+        runRule = await createRuleRunner(noMissingPkgFiles, name);
       });
       describe('when run without options', function () {
         describe('when the "bin" field is an object', function () {
@@ -29,11 +24,11 @@ describe('@midnight-smoker/plugin-default', function () {
 
             it('should return a failure', async function () {
               await expect(
-                applyRule(fixture),
+                runRule(fixture),
                 'to be fulfilled with value satisfying',
                 [
                   {
-                    rule: 'no-missing-pkg-files',
+                    rule: name,
                     message:
                       'File "no-missing-pkg-files" from "bin" field unreadable at path: ./bin/no-missing-pkg-files.js',
                     context: {
@@ -54,11 +49,7 @@ describe('@midnight-smoker/plugin-default', function () {
             );
 
             it('should not return a failure', async function () {
-              await expect(
-                applyRule(fixture),
-                'to be fulfilled with',
-                undefined,
-              );
+              await expect(runRule(fixture), 'to be fulfilled with', undefined);
             });
           });
         });
@@ -70,11 +61,11 @@ describe('@midnight-smoker/plugin-default', function () {
 
           it('should return a failure', async function () {
             await expect(
-              applyRule(fixture),
+              runRule(fixture),
               'to be fulfilled with value satisfying',
               [
                 {
-                  rule: 'no-missing-pkg-files',
+                  rule: name,
                   message:
                     'File from "bin" field unreadable at path: ./bin/no-missing-pkg-files.js',
                   context: {
@@ -96,11 +87,11 @@ describe('@midnight-smoker/plugin-default', function () {
 
           it('should return a failure', async function () {
             await expect(
-              applyRule(fixture),
+              runRule(fixture),
               'to be fulfilled with value satisfying',
               [
                 {
-                  rule: 'no-missing-pkg-files',
+                  rule: name,
                   message:
                     'File from "types" field unreadable at path: index.d.ts',
                   context: {
@@ -122,11 +113,11 @@ describe('@midnight-smoker/plugin-default', function () {
 
           it('should return a failure', async function () {
             await expect(
-              applyRule(fixture),
+              runRule(fixture),
               'to be fulfilled with value satisfying',
               [
                 {
-                  rule: 'no-missing-pkg-files',
+                  rule: name,
                   message:
                     'File from "browser" field unreadable at path: index.browser.js',
                   context: {
@@ -151,7 +142,7 @@ describe('@midnight-smoker/plugin-default', function () {
 
             it('should return no failures', async function () {
               await expect(
-                applyRule(fixture, {bin: false}),
+                runRule(fixture, {bin: false}),
                 'to be fulfilled with',
                 undefined,
               );

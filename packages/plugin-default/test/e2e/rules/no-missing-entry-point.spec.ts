@@ -1,24 +1,19 @@
-import {registerRule} from '@midnight-smoker/test-util';
-import {PluginRegistry} from 'midnight-smoker/plugin';
-import {RuleSeverities, type SomeRule} from 'midnight-smoker/rule';
+import {RuleSeverities} from 'midnight-smoker/rule';
 import {normalize} from 'node:path';
 import unexpected from 'unexpected';
-import noMissingEntryPointDef from '../../../src/rules/no-missing-entry-point';
-import {applyRule} from './helpers';
+import noMissingEntryPoint from '../../../src/rules/no-missing-entry-point';
+import {createRuleRunner, type NamedRuleRunner} from './helpers';
 
 const expect = unexpected.clone();
 
 describe('@midnight-smoker/plugin-default', function () {
-  let noMissingEntryPoint: SomeRule;
-
   describe('rule', function () {
     describe('no-missing-entry-point', function () {
+      let runRule: NamedRuleRunner;
+      const name = 'no-missing-entry-point';
+
       before(async function () {
-        const registry = PluginRegistry.create();
-        noMissingEntryPoint = await registerRule(
-          registry,
-          noMissingEntryPointDef,
-        );
+        runRule = await createRuleRunner(noMissingEntryPoint, name);
       });
 
       describe('when the package is an ESM package', function () {
@@ -27,11 +22,7 @@ describe('@midnight-smoker/plugin-default', function () {
         );
 
         it('should not return a failure', async function () {
-          await expect(
-            applyRule(noMissingEntryPoint, fixture),
-            'to be fulfilled with',
-            undefined,
-          );
+          await expect(runRule(fixture), 'to be fulfilled with', undefined);
         });
       });
 
@@ -43,11 +34,11 @@ describe('@midnight-smoker/plugin-default', function () {
 
           it('should return a failure', async function () {
             await expect(
-              applyRule(noMissingEntryPoint, fixture),
+              runRule(fixture),
               'to be fulfilled with value satisfying',
               [
                 {
-                  rule: noMissingEntryPoint.toJSON(),
+                  rule: name,
                   message:
                     'No entry point found for package "no-missing-entry-point"; file from field "main" unreadable at path: index.js',
                   context: {
@@ -68,11 +59,7 @@ describe('@midnight-smoker/plugin-default', function () {
           );
 
           it('should not return a failure', async function () {
-            await expect(
-              applyRule(noMissingEntryPoint, fixture),
-              'to be fulfilled with',
-              undefined,
-            );
+            await expect(runRule(fixture), 'to be fulfilled with', undefined);
           });
         });
       });
@@ -85,11 +72,11 @@ describe('@midnight-smoker/plugin-default', function () {
 
           it('should return a failure', async function () {
             await expect(
-              applyRule(noMissingEntryPoint, fixture),
+              runRule(fixture),
               'to be fulfilled with value satisfying',
               [
                 {
-                  rule: noMissingEntryPoint.toJSON(),
+                  rule: name,
                   message:
                     'No entry point found for package "no-missing-entry-point"; file from field "main" unreadable at path: index.js',
                   context: {
@@ -111,7 +98,7 @@ describe('@midnight-smoker/plugin-default', function () {
 
           it('should not return a failure', async function () {
             await expect(
-              applyRule(noMissingEntryPoint, fixture),
+              runRule(fixture),
               'to be fulfilled with value satisfying',
               expect.it('to be undefined'),
             );

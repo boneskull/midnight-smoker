@@ -41,7 +41,10 @@ describe('@midnight-smoker/plugin-default', function () {
     describe('when "verbose" ExecOpts option is true', function () {
       beforeEach(async function () {
         await corepackExecutor(
-          PkgManagerSpec.create({pkgManager: 'nullpm', version: '1.0.0'}),
+          PkgManagerSpec.create({
+            pkgManager: 'nullpm',
+            version: '1.0.0',
+          }).toJSON(),
           ['foo'],
           {verbose: true},
         );
@@ -65,7 +68,10 @@ describe('@midnight-smoker/plugin-default', function () {
     describe('when "verbose" ExecOpts option is not true', function () {
       beforeEach(async function () {
         await corepackExecutor(
-          PkgManagerSpec.create({pkgManager: 'nullpm', version: '1.0.0'}),
+          PkgManagerSpec.create({
+            pkgManager: 'nullpm',
+            version: '1.0.0',
+          }).toJSON(),
           ['foo'],
           {verbose: false},
         );
@@ -111,7 +117,10 @@ describe('@midnight-smoker/plugin-default', function () {
       it('should throw an ExecError', async function () {
         await expect(
           corepackExecutor(
-            PkgManagerSpec.create({pkgManager: 'nullpm', version: '1.0.0'}),
+            PkgManagerSpec.create({
+              pkgManager: 'nullpm',
+              version: '1.0.0',
+            }).toJSON(),
             ['foo'],
           ),
           'to be rejected with error satisfying',

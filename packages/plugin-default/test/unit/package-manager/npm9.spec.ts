@@ -31,8 +31,6 @@ describe('@midnight-smoker/plugin-default', function () {
 
     executor = sandbox.stub();
 
-    // sandbox.stub(Helpers, 'createTempDir').resolves(MOCK_TMPDIR);
-
     mocks = {
       'node:console': mockConsole,
       debug: mockDebug,
@@ -81,9 +79,9 @@ describe('@midnight-smoker/plugin-default', function () {
 
           beforeEach(function () {
             ctx = {
-              workspaceInfo: [{pkgName: 'foo', localPath: '/some/dir'}],
+              workspaceInfo: [],
               signal: new AbortController().signal,
-              spec,
+              spec: spec.toJSON(),
               tmpdir: MOCK_TMPDIR,
               executor,
               installManifest: {

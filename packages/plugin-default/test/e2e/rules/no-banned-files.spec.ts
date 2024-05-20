@@ -1,21 +1,19 @@
-import {registerRule} from '@midnight-smoker/test-util';
-import {PluginRegistry} from 'midnight-smoker/plugin';
-import {RuleSeverities, type SomeRule} from 'midnight-smoker/rule';
+import {RuleSeverities} from 'midnight-smoker/rule';
 import {normalize} from 'node:path';
 import unexpected from 'unexpected';
-import noBannedFilesDef from '../../../src/rules/no-banned-files';
-import {applyRule} from './helpers';
+import noBannedFiles from '../../../src/rules/no-banned-files';
+import {createRuleRunner, type NamedRuleRunner} from './helpers';
 
 const expect = unexpected.clone();
 
 describe('@midnight-smoker/plugin-default', function () {
-  let noBannedFiles: SomeRule;
-
   describe('rule', function () {
     describe('no-banned-files', function () {
+      let runRule: NamedRuleRunner;
+      const name = 'no-banned-files';
+
       before(async function () {
-        const registry = PluginRegistry.create();
-        noBannedFiles = await registerRule(registry, noBannedFilesDef);
+        runRule = await createRuleRunner(noBannedFiles, name);
       });
 
       describe('when the package contains a banned file', function () {
@@ -23,11 +21,11 @@ describe('@midnight-smoker/plugin-default', function () {
 
         it('should return a failure for each banned file', async function () {
           await expect(
-            applyRule(noBannedFiles, fixture),
+            runRule(fixture),
             'to be fulfilled with value satisfying',
             [
               {
-                rule: noBannedFiles.toJSON(),
+                rule: name,
                 message: 'Banned file found: id_rsa (Private SSH key)',
                 context: {
                   pkgJson: expect.it('to be an object'),
@@ -51,11 +49,11 @@ describe('@midnight-smoker/plugin-default', function () {
 
         it('should allow additional files to be banned', async function () {
           await expect(
-            applyRule(noBannedFiles, fixture, config),
+            runRule(fixture, config),
             'to be fulfilled with value satisfying',
             [
               {
-                rule: noBannedFiles.toJSON(),
+                rule: name,
                 message:
                   'Banned file found: anarchist-cookbook.txt (per custom deny list)',
                 context: {
