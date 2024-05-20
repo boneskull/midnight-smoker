@@ -11,8 +11,9 @@
  * @packageDocumentation
  */
 
-import {OptionParser} from '#options';
-import {BLESSED_PLUGINS, PluginRegistry} from '#plugin';
+import {OptionParser} from '#options/parser';
+import {BLESSED_PLUGINS} from '#plugin/blessed';
+import {PluginRegistry} from '#plugin/plugin-registry';
 import {RuleSeveritySchema} from '#schema/rule-severity';
 import {
   DefaultFalseSchema,

@@ -4,40 +4,32 @@
     "add": {
       "allOf": [
         {
-          "anyOf": [
-            {
-              "type": "string",
-              "minLength": 1,
-              "description": "A non-empty string"
-            },
-            {
-              "type": "array",
-              "items": {
-                "$ref": "#/properties/add/allOf/0/anyOf/0"
-              },
-              "description": "An array of non-empty strings"
-            }
-          ],
-          "default": []
+          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0"
         },
         {
-          "$ref": "#/properties/add/allOf/0/anyOf/1"
+          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0/anyOf/1"
         }
       ],
       "description": "Add an extra package to the list of packages to be installed"
     },
     "all": {
-      "type": "boolean",
+      "$ref": "#/$defs/defaultFalse",
       "default": false,
       "description": "Operate on all workspaces. The root workspace is omitted unless `includeRoot` is `true`"
     },
     "bail": {
-      "$ref": "#/properties/all",
+      "$ref": "#/$defs/defaultFalse",
       "default": false,
       "description": "Fail on first script failure"
     },
+    "cwd": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Path to workspace root",
+      "default": "/Users/boneskull/projects/boneskull/midnight-smoker/packages/midnight-smoker"
+    },
     "lint": {
-      "type": "boolean",
+      "$ref": "#/$defs/defaultTrue",
       "default": true,
       "description": "If `false`, do not lint when running custom scripts"
     },
@@ -47,33 +39,28 @@
       "description": "Component ID of Executor implementation",
       "default": "default"
     },
-    "includeRoot": {
-      "$ref": "#/properties/all",
-      "default": false,
-      "description": "Operate on the root workspace. Only has an effect if `all` is `true`"
-    },
     "json": {
-      "$ref": "#/properties/all",
+      "$ref": "#/$defs/defaultFalse",
       "default": false,
       "description": "Output JSON only"
     },
     "linger": {
-      "$ref": "#/properties/all",
+      "$ref": "#/$defs/defaultFalse",
       "default": false,
       "description": "Do not delete temp directories after completion"
     },
     "loose": {
-      "$ref": "#/properties/all",
+      "$ref": "#/$defs/defaultFalse",
       "default": false,
       "description": "If `true`, fail if a workspace is missing a script"
     },
     "pkgManager": {
       "allOf": [
         {
-          "$ref": "#/properties/add/allOf/0"
+          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0"
         },
         {
-          "$ref": "#/properties/add/allOf/0/anyOf/1"
+          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0/anyOf/1"
         }
       ],
       "description": "Package manager(s) to use (by id)"
@@ -81,10 +68,10 @@
     "plugin": {
       "allOf": [
         {
-          "$ref": "#/properties/add/allOf/0"
+          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0"
         },
         {
-          "$ref": "#/properties/add/allOf/0/anyOf/1"
+          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0/anyOf/1"
         }
       ],
       "description": "One or more plugins to load"
@@ -92,20 +79,14 @@
     "reporter": {
       "allOf": [
         {
-          "$ref": "#/properties/add/allOf/0"
+          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0"
         },
         {
-          "$ref": "#/properties/add/allOf/0/anyOf/1"
+          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0/anyOf/1"
         }
       ],
       "description": "Component ID of Reporter implementation",
       "default": ["console"]
-    },
-    "ruleRunner": {
-      "type": "string",
-      "minLength": 1,
-      "description": "Component ID of RuleRunner implementation",
-      "default": "default"
     },
     "rules": {
       "type": "object",
@@ -461,6 +442,7 @@
           "allow": [],
           "deny": []
         },
+        "no-missing-entry-point": {},
         "no-missing-exports": {
           "types": true,
           "require": true,
@@ -481,44 +463,29 @@
     "script": {
       "allOf": [
         {
-          "$ref": "#/properties/add/allOf/0"
+          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0"
         },
         {
-          "$ref": "#/properties/add/allOf/0/anyOf/1"
+          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0/anyOf/1"
         }
       ],
       "description": "Script(s) to run."
     },
-    "scriptRunner": {
-      "type": "string",
-      "minLength": 1,
-      "description": "Component ID of ScriptRunner implementation",
-      "default": "default"
-    },
     "verbose": {
-      "$ref": "#/properties/all",
+      "$ref": "#/$defs/defaultFalse",
       "default": false,
       "description": "Verbose logging"
     },
     "workspace": {
       "allOf": [
         {
-          "$ref": "#/properties/add/allOf/0"
+          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0"
         },
         {
-          "$ref": "#/properties/add/allOf/0/anyOf/1"
+          "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0/anyOf/1"
         }
       ],
       "description": "One or more workspaces to run scripts in"
-    },
-    "include-root": {
-      "$ref": "#/properties/includeRoot"
-    },
-    "script-runner": {
-      "$ref": "#/properties/scriptRunner"
-    },
-    "rule-runner": {
-      "$ref": "#/properties/ruleRunner"
     },
     "pkg-manager": {
       "$ref": "#/properties/pkgManager"

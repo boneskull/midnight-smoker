@@ -14,7 +14,7 @@
   "author": "Christopher Hiller <boneskull@boneskull.com> (https://boneskull.com/)",
   "license": "Apache-2.0",
   "engines": {
-    "node": "^18.0.0 || ^20.0.0",
+    "node": "^18.0.0 || ^20.0.0 || ^22.0.0",
     "npm": ">=8.6.0"
   },
   "main": "./dist/index.js",
