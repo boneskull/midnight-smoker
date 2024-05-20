@@ -5,32 +5,6 @@
  */
 
 import {memoize as _memoize, once as _once, isFunction, isObject} from 'lodash';
-import type {Opaque} from 'type-fest';
-
-/**
- * A branded string referring to a unique identifier.
- */
-export type UniqueId = Opaque<string, 'UniqueId'>;
-
-/**
- * A function which generates a {@link UniqueId}
- */
-export type UniqueIdFactory = () => UniqueId;
-
-/**
- * Returns a {@link UniqueIdFactory}, which generates a unique ID each time it is
- * called.
- *
- * @param prefix - A prefix to prepend to each ID
- * @returns The unique ID factory, which makes this function factory factory.
- */
-export function uniqueIdFactoryFactory(prefix = ''): UniqueIdFactory {
-  let nextId = 0;
-
-  return function generateId(): UniqueId {
-    return `${prefix}${nextId++}` as UniqueId;
-  };
-}
 
 export interface Serializable<T = unknown> {
   toJSON(): T;

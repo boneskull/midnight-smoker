@@ -1,11 +1,11 @@
+import {FAILED, FINAL} from '#constants';
 import {fromUnknownError} from '#error/from-unknown-error';
 import {SmokerEvent} from '#event/event-constants';
 import {type DataForEvent} from '#event/events';
 import {type LintEventData} from '#event/lint-events';
 import {type ReporterMachine} from '#machine/reporter';
-import {FAILED, FINAL} from '#machine/util';
 import {type SmokerOptions} from '#options/options';
-import {type LintResult, type LintResultOk} from '#schema/rule-result';
+import {type LintResult, type LintResultOk} from '#schema/lint-result';
 import {type SomeRuleDef} from '#schema/some-rule-def';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {type WorkspaceInfo} from '#schema/workspaces';

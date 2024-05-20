@@ -2,8 +2,8 @@ import rewiremock from 'rewiremock/node';
 import unexpected from 'unexpected';
 import {RuleSeverities} from '../../../../src/constants';
 import {RuleError} from '../../../../src/error/rule-error';
-import type * as I from '../../../../src/rule/issue';
-import type * as IS from '../../../../src/schema/rule-result';
+import type * as I from '../../../../src/rule/rule-issue';
+import type * as IS from '../../../../src/schema/check-result';
 import type {
   StaticRuleContext,
   StaticRuleDef,
@@ -127,7 +127,7 @@ describe('midnight-smoker', function () {
         describe('instance method', function () {
           describe('toJSON()', function () {
             it('should return a StaticRuleIssue', function () {
-              const expected: IS.RuleResultFailed = {
+              const expected: IS.CheckResultFailed = {
                 rule: params.rule,
                 ctx: params.ctx,
                 message: params.message,

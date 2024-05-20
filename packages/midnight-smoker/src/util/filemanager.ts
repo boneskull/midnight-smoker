@@ -9,7 +9,8 @@ import path from 'node:path';
 import normalizePkgData from 'normalize-package-data';
 import {type PackageJson} from 'type-fest';
 import {justImport, resolveFrom} from './loader-util';
-import {memoize, uniqueIdFactoryFactory} from './util';
+import {uniqueId, type UniqueId} from './unique-id';
+import {memoize} from './util';
 
 const debug = Debug('midnight-smoker:filemanager');
 
@@ -61,22 +62,20 @@ export interface ReadPkgJsonNormalizedResult extends ReadPkgJsonResult {
 }
 
 export class FileManager {
-  static uniqueIdFactory = uniqueIdFactoryFactory('file-manager-');
-
   public readonly fs: FsApi;
 
   public readonly getTempDirRoot: GetTempDirRoot;
 
   public readonly tempDirs: Set<string> = new Set();
 
-  public readonly id: string;
+  public readonly id: UniqueId;
 
   #importer: Importer;
 
   #resolver: Resolver;
 
   constructor(opts?: FileManagerOpts) {
-    this.id = FileManager.uniqueIdFactory();
+    this.id = uniqueId({prefix: 'filemanager'});
     const anyOpts = opts ?? ({} as FileManagerOpts);
     // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-assignment
     this.fs = anyOpts.fs ?? (require('node:fs') as FsApi);

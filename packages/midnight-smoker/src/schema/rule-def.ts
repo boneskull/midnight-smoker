@@ -1,4 +1,4 @@
-import {type RuleContext} from '#rule/context';
+import {type RuleContext} from '#rule/rule-context';
 import {type RuleDefSchemaValue} from '#schema/rule-def-schema-value';
 import {StaticRuleDefSchema, type StaticRuleDef} from '#schema/rule-static';
 import {z} from 'zod';

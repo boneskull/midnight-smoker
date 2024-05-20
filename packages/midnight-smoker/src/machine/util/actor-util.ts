@@ -1,8 +1,7 @@
-import {MIDNIGHT_SMOKER} from '#constants';
+import {ERROR, MIDNIGHT_SMOKER, OK} from '#constants';
 import Debug from 'debug';
 import {AssertionError} from 'node:assert';
 import {type AnyActorRef} from 'xstate';
-import {ERROR, OK} from './constants';
 
 /**
  * `ActorOutput` is a convention for an actor output.
@@ -117,17 +116,6 @@ export function isActorOutputOk<
   Err extends Error = Error,
 >(output: ActorOutput<Ok, Err>): output is ActorOutputOk<Ok> {
   return output.type === OK;
-}
-
-/**
- * Generates a pseudorandom ID.
- *
- * **Don't use this for anything important.**
- *
- * @returns A random ID string.
- */
-export function makeId() {
-  return Math.random().toString(36).substring(7);
 }
 
 /**

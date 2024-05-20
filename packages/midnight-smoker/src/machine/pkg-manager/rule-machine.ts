@@ -1,10 +1,11 @@
-import {FAILED, FINAL, makeId, OK} from '#machine/util';
-import {RuleContext} from '#rule/context';
+import {FAILED, FINAL, OK} from '#constants';
+import {RuleContext} from '#rule/rule-context';
+import {type CheckResultOk} from '#schema/check-result';
 import {type LintManifest} from '#schema/lint-manifest';
 import {type SomeRuleConfig} from '#schema/rule-options';
-import {type RuleResultOk} from '#schema/rule-result';
 import {type StaticRuleContext} from '#schema/rule-static';
 import {type SomeRuleDef} from '#schema/some-rule-def';
+import {uniqueId} from '#util/unique-id';
 import {serialize} from '#util/util';
 import {isEmpty, isNumber} from 'lodash';
 import {
@@ -75,7 +76,7 @@ export const check = fromPromise<CheckOutput, CheckInput>(
     }
     const issues = ctx.finalize() ?? [];
     if (isEmpty(issues)) {
-      const ok: RuleResultOk = {type: OK, ctx, rule: serialize(def)};
+      const ok: CheckResultOk = {type: OK, ctx, rule: serialize(def)};
       return {...input, result: ok, type: OK, actorId: self.id};
     }
     return {
@@ -118,7 +119,7 @@ export const RuleMachine = setup({
         },
         {ctx, manifest}: {ctx: StaticRuleContext; manifest: LintManifest},
       ) => {
-        const id = `check.${makeId()}-${ruleId}`;
+        const id = uniqueId({prefix: 'check', postfix: ruleId});
         const actor = spawn('check', {
           id,
           input: {def, ruleId, opts, ctx, manifest},

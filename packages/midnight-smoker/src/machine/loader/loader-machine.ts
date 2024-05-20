@@ -1,13 +1,6 @@
-import {RuleSeverities} from '#constants';
+import {ERROR, FINAL, OK, PARALLEL, RuleSeverities} from '#constants';
 import {fromUnknownError} from '#error/from-unknown-error';
-import {
-  ERROR,
-  FINAL,
-  OK,
-  PARALLEL,
-  type ActorOutputError,
-  type ActorOutputOk,
-} from '#machine/util';
+import {type ActorOutputError, type ActorOutputOk} from '#machine/util';
 import {type SmokerOptions} from '#options/options';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
 import {type PluginRegistry} from '#plugin/plugin-registry';

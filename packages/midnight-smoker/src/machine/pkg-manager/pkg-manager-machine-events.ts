@@ -1,13 +1,13 @@
+import {type FAILED, type OK} from '#constants';
 import {
   type PackError,
   type PackParseError,
   type ScriptError,
 } from '#error/pkg-manager';
-import {type FAILED, type OK} from '#machine/util';
+import {type CheckResultFailed, type CheckResultOk} from '#schema/check-result';
 import {type InstallManifest} from '#schema/install-manifest';
 import {type LintManifest} from '#schema/lint-manifest';
 import {type SomeRuleConfig, type SomeRuleOptions} from '#schema/rule-options';
-import {type RuleResultFailed, type RuleResultOk} from '#schema/rule-result';
 import {type StaticRuleContext} from '#schema/rule-static';
 import {type RunScriptManifest} from '#schema/run-script-manifest';
 import {type RunScriptResult} from '#schema/run-script-result';
@@ -48,13 +48,13 @@ export interface CheckItem {
 }
 
 export interface CheckOutputFailed extends CheckInput {
-  result: RuleResultFailed[];
+  result: CheckResultFailed[];
   actorId: string;
   type: typeof FAILED;
 }
 
 export interface CheckOutputOk extends CheckInput {
-  result: RuleResultOk;
+  result: CheckResultOk;
   actorId: string;
   type: typeof OK;
 }

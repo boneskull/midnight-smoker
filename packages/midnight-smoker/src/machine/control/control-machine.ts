@@ -1,4 +1,11 @@
-import {DEFAULT_EXECUTOR_ID, SYSTEM_EXECUTOR_ID} from '#constants';
+import {
+  DEFAULT_EXECUTOR_ID,
+  ERROR,
+  FINAL,
+  OK,
+  PARALLEL,
+  SYSTEM_EXECUTOR_ID,
+} from '#constants';
 import {fromUnknownError} from '#error/from-unknown-error';
 import {SmokerEvent} from '#event/event-constants';
 import {type DataForEvent} from '#event/events';
@@ -17,11 +24,12 @@ import {
 import * as MachineUtil from '#machine/util';
 import {type SmokerOptions} from '#options/options';
 import {type PluginRegistry} from '#plugin/plugin-registry';
-import {type LintResult} from '#schema/rule-result';
+import {type LintResult} from '#schema/lint-result';
 import {type RunScriptResult} from '#schema/run-script-result';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {type WorkspaceInfo} from '#schema/workspaces';
 import {FileManager} from '#util/filemanager';
+import {uniqueId} from '#util/unique-id';
 import {isEmpty, map, uniqBy} from 'lodash';
 import assert from 'node:assert';
 import {type PackageJson} from 'type-fest';
@@ -329,7 +337,7 @@ export const ControlMachine = setup({
       }) =>
         Object.fromEntries(
           pluginRegistry.plugins.map((plugin) => {
-            const id = `LoaderMachine.${MachineUtil.makeId()}`;
+            const id = uniqueId({prefix: 'LoaderMachine'});
             const actor = spawn('LoaderMachine', {
               id,
               input: {
@@ -452,9 +460,10 @@ export const ControlMachine = setup({
         assert.ok(smokerPkgJson);
         const newRefs = Object.fromEntries(
           reporterInitPayloads.map(({def, plugin}) => {
-            const id = `ReporterMachine.${MachineUtil.makeId()}-${plugin.id}/${
-              def.name
-            }`;
+            const id = uniqueId({
+              prefix: 'ReporterMachine',
+              postfix: `${plugin.id}/${def.name}`,
+            });
             const input: ReporterMachineInput = {
               def,
               smokerOptions,
@@ -499,7 +508,10 @@ export const ControlMachine = setup({
         const newRefs = Object.fromEntries(
           pkgManagerInitPayloads.map(({def, spec}, index) => {
             const executor = spec.isSystem ? systemExecutor : defaultExecutor;
-            const id = `PkgManagerMachine.${MachineUtil.makeId()}-${spec}`;
+            const id = uniqueId({
+              prefix: 'PkgManagerMachine',
+              postfix: `${spec}`,
+            });
             const actorRef = spawn('PkgManagerMachine', {
               id,
               input: {
@@ -1011,7 +1023,7 @@ export const ControlMachine = setup({
           ],
         },
         done: {
-          type: MachineUtil.FINAL,
+          type: FINAL,
         },
       },
       onDone: {
@@ -1034,7 +1046,7 @@ export const ControlMachine = setup({
           }),
         },
       ],
-      type: MachineUtil.PARALLEL,
+      type: PARALLEL,
       states: {
         packing: {
           initial: 'working',
@@ -1072,10 +1084,10 @@ export const ControlMachine = setup({
               },
             },
             done: {
-              type: MachineUtil.FINAL,
+              type: FINAL,
             },
             errored: {
-              type: MachineUtil.FINAL,
+              type: FINAL,
             },
           },
         },
@@ -1125,10 +1137,10 @@ export const ControlMachine = setup({
               },
             },
             errored: {
-              type: MachineUtil.FINAL,
+              type: FINAL,
             },
             done: {
-              type: MachineUtil.FINAL,
+              type: FINAL,
             },
           },
         },
@@ -1192,10 +1204,10 @@ export const ControlMachine = setup({
               },
             },
             done: {
-              type: MachineUtil.FINAL,
+              type: FINAL,
             },
             errored: {
-              type: MachineUtil.FINAL,
+              type: FINAL,
             },
           },
         },
@@ -1254,10 +1266,10 @@ export const ControlMachine = setup({
               },
             },
             done: {
-              type: MachineUtil.FINAL,
+              type: FINAL,
             },
             errored: {
-              type: MachineUtil.FINAL,
+              type: FINAL,
             },
           },
         },
@@ -1336,13 +1348,13 @@ export const ControlMachine = setup({
                 `complete (with error) in ${delta(startTime)}s`,
             ),
           ],
-          type: MachineUtil.FINAL,
+          type: FINAL,
         },
         complete: {
           entry: [
             log(({context: {startTime}}) => `complete in ${delta(startTime)}s`),
           ],
-          type: MachineUtil.FINAL,
+          type: FINAL,
         },
       },
       onDone: {
@@ -1350,7 +1362,7 @@ export const ControlMachine = setup({
       },
     },
     stopped: {
-      type: MachineUtil.FINAL,
+      type: FINAL,
     },
   },
   output: ({
@@ -1358,6 +1370,6 @@ export const ControlMachine = setup({
     context: {error, lintResults, runScriptResults},
   }): CtrlMachineOutput =>
     error
-      ? {type: MachineUtil.ERROR, id, error, lintResults, runScriptResults}
-      : {type: MachineUtil.OK, id, lintResults, runScriptResults},
+      ? {type: ERROR, id, error, lintResults, runScriptResults}
+      : {type: OK, id, lintResults, runScriptResults},
 });

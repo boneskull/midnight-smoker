@@ -1,6 +1,6 @@
 import {type SmokeFailedError} from '#error/smoker-error';
 import type {SmokerOptions} from '#options/options';
-import {type LintResult} from '#schema/rule-result';
+import {type LintResult} from '#schema/lint-result';
 import {type RunScriptResult} from '#schema/run-script-result';
 import {type StaticPluginMetadata} from '#schema/static-plugin-metadata';
 import type {SmokerEvent} from './event-constants';

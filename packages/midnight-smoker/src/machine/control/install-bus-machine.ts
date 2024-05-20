@@ -1,10 +1,10 @@
+import {FINAL} from '#constants';
 import {fromUnknownError} from '#error/from-unknown-error';
 import {type InstallError} from '#error/install-error';
 import {SmokerEvent} from '#event/event-constants';
 import {type DataForEvent} from '#event/events';
 import {type InstallEventData} from '#event/install-events';
 import {type ReporterMachine} from '#machine/reporter';
-import {FINAL} from '#machine/util';
 import {type SmokerOptions} from '#options/options';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {type WorkspaceInfo} from '#schema/workspaces';

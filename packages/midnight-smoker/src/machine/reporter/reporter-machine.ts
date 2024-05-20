@@ -1,6 +1,7 @@
+import {ERROR, FINAL, OK} from '#constants';
 import {type ReporterError} from '#error/reporter-error';
 import {type SomeDataForEvent} from '#event/events';
-import {ERROR, FINAL, OK, type ActorOutput} from '#machine/util';
+import {type ActorOutput} from '#machine/util';
 import {type SmokerOptions} from '#options/options';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
 import {

@@ -1,5 +1,5 @@
 import {DEFAULT_RULE_SEVERITY} from '#constants';
-import {getDefaultRuleOptions} from '#rule/create-rule-options';
+import {getDefaultRuleOptions} from '#rule/default-rule-options';
 import {dualCasedObjectSchema} from '#util/schema-util';
 import {isEmpty, memoize} from 'lodash';
 import z from 'zod';

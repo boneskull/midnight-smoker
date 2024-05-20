@@ -1,20 +1,19 @@
+import {ERROR, FAILED, FINAL, OK, PARALLEL} from '#constants';
 import {type SomeSmokerError} from '#error/base-error';
 import {InstallError} from '#error/install-error';
 import {type PackError, type PackParseError} from '#error/pack-error';
 import {type Executor} from '#executor';
-import {
-  ERROR,
-  FAILED,
-  FINAL,
-  OK,
-  PARALLEL,
-  makeId,
-  type ActorOutput,
-} from '#machine/util';
+import {type ActorOutput} from '#machine/util';
 import {type PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
+import {type CheckResult} from '#schema/check-result';
 import {type InstallManifest} from '#schema/install-manifest';
 import {type InstallResult} from '#schema/install-result';
 import {type LintManifest} from '#schema/lint-manifest';
+import {
+  type LintResult,
+  type LintResultFailed,
+  type LintResultOk,
+} from '#schema/lint-result';
 import {
   PkgManagerContextSchema,
   type PkgManagerContext,
@@ -25,18 +24,13 @@ import {
   type BaseRuleConfigRecord,
   type SomeRuleConfig,
 } from '#schema/rule-options';
-import {
-  type LintResult,
-  type LintResultFailed,
-  type LintResultOk,
-  type RuleResult,
-} from '#schema/rule-result';
 import {type RunScriptManifest} from '#schema/run-script-manifest';
 import {type RunScriptResult} from '#schema/run-script-result';
 import {type SomeRuleDef} from '#schema/some-rule-def';
 import {type WorkspaceInfo} from '#schema/workspaces';
 import {isSmokerError} from '#util/error-util';
 import {type FileManager} from '#util/filemanager';
+import {uniqueId} from '#util/unique-id';
 import {head, isEmpty, keyBy, partition} from 'lodash';
 import assert from 'node:assert';
 import {
@@ -176,7 +170,7 @@ export interface PkgManagerMachineContext extends PkgManagerMachineInput {
 
   packQueue: WorkspaceInfo[];
 
-  ruleResultMap: Map<string, Map<string, RuleResult[]>>;
+  ruleResultMap: Map<string, Map<string, CheckResult[]>>;
 
   runScriptManifests?: RunScriptManifest[];
 
@@ -512,8 +506,12 @@ export const PkgManagerMachine = setup({
             sender,
           };
           enqueue.sendTo(parentRef, evt);
+          const id = uniqueId({
+            prefix: 'runScript',
+            postfix: runScriptManifest.pkgName,
+          });
           enqueue.spawnChild('runScript', {
-            id: `runScript.${runScriptManifest.pkgName}-${makeId()}`,
+            id,
             input: {
               def,
               ctx: {
@@ -890,7 +888,7 @@ export const PkgManagerMachine = setup({
         // ☠️
         const ruleResultsForManifestMap =
           ruleResultMap.get(output.ctx.installPath) ??
-          new Map<string, RuleResult[]>();
+          new Map<string, CheckResult[]>();
         const ruleResultsForRuleIdMap =
           ruleResultsForManifestMap.get(output.ruleId) ?? [];
         if (output.type === OK) {
@@ -1426,7 +1424,7 @@ export const PkgManagerMachine = setup({
                       ruleDefs.map((def) => {
                         const ruleId = ruleIds.get(def);
                         assert.ok(ruleId);
-                        const id = `rule.${makeId()}-${ruleId}`;
+                        const id = uniqueId({prefix: 'rule', postfix: ruleId});
                         const actorRef = spawn('RuleMachine', {
                           id,
                           input: {

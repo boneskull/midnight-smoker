@@ -6,9 +6,10 @@
 
 import {PACKAGE_JSON, RuleSeverities} from '#constants';
 import type {RuleError} from '#error/rule-error';
-import {type RuleResultFailed} from '#schema/rule-result';
+import {type CheckResultFailed} from '#schema/check-result';
 import {type StaticRuleContext, type StaticRuleDef} from '#schema/rule-static';
-import {serialize, uniqueIdFactoryFactory} from '#util/util';
+import {uniqueId, type UniqueId} from '#util/unique-id';
+import {serialize} from '#util/util';
 import path from 'node:path';
 import {fileURLToPath} from 'url';
 
@@ -53,14 +54,7 @@ export interface RuleIssueParams<
 /**
  * An issue raised by a {@link RuleCheckFn}
  */
-export class RuleIssue implements RuleResultFailed {
-  /**
-   * Generates a unique ID for each issue
-   *
-   * @internal
-   */
-  protected static generateId = uniqueIdFactoryFactory('issue-');
-
+export class RuleIssue implements CheckResultFailed {
   public readonly type = 'FAILED';
 
   /**
@@ -81,7 +75,7 @@ export class RuleIssue implements RuleResultFailed {
   /**
    * Unique identifier; created within constructor
    */
-  public readonly id: string;
+  public readonly id: UniqueId;
 
   /**
    * {@inheritDoc RuleIssueParams.message}
@@ -108,7 +102,7 @@ export class RuleIssue implements RuleResultFailed {
     this.message = message;
     this.data = data;
     this.error = error;
-    this.id = RuleIssue.generateId();
+    this.id = uniqueId({prefix: 'issue'});
     this.filepath =
       filepath instanceof URL
         ? fileURLToPath(filepath)
@@ -155,7 +149,7 @@ export class RuleIssue implements RuleResultFailed {
    *
    * @returns The JSON representation of the {@link RuleIssue} object.
    */
-  public toJSON(): RuleResultFailed {
+  public toJSON(): CheckResultFailed {
     const {rule, ctx, message, data, error, id, failed, filepath} = this;
     return {
       type: 'FAILED',
@@ -180,8 +174,8 @@ export class RuleIssue implements RuleResultFailed {
    */
   public static compare(
     this: void,
-    a: RuleResultFailed,
-    b: RuleResultFailed,
+    a: CheckResultFailed,
+    b: CheckResultFailed,
   ): number {
     return a.id.localeCompare(b.id, 'en');
   }

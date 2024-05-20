@@ -12,18 +12,18 @@ export * from '#schema/rule-def';
 
 export * from '#schema/rule-options';
 
-export * from '#schema/rule-result';
+export * from '#schema/check-result';
 
 export * from '#schema/rule-severity';
 
 export * from '#schema/rule-static';
 
-export * from './context';
+export * from './rule-context';
 
-export * from './issue';
+export * from './rule-issue';
 
 export * from '#schema/some-rule-def';
 
 export * from '#schema/rule-def-schema-value';
 
-export * from './create-rule-options';
+export * from './default-rule-options';

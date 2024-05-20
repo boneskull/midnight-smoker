@@ -3,7 +3,7 @@ import {RuleError} from '#error/rule-error';
 import {type StaticRuleContext, type StaticRuleDef} from '#schema/rule-static';
 import {serialize} from '#util/util';
 import {type PackageJson} from 'type-fest';
-import {RuleIssue} from './issue';
+import {RuleIssue} from './rule-issue';
 
 export interface AddIssueOptions {
   filepath?: string | URL;

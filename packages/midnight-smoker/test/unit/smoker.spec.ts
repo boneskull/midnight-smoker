@@ -4,12 +4,15 @@ import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
 import {setup, type AnyStateMachine} from 'xstate';
-import {DEFAULT_COMPONENT_ID, SYSTEM_EXECUTOR_ID} from '../../src/constants';
+import {
+  DEFAULT_COMPONENT_ID,
+  FINAL,
+  SYSTEM_EXECUTOR_ID,
+} from '../../src/constants';
 import {ErrorCodes} from '../../src/error';
 import {type SmokeResults} from '../../src/event';
 import {type ExecResult} from '../../src/executor';
 import {type CtrlMachineOutput} from '../../src/machine/control';
-import {FINAL} from '../../src/machine/util';
 import {type RawSmokerOptions} from '../../src/options/options';
 import {OptionParser} from '../../src/options/parser';
 import {PluginRegistry} from '../../src/plugin/plugin-registry';
@@ -25,7 +28,7 @@ describe('midnight-smoker', function () {
   let pluginRegistry: PluginRegistry;
 
   let mockControlMachine: AnyStateMachine;
-  let outputStub: sinon.SinonStub<any[], CtrlMachineOutput>;
+  let outputStub: sinon.SinonStub;
   let controlOutput: CtrlMachineOutput;
   beforeEach(function () {
     sandbox = createSandbox();

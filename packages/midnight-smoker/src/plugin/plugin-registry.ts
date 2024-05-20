@@ -13,7 +13,7 @@ import {PluginResolutionError} from '#error/plugin-resolution-error';
 import {UnresolvablePluginError} from '#error/unresolvable-plugin-error';
 import {createPluginAPI} from '#plugin/create-plugin-api';
 import {PluginMetadata, initBlessedMetadata} from '#plugin/plugin-metadata';
-import {getDefaultRuleOptions} from '#rule/create-rule-options';
+import {getDefaultRuleOptions} from '#rule/default-rule-options';
 import {createRuleOptionsSchema} from '#schema/create-rule-options';
 import {type Executor} from '#schema/executor';
 import {type PkgManagerDef} from '#schema/pkg-manager-def';

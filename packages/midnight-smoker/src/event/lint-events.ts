@@ -1,15 +1,11 @@
 import type {RuleError} from '#error/rule-error';
+import {type CheckResultFailed, type CheckResultOk} from '#schema/check-result';
 import {type LintManifest} from '#schema/lint-manifest';
+import {type LintResult, type LintResultOk} from '#schema/lint-result';
 import {
   type BaseRuleConfigRecord,
   type SomeRuleConfig,
 } from '#schema/rule-options';
-import {
-  type LintResult,
-  type LintResultOk,
-  type RuleResultFailed,
-  type RuleResultOk,
-} from '#schema/rule-result';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import type {LintEvent} from './event-constants';
 import type {PkgManagerEventBase} from './pkg-manager-events';
@@ -54,7 +50,7 @@ export interface RuleEventDataBase {
 export interface RuleBeginEventData extends RuleEventDataBase {}
 
 export interface RuleFailedEventData extends RuleEventDataBase {
-  result: RuleResultFailed[];
+  result: CheckResultFailed[];
 }
 
 export interface RuleErrorEventData extends RuleEventDataBase {
@@ -62,7 +58,7 @@ export interface RuleErrorEventData extends RuleEventDataBase {
 }
 
 export interface RuleOkEventData extends RuleEventDataBase {
-  result: RuleResultOk;
+  result: CheckResultOk;
 }
 
 export interface LintEventDataBase {
