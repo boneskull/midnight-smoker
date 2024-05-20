@@ -3,6 +3,7 @@ import {ExecaErrorSchema} from '#schema/execa-error';
 import {type ExecaError} from 'execa';
 import {isError} from 'lodash';
 import {type Class} from 'type-fest';
+import type {ZodError} from 'zod-validation-error';
 
 /**
  * Type guard for {@link NodeJS.ErrnoException}
@@ -34,4 +35,14 @@ export function isSmokerError<T extends Class<SmokerError<any, any>>>(
 
 export function isExecaError(error: unknown): error is ExecaError {
   return ExecaErrorSchema.safeParse(error).success;
+}
+
+/**
+ * Checks if the provided error is an instance of `ZodError`.
+ *
+ * @param value - The value to check.
+ * @returns `true` if the error is a `ZodError`, `false` otherwise.
+ */
+export function isZodError(value: unknown): value is ZodError {
+  return isError(value) && value.name === 'ZodError';
 }

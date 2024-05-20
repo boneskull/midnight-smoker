@@ -20,7 +20,7 @@ describe('midnight-smoker', function () {
       beforeEach(function () {
         const {mocks} = createFsMocks();
         ({RuleIssue} = rewiremock.proxy(
-          () => require('../../../../src/rule/issue'),
+          () => require('../../../../src/rule/rule-issue'),
           mocks,
         ));
       });
@@ -72,7 +72,7 @@ describe('midnight-smoker', function () {
               message: params.message,
               data: params.data,
               error: params.error,
-              id: expect.it('to match', /^issue-\d+$/),
+              id: expect.it('to match', /^issue\..+$/),
             }).and('to be a', RuleIssue);
           });
         });
@@ -109,17 +109,6 @@ describe('midnight-smoker', function () {
                 Object.isFrozen,
                 'to be true',
               );
-            });
-          });
-
-          describe('compare()', function () {
-            it('should correctly compare two issues by id', function () {
-              const issue1 = new RuleIssue(params);
-              const issue2 = new RuleIssue(params);
-              expect([issue2, issue1].sort(RuleIssue.compare), 'to equal', [
-                issue1,
-                issue2,
-              ]);
             });
           });
         });

@@ -1,9 +1,10 @@
+import {isZodError} from '#util/error-util';
 import {
   fromZodError,
   type ValidationError,
   type ZodError,
 } from 'zod-validation-error';
-import {BaseSmokerError, isZodError} from './base-error';
+import {BaseSmokerError} from './base-error';
 
 /**
  * Thrown when an invalid or missing argument is provided to a function.

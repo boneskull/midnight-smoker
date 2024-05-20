@@ -1,5 +1,5 @@
-import {isZodError} from '#error/base-error';
 import type {PluginRegistry} from '#plugin/plugin-registry';
+import {isZodError} from '#util/error-util';
 import Debug from 'debug';
 import {z} from 'zod';
 import {fromZodError} from 'zod-validation-error';

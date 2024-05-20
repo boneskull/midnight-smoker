@@ -17,7 +17,7 @@ describe('midnight-smoker', function () {
       beforeEach(function () {
         const {mocks} = createFsMocks();
         RuleContext = rewiremock.proxy(
-          () => require('../../../../src/rule/context'),
+          () => require('../../../../src/rule/rule-context'),
           mocks,
         ).RuleContext;
       });

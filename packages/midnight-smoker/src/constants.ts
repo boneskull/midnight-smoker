@@ -92,3 +92,5 @@ export const OK = 'OK';
 export const FAILED = 'FAILED';
 
 export const ERROR = 'ERROR';
+
+export const SCRIPT_NAME = 'smoker';

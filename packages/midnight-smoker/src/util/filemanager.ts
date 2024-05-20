@@ -1,20 +1,41 @@
+/**
+ * Provides {@link FileManager}, which is a general-purpose service for
+ * interacting with the filesystem at a high level.
+ *
+ * Its main purpose is to facilitate testing by providing a single point of
+ * entry to the filesystem.
+ *
+ * @packageDocumentation
+ * @todo The module loading stuff should probably be moved out of here (as I
+ *   write this, I just moved it _in_), as it would take something considerably
+ *   more heavyweight to, say, mock-load an ES module from an in-memory
+ *   filesystem.
+ */
+
+/* eslint-disable @typescript-eslint/no-var-requires */
 import {MIDNIGHT_SMOKER, PACKAGE_JSON, UNKNOWN_TMPDIR_PREFIX} from '#constants';
 import {DirCreationError} from '#error/create-dir-error';
 import {fromUnknownError} from '#error/from-unknown-error';
 import {MissingPackageJsonError} from '#error/missing-pkg-json-error';
 import {UnreadablePackageJsonError} from '#error/unreadable-pkg-json-error';
 import Debug from 'debug';
+import {isError, isObject} from 'lodash';
+import type fs from 'node:fs';
 import type nodeFsPromises from 'node:fs/promises';
+import Module from 'node:module';
+import type os from 'node:os';
 import path from 'node:path';
+import {fileURLToPath} from 'node:url';
 import normalizePkgData from 'normalize-package-data';
 import {type PackageJson} from 'type-fest';
-import {justImport, resolveFrom} from './loader-util';
+import type TS from 'typescript';
+import {isErrnoException} from './error-util';
 import {uniqueId, type UniqueId} from './unique-id';
 import {memoize} from './util';
 
-const debug = Debug('midnight-smoker:filemanager');
-
 export type FsApi = {
+  existsSync: typeof fs.existsSync;
+  readFileSync: typeof fs.readFileSync;
   promises: Pick<
     typeof nodeFsPromises,
     | 'mkdtemp'
@@ -30,22 +51,28 @@ export type FsApi = {
   >;
 };
 
-export interface FileManagerOpts {
-  fs?: FsApi;
-  tmpdir?: GetTempDirRoot;
+export type GetHomeDir = () => string;
 
-  importer?: Importer;
-
-  resolver?: Resolver;
-}
+export type GetTempDirRoot = () => string;
 
 export type Importer = (specifier: string | URL) => Promise<unknown>;
 
-export type Resolver = (specifier: string | URL, from?: string | URL) => string;
-
 export type NormalizedPackageJson = PackageJson & normalizePkgData.Package;
 
-export type GetTempDirRoot = () => string;
+export type Resolver = (specifier: string | URL, from?: string | URL) => string;
+
+export interface FileManagerOpts {
+  fs?: FsApi;
+  homedir?: GetHomeDir;
+  importer?: Importer;
+  resolver?: Resolver;
+  tmpdir?: GetTempDirRoot;
+  ts?: typeof TS;
+}
+
+export interface ReadPkgJsonNormalizedResult extends ReadPkgJsonResult {
+  packageJson: NormalizedPackageJson;
+}
 
 export interface ReadPkgJsonOpts {
   normalize?: boolean;
@@ -57,40 +84,81 @@ export interface ReadPkgJsonResult {
   path: string;
 }
 
-export interface ReadPkgJsonNormalizedResult extends ReadPkgJsonResult {
-  packageJson: NormalizedPackageJson;
-}
-
 export class FileManager {
-  public readonly fs: FsApi;
-
-  public readonly getTempDirRoot: GetTempDirRoot;
-
-  public readonly tempDirs: Set<string> = new Set();
-
-  public readonly id: UniqueId;
-
   #importer: Importer;
 
   #resolver: Resolver;
 
+  public readonly fs: FsApi;
+
+  public readonly getHomeDir: GetHomeDir;
+
+  public readonly getTempDirRoot: GetTempDirRoot;
+
+  public readonly id: UniqueId;
+
+  public readonly tempDirs: Set<string> = new Set();
+
+  public readonly ts?: typeof TS;
+
   constructor(opts?: FileManagerOpts) {
     this.id = uniqueId({prefix: 'filemanager'});
     const anyOpts = opts ?? ({} as FileManagerOpts);
-    // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-assignment
     this.fs = anyOpts.fs ?? (require('node:fs') as FsApi);
+    this.getHomeDir =
+      anyOpts.homedir ??
+      ((require('node:os') as typeof os).homedir as GetHomeDir);
     this.getTempDirRoot =
-      // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-member-access
-      anyOpts.tmpdir ?? (require('node:os').tmpdir as GetTempDirRoot);
-
+      anyOpts.tmpdir ??
+      ((require('node:os') as typeof os).tmpdir as GetTempDirRoot);
     this.#importer =
-      anyOpts.importer ?? (async (specifier) => justImport(specifier));
+      anyOpts.importer ?? (async (specifier) => this.justImport(specifier));
     this.#resolver =
-      anyOpts.resolver ?? ((specifier, from) => resolveFrom(specifier, from));
+      anyOpts.resolver ??
+      ((specifier, from) => FileManager.resolveFrom(specifier, from));
+    this.ts = anyOpts.ts;
+
+    if (!this.ts) {
+      try {
+        this.ts = require('typescript') as typeof TS;
+      } catch {}
+    }
   }
 
-  resolve(specifier: string | URL, from?: string | URL): string {
-    return this.#resolver(specifier, from);
+  public static create(this: void, opts?: FileManagerOpts): FileManager {
+    return new FileManager(opts);
+  }
+
+  /**
+   * Type guard for a CJS module with an `__esModule` property
+   *
+   * @param value - Any value
+   * @returns `true` if the value is an object with an `__esModule` property
+   */
+  public static isErsatzESModule(value: unknown): value is {__esModule: true} {
+    return isObject(value) && '__esModule' in value;
+  }
+
+  /**
+   * Resolves module at `moduleId` from `fromDir` dir
+   *
+   * @param moduleId - Module identifier
+   * @param fromDir - Dir to resolve from; defaults to CWD
+   * @returns Resolved module path
+   */
+  public static resolveFrom(
+    moduleId: string | URL,
+    fromDir: string | URL = process.cwd(),
+  ): string {
+    if (moduleId instanceof URL) {
+      moduleId = fileURLToPath(moduleId);
+    }
+    if (fromDir instanceof URL) {
+      fromDir = fileURLToPath(fromDir);
+    }
+    return Module.createRequire(path.join(fromDir, 'index.js')).resolve(
+      moduleId,
+    );
   }
 
   /**
@@ -119,57 +187,6 @@ export class FileManager {
         `Failed to create temp directory with prefix ${fullPrefix}`,
         fullPrefix,
         err as NodeJS.ErrnoException,
-      );
-    }
-  }
-
-  public async pruneTempDir(dir: string): Promise<void> {
-    if (!this.tempDirs.has(dir)) {
-      debug('Refusing to prune unknown dir %s', dir);
-      return;
-    }
-    try {
-      await this.rimraf(dir);
-      this.tempDirs.delete(dir);
-    } catch (err) {
-      debug('Failed to prune temp dir %s: %s', dir, err);
-    }
-  }
-
-  public async rimraf(dir: string): Promise<void> {
-    await this.fs.promises.rm(dir, {recursive: true, force: true});
-  }
-
-  public async import(specifier: string | URL) {
-    return this.#importer(specifier);
-  }
-
-  public async readPkgJson(filepath: string): Promise<PackageJson>;
-  public async readPkgJson(
-    filepath: string,
-    options: {normalize: true},
-  ): Promise<NormalizedPackageJson>;
-  @memoize((filepath, opts) => JSON.stringify({filepath, opts}))
-  public async readPkgJson(
-    filepath: string,
-    options: {normalize?: boolean} = {},
-  ): Promise<PackageJson | NormalizedPackageJson> {
-    try {
-      const file = await this.fs.promises.readFile(filepath, 'utf8');
-      const relativePath = path.relative(process.cwd(), filepath);
-      const packageJson = JSON.parse(file) as PackageJson;
-      if (options.normalize) {
-        normalizePkgData(packageJson);
-        debug('Normalized JSON at %s', relativePath);
-        return packageJson as NormalizedPackageJson;
-      }
-      debug('Read JSON at %s', relativePath);
-      return packageJson;
-    } catch (err) {
-      throw new UnreadablePackageJsonError(
-        `Could not read ${filepath}`,
-        path.dirname(filepath),
-        fromUnknownError(err),
       );
     }
   }
@@ -250,8 +267,88 @@ export class FileManager {
     } while (true);
   }
 
-  public static create(this: void, opts?: FileManagerOpts): FileManager {
-    return new FileManager(opts);
+  public async import(specifier: string | URL) {
+    return this.#importer(specifier);
+  }
+
+  public async importTs(filepath: string, source?: string) {
+    const {ts} = this;
+    if (!ts) {
+      throw new Error('TypeScript is not available');
+    }
+    source ??= await this.fs.promises.readFile(filepath, 'utf8');
+
+    const compiledFilepath = `${filepath.slice(0, -2)}mjs`;
+    let transpiledContent;
+    try {
+      try {
+        const config = this.resolveTsConfig(path.dirname(filepath)) ?? {};
+        config.compilerOptions = {
+          ...config.compilerOptions,
+          module: ts.ModuleKind.ES2022,
+          moduleResolution: ts.ModuleResolutionKind.Bundler,
+          target: ts.ScriptTarget.ES2022,
+          noEmit: false,
+        };
+        transpiledContent = ts.transpileModule(source, config).outputText;
+        await this.fs.promises.writeFile(compiledFilepath, transpiledContent);
+      } catch (err) {
+        if (isError(err)) {
+          err.message = `TypeScript Error in ${filepath}:\n${err.message}`;
+        }
+        throw err;
+      }
+      return await this.import(compiledFilepath);
+    } finally {
+      await this.rimraf(compiledFilepath);
+    }
+  }
+
+  public async pruneTempDir(dir: string): Promise<void> {
+    if (!this.tempDirs.has(dir)) {
+      debug('Refusing to prune unknown dir %s', dir);
+      return;
+    }
+    try {
+      await this.rimraf(dir);
+      this.tempDirs.delete(dir);
+    } catch (err) {
+      debug('Failed to prune temp dir %s: %s', dir, err);
+    }
+  }
+
+  public async readFile(filepath: string): Promise<string> {
+    return this.fs.promises.readFile(filepath, 'utf8');
+  }
+
+  public async readPkgJson(filepath: string): Promise<PackageJson>;
+  public async readPkgJson(
+    filepath: string,
+    options: {normalize: true},
+  ): Promise<NormalizedPackageJson>;
+  @memoize((filepath, opts) => JSON.stringify({filepath, opts}))
+  public async readPkgJson(
+    filepath: string,
+    options: {normalize?: boolean} = {},
+  ): Promise<PackageJson | NormalizedPackageJson> {
+    try {
+      const file = await this.fs.promises.readFile(filepath, 'utf8');
+      const relativePath = path.relative(process.cwd(), filepath);
+      const packageJson = JSON.parse(file) as PackageJson;
+      if (options.normalize) {
+        normalizePkgData(packageJson);
+        debug('Normalized JSON at %s', relativePath);
+        return packageJson as NormalizedPackageJson;
+      }
+      debug('Read JSON at %s', relativePath);
+      return packageJson;
+    } catch (err) {
+      throw new UnreadablePackageJsonError(
+        `Could not read ${filepath}`,
+        path.dirname(filepath),
+        fromUnknownError(err),
+      );
+    }
   }
 
   @memoize()
@@ -259,4 +356,95 @@ export class FileManager {
     const result = await this.findPkgUp(__dirname, {strict: true});
     return result.packageJson;
   }
+
+  public resolve(specifier: string | URL, from?: string | URL): string {
+    return this.#resolver(specifier, from);
+  }
+
+  public async rimraf(dir: string): Promise<void> {
+    await this.fs.promises.rm(dir, {recursive: true, force: true});
+  }
+
+  /**
+   * Attempts to gracefully load an unknown module.
+   *
+   * `await import()` on a CJS module will always return an object with a
+   * `default` export. Modules which have been, say, compiled with TS into CJS
+   * and _also_ have a default export will be wrapped in _another_ `default`
+   * property. That sucks, but it can be avoided by just `require`-ing the CJS
+   * module instead. We will still need to unwrap the `default` property if it
+   * exists.
+   *
+   * The `pkgJson` parameter is used to help us guess at the type of module
+   * we're importing.
+   *
+   * @param moduleId - Resolved module identifier
+   * @param pkgJson - `package.json` associated with the module, if any
+   * @returns Hopefully, whatever is exported
+   */
+  private async justImport(moduleId: string | URL, pkgJson?: PackageJson) {
+    // no zalgo here
+    await Promise.resolve();
+    if (moduleId instanceof URL) {
+      moduleId = fileURLToPath(moduleId);
+    }
+    if (!path.isAbsolute(moduleId)) {
+      // TODO throw SmokeError
+      throw new TypeError('moduleId must be resolved');
+    }
+
+    if (path.extname(moduleId).endsWith('ts')) {
+      return await this.importTs(moduleId);
+    }
+
+    const maybeIsScript =
+      pkgJson?.type !== 'module' || path.extname(moduleId) === '.cjs';
+
+    let raw: unknown;
+    if (maybeIsScript) {
+      try {
+        raw = require(moduleId);
+      } catch (err) {
+        if (isErrnoException(err)) {
+          if (err.code !== 'ERR_REQUIRE_ESM') {
+            throw err;
+          }
+        } else {
+          throw err;
+        }
+      }
+    }
+    raw ??= await import(moduleId);
+    // this catches the case where we `await import()`ed a CJS module despite our best efforts
+    if (FileManager.isErsatzESModule(raw) && 'default' in raw) {
+      ({default: raw} = raw);
+    }
+    return raw;
+  }
+
+  private resolveTsConfig(directory: string): TS.TranspileOptions | undefined {
+    const {ts} = this;
+    if (!ts) {
+      throw new Error('TypeScript is not available');
+    }
+    const filePath = ts.findConfigFile(directory, (fileName) =>
+      this.fs.existsSync(fileName),
+    );
+
+    if (filePath !== undefined) {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const {config, error} = ts.readConfigFile(filePath, (path) =>
+        this.fs.readFileSync(path, 'utf8'),
+      );
+      if (error) {
+        throw new Error(
+          // eslint-disable-next-line @typescript-eslint/no-base-to-string
+          `Error in ${filePath}: ${error.messageText.toString()}`,
+        );
+      }
+      return config as TS.TranspileOptions;
+    }
+  }
 }
+
+const debug = Debug('midnight-smoker:filemanager');

@@ -3,7 +3,7 @@
     "paths": {
       "@midnight-smoker/plugin-default": ["../../plugin-default/src/index.js"],
       "#cli/*": ["../src/cli/*.js"],
-      "#config-file": ["../src/config-file.js"],
+      "#config/*": ["../src/config/*.js"],
       "#constants": ["../src/constants.js"],
       "#error/*": ["../src/error/*.js"],
       "#event/*": ["../src/event/*.js"],

@@ -1,10 +1,10 @@
+import {isZodError} from '#util/error-util';
 import {castArray} from '#util/schema-util';
 import {italic, white, whiteBright, yellow} from 'chalk';
 import Debug from 'debug';
-import {isError} from 'lodash';
 import {format, formatWithOptions} from 'node:util';
 import stringify from 'stringify-object';
-import {fromZodError, type ZodError} from 'zod-validation-error';
+import {fromZodError} from 'zod-validation-error';
 import type {SmokerErrorCode, SmokerErrorId} from './codes';
 import {ErrorCodes} from './codes';
 
@@ -189,16 +189,6 @@ export interface SmokerError<
    * Returns the error in a JSON-serializable format.
    */
   toJSON(): object;
-}
-
-/**
- * Checks if the provided error is an instance of `ZodError`.
- *
- * @param value - The value to check.
- * @returns `true` if the error is a `ZodError`, `false` otherwise.
- */
-export function isZodError(value: unknown): value is ZodError {
-  return isError(value) && value.name === 'ZodError';
 }
 
 export type SomeSmokerError = SmokerError<any, any>;

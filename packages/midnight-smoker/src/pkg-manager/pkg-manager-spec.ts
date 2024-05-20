@@ -126,7 +126,6 @@ export class PkgManagerOracle {
     Readonly<PkgManagerSpec> | undefined
   > {
     const result = await this.fm.findPkgUp(this.cwd);
-    this.fm.id; //?
     const pkgManager = result?.packageJson.packageManager;
 
     if (pkgManager) {

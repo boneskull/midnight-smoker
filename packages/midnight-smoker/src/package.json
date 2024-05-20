@@ -1,12 +1,12 @@
 {
   "name": "midnight-smoker",
   "engines": {
-    "node": "^16.20.0 || ^18.0.0 || ^20.0.0",
+    "node": "^16.20.0 || ^18.0.0 || ^20.0.0 || ^22.0.0",
     "npm": ">=7.0.0"
   },
   "imports": {
     "#cli/*": "./cli/*.ts",
-    "#config-file": "./config-file.ts",
+    "#config/*": "./config/*.ts",
     "#constants": "./constants.ts",
     "#machine/*": "./machine/*/index.ts",
     "#error/*": "./error/*.ts",

@@ -25,7 +25,7 @@ A short--but profoundly incomplete--list of problems that typical tests don't ca
 
 ### Requirements
 
-- Node.js versions supported: `^18.0.0 || ^20.0.0`
+- Node.js versions supported: `^18.0.0 || ^20.0.0 || ^22.0.0`
 - Minimum `npm` version supported (if using `npm`): `v7.0.0`
 - Yarn should work, generally
 

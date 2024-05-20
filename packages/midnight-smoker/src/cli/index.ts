@@ -6,7 +6,8 @@
  * @module midnight-smoker/cli
  */
 
-import {readConfigFile} from '#config-file';
+import {ConfigReader} from '#config/config-reader';
+import {SCRIPT_NAME} from '#constants';
 import {readSmokerPkgJson} from '#util/pkg-util';
 import Debug from 'debug';
 import {omit} from 'lodash';
@@ -37,14 +38,14 @@ async function main(args: string[]): Promise<void> {
   debug('%s v%s', name, version);
 
   await y
-    .scriptName('smoker')
+    .scriptName(SCRIPT_NAME)
     .options(GlobalOptions)
     .command(new LintCommand())
     .command(new ListCommand())
     .command(new RunScriptCommand())
     .command(new ViewCommand())
     .middleware(async (argv) => {
-      const config = await readConfigFile(argv.config);
+      const config = await ConfigReader.read(argv.config);
       // ensure "config" cannot be set using the config file.
       mergeOptions(argv, omit(config, ['config', 'c']));
     })
@@ -59,9 +60,4 @@ async function main(args: string[]): Promise<void> {
     .parseAsync();
 }
 
-main(hideBin(process.argv));
-
-// .catch((err) => {
-//   process.exitCode = 1;
-//   handleRejection(err);
-// });
+void main(hideBin(process.argv));

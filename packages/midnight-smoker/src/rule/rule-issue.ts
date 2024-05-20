@@ -163,20 +163,4 @@ export class RuleIssue implements CheckResultFailed {
       filepath,
     };
   }
-
-  /**
-   * A `compareFn` for {@link Array.sort}
-   *
-   * @param a - A {@link RuleIssue}
-   * @param b - Another {@link RuleIssue}
-   * @returns A number where, if positive, means that `a` should come after `b`.
-   *   If negative then the opposite. If 0, then they are equal.
-   */
-  public static compare(
-    this: void,
-    a: CheckResultFailed,
-    b: CheckResultFailed,
-  ): number {
-    return a.id.localeCompare(b.id, 'en');
-  }
 }
