@@ -9,7 +9,7 @@ import {
   ExportsInspector,
 } from './exports-inspector';
 
-export const debug = Debug('midnight-smoker:plugin-default:no-missing-exports');
+const debug = Debug('midnight-smoker:plugin-default:no-missing-exports');
 
 export default function noMissingExports({
   defineRule,

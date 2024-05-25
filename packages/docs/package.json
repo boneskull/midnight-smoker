@@ -14,11 +14,12 @@
   "dependencies": {
     "@astrojs/starlight": "0.16.0",
     "astro": "4.2.4",
+    "hast": "1.0.0",
+    "hast-util-to-string": "3.0.0",
+    "hastscript": "9.0.0",
     "html-escaper": "3.0.3",
-    "rehype": "13.0.1",
     "rehype-autolink-headings": "7.1.0",
     "remark-code-import": "1.2.0",
-    "sharp": "0.32.6",
     "starlight-typedoc": "0.8.0",
     "typedoc": "0.25.7",
     "typedoc-plugin-markdown": "4.0.0-next.38",
@@ -28,7 +29,6 @@
     "unist-util-visit": "5.0.0"
   },
   "devDependencies": {
-    "@types/html-escaper": "3.0.2",
-    "midnight-smoker": "8.0.0"
+    "@types/html-escaper": "3.0.2"
   }
 }

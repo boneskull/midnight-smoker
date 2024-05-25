@@ -69,28 +69,22 @@
   "dependencies": {
     "chalk": "4.1.2",
     "cli-progress": "3.12.0",
-    "cli-table3": "0.6.4",
     "corepack": "0.24.1",
     "debug": "4.3.4",
     "execa": "5.1.1",
+    "glob": "10.3.10",
     "is-file-esm": "1.0.0",
     "json-stable-stringify": "1.0.2",
     "lodash": "4.17.21",
     "log-symbols": "4.1.0",
     "pluralize": "8.0.0",
-    "stringify-object": "3.3.0",
-    "term-size": "2.2.1",
-    "terminal-kit": "3.1.1",
-    "type-fest": "4.8.2",
-    "wrap-ansi": "6.2.0"
+    "type-fest": "4.8.2"
   },
   "devDependencies": {
     "@midnight-smoker/test-util": "file:../test-util",
     "@types/cli-progress": "3.11.5",
     "@types/is-file-esm": "1.0.1",
-    "@types/stringify-object": "3.3.1",
-    "@types/terminal-kit": "2.5.6",
-    "@types/wrap-ansi": "3.0.0",
+    "@types/json-stable-stringify": "1.0.36",
     "midnight-smoker": "8.0.0",
     "semver": "7.5.4"
   },

@@ -11,7 +11,7 @@ import {type Options} from 'yargs';
  *
  * @see {@link CommandOptionRecord}
  */
-export type CommandOption = Omit<Options, 'default'>;
+type CommandOption = Omit<Options, 'default'>;
 
 /**
  * Defensive type to avoid setting {@link Options.default} on any given option,

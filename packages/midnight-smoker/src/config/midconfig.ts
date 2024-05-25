@@ -39,7 +39,7 @@ export class Midconfig implements AsyncSearcher {
 
   private searchCache = new Map<string, Promise<MidconfigResult>>();
 
-  private searchPlaces: string[];
+  private searchPlaces: string[] | readonly string[];
 
   private stopDir: string;
 

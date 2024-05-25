@@ -1,6 +1,7 @@
 import {createSandbox} from 'sinon';
 import ts from 'typescript';
 import unexpected from 'unexpected';
+import * as loaderUtil from '../../../src/util/loader-util';
 const expect = unexpected.clone();
 
 describe('midnight-smoker', function () {
@@ -15,7 +16,7 @@ describe('midnight-smoker', function () {
       });
 
       describe('importTs()', function () {
-        const directory = 'test-directory';
+        // const directory = 'test-directory';
         const configFilePath = 'test-config-file-path';
         const config = {compilerOptions: {}};
         sandbox.stub(ts, 'findConfigFile').returns(configFilePath);
@@ -58,9 +59,6 @@ describe('midnight-smoker', function () {
           const moduleId = 'test-module-id';
           const fromDir = 'test-from-dir';
           const resolvedPath = 'test-resolved-path';
-          sandbox
-            .stub(module, 'createRequire')
-            .returns({resolve: sandbox.stub().returns(resolvedPath)});
 
           // exercise
           const result = loaderUtil.resolveFrom(moduleId, fromDir);

@@ -4,7 +4,7 @@
  * @type {import('mocha').MochaOptions}
  */
 module.exports = {
-  require: ['ts-node/register/transpile-only', 'tsconfig-paths/register'],
+  require: ['ts-node/register'],
   timeout: '2s',
   color: true,
   slow: '1s',

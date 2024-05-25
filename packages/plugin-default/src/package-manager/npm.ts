@@ -27,7 +27,7 @@ import path from 'node:path';
  *
  * This is the minimal declaration of that output for our purposes.
  */
-export interface NpmJsonOutput {
+interface NpmJsonOutput {
   error: {
     summary: string;
     detail?: string;
@@ -42,7 +42,7 @@ export interface NpmJsonOutput {
  *
  * @internal
  */
-export interface NpmPackItem {
+interface NpmPackItem {
   /**
    * Filename of tarball
    */
@@ -66,7 +66,7 @@ export interface NpmPackItem {
  *
  * @internal
  */
-export interface NpmPackItemFileEntry {
+interface NpmPackItemFileEntry {
   /**
    * Path of file
    */
@@ -82,25 +82,25 @@ const debug = Debug('midnight-smoker:pkg-manager:base-npm');
  * @param json - JSON string to parse (typically `stdout` of a child process)
  * @returns Parsed error object, or `undefined` if parsing failed
  */
-export function parseNpmError(json: string): NpmJsonOutput['error'] {
+function parseNpmError(json: string): NpmJsonOutput['error'] {
   const parsed = JSON.parse(json) as NpmJsonOutput;
   // trim falsy values, which seems to happen a lot.
   return pickBy(parsed.error, Boolean) as NpmJsonOutput['error'];
 }
 
-export function handleInstallError(
+function handleInstallError(
   {tmpdir, spec}: PkgManagerInstallContext,
   errOrResult: ExecError,
   pkgSpec: string,
 ): InstallError;
 
-export function handleInstallError(
+function handleInstallError(
   {tmpdir, spec}: PkgManagerInstallContext,
   errOrResult: ExecResult,
   pkgSpec: string,
 ): InstallError | undefined;
 
-export function handleInstallError(
+function handleInstallError(
   {tmpdir, spec}: PkgManagerInstallContext,
   errOrResult: ExecError | ExecResult,
   pkgSpec: string,

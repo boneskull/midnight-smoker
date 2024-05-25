@@ -4,7 +4,7 @@ import {type PkgManagerDef} from '#schema/pkg-manager-def';
 import {type SomeReporterDef} from '#schema/reporter-def';
 import {type SomeRuleDef} from '#schema/some-rule-def';
 
-export interface BaseInitPayload {
+interface BaseInitPayload {
   plugin: Readonly<PluginMetadata>;
 }
 

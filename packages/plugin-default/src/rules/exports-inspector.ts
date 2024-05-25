@@ -7,15 +7,13 @@
  * @packageDocumentation
  */
 
-import Debug from 'debug';
 import {glob} from 'glob';
 import isESMFile from 'is-file-esm';
+import {isArray, isNull, isObject, isString, isUndefined} from 'lodash';
 import type * as Rule from 'midnight-smoker/rule';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type {Opaque, PackageJson} from 'type-fest';
-
-export const debug = Debug('midnight-smoker:plugin-default:exports-inspector');
 
 /**
  * The name of the field in `package.json` that contains the exports
@@ -25,7 +23,7 @@ export const EXPORTS_FIELD = 'exports';
 /**
  * An ESM package must provide `main` if it does not contain `exports`.
  */
-export const MAIN_FIELD = 'main';
+const MAIN_FIELD = 'main';
 
 /**
  * The name of the `default` export in a conditional export
@@ -55,7 +53,7 @@ type ExportConditions = PackageJson.ExportConditions;
  * An string array representing a deeply-nested value within an object (i.e. a
  * _keypath_).
  */
-export type Keypath = Opaque<string[], 'Keypath'>;
+type Keypath = Opaque<string[], 'Keypath'>;
 
 /**
  * Returns `true` if the `package.json` contains `type: module`
@@ -63,58 +61,8 @@ export type Keypath = Opaque<string[], 'Keypath'>;
  * @param pkgJson A `package.json` object
  * @returns `true` if the `package.json` contains `type: module`
  */
-export function isESMPkg(pkgJson: PackageJson) {
+function isESMPkg(pkgJson: PackageJson) {
   return 'type' in pkgJson && pkgJson.type === 'module';
-}
-
-/**
- * Returns `true` if `value` is a string
- *
- * @param value - Value to check
- * @returns `true` if `value` is a string
- */
-export function isString(value: any): value is string {
-  return typeof value === 'string';
-}
-
-/**
- * Returns `true` if `value` is `null`
- *
- * @param value - Value to check
- * @returns `true` if `value` is `null`
- */
-export function isNull(value: any): value is null {
-  return value === null;
-}
-
-/**
- * Returns `true` if `value` is an `Array`
- *
- * @param value - Value to check
- * @returns `true` if `value` is an `Array`
- */
-function isArray(value: any): value is any[] {
-  return Array.isArray(value);
-}
-
-/**
- * Returns `true` if `value` is an `Object`
- *
- * @param value - Value to check
- * @returns `true` if `value` is an `Object`
- */
-function isObject(value: any): value is Record<string, any> {
-  return typeof value === 'object' && !isArray(value) && !isNull(value);
-}
-
-/**
- * Returns `true` if `value` is `undefined`
- *
- * @param value - Value to check
- * @returns `true` if `value` is `undefined`
- */
-function isUndefined(value: any): value is undefined {
-  return value === undefined;
 }
 
 /**
@@ -123,7 +71,7 @@ function isUndefined(value: any): value is undefined {
  * @param exportsValue - Value of the `exports` field in `package.json`
  * @returns `true` if `value` is a {@link ExportConditions} object
  */
-export function isExportConditions(
+function isExportConditions(
   exportsValue?: Exports,
 ): exportsValue is ExportConditions {
   return typeOf(exportsValue) === 'object';
@@ -135,7 +83,7 @@ export function isExportConditions(
  * @param value - Value to check
  * @returns A string representing the type of `value`
  */
-export function typeOf(
+function typeOf(
   value: any,
 ): 'string' | 'null' | 'undefined' | 'object' | 'array' | 'unknown' {
   if (isString(value)) {

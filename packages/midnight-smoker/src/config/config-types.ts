@@ -4,9 +4,9 @@ export type MidconfigResult = null | {
   isEmpty?: boolean;
 };
 
-export type Transform = (result: MidconfigResult) => Promise<MidconfigResult>;
+type Transform = (result: MidconfigResult) => Promise<MidconfigResult>;
 
-export type LoaderResult = unknown;
+type LoaderResult = unknown;
 
 export type Loader = (
   filepath: string,
@@ -18,7 +18,7 @@ export type Loaders = Record<string, Loader>;
 export interface MidconfigOptions {
   cache?: boolean;
   stopDir?: string;
-  searchPlaces?: string[];
+  searchPlaces?: string[] | readonly string[];
   ignoreEmptySearchPlaces?: boolean;
   packageProp?: string | string[];
   transform?: Transform;
