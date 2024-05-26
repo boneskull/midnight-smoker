@@ -1,5 +1,6 @@
 import Debug from 'debug';
 import {curry} from 'lodash';
+import {ERROR, FAILED, OK, SKIPPED} from 'midnight-smoker/constants';
 import {
   ExecError,
   InstallError,
@@ -15,7 +16,6 @@ import {
   type PkgManagerPackContext,
   type PkgManagerRunScriptContext,
   type RunScriptResult,
-  type ScriptError,
   type WorkspaceInfo,
 } from 'midnight-smoker/pkg-manager';
 import {isSmokerError} from 'midnight-smoker/util';
@@ -48,66 +48,68 @@ const supportedVersionRange = new Range('^1.0.0');
 export async function runScript(
   ctx: PkgManagerRunScriptContext,
   isScriptNotFound: (value: string) => boolean,
-) {
+): Promise<RunScriptResult> {
   const {executor, spec, runScriptManifest, loose} = ctx;
   const {script, pkgName, cwd} = runScriptManifest;
   let rawResult: ExecResult | undefined;
-  let error: ScriptError | undefined;
-  let skipped = false;
+  let error: ScriptFailedError | undefined;
   try {
     rawResult = await executor(spec, ['run', script], {}, {cwd});
   } catch (err) {
     if (isSmokerError(ExecError, err)) {
-      if (loose && isScriptNotFound(err.stderr)) {
-        skipped = true;
-      } else {
-        error = new RunScriptError(err, script, pkgName, spec.spec);
+      if (isScriptNotFound(err.stderr)) {
+        if (loose) {
+          return {type: SKIPPED};
+        }
+        return {
+          type: ERROR,
+          error: new UnknownScriptError(
+            `Script "${script}" in package "${pkgName}" not found`,
+            script,
+            pkgName,
+          ),
+        };
       }
-    } else {
-      throw err;
+      return {
+        type: ERROR,
+        error: new RunScriptError(err, script, pkgName, spec.spec),
+      };
     }
+    throw err;
   }
 
-  if (rawResult) {
-    if (rawResult.failed) {
-      if (loose && isScriptNotFound(rawResult.stderr)) {
-        skipped = true;
-      } else {
-        error = new UnknownScriptError(
-          `Script "${script}" in package "${pkgName}" not found`,
-          script,
-          pkgName,
-        );
-      }
-    } else {
-      let message: string;
-      if (rawResult.exitCode) {
-        message = `Script "${script}" in package "${pkgName}" failed with exit code ${rawResult.exitCode}: ${rawResult.all}`;
-      } else {
-        message = `Script "${script}" in package "${pkgName}" failed: ${rawResult.all}`;
-      }
-      error = new ScriptFailedError(message, {
-        script,
-        pkgName,
-        pkgManager: spec.spec,
-        exitCode: rawResult.exitCode,
-        output: rawResult.all || rawResult.stderr || rawResult.stdout,
-        command: rawResult.command,
-      });
+  if (rawResult.failed) {
+    if (isScriptNotFound(rawResult.stderr)) {
+      return loose
+        ? {
+            type: SKIPPED,
+          }
+        : {
+            rawResult,
+            error: new UnknownScriptError(
+              `Script "${script}" in package "${pkgName}" not found`,
+              script,
+              pkgName,
+            ),
+            type: ERROR,
+          };
     }
+
+    const {exitCode, command, all, stderr, stdout} = rawResult;
+    const message = exitCode
+      ? `Script "${script}" in package "${pkgName}" failed with exit code ${exitCode}`
+      : `Script "${script}" in package "${pkgName}" failed`;
+    error = new ScriptFailedError(message, {
+      script,
+      pkgName,
+      pkgManager: spec.spec,
+      command,
+      exitCode,
+      output: all || stderr || stdout,
+    });
   }
 
-  const result: RunScriptResult = {rawResult, error, skipped};
-
-  if (result.error) {
-    debug(`Script "%s" in package "%s" failed; continuing...`, script, pkgName);
-  } else if (result.skipped) {
-    debug('Skipped script %s in package %s; script not found', script, pkgName);
-  } else {
-    debug('Successfully executed script %s in package %s', script, pkgName);
-  }
-
-  return result;
+  return error ? {type: FAILED, rawResult, error} : {type: OK, rawResult};
 }
 
 export const accepts = curry((supportedVersionRange: Range, value: string) => {

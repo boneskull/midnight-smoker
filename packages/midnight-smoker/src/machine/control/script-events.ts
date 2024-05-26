@@ -3,6 +3,7 @@ import type {
   PkgManagerRunScriptsFailedEventData,
   PkgManagerRunScriptsOkEventData,
   RunScriptBeginEventData,
+  RunScriptErrorEventData,
   RunScriptFailedEventData,
   RunScriptOkEventData,
   RunScriptSkippedEventData,
@@ -36,6 +37,11 @@ export type CtrlRunScriptOkEvent = MachineEvent<
 export type CtrlRunScriptSkippedEvent = MachineEvent<
   'SCRIPT.RUN_SCRIPT_SKIPPED',
   Omit<RunScriptSkippedEventData, ComputedRunScriptFields>
+>;
+
+export type CtrlRunScriptErrorEvent = MachineEvent<
+  'SCRIPT.RUN_SCRIPT_ERROR',
+  Omit<RunScriptErrorEventData, ComputedRunScriptFields>
 >;
 
 export type CtrlScriptEvents =

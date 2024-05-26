@@ -4,16 +4,11 @@ import {type ActorOutputError, type ActorOutputOk} from '#machine/util';
 import {type SmokerOptions} from '#options/options';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
 import {type PluginRegistry} from '#plugin/plugin-registry';
-import {type Executor} from '#schema/executor';
-import {type PkgManagerOpts} from '#schema/pkg-manager-def';
-import {type WorkspaceInfo} from '#schema/workspaces';
-import {type FileManager} from '#util/filemanager';
-import {isFunction} from 'lodash';
-import assert from 'node:assert';
 import {type PackageJson} from 'type-fest';
 import {assign, log, not, setup} from 'xstate';
 import {
   loadPkgManagers,
+  loadReporters,
   type LoadPkgManagersInput,
 } from './loader-machine-actors';
 import {
@@ -32,36 +27,12 @@ export const LoadableComponents = {
 export type LoadableComponent =
   (typeof LoadableComponents)[keyof typeof LoadableComponents];
 
-export interface LoaderPkgManagerParams {
-  fm: FileManager;
-  cwd?: string;
-  defaultExecutor?: Executor;
-  systemExecutor?: Executor;
-  pkgManagerOpts?: PkgManagerOpts;
-}
-
-export interface BaseLoaderMachineInput {
+export interface LoaderMachineInput {
   plugin: Readonly<PluginMetadata>;
   pluginRegistry: PluginRegistry;
   smokerOptions: SmokerOptions;
-  pkgManager?: LoaderPkgManagerParams;
   component?: LoadableComponent;
-  workspaceInfo: WorkspaceInfo[];
 }
-
-/**
- * If package managers are to be loaded, we expect
- * {@link BaseLoaderMachineInput.pkgManager} to truthy
- */
-export interface LoaderMachineInputForPkgManagers
-  extends BaseLoaderMachineInput {
-  component: 'pkgManagers' | 'all';
-  pkgManager: LoaderPkgManagerParams;
-}
-
-export type LoaderMachineInput =
-  | BaseLoaderMachineInput
-  | LoaderMachineInputForPkgManagers;
 
 export type LoaderMachineContext = LoaderMachineInput & {
   pkgManagerInitPayloads: PkgManagerInitPayload[];
@@ -109,25 +80,26 @@ export const LoaderMachine = setup({
     }),
 
     assignReporterInitPayloads: assign({
-      reporterInitPayloads: ({context}) => {
-        const {plugin, smokerOptions, pluginRegistry} = context;
-        const {reporterDefs} = plugin;
-        const desiredReporters = new Set(smokerOptions.reporter);
-        const enabledReporterDefs = reporterDefs.filter((def) => {
-          const id = pluginRegistry.getComponentId(def);
-          if (desiredReporters.has(id)) {
-            return true;
-          }
-          if (isFunction(def.when)) {
-            try {
-              const result = def.when(smokerOptions);
-              return result;
-            } catch {}
-          }
-          return false;
-        });
+      reporterInitPayloads: ({context}, payloads: ReporterInitPayload[]) => {
+        return payloads;
+        // const {plugin, smokerOptions, pluginRegistry} = context;
+        // const {reporterDefs} = plugin;
+        // const desiredReporters = new Set(smokerOptions.reporter);
+        // const enabledReporterDefs = reporterDefs.filter((def) => {
+        //   const id = pluginRegistry.getComponentId(def);
+        //   if (desiredReporters.has(id)) {
+        //     return true;
+        //   }
+        //   if (isFunction(def.when)) {
+        //     try {
+        //       const result = def.when(smokerOptions);
+        //       return result;
+        //     } catch {}
+        //   }
+        //   return false;
+        // });
 
-        return enabledReporterDefs.map((def) => ({def, plugin}));
+        // return enabledReporterDefs.map((def) => ({def, plugin}));
       },
     }),
 
@@ -138,10 +110,9 @@ export const LoaderMachine = setup({
   },
   actors: {
     loadPkgManagers,
+    loadReporters,
   },
   guards: {
-    hasError: ({context: {error}}) => Boolean(error),
-    notHasError: not('hasError'),
     shouldProcessPkgManagers: ({context: {component}}) =>
       component === LoadableComponents.All ||
       component === LoadableComponents.PkgManagers,
@@ -154,16 +125,12 @@ export const LoaderMachine = setup({
   },
 }).createMachine({
   description:
-    'Pulls package managers, reporters and rules out of plugins and readies them for use; any combination of components may be requested',
+    'Loads components. Pulls package managers, reporters and rules out of plugins and readies them for use; any combination of components may be requested',
   entry: [
     log(
       ({context: {component}}) => `Loader loading component(s): ${component}`,
     ),
   ],
-  always: {
-    guard: 'hasError',
-    actions: [log(({context: {error}}) => `ERROR: ${error?.message}`)],
-  },
   context: ({
     input: {component = LoadableComponents.All, ...input},
   }): LoaderMachineContext => {
@@ -205,15 +172,8 @@ export const LoaderMachine = setup({
               invoke: {
                 src: 'loadPkgManagers',
                 input: ({context}): LoadPkgManagersInput => {
-                  const {
-                    plugin,
-                    smokerOptions: smokerOpts,
-                    pkgManager,
-                  } = context;
-                  assert.ok(pkgManager);
-                  const {cwd} = pkgManager;
+                  const {plugin, smokerOptions: smokerOpts} = context;
                   return {
-                    cwd,
                     plugin,
                     smokerOpts,
                   };
@@ -267,13 +227,29 @@ export const LoaderMachine = setup({
               ],
             },
             loadingReporters: {
-              always: {
-                actions: [
-                  {
-                    type: 'assignReporterInitPayloads',
-                  },
-                ],
-                target: 'done',
+              invoke: {
+                src: 'loadReporters',
+                input: ({
+                  context: {plugin, pluginRegistry, smokerOptions},
+                }) => ({plugin, pluginRegistry, smokerOptions}),
+                onDone: {
+                  actions: [
+                    {
+                      type: 'assignReporterInitPayloads',
+                      params: ({event: {output}}) => output,
+                    },
+                  ],
+                  target: 'done',
+                },
+                onError: {
+                  actions: [
+                    {
+                      type: 'assignError',
+                      params: ({event: {error}}) => ({error}),
+                    },
+                  ],
+                  target: '#LoaderMachine.errored',
+                },
               },
             },
             skipped: {
@@ -317,18 +293,10 @@ export const LoaderMachine = setup({
           },
         },
       },
-      onDone: [
-        {
-          guard: not('hasError'),
-          target: 'done',
-          actions: log('selecting complete'),
-        },
-        {
-          guard: 'hasError',
-          target: 'errored',
-          actions: log('selecting errored'),
-        },
-      ],
+      onDone: {
+        target: 'done',
+        actions: [log('selecting complete')],
+      },
     },
 
     done: {
@@ -346,6 +314,9 @@ export const LoaderMachine = setup({
     },
 
     errored: {
+      entry: log(
+        ({context: {error}}) => `error when loading components: ${error}`,
+      ),
       type: FINAL,
     },
   },

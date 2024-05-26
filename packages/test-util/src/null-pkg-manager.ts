@@ -1,3 +1,4 @@
+import {OK} from 'midnight-smoker/constants';
 import {type PkgManagerDef} from 'midnight-smoker/pkg-manager';
 import {scheduler} from 'node:timers/promises';
 import {TEST_TMPDIR} from './constants';
@@ -41,6 +42,7 @@ export const nullPmDef: PkgManagerDef = {
         failed: false,
       },
       skipped: false,
+      type: OK,
     };
   },
 };

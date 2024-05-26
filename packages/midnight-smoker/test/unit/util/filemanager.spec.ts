@@ -4,9 +4,7 @@ import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
 import {
   FileManager,
-  type Importer,
   type NormalizedPackageJson,
-  type Resolver,
 } from '../../../src/util/filemanager';
 import {createFsMocks} from '../mocks/fs';
 
@@ -15,14 +13,10 @@ const expect = unexpected.clone().use(unexpectedSinon);
 describe('midnight-smoker', function () {
   let sandbox: sinon.SinonSandbox;
   let vol: Volume;
-  let resolver: Resolver;
-  let importer: Importer;
 
   beforeEach(async function () {
     sandbox = sinon.createSandbox();
     ({vol} = createFsMocks());
-    resolver = sandbox.stub().returns('/some/path');
-    importer = sandbox.stub().returns({});
   });
 
   afterEach(function () {
@@ -38,25 +32,6 @@ describe('midnight-smoker', function () {
           fm = new FileManager({
             fs: vol as any,
             tmpdir: () => '/',
-            resolver,
-            importer,
-          });
-        });
-
-        describe('resolve()', function () {
-          it('should call the resolver with the correct args', async function () {
-            const specifier = 'foo';
-            const from = 'bar';
-            fm.resolve(specifier, from);
-            expect(resolver, 'to have a call satisfying', [specifier, from]);
-          });
-        });
-
-        describe('import()', function () {
-          it('should call the importer with the correct args', async function () {
-            const specifier = 'foo';
-            await fm.import(specifier);
-            expect(importer, 'to have a call satisfying', [specifier]);
           });
         });
 

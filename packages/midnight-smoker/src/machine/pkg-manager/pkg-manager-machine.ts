@@ -1,4 +1,4 @@
-import {ERROR, FAILED, FINAL, OK, PARALLEL} from '#constants';
+import {ERROR, FAILED, FINAL, OK, PARALLEL, SKIPPED} from '#constants';
 import {type SomeSmokerError} from '#error/base-error';
 import {InstallError} from '#error/install-error';
 import {type PackError, type PackParseError} from '#error/pack-error';
@@ -74,6 +74,7 @@ import {
   type CtrlPkgManagerRunScriptsFailedEvent,
   type CtrlPkgManagerRunScriptsOkEvent,
   type CtrlRunScriptBeginEvent,
+  type CtrlRunScriptErrorEvent,
   type CtrlRunScriptFailedEvent,
   type CtrlRunScriptOkEvent,
   type CtrlRunScriptSkippedEvent,
@@ -454,34 +455,44 @@ export const PkgManagerMachine = setup({
       ):
         | CtrlRunScriptOkEvent
         | CtrlRunScriptFailedEvent
+        | CtrlRunScriptErrorEvent
         | CtrlRunScriptSkippedEvent => {
         const baseEventData = {
           pkgManager: spec.toJSON(),
-          rawResult: result.rawResult,
           manifest,
           sender,
         };
-
-        if (result.error) {
-          return {
-            ...baseEventData,
-            type: 'SCRIPT.RUN_SCRIPT_FAILED',
-            error: result.error,
-          };
+        switch (result.type) {
+          case OK: {
+            return {
+              ...baseEventData,
+              type: 'SCRIPT.RUN_SCRIPT_OK',
+              rawResult: result.rawResult,
+            };
+          }
+          case FAILED: {
+            return {
+              ...baseEventData,
+              type: 'SCRIPT.RUN_SCRIPT_FAILED',
+              error: result.error,
+              rawResult: result.rawResult,
+            };
+          }
+          case ERROR: {
+            return {
+              ...baseEventData,
+              type: 'SCRIPT.RUN_SCRIPT_ERROR',
+              error: result.error,
+              rawResult: result.rawResult,
+            };
+          }
+          case SKIPPED: {
+            return {
+              ...baseEventData,
+              type: 'SCRIPT.RUN_SCRIPT_SKIPPED',
+            };
+          }
         }
-        if (result.skipped) {
-          return {
-            ...baseEventData,
-            type: 'SCRIPT.RUN_SCRIPT_SKIPPED',
-            skipped: true,
-          };
-        }
-        assert.ok(result.rawResult);
-        return {
-          ...baseEventData,
-          type: 'SCRIPT.RUN_SCRIPT_OK',
-          rawResult: result.rawResult,
-        };
       },
     ),
     drainRunScriptQueue: enqueueActions(
@@ -600,7 +611,7 @@ export const PkgManagerMachine = setup({
       }):
         | CtrlPkgManagerRunScriptsOkEvent
         | CtrlPkgManagerRunScriptsFailedEvent => {
-        const type = runScriptResults?.some((r) => r.error)
+        const type = runScriptResults?.some((r) => r.type === ERROR)
           ? 'SCRIPT.PKG_MANAGER_RUN_SCRIPTS_FAILED'
           : 'SCRIPT.PKG_MANAGER_RUN_SCRIPTS_OK';
         return {

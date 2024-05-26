@@ -25,7 +25,7 @@ export type EventName = keyof EventData;
  * @template T - The event name
  */
 export type DataForEvent<T extends EventName> = {
-  [K in T]: {type: K} & EventData[K];
+  [K in T]: {type: K} & Omit<EventData[K], 'type'>;
 }[T];
 
 export type SomeDataForEvent = DataForEvent<EventName>;

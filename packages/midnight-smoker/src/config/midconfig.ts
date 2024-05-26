@@ -14,6 +14,7 @@
  */
 import {PACKAGE_JSON} from '#constants';
 import {type FileManager} from '#util/filemanager';
+import {importTs, justImport} from '#util/loader-util';
 import path from 'node:path';
 import {type PackageJson} from 'type-fest';
 import {
@@ -61,10 +62,8 @@ export class Midconfig implements AsyncSearcher {
     this.emplace = makeEmplace(cache);
     this.ignoreEmptySearchPlaces = ignoreEmptySearchPlaces;
 
-    const jsLoader: Loader = async (_, filename) =>
-      this.filemanager.import(filename);
-    const tsLoader: Loader = async (_, filename) =>
-      this.filemanager.importTs(filename);
+    const jsLoader: Loader = async (_, filename) => justImport(filename);
+    const tsLoader: Loader = async (_, filename) => importTs(filename);
     const jsonLoader: Loader = async (_, content) =>
       JSON.parse(content) as unknown;
     this.loaders = Object.freeze({

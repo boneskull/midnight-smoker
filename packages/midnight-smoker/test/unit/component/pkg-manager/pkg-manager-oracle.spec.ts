@@ -7,6 +7,7 @@ import unexpectedSinon from 'unexpected-sinon';
 import {
   DEFAULT_PKG_MANAGER_BIN,
   DEFAULT_PKG_MANAGER_VERSION,
+  OK,
 } from '../../../../src/constants';
 import {PkgManagerOracle} from '../../../../src/pkg-manager/pkg-manager-spec';
 import {type PkgManagerDef} from '../../../../src/schema/pkg-manager-def';
@@ -53,6 +54,7 @@ export const nullPmDef: PkgManagerDef = {
         failed: false,
       },
       skipped: false,
+      type: OK,
     };
   },
 };

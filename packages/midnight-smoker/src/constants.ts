@@ -93,4 +93,6 @@ export const FAILED = 'FAILED';
 
 export const ERROR = 'ERROR';
 
+export const SKIPPED = 'SKIPPED';
+
 export const SCRIPT_NAME = 'smoker';

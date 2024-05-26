@@ -331,7 +331,6 @@ export const ControlMachine = setup({
           systemExecutor,
           defaultExecutor,
           smokerOptions,
-          workspaceInfo,
         },
         spawn,
       }) =>
@@ -343,15 +342,8 @@ export const ControlMachine = setup({
               input: {
                 plugin,
                 pluginRegistry,
-                pkgManager: {
-                  fm,
-                  cwd: smokerOptions.cwd,
-                  systemExecutor,
-                  defaultExecutor,
-                },
                 smokerOptions,
                 component: LoadableComponents.All,
-                workspaceInfo,
               },
             });
 

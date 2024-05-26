@@ -1,5 +1,6 @@
 import Debug from 'debug';
 import {isError, pickBy} from 'lodash';
+import {ERROR, FAILED, OK, SKIPPED} from 'midnight-smoker/constants';
 import {fromUnknownError} from 'midnight-smoker/error';
 import {
   ExecError,
@@ -16,7 +17,6 @@ import {
   type PkgManagerPackContext,
   type PkgManagerRunScriptContext,
   type RunScriptResult,
-  type ScriptError,
   type WorkspaceInfo,
 } from 'midnight-smoker/pkg-manager';
 import {isSmokerError} from 'midnight-smoker/util';
@@ -42,7 +42,7 @@ interface NpmJsonOutput {
  *
  * @internal
  */
-interface NpmPackItem {
+export interface NpmPackItem {
   /**
    * Filename of tarball
    */
@@ -287,8 +287,10 @@ export const BaseNpmPackageManager = {
     const {script, pkgName, cwd} = runScriptManifest;
 
     let rawResult: ExecResult | undefined;
-    let error: ScriptError | undefined;
-    let skipped = false;
+    let error: ScriptFailedError | undefined;
+
+    const isMissingScript = (str: string) => str.includes('missing script:');
+
     try {
       rawResult = await executor(
         spec,
@@ -298,66 +300,58 @@ export const BaseNpmPackageManager = {
       );
     } catch (err) {
       if (isSmokerError(ExecError, err)) {
-        if (loose && /missing script:/i.test(err.stderr)) {
-          skipped = true;
-        } else {
-          error = new RunScriptError(err, script, pkgName, spec.spec);
-        }
-      } else {
-        throw err;
-      }
-    }
-
-    if (rawResult) {
-      if (rawResult.failed) {
-        if (/missing script:/i.test(rawResult.stderr)) {
+        if (isMissingScript(err.stderr)) {
           if (loose) {
-            skipped = true;
-          } else {
-            error = new UnknownScriptError(
+            return {type: SKIPPED};
+          }
+          return {
+            type: ERROR,
+            error: new UnknownScriptError(
               `Script "${script}" in package "${pkgName}" not found`,
               script,
               pkgName,
-            );
-          }
-        } else {
-          let message: string;
-          const {exitCode, command, all, stderr, stdout} = rawResult;
-          if (exitCode) {
-            message = `Script "${script}" in package "${pkgName}" failed with exit code ${exitCode}`;
-          } else {
-            message = `Script "${script}" in package "${pkgName}" failed`;
-          }
-          error = new ScriptFailedError(message, {
-            script,
-            pkgName,
-            pkgManager: spec.spec,
-            command,
-            exitCode,
-            output: all || stderr || stdout,
-          });
+            ),
+          };
         }
+        return {
+          type: ERROR,
+          error: new RunScriptError(err, script, pkgName, spec.spec),
+        };
       }
+      throw err;
     }
 
-    const result: RunScriptResult = {rawResult, error, skipped};
+    if (rawResult.failed) {
+      if (isMissingScript(rawResult.stderr)) {
+        return loose
+          ? {
+              type: SKIPPED,
+            }
+          : {
+              rawResult,
+              error: new UnknownScriptError(
+                `Script "${script}" in package "${pkgName}" not found`,
+                script,
+                pkgName,
+              ),
+              type: ERROR,
+            };
+      }
 
-    if (result.error) {
-      debug(
-        `Script "%s" in package "%s" failed; continuing...`,
+      const {exitCode, command, all, stderr, stdout} = rawResult;
+      const message = exitCode
+        ? `Script "${script}" in package "${pkgName}" failed with exit code ${exitCode}`
+        : `Script "${script}" in package "${pkgName}" failed`;
+      error = new ScriptFailedError(message, {
         script,
         pkgName,
-      );
-    } else if (result.skipped) {
-      debug(
-        'Skipped script %s in package %s; script not found',
-        script,
-        pkgName,
-      );
-    } else {
-      debug('Successfully executed script %s in package %s', script, pkgName);
+        pkgManager: spec.spec,
+        command,
+        exitCode,
+        output: all || stderr || stdout,
+      });
     }
 
-    return result;
+    return error ? {type: FAILED, rawResult, error} : {type: OK, rawResult};
   },
 } as const satisfies Partial<PkgManagerDef>;

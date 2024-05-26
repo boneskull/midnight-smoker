@@ -20,6 +20,7 @@ import {
   type SomeRuleDef,
   type SomeRuleOptions,
 } from 'midnight-smoker/rule';
+import {type LintManifest} from '../../midnight-smoker/src/schema/lint-manifest';
 
 /**
  * A rule runner function which can only run a single rule.
@@ -166,7 +167,7 @@ export async function runRule<T extends SomeRuleDef>(
       pkgJson: {},
       localPath: '',
       pkgName: '',
-    },
+    } as LintManifest,
   });
   const output = await toPromise(ruleMachine);
   if (output.length !== plan) {

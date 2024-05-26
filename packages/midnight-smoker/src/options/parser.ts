@@ -33,10 +33,10 @@ export class OptionParser {
     if (this.parseResultCache.has(opts as SmokerOptions)) {
       return opts as SmokerOptions;
     }
-    const zSmokerOpts = OptionParser.buildSmokerOptionsSchema(this.registry);
+    const schema = OptionParser.buildSmokerOptionsSchema(this.registry);
     let result: SmokerOptions;
     try {
-      result = zSmokerOpts.parse(opts ?? {});
+      result = schema.parse(opts ?? {});
     } catch (err) {
       throw isZodError(err) ? fromZodError(err) : err;
     }

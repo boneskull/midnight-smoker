@@ -6,6 +6,7 @@ import unexpectedSinon from 'unexpected-sinon';
 import {
   DEFAULT_PKG_MANAGER_BIN,
   DEFAULT_PKG_MANAGER_VERSION,
+  OK,
 } from '../../../../src/constants';
 import {ErrorCodes} from '../../../../src/error';
 import type * as PMLoader from '../../../../src/pkg-manager/pkg-manager-loader';
@@ -53,6 +54,7 @@ export const nullPmDef: PkgManagerDef = {
         failed: false,
       },
       skipped: false,
+      type: OK,
     };
   },
 };

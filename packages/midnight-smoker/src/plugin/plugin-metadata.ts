@@ -4,7 +4,7 @@
  * @packageDocumentation
  * @see {@link PluginMetadata}
  */
-import {DEFAULT_COMPONENT_ID, RuleSeverities, TRANSIENT} from '#constants';
+import {TRANSIENT} from '#constants';
 import {InvalidArgError} from '#error/invalid-arg-error';
 import {type SmokerOptions} from '#options/options';
 import {
@@ -328,39 +328,6 @@ export class PluginMetadata implements StaticPluginMetadata {
   ): void {
     const {name} = def;
     this.ruleDefMap.set(name, def);
-  }
-
-  /**
-   * @todo This is probably duplicate
-   */
-  public getComponentId(def: object) {
-    const name = 'name' in def ? `${def.name}` : DEFAULT_COMPONENT_ID;
-    if (this.isBlessed) {
-      return name;
-    }
-    return `${this.id}:${name}`;
-  }
-
-  public getEnabledReporterDefs(opts: SmokerOptions) {
-    const reporterDefs = [...this.reporterDefMap.values()];
-
-    assertNonEmptyArray(reporterDefs);
-
-    const shouldEnable = shouldEnableReporter(
-      (def) => this.getComponentId(def),
-      opts,
-    );
-
-    const enabledReporters = reporterDefs.filter(shouldEnable);
-
-    return enabledReporters;
-  }
-
-  public getEnabledRuleDefs(opts: SmokerOptions) {
-    return [...this.ruleDefMap.values()].filter((def) => {
-      const id = this.getComponentId(def);
-      return opts.rules[id].severity !== RuleSeverities.Off;
-    });
   }
 
   public async loadPkgManagers(

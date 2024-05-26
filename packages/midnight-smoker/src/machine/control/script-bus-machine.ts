@@ -1,4 +1,4 @@
-import {FINAL} from '#constants';
+import {FAILED, FINAL, OK, SKIPPED} from '#constants';
 import {fromUnknownError} from '#error/from-unknown-error';
 import {SmokerEvent} from '#event/event-constants';
 import {type DataForEvent} from '#event/events';
@@ -160,19 +160,22 @@ export const ScriptBusMachine = setup({
                 context: {
                   smokerOptions: {script: scripts},
                 },
-                event: {manifest, pkgManager, error},
+                event: {manifest, pkgManager, error, rawResult},
               }): DataForEvent<typeof SmokerEvent.RunScriptFailed> => ({
                 type: SmokerEvent.RunScriptFailed,
                 totalUniqueScripts: scripts.length,
                 pkgManager,
                 manifest,
                 error,
+                rawResult,
               }),
             },
             {
               type: 'appendRunScriptResult',
-              params: ({event: {error}}) => ({
+              params: ({event: {error, rawResult}}) => ({
                 error,
+                rawResult,
+                type: FAILED,
               }),
             },
           ],
@@ -190,13 +193,12 @@ export const ScriptBusMachine = setup({
                 type: SmokerEvent.RunScriptSkipped,
                 totalUniqueScripts: scripts.length,
                 pkgManager,
-                skipped: true,
                 manifest,
               }),
             },
             {
               type: 'appendRunScriptResult',
-              params: {skipped: true},
+              params: {type: SKIPPED},
             },
           ],
         },
@@ -222,6 +224,7 @@ export const ScriptBusMachine = setup({
                 type: 'appendRunScriptResult',
                 params: ({event: {rawResult}}) => ({
                   rawResult,
+                  type: OK,
                 }),
               },
             ],

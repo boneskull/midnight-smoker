@@ -164,6 +164,11 @@ export const PkgManagerDefSchema = fancyObjectSchema(
     bin: NonEmptyStringSchema,
 
     /**
+     * Description of the package manager
+     */
+    description: NonEmptyStringSchema.optional(),
+
+    /**
      * {@inheritDoc PkgManagerAcceptsFnSchema}
      */
     accepts: PkgManagerAcceptsFnSchema,

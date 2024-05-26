@@ -1,7 +1,11 @@
-import {type ExecResult} from '#schema/exec-result';
 import {type RunScriptManifest} from '#schema/run-script-manifest';
-import {type RunScriptResult} from '#schema/run-script-result';
-import {type ScriptError} from '#schema/script-error';
+import {
+  type RunScriptErrorResult,
+  type RunScriptFailedResult,
+  type RunScriptOkResult,
+  type RunScriptResult,
+  type RunScriptSkippedResult,
+} from '#schema/run-script-result';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {type ScriptEvent} from './event-constants';
 import {type PkgManagerEventBase} from './pkg-manager-events';
@@ -64,6 +68,8 @@ export interface ScriptEventData {
    * @event
    */
   [ScriptEvent.RunScriptSkipped]: RunScriptSkippedEventData;
+
+  [ScriptEvent.RunScriptError]: RunScriptErrorEventData;
 }
 
 export interface RunScriptsEventDataBase {
@@ -91,18 +97,21 @@ export interface RunScriptEventDataBase {
 
 export interface RunScriptBeginEventData extends RunScriptEventDataBase {}
 
-export interface RunScriptOkEventData extends RunScriptEventDataBase {
-  rawResult: ExecResult;
-}
+export interface RunScriptOkEventData
+  extends RunScriptEventDataBase,
+    Omit<RunScriptOkResult, 'type'> {}
 
-export interface RunScriptFailedEventData extends RunScriptEventDataBase {
-  error: ScriptError;
-  rawResult?: ExecResult;
-}
+export interface RunScriptFailedEventData
+  extends RunScriptEventDataBase,
+    Omit<RunScriptFailedResult, 'type'> {}
 
-export interface RunScriptSkippedEventData extends RunScriptEventDataBase {
-  skipped: true;
-}
+export interface RunScriptSkippedEventData
+  extends RunScriptEventDataBase,
+    Omit<RunScriptSkippedResult, 'type'> {}
+
+export interface RunScriptErrorEventData
+  extends RunScriptEventDataBase,
+    Omit<RunScriptErrorResult, 'type'> {}
 
 export interface PkgManagerRunScriptsEventDataBase extends PkgManagerEventBase {
   manifests: RunScriptManifest[];

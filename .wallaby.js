@@ -47,7 +47,7 @@ module.exports = () => {
     setup(wallaby) {
       process.env.WALLABY = '1';
 
-      const minimatch = require('minimatch');
+      const {minimatch} = require('minimatch');
       const path = require('path');
       const Module = require('module');
       const pkgJsonPath = path.join(
