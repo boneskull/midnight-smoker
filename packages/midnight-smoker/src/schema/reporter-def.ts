@@ -42,8 +42,6 @@ export type ReporterContext<Ctx = unknown> = {
   plugin: StaticPluginMetadata;
 } & Ctx;
 
-export type SomeReporterContext = ReporterContext<object>;
-
 export type ReporterListener<Evt extends EventName, Ctx = unknown> = (
   this: void,
   ctx: ReporterContext<Ctx>,
@@ -206,5 +204,3 @@ export const ReporterDefSchema = z
       VoidOrPromiseVoidSchema,
     ),
   );
-
-export type SomeReporterDef = ReporterDef<any>;

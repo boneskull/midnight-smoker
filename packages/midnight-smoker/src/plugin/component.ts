@@ -1,7 +1,7 @@
 import {type ComponentKind, type ComponentKinds} from '#constants';
 import {type Executor} from '#schema/executor';
 import {type PkgManagerDef} from '#schema/pkg-manager-def';
-import {type SomeReporterDef} from '#schema/reporter-def';
+import {type ReporterDef} from '#schema/reporter-def';
 import {type SomeRuleDef} from '#schema/some-rule-def';
 import {type StaticPluginMetadata} from '#schema/static-plugin-metadata';
 // import Debug from 'debug';
@@ -13,7 +13,7 @@ export type ComponentObject<T extends ComponentKind> =
     : T extends typeof ComponentKinds.PkgManagerDef
       ? PkgManagerDef
       : T extends typeof ComponentKinds.ReporterDef
-        ? SomeReporterDef
+        ? ReporterDef
         : T extends typeof ComponentKinds.Executor
           ? Executor
           : never;

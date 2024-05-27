@@ -80,26 +80,8 @@ export const LoaderMachine = setup({
     }),
 
     assignReporterInitPayloads: assign({
-      reporterInitPayloads: ({context}, payloads: ReporterInitPayload[]) => {
+      reporterInitPayloads: (_, payloads: ReporterInitPayload[]) => {
         return payloads;
-        // const {plugin, smokerOptions, pluginRegistry} = context;
-        // const {reporterDefs} = plugin;
-        // const desiredReporters = new Set(smokerOptions.reporter);
-        // const enabledReporterDefs = reporterDefs.filter((def) => {
-        //   const id = pluginRegistry.getComponentId(def);
-        //   if (desiredReporters.has(id)) {
-        //     return true;
-        //   }
-        //   if (isFunction(def.when)) {
-        //     try {
-        //       const result = def.when(smokerOptions);
-        //       return result;
-        //     } catch {}
-        //   }
-        //   return false;
-        // });
-
-        // return enabledReporterDefs.map((def) => ({def, plugin}));
       },
     }),
 

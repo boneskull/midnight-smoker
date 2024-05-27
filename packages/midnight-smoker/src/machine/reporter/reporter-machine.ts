@@ -4,10 +4,7 @@ import {type SomeDataForEvent} from '#event/events';
 import {type ActorOutput} from '#machine/util';
 import {type SmokerOptions} from '#options/options';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
-import {
-  type SomeReporterContext,
-  type SomeReporterDef,
-} from '#schema/reporter-def';
+import {type ReporterContext, type ReporterDef} from '#schema/reporter-def';
 import {isEmpty} from 'lodash';
 import {type PackageJson} from 'type-fest';
 import {and, assign, log, not, setup} from 'xstate';
@@ -60,7 +57,7 @@ export interface ReporterMachineContext
   /**
    * The object passed to all of the `ReporterDef`'s listener methods.
    */
-  ctx: SomeReporterContext;
+  ctx: ReporterContext;
 }
 
 /**
@@ -70,7 +67,7 @@ export interface ReporterMachineInput {
   /**
    * Reporter definition (registered by a plugin)
    */
-  def: SomeReporterDef;
+  def: ReporterDef;
 
   /**
    * The plugin itself; owner of the reporter definition
@@ -108,29 +105,19 @@ export const ReporterMachine = setup({
     /**
      * If the queue contains events, this guard will return `true`.
      */
-    hasEvents: not('isQueueEmpty'),
+    hasEvents: not('hasNoEvents'),
 
     /**
      * If the queue is empty, this guard will return `true`
      */
-    isQueueEmpty: ({context: {queue}}) => isEmpty(queue),
-
-    /**
-     * If the `error` context property is truthy, this guard will return `true`.
-     */
-    hasError: ({context: {error}}) => Boolean(error),
-
-    /**
-     * If the `error` context property is falsy, this guard will return `true`.
-     */
-    notHasError: not('hasError'),
+    hasNoEvents: ({context: {queue}}) => isEmpty(queue),
 
     /**
      * If the `shouldHalt` context property is `true` _and_ the queue is empty,
      * this guard will return `true`.
      */
     shouldHalt: and([
-      'isQueueEmpty',
+      'hasNoEvents',
       ({context: {shouldHalt}}) => Boolean(shouldHalt),
     ]),
 
@@ -179,10 +166,6 @@ export const ReporterMachine = setup({
         `Starting ReporterMachine for reporter: ${def.name} from ${plugin.id}`,
     ),
   ],
-  always: {
-    guard: 'hasError',
-    actions: [log(({context: {error}}) => `ERROR: ${error?.message}`)],
-  },
   exit: [log('stopping reporter')],
   on: {
     HALT: {

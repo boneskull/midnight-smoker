@@ -41,6 +41,8 @@ export const nullPkgManager: PkgManagerDef = {
 export const nullReporter: ReporterDef = {
   name: 'test-reporter',
   description: 'test reporter',
+  async setup() {},
+  async teardown() {},
 };
 
 export const nullRule: RuleDef = {

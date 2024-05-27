@@ -2,24 +2,24 @@ import {fromUnknownError} from '#error/from-unknown-error';
 import {ReporterError} from '#error/reporter-error';
 import {type DataForEvent, type EventData, type EventName} from '#event/events';
 import {
+  type ReporterContext,
+  type ReporterDef,
   type ReporterListener,
   type ReporterListeners,
-  type SomeReporterContext,
-  type SomeReporterDef,
 } from '#schema/reporter-def';
 import {isFunction} from 'lodash';
 import {fromPromise} from 'xstate';
 
 export interface DrainQueueInput {
   queue: DataForEvent<keyof EventData>[];
-  def: SomeReporterDef;
+  def: ReporterDef;
 
-  ctx: SomeReporterContext;
+  ctx: ReporterContext;
 }
 
 async function invokeListener<T extends EventName>(
-  def: SomeReporterDef,
-  ctx: SomeReporterContext,
+  def: ReporterDef,
+  ctx: ReporterContext,
   data: DataForEvent<T>,
 ) {
   const listenerName = `on${data.type}` as keyof ReporterListeners;
@@ -48,12 +48,12 @@ export const drainQueue = fromPromise<void, DrainQueueInput>(
   },
 );
 
-export interface SetupReporterInput {
-  def: SomeReporterDef;
-  ctx: SomeReporterContext;
+export interface ReporterLifecycleHookInput {
+  def: ReporterDef;
+  ctx: ReporterContext;
 }
 
-export const setupReporter = fromPromise<void, SetupReporterInput>(
+export const setupReporter = fromPromise<void, ReporterLifecycleHookInput>(
   async ({input: {def, ctx}}) => {
     await Promise.resolve();
     const {setup} = def;
@@ -67,12 +67,7 @@ export const setupReporter = fromPromise<void, SetupReporterInput>(
   },
 );
 
-export interface TeardownReporterInput {
-  def: SomeReporterDef;
-  ctx: SomeReporterContext;
-}
-
-export const teardownReporter = fromPromise<void, TeardownReporterInput>(
+export const teardownReporter = fromPromise<void, ReporterLifecycleHookInput>(
   async ({input: {def, ctx}}) => {
     await Promise.resolve();
     const {teardown} = def;

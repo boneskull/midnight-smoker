@@ -2,29 +2,18 @@ import {memfs} from 'memfs';
 import {type Volume} from 'memfs/lib/volume';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
-import {createActor, toPromise} from 'xstate';
 import {ERROR} from '../../../src/constants';
-import {
-  LoadableComponents,
-  LoaderMachine,
-  type LoaderMachineInput,
-} from '../../../src/machine/loader';
+import {LoadableComponents, LoaderMachine} from '../../../src/machine/loader';
 import {OptionParser, type SmokerOptions} from '../../../src/options';
 import {type PluginMetadata} from '../../../src/plugin';
 import {PluginRegistry} from '../../../src/plugin/plugin-registry';
 import {FileManager} from '../../../src/util/filemanager';
 import {nullPkgManager, nullReporter, nullRule} from '../mocks/component';
+import {createMachineRunner} from './machine-helpers';
 
 const expect = unexpected.clone();
 
-function runMachine(input: LoaderMachineInput) {
-  const actor = createActor(LoaderMachine, {
-    input,
-    logger: () => {},
-  });
-  actor.start();
-  return toPromise(actor);
-}
+const {runMachine} = createMachineRunner(LoaderMachine);
 
 describe('midnight-smoker', function () {
   describe('machine', function () {

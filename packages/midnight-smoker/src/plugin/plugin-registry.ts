@@ -18,7 +18,7 @@ import {createRuleOptionsSchema} from '#schema/create-rule-options';
 import {type Executor} from '#schema/executor';
 import {type PkgManagerDef} from '#schema/pkg-manager-def';
 import {PluginSchema, type Plugin} from '#schema/plugin';
-import {type SomeReporterDef} from '#schema/reporter-def';
+import {type ReporterDef} from '#schema/reporter-def';
 import {RawRuleOptionsSchema} from '#schema/rule-options';
 import {type SomeRuleDef} from '#schema/some-rule-def';
 import {type StaticPluginMetadata} from '#schema/static-plugin-metadata';
@@ -70,7 +70,7 @@ export class PluginRegistry {
 
   #defsByKind = {
     [ComponentKinds.RuleDef]: new Map<string, SomeRuleDef>(),
-    [ComponentKinds.ReporterDef]: new Map<string, SomeReporterDef>(),
+    [ComponentKinds.ReporterDef]: new Map<string, ReporterDef>(),
     [ComponentKinds.PkgManagerDef]: new Map<string, PkgManagerDef>(),
     [ComponentKinds.Executor]: new Map<string, Executor>(),
   } as const;
