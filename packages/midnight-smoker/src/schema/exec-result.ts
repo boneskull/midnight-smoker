@@ -33,3 +33,7 @@ export const ExecErrorSchema = instanceofSchema(ExecError);
  * The result of running an `Executor`.
  */
 export type ExecResult = z.infer<typeof ExecResultSchema>;
+
+export function isExecResult(value: unknown): value is ExecResult {
+  return ExecResultSchema.safeParse(value).success;
+}

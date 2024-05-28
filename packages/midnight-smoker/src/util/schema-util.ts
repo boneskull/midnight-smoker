@@ -3,49 +3,12 @@
  *
  * @packageDocumentation
  */
-import type {Many} from 'lodash';
-import {
-  castArray as _castArray,
-  camelCase,
-  compact,
-  isFunction,
-  isObject,
-  kebabCase,
-  mapKeys,
-} from 'lodash';
+import {camelCase, isObject, kebabCase, mapKeys} from 'lodash';
 import type {EventEmitter} from 'node:events';
 import {Range, SemVer} from 'semver';
 import type {CamelCase, Class, KebabCase, PackageJson} from 'type-fest';
 import {z} from 'zod';
-
-/**
- * Type guard for an object with a `toJSON` method.
- *
- * **This function is duplicated in `util.ts` on purpose.**
- *
- * @param value Any value
- * @returns - `true` if `value` is an object with a `toJSON` method
- */
-function isSerializable<T>(value: T): value is T & {toJSON: () => unknown} {
-  return isObject(value) && 'toJSON' in value && isFunction(value.toJSON);
-}
-
-/**
- * Casts a defined value to an array of non-`undefined` values.
- *
- * If `value` is `undefined`, returns an empty array. If `value` is an `Array`,
- * returns the compacted array. Otherwise, returns an array with `value` as the
- * only element.
- *
- * This differs from {@link _castArray _.castArray} in that it refuses to put
- * `undefined` values within the array.
- *
- * @param value Any value
- * @returns An array, for sure!
- */
-export function castArray<T>(value?: Many<T>): T[] {
-  return compact(_castArray(value));
-}
+import {castArray, isSerializable} from './util';
 
 /**
  * Schema representing a non-empty string

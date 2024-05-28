@@ -10,8 +10,6 @@ import type {
 } from '#event/script-events';
 import {type MachineEvent} from '#machine/util';
 
-export type AnyScriptEvent = CtrlScriptEvents & {type: 'SCRIPT.*'};
-
 export type ComputedPkgManagerRunScriptsFields =
   | 'totalPkgManagers'
   | 'totalUniqueScripts'

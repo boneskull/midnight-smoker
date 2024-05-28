@@ -1,3 +1,5 @@
+import {InstallError} from '#error/install-error';
+import {PackError, PackParseError} from '#error/pack-error';
 import {type PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
 import {type InstallManifest} from '#schema/install-manifest';
 import {type InstallResult} from '#schema/install-result';
@@ -8,6 +10,9 @@ import {
   type PkgManagerPackContext,
   type PkgManagerRunScriptContext,
 } from '#schema/pkg-manager-def';
+import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
+import {type WorkspaceInfo} from '#schema/workspaces';
+import {isExecaError, isSmokerError} from '#util/error-util';
 import {type FileManager} from '#util/filemanager';
 import {isFunction} from 'lodash';
 import {fromPromise} from 'xstate';
@@ -53,6 +58,7 @@ export interface LifecycleInput {
 export interface OperationInput<Ctx extends PkgManagerContext> {
   ctx: Ctx;
   def: PkgManagerDef;
+  spec: StaticPkgManagerSpec;
 }
 
 /**
@@ -77,11 +83,8 @@ export interface PruneTempDirInput {
  * Happens prior to the "setup" lifecycle hook
  */
 export const createTempDir = fromPromise<string, CreateTempDirInput>(
-  async ({input: {spec, fileManager}}) => {
-    return await fileManager.createTempDir(
-      `${spec.pkgManager}-${spec.version}`,
-    );
-  },
+  async ({input: {spec, fileManager}}) =>
+    fileManager.createTempDir(`${spec.pkgManager}-${spec.version}`),
 );
 
 /**
@@ -121,9 +124,27 @@ export const teardownPkgManager = fromPromise<void, LifecycleInput>(
  * Packs a package into a tarball
  */
 export const pack = fromPromise<InstallManifest, PackInput>(
-  async ({input: {def, ctx}}) => {
-    const manifest = await def.pack(ctx);
-    return {localPath: ctx.localPath, ...manifest};
+  async ({input: {def, ctx, spec}}) => {
+    try {
+      const manifest = await def.pack(ctx);
+      return {localPath: ctx.localPath, ...manifest};
+    } catch (err) {
+      if (isSmokerError(PackError, err) || isSmokerError(PackParseError, err)) {
+        throw err;
+      }
+      throw new PackError(
+        'Pack failed',
+        spec,
+        {
+          pkgName: ctx.pkgName,
+          localPath: ctx.localPath,
+          pkgJson: ctx.pkgJson,
+          pkgJsonPath: ctx.pkgJsonPath,
+        } as WorkspaceInfo,
+        ctx.tmpdir,
+        err,
+      );
+    }
   },
 );
 
@@ -131,9 +152,32 @@ export const pack = fromPromise<InstallManifest, PackInput>(
  * Installs a package
  */
 export const install = fromPromise<InstallResult, InstallInput>(
-  async ({input: {def, ctx}}) => {
-    const rawResult = await def.install(ctx);
-    return {rawResult, installManifest: ctx.installManifest};
+  async ({input: {def, ctx, spec}}) => {
+    try {
+      const rawResult = await def.install(ctx);
+      if (!isExecaError(rawResult) && rawResult.failed) {
+        throw new InstallError(
+          'Install failed',
+          spec,
+          ctx.installManifest.pkgSpec,
+          ctx.installManifest.cwd,
+          rawResult,
+        );
+      }
+      return {rawResult, installManifest: ctx.installManifest};
+    } catch (err) {
+      if (isSmokerError(InstallError, err)) {
+        throw err;
+      } else {
+        throw new InstallError(
+          'Install failed',
+          spec,
+          ctx.installManifest.pkgSpec,
+          ctx.installManifest.cwd,
+          err,
+        );
+      }
+    }
   },
 );
 

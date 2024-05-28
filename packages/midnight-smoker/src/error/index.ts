@@ -12,6 +12,8 @@ export * from './base-error';
 
 export * from './codes';
 
+export * from './cleanup-error';
+
 export * from './component-collision-error';
 
 export * from './create-dir-error';
@@ -56,7 +58,7 @@ export * from './script-bailed';
 
 export * from './script-failed-error';
 
-export * from './smoker-error';
+export * from './smoke-error';
 
 export * from './smoker-reference-error';
 

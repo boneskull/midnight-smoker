@@ -23,13 +23,10 @@ module.exports = () => {
         instrument: false,
       },
       {
-        pattern: './packages/midnight-smoker/test/**/*.ts',
-        instrument: false,
-      },
-      {
         pattern: './packages/midnight-smoker/test/**/fixture/**/*',
         instrument: false,
       },
+      './packages/midnight-smoker/test/**/*.ts',
       './packages/midnight-smoker/src/**/*.ts',
       './packages/midnight-smoker/package.json',
       // './packages/midnight-smoker/src/package.json',

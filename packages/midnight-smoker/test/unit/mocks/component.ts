@@ -1,5 +1,6 @@
+import path from 'node:path';
 import {SKIPPED} from '../../../src/constants';
-import {type ExecResult} from '../../../src/executor';
+import {type ExecResult, type Executor} from '../../../src/executor';
 import {
   type InstallManifest,
   type RunScriptResult,
@@ -14,6 +15,8 @@ export const nullPkgManager: PkgManagerDef = {
   accepts() {
     return '1.0.0';
   },
+  async setup() {},
+  async teardown() {},
   async install() {
     const result: ExecResult = {
       stdout: '',
@@ -24,11 +27,14 @@ export const nullPkgManager: PkgManagerDef = {
     };
     return result;
   },
-  async pack() {
+  async pack(ctx) {
     const result: InstallManifest = {
-      cwd: '',
-      pkgName: '',
-      pkgSpec: '',
+      cwd: ctx.tmpdir,
+      pkgName: ctx.pkgName,
+      pkgSpec: `${ctx.pkgName}@1.0.0`,
+      localPath: ctx.localPath,
+      installPath: path.join(ctx.tmpdir, 'node_modules', 'foo'),
+      isAdditional: false,
     };
     return result;
   },
@@ -49,4 +55,15 @@ export const nullRule: RuleDef = {
   name: 'test-rule',
   description: 'test rule',
   check: async () => {},
+};
+
+export const nullExecutor: Executor = async (): Promise<ExecResult> => {
+  const result: ExecResult = {
+    stdout: '',
+    stderr: '',
+    command: '',
+    exitCode: 0,
+    failed: false,
+  };
+  return result;
 };

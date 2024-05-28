@@ -11,7 +11,6 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 
 import {MIDNIGHT_SMOKER, PACKAGE_JSON, UNKNOWN_TMPDIR_PREFIX} from '#constants';
-import {DirCreationError} from '#error/create-dir-error';
 import {fromUnknownError} from '#error/from-unknown-error';
 import {MissingPackageJsonError} from '#error/missing-pkg-json-error';
 import {UnreadablePackageJsonError} from '#error/unreadable-pkg-json-error';
@@ -117,19 +116,11 @@ export class FileManager {
       prefix,
       path.sep,
     );
-    try {
-      // this is only required if we're using an in-memory filesystem
-      await this.fs.promises.mkdir(fullPrefix, {recursive: true});
-      const tempDir = await this.fs.promises.mkdtemp(fullPrefix);
-      this.tempDirs.add(tempDir);
-      return tempDir;
-    } catch (err) {
-      throw new DirCreationError(
-        `Failed to create temp directory with prefix ${fullPrefix}`,
-        fullPrefix,
-        err as NodeJS.ErrnoException,
-      );
-    }
+    // this is only required if we're using an in-memory filesystem
+    await this.fs.promises.mkdir(fullPrefix, {recursive: true});
+    const tempDir = await this.fs.promises.mkdtemp(fullPrefix);
+    this.tempDirs.add(tempDir);
+    return tempDir;
   }
 
   public async findPkgUp(

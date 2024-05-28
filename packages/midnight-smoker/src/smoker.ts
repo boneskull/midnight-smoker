@@ -16,10 +16,9 @@ import {type Component, type ComponentObject} from '#plugin/component';
 import {type SomeRuleDef} from '#schema/some-rule-def';
 import {type StaticPluginMetadata} from '#schema/static-plugin-metadata';
 import {FileManager} from '#util/filemanager';
-import {castArray} from '#util/schema-util';
+import {castArray} from '#util/util';
 import Debug from 'debug';
 import {createActor, toPromise, type AnyStateMachine} from 'xstate';
-import {SmokeFailedError} from './error';
 import {type SmokeResults} from './event';
 import {type PkgManagerDef} from './pkg-manager';
 import {BLESSED_PLUGINS, PluginRegistry, isBlessedPlugin} from './plugin';
@@ -210,7 +209,9 @@ export class Smoker {
       debug('completed with results: %o', results);
       return results;
     } else {
-      throw new SmokeFailedError('Failure!', output.error, {results: output});
+      // TODO fix
+      throw new Error();
+      // throw new SmokeFailedError('Failure!', output.error, {results: output});
     }
   }
 

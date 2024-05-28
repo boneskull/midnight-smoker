@@ -4,7 +4,15 @@
  * @packageDocumentation
  */
 
-import {memoize as _memoize, once as _once, isFunction, isObject} from 'lodash';
+import {
+  castArray as _castArray,
+  memoize as _memoize,
+  once as _once,
+  compact,
+  isFunction,
+  isObject,
+  type Many,
+} from 'lodash';
 
 export interface Serializable<T = unknown> {
   toJSON(): T;
@@ -103,4 +111,20 @@ export function memoize<
       this[context.name] = _memoize(func, resolver);
     });
   };
+} /**
+ * Casts a defined value to an array of non-`undefined` values.
+ *
+ * If `value` is `undefined`, returns an empty array. If `value` is an `Array`,
+ * returns the compacted array. Otherwise, returns an array with `value` as the
+ * only element.
+ *
+ * This differs from {@link _castArray _.castArray} in that it refuses to put
+ * `undefined` values within the array.
+ *
+ * @param value Any value
+ * @returns An array, for sure!
+ */
+
+export function castArray<T>(value?: Many<T>): T[] {
+  return compact(_castArray(value));
 }

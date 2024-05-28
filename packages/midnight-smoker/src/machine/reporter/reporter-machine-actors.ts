@@ -1,6 +1,11 @@
 import {fromUnknownError} from '#error/from-unknown-error';
 import {ReporterError} from '#error/reporter-error';
-import {type DataForEvent, type EventData, type EventName} from '#event/events';
+import {ReporterListenerError} from '#error/reporter-listener-error';
+import {
+  type DataForEvent,
+  type EventName,
+  type SomeDataForEvent,
+} from '#event/events';
 import {
   type ReporterContext,
   type ReporterDef,
@@ -11,9 +16,8 @@ import {isFunction} from 'lodash';
 import {fromPromise} from 'xstate';
 
 export interface DrainQueueInput {
-  queue: DataForEvent<keyof EventData>[];
+  queue: SomeDataForEvent[];
   def: ReporterDef;
-
   ctx: ReporterContext;
 }
 
@@ -42,7 +46,17 @@ export const drainQueue = fromPromise<void, DrainQueueInput>(
       const listenerName = `on${event.type}` as keyof ReporterListeners;
 
       if (isFunction(def[listenerName])) {
-        await invokeListener(def, ctx, event);
+        try {
+          await invokeListener(def, ctx, event);
+        } catch (err) {
+          throw new ReporterListenerError(
+            fromUnknownError(err),
+            event,
+            listenerName,
+            def.name,
+            ctx.plugin,
+          );
+        }
       }
     }
   },
@@ -58,11 +72,7 @@ export const setupReporter = fromPromise<void, ReporterLifecycleHookInput>(
     await Promise.resolve();
     const {setup} = def;
     if (isFunction(setup)) {
-      try {
-        await setup(ctx);
-      } catch (err) {
-        throw new ReporterError(fromUnknownError(err), def);
-      }
+      await setup(ctx);
     }
   },
 );
@@ -72,11 +82,7 @@ export const teardownReporter = fromPromise<void, ReporterLifecycleHookInput>(
     await Promise.resolve();
     const {teardown} = def;
     if (isFunction(teardown)) {
-      try {
-        await teardown(ctx);
-      } catch (err) {
-        throw new ReporterError(fromUnknownError(err), def);
-      }
+      await teardown(ctx);
     }
   },
 );

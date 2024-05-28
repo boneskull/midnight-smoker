@@ -12,8 +12,6 @@ import type {
 import type {MachineEvent} from '#machine/util';
 import {type ComputedPkgEventFields} from './pkg-events';
 
-export type AnyPackEvent = CtrlPackEvents & {type: 'PACK.*'};
-
 export type ComputedPkgManagerPackFields = 'totalPkgs' | 'totalPkgManagers';
 
 export type CtrlPackEvents =

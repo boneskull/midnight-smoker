@@ -1,20 +1,20 @@
-import {type SmokeFailedError} from '#error/smoker-error';
+import {type SmokeError} from '#error/smoke-error';
 import type {SmokerOptions} from '#options/options';
-import {type LintResult} from '#schema/lint-result';
-import {type RunScriptResult} from '#schema/run-script-result';
+import {type LintResult, type LintResultFailed} from '#schema/lint-result';
+import {
+  type RunScriptResult,
+  type RunScriptResultFailed,
+} from '#schema/run-script-result';
 import {type StaticPluginMetadata} from '#schema/static-plugin-metadata';
 import type {SmokerEvent} from './event-constants';
 
 /**
  * Emitted after all other events have been emitted, and just before exit.
  *
- * This implies that {@link SmokerEvents.UnknownError} will _not_ be emitted if
- * it has not been emitted already.
- *
  * @event
  */
 
-export interface BeforeExitEventData {}
+export type BeforeExitEventData = void;
 
 /**
  * Emitted only if the `--linger` option was provided; a list of temp
@@ -38,24 +38,32 @@ export interface SmokeBeginEventData {
   opts: SmokerOptions;
 }
 
+interface SmokeEndEventData extends SmokeBeginEventData {
+  scripts?: RunScriptResult[];
+  lint?: LintResult[];
+}
+
 /**
  * Emitted at the end of execution if no script or automated check failed.
  *
  * @event
  */
 
-export interface SmokeOkEventData extends SmokeBeginEventData {
-  scripts?: RunScriptResult[];
-  lint?: LintResult[];
-}
+export interface SmokeOkEventData extends SmokeEndEventData {}
 
 /**
  * Emitted at the end of execution if any script or automated check failed.
  *
  * @event
  */
-export interface SmokeFailedEventData extends SmokeBeginEventData {
-  error: SmokeFailedError<{scripts?: RunScriptResult[]; lint?: LintResult}>;
+export interface SmokeFailedEventData extends SmokeEndEventData {
+  lintFailed: LintResultFailed[];
+
+  scriptFailed: RunScriptResultFailed[];
+}
+
+export interface SmokeErrorEventData extends SmokeEndEventData {
+  error: SmokeError;
 }
 
 /**
@@ -81,5 +89,6 @@ export interface SmokerEventData {
   [SmokerEvent.SmokeBegin]: SmokeBeginEventData;
   [SmokerEvent.SmokeFailed]: SmokeFailedEventData;
   [SmokerEvent.SmokeOk]: SmokeOkEventData;
+  [SmokerEvent.SmokeError]: SmokeErrorEventData;
   [SmokerEvent.UnknownError]: UnknownErrorEventData;
 }

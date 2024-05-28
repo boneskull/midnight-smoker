@@ -1,6 +1,9 @@
 import {ERROR, FAILED, FINAL, OK, PARALLEL, SKIPPED} from '#constants';
-import {type SomeSmokerError} from '#error/base-error';
+import {TempDirError} from '#error/create-dir-error';
+import {fromUnknownError} from '#error/from-unknown-error';
 import {InstallError} from '#error/install-error';
+import {LifecycleError} from '#error/lifecycle-error';
+import {MachineError} from '#error/machine-error';
 import {type PackError, type PackParseError} from '#error/pack-error';
 import {type Executor} from '#executor';
 import {type ActorOutput} from '#machine/util';
@@ -27,12 +30,14 @@ import {
 import {type RunScriptManifest} from '#schema/run-script-manifest';
 import {type RunScriptResult} from '#schema/run-script-result';
 import {type SomeRuleDef} from '#schema/some-rule-def';
+import {type StaticPluginMetadata} from '#schema/static-plugin-metadata';
 import {type WorkspaceInfo} from '#schema/workspaces';
 import {isSmokerError} from '#util/error-util';
 import {type FileManager} from '#util/filemanager';
 import {uniqueId} from '#util/unique-id';
 import {head, isEmpty, keyBy, partition} from 'lodash';
 import assert from 'node:assert';
+import {type ValueOf} from 'type-fest';
 import {
   and,
   assign,
@@ -80,6 +85,7 @@ import {
   type CtrlRunScriptSkippedEvent,
 } from '../control/script-events';
 import {type CtrlLingeredEvent} from '../control/smoker-events';
+import {type RuleInitPayload} from '../loader/loader-machine-types';
 import {
   createTempDir,
   install,
@@ -105,34 +111,9 @@ export interface InstallItem {
   installManifest: InstallManifest;
 }
 
-/**
- * State names.
- *
- * These are _not_ unique; the same name may be used across multiple states
- * (e.g., `done`).
- */
-const S = {
-  Idle: 'idle',
-  Startup: 'startup',
-  ReadyingFilesystem: 'readyingFilesystem',
-  CreatingContext: 'creatingContext',
-  SetupLifecycle: 'setupLifecycle',
-  Done: 'done',
-  Working: 'working',
-  Packing: 'packing',
-  PackingPkgs: 'packingPkgs',
-  Errored: 'errored',
-  Installing: 'installing',
-  InstallingPkgs: 'installingPkgs',
-  InstallPkg: 'installPkg',
-  InstalledPkg: 'installedPkg',
-  Linting: 'linting',
-  LintingPkgs: 'lintingPkgs',
-  RunningScripts: 'runningScripts',
-  Running: 'running',
-  Shutdown: 'shutdown',
-  CleanupFilesystem: 'cleanupFilesystem',
-  TeardownLifecycle: 'teardownLifecycle',
+const Tag = {
+  Error: 'error',
+  Lifecycle: 'lifecycle',
 } as const;
 
 function isWorkspaceManifest(
@@ -155,7 +136,11 @@ export interface PkgManagerMachineContext extends PkgManagerMachineInput {
    */
   currentInstallJob?: InstallItem;
 
-  error?: SomeSmokerError;
+  error?: MachineError;
+
+  packError?: PackError | PackParseError;
+
+  installError?: InstallError;
 
   installManifests?: InstallManifest[];
 
@@ -170,6 +155,10 @@ export interface PkgManagerMachineContext extends PkgManagerMachineInput {
   opts: PkgManagerOpts;
 
   packQueue: WorkspaceInfo[];
+
+  ruleDefs?: SomeRuleDef[];
+
+  ruleInitPayloads: RuleInitPayload[];
 
   ruleResultMap: Map<string, Map<string, CheckResult[]>>;
 
@@ -189,7 +178,7 @@ export interface PkgManagerMachineContext extends PkgManagerMachineInput {
 
 export interface PkgManagerMachineInput {
   additionalDeps?: string[];
-
+  plugin: StaticPluginMetadata;
   def: PkgManagerDef;
 
   executor: Executor;
@@ -206,9 +195,7 @@ export interface PkgManagerMachineInput {
 
   ruleConfigs: BaseRuleConfigRecord;
 
-  ruleDefs?: SomeRuleDef[];
-
-  ruleIds?: WeakMap<SomeRuleDef, string>;
+  ruleInitPayloads?: RuleInitPayload[];
 
   scripts?: string[];
 
@@ -231,12 +218,15 @@ export interface RunScriptItem {
   signal: AbortSignal;
 }
 
+export type PkgManagerMachineTags = ValueOf<typeof Tag>;
+
 export const PkgManagerMachine = setup({
   types: {
     input: {} as PkgManagerMachineInput,
     context: {} as PkgManagerMachineContext,
     events: {} as PkgManagerMachineEvents,
     output: {} as PkgManagerMachineOutput,
+    tags: {} as PkgManagerMachineTags,
   },
   actors: {
     RuleMachine,
@@ -377,7 +367,7 @@ export const PkgManagerMachine = setup({
       ({
         self: {id},
         context: {
-          error,
+          packError,
           index: pkgManagerIndex,
           installManifests = [],
           workspaceInfo,
@@ -390,10 +380,10 @@ export const PkgManagerMachine = setup({
           pkgManager: spec.toJSON(),
           sender: id,
         };
-        return error
+        return packError
           ? {
               type: 'PACK.PKG_MANAGER_PACK_FAILED',
-              error: error as PackError | PackParseError,
+              error: packError,
               ...data,
             }
           : {
@@ -510,9 +500,10 @@ export const PkgManagerMachine = setup({
           const job = queue.shift();
           assert.ok(job);
           const {runScriptManifest, signal} = job;
+          const staticSpec = spec.toJSON();
           const evt: CtrlRunScriptBeginEvent = {
             type: 'SCRIPT.RUN_SCRIPT_BEGIN',
-            pkgManager: spec.toJSON(),
+            pkgManager: staticSpec,
             manifest: runScriptManifest,
             sender,
           };
@@ -530,6 +521,7 @@ export const PkgManagerMachine = setup({
                 signal,
                 ...ctx,
               },
+              spec: staticSpec,
             },
           });
         }
@@ -549,10 +541,11 @@ export const PkgManagerMachine = setup({
         while (queue.length) {
           const workspace = queue.shift();
           assert.ok(workspace);
+          const staticSpec = spec.toJSON();
           const evt: CtrlPkgPackBeginEvent = {
             sender,
             type: 'PACK.PKG_PACK_BEGIN',
-            pkgManager: spec.toJSON(),
+            pkgManager: staticSpec,
             workspace,
           };
           enqueue.sendTo(parentRef, evt);
@@ -565,6 +558,7 @@ export const PkgManagerMachine = setup({
                 ...workspace,
                 signal,
               },
+              spec: staticSpec,
             },
           });
         }
@@ -635,16 +629,13 @@ export const PkgManagerMachine = setup({
         context: {
           spec,
           ruleMachineRefs,
-          ruleIds,
           ruleConfigs,
           lintQueue,
-          ruleDefs,
+          ruleInitPayloads,
           parentRef,
         },
       }) => {
         assert.ok(lintQueue);
-        assert.ok(ruleDefs);
-        assert.ok(ruleIds);
         assert.ok(ruleMachineRefs);
 
         const queue = [...lintQueue];
@@ -652,8 +643,7 @@ export const PkgManagerMachine = setup({
           const job = queue.shift();
           assert.ok(job);
 
-          for (const def of ruleDefs) {
-            const ruleId = ruleIds.get(def);
+          for (const {id: ruleId} of ruleInitPayloads) {
             assert.ok(ruleId);
             const config = ruleConfigs[ruleId];
             const evt: CtrlRuleBeginEvent = {
@@ -711,8 +701,8 @@ export const PkgManagerMachine = setup({
           );
           assert.ok(workspace);
 
-          const lintManifest: LintManifest = {...workspace, installPath};
           if (shouldLint) {
+            const lintManifest: LintManifest = {...workspace, installPath};
             enqueue.raise({
               type: 'LINT',
               manifest: lintManifest,
@@ -817,8 +807,11 @@ export const PkgManagerMachine = setup({
      */
     enqueueAdditionalDeps: assign({
       installQueue: ({
-        context: {installQueue = [], tmpdir, additionalDeps},
+        context: {installQueue = [], tmpdir, additionalDeps, workspaceInfo},
       }) => {
+        if (isEmpty(workspaceInfo)) {
+          return installQueue;
+        }
         assert.ok(tmpdir);
         assert.ok(isEmpty(installQueue));
         return additionalDeps.map((dep) => ({
@@ -912,10 +905,61 @@ export const PkgManagerMachine = setup({
         return new Map(ruleResultMap);
       },
     }),
-    assignError: assign({error: (_, error: SomeSmokerError) => error}),
+    assignPackError: assign({
+      packError: (_, packError: PackError | PackParseError) => packError,
+    }),
+    assignInstallError: assign({
+      installError: (_, installError: InstallError) => installError,
+    }),
+    assignError: assign({
+      error: ({self, context}, error: Error) => {
+        if (context.error) {
+          return context.error.clone(error);
+        }
+        return new MachineError(
+          `Package manager encountered an error`,
+          error,
+          self.id,
+        );
+      },
+    }),
+    assignRuleMachineRefs: assign({
+      ruleMachineRefs: ({
+        self,
+        spawn,
+        context: {ruleInitPayloads, ruleConfigs},
+      }) => {
+        return Object.fromEntries(
+          ruleInitPayloads.map(({def, id: ruleId}) => {
+            assert.ok(ruleId);
+            const id = uniqueId({prefix: 'rule', postfix: ruleId});
+            const actorRef = spawn('RuleMachine', {
+              id,
+              input: {
+                def,
+                ruleId,
+                config: ruleConfigs[ruleId],
+                parentRef: self,
+              },
+            });
+            // INDEXED BY RULE ID
+            return [ruleId, actorRef];
+          }),
+        );
+      },
+    }),
   },
   guards: {
-    shouldPruneTempDir: ({context: {linger}}) => !linger,
+    shouldPruneTempDir: and([
+      'hasTempDir',
+      'hasContext',
+      ({context: {linger}}) => !linger,
+    ]),
+    shouldLinger: and([
+      'hasTempDir',
+      'hasContext',
+      ({context: {linger}}) => Boolean(linger),
+    ]),
     hasContext: ({context: {ctx}}) => Boolean(ctx),
     hasTempDir: ({context: {tmpdir}}) => Boolean(tmpdir),
     isBootstrapped: and(['hasContext', 'hasTempDir']),
@@ -925,7 +969,7 @@ export const PkgManagerMachine = setup({
     hasLintJobs: ({context: {lintQueue}}) => !isEmpty(lintQueue),
     shouldShutdown: ({context: {shouldShutdown}}) => shouldShutdown,
     hasError: ({context: {error}}) => Boolean(error),
-    hasWorkspaces: ({context: {workspaceInfo}}) => !isEmpty(workspaceInfo),
+    nothingToDo: ({context: {workspaceInfo}}) => isEmpty(workspaceInfo),
     hasInstallManifests: ({context: {installManifests}}) =>
       !isEmpty(installManifests),
     isInstallationComplete: and([
@@ -936,57 +980,29 @@ export const PkgManagerMachine = setup({
         installResults.length === installManifests.length,
     ]),
     isPackingComplete: and([
-      'hasWorkspaces',
       not('hasPackJobs'),
       ({context: {installManifests = [], workspaceInfo, additionalDeps}}) =>
         installManifests.length ===
         additionalDeps.length + workspaceInfo.length,
     ]),
-    hasRules: ({context: {ruleDefs: rules}}) => !isEmpty(rules),
-    shouldLint: and(['hasRules', ({context: {shouldLint}}) => shouldLint]),
+    hasRuleDefs: ({context: {ruleDefs}}) => !isEmpty(ruleDefs),
+    shouldLint: and(['hasRuleDefs', ({context: {shouldLint}}) => shouldLint]),
     shouldRunScripts: ({context: {scripts}}) => !isEmpty(scripts),
-    isLintableInstallManifest: (
-      {context: {shouldLint}},
-      installManifest: InstallManifest,
-    ) =>
-      Boolean(
-        shouldLint &&
-          installManifest.localPath &&
-          installManifest.installPath &&
-          !installManifest.isAdditional,
-      ),
-    isRunnableManifest: (
-      {context: {scripts}},
-      installManifest: InstallManifest,
-    ) =>
-      Boolean(
-        !isEmpty(scripts) &&
-          installManifest.localPath &&
-          installManifest.installPath &&
-          !installManifest.isAdditional,
-      ),
-    didRunAllRulesForManifest: (
-      {context: {ruleResultMap, ruleDefs: rules}},
-      manifest: LintManifest,
-    ) => {
-      return Boolean(
-        rules && ruleResultMap.get(manifest.installPath)?.size === rules.length,
-      );
-    },
     isLintingComplete: and([
       not('hasLintJobs'),
-      'hasRules',
-      ({
-        context: {lintManifests = [], ruleResultMap, ruleDefs: rules = []},
-      }) => {
-        if (isEmpty(lintManifests) || !ruleResultMap.size || isEmpty(rules)) {
+      'hasRuleDefs',
+      ({context: {lintManifests = [], ruleResultMap, ruleDefs = []}}) => {
+        if (
+          isEmpty(lintManifests) ||
+          !ruleResultMap.size ||
+          isEmpty(ruleDefs)
+        ) {
           return false;
         }
-        const ruleCount = rules.length;
-        return lintManifests.every(
-          (manifest) =>
-            ruleResultMap.get(manifest.installPath)?.size === ruleCount,
-        );
+        const ruleCount = ruleDefs.length;
+        return lintManifests.every((manifest) => {
+          return ruleResultMap.get(manifest.installPath)?.size === ruleCount;
+        });
       },
     ]),
     isRunningComplete: and([
@@ -1004,8 +1020,8 @@ export const PkgManagerMachine = setup({
     log(({context: {spec}}) => `PkgManagerMachine ${spec} exiting gracefully`),
   ],
   entry: [
-    log(({context: {spec, shouldLint, scripts}}) => {
-      let msg = `PkgManagerMachine ${spec} starting up`;
+    log(({context: {spec, workspaceInfo, shouldLint, scripts}}) => {
+      let msg = `PkgManagerMachine ${spec} starting up with ${workspaceInfo.length} workspace(s)`;
       if (shouldLint) {
         msg += '; will lint';
       }
@@ -1015,19 +1031,22 @@ export const PkgManagerMachine = setup({
       return msg;
     }),
   ],
-  initial: S.Startup,
+  initial: 'startup',
   context: ({
     input: {
       opts: {loose = false, verbose = false} = {},
       shouldLint = false,
       shouldShutdown = false,
       additionalDeps = [],
+      ruleInitPayloads = [],
       workspaceInfo,
       ...input
     },
   }) => ({
     ...input,
     workspaceInfo,
+    ruleInitPayloads,
+    ruleDefs: ruleInitPayloads.map(({def}) => def),
     opts: {loose, verbose},
     packQueue: [...workspaceInfo],
     installQueue: [],
@@ -1044,39 +1063,49 @@ export const PkgManagerMachine = setup({
       actions: [log(({context: {error}}) => `ERROR: ${error?.message}`)],
     },
   ],
-  on: {
-    HALT: {
-      actions: [log('received HALT; will shutdown asap'), {type: 'shutdown'}],
-    },
-  },
   states: {
-    [S.Startup]: {
-      initial: S.ReadyingFilesystem,
+    startup: {
+      initial: 'readyingFilesystem',
       states: {
-        [S.ReadyingFilesystem]: {
+        readyingFilesystem: {
           entry: [log('creating temp dir')],
           invoke: {
             src: 'createTempDir',
             input: ({context: {fileManager, spec}}) => ({spec, fileManager}),
             onDone: {
               actions: [
-                {type: 'assignTmpdir', params: ({event: {output}}) => output},
+                {
+                  type: 'assignTmpdir',
+                  params: ({event: {output}}) => output,
+                },
               ],
-              target: S.CreatingContext,
+              target: 'creatingContext',
+            },
+            onError: {
+              actions: [
+                {
+                  type: 'assignError',
+                  params: ({context: {spec}, event: {error}}) =>
+                    new TempDirError(
+                      `Package manager ${spec.spec} could not create a temp dir`,
+                      spec,
+                      error as NodeJS.ErrnoException,
+                    ),
+                },
+              ],
+              target: 'errored',
             },
           },
         },
-        [S.CreatingContext]: {
-          entry: [log('creating context'), {type: 'createPkgManagerContext'}],
-          always: [
-            {
-              guard: {type: 'isBootstrapped'},
-              target: S.SetupLifecycle,
-            },
-          ],
+        creatingContext: {
+          always: {
+            actions: {type: 'createPkgManagerContext'},
+            target: 'setupLifecycle',
+          },
         },
-        [S.SetupLifecycle]: {
+        setupLifecycle: {
           entry: [log('running setup lifecycle hook')],
+          tags: [Tag.Lifecycle],
           invoke: {
             src: 'setupPkgManager',
             input: ({context: {def, ctx}}) => {
@@ -1087,37 +1116,70 @@ export const PkgManagerMachine = setup({
               };
             },
             onDone: {
-              target: S.Done,
+              target: 'done',
+            },
+            onError: {
+              actions: [
+                {
+                  type: 'assignError',
+                  params: ({event: {error}, context: {spec, plugin}}) =>
+                    new LifecycleError(
+                      fromUnknownError(error),
+                      'setup',
+                      'pkg-manager',
+                      spec.spec,
+                      plugin,
+                    ),
+                },
+              ],
+              target: 'errored',
             },
           },
         },
-        [S.Done]: {
+        done: {
+          type: FINAL,
+        },
+        errored: {
+          tags: [Tag.Error],
           type: FINAL,
         },
       },
-      onDone: {
-        target: S.Working,
-      },
+      onDone: [
+        {
+          guard: {type: 'hasError'},
+          target: 'shutdown',
+        },
+        {
+          target: 'working',
+        },
+      ],
     },
-    [S.Working]: {
+    working: {
       description:
         'This is where most things happen. As soon as a pkg is packed, it will be installed. As soon as it is installed, we can lint or run scripts; this all happens in parallel',
       type: PARALLEL,
       // we can start installing additional deps as soon as we have a tmpdir
       entry: [{type: 'enqueueAdditionalDeps'}],
       states: {
-        [S.Packing]: {
+        packing: {
           description:
             'Packs chosen workspaces in parallel. The packing queue should be non-empty when entering this state',
-          entry: [
-            log(
-              ({context: {packQueue}}) =>
-                `packing ${packQueue.length} workspaces`,
-            ),
-          ],
-          initial: S.PackingPkgs,
+          initial: 'idle',
           states: {
-            [S.PackingPkgs]: {
+            idle: {
+              description: 'Short-circuit before PkgManagerPackBegin is sent',
+              always: [
+                {
+                  guard: {type: 'nothingToDo'},
+                  actions: [log('nothing to pack!')],
+                  target: 'done',
+                },
+                {
+                  target: 'packingPkgs',
+                },
+              ],
+            },
+            packingPkgs: {
               entry: [{type: 'sendPkgManagerPackBegin'}],
               exit: [{type: 'sendPkgManagerPackEnd'}],
               always: [
@@ -1125,11 +1187,11 @@ export const PkgManagerMachine = setup({
                   description:
                     'Immediately transition to Errored state if an error occurs',
                   guard: {type: 'hasError'},
-                  target: S.Errored,
+                  target: 'errored',
                 },
                 {
                   guard: {type: 'isPackingComplete'},
-                  target: S.Done,
+                  target: 'done',
                 },
                 {
                   guard: {type: 'hasPackJobs'},
@@ -1157,6 +1219,10 @@ export const PkgManagerMachine = setup({
                   actions: [
                     log('pack errored!'),
                     {
+                      type: 'assignPackError',
+                      params: ({event: {error}}) => error,
+                    },
+                    {
                       type: 'assignError',
                       params: ({event: {error}}) => error,
                     },
@@ -1168,38 +1234,44 @@ export const PkgManagerMachine = setup({
                 },
               },
             },
-            [S.Errored]: {
+            errored: {
               entry: [log('packing errored')],
               type: FINAL,
+              tags: [Tag.Error],
             },
-            [S.Done]: {
+            done: {
               entry: [log('packing complete')],
               type: FINAL,
             },
           },
         },
-        [S.Installing]: {
+        installing: {
           description: 'Installs in serial',
           entry: [log('ready to install')],
-          initial: S.Idle,
+          initial: 'idle',
           states: {
-            [S.Idle]: {
+            idle: {
               always: [
                 {
                   guard: {type: 'hasInstallJobs'},
-                  target: S.InstallingPkgs,
+                  target: 'installingPkgs',
+                },
+                {
+                  guard: {type: 'nothingToDo'},
+                  actions: [log('nothing to install!')],
+                  target: 'done',
                 },
               ],
             },
-            [S.InstallingPkgs]: {
+            installingPkgs: {
               entry: [{type: 'sendPkgManagerInstallBegin'}],
               exit: [
                 {type: 'sendPkgManagerInstallEnd'},
                 {type: 'freeInstallResults'},
               ],
-              initial: S.InstallPkg,
+              initial: 'installPkg',
               states: {
-                [S.InstallPkg]: {
+                installPkg: {
                   entry: [
                     {
                       type: 'takeInstallJob',
@@ -1211,12 +1283,16 @@ export const PkgManagerMachine = setup({
                   invoke: {
                     src: 'install',
                     input: ({
-                      context: {def, ctx, signal, currentInstallJob},
+                      context: {def, ctx, signal, currentInstallJob, spec},
                     }): InstallInput => {
                       assert.ok(currentInstallJob);
                       assert.ok(ctx);
 
-                      return {def, ctx: {...ctx, ...currentInstallJob, signal}};
+                      return {
+                        def,
+                        ctx: {...ctx, ...currentInstallJob, signal},
+                        spec: spec.toJSON(),
+                      };
                     },
                     onDone: {
                       actions: [
@@ -1233,11 +1309,15 @@ export const PkgManagerMachine = setup({
                           params: ({event: {output}}) => output,
                         },
                       ],
-                      target: S.InstalledPkg,
+                      target: 'installedPkg',
                     },
 
                     onError: {
                       actions: [
+                        {
+                          type: 'assignInstallError',
+                          params: ({event: {error}}) => error as InstallError,
+                        },
                         {
                           type: 'sendPkgInstallFailed',
                           params: ({event: {error}}) => error as InstallError,
@@ -1247,75 +1327,77 @@ export const PkgManagerMachine = setup({
                           params: ({event: {error}}) => error as InstallError,
                         },
                       ],
-                      target: S.Errored,
+                      target: 'errored',
                     },
                   },
                 },
-                [S.InstalledPkg]: {
+                installedPkg: {
                   always: [
                     {
                       guard: {type: 'hasError'},
-                      target: S.Errored,
+                      target: 'errored',
                     },
                     {
                       guard: {type: 'hasInstallJobs'},
-                      target: S.InstallPkg,
+                      target: 'installPkg',
                     },
                     {
                       guard: {type: 'isInstallationComplete'},
-                      target: S.Done,
+                      target: 'done',
                     },
                   ],
                 },
-                [S.Done]: {
+                done: {
                   type: FINAL,
                 },
-                [S.Errored]: {
+                errored: {
+                  tags: [Tag.Error],
                   type: FINAL,
                 },
               },
               onDone: {
-                target: S.Done,
+                target: 'done',
               },
             },
-            [S.Done]: {
+            done: {
               entry: [log('installation complete')],
               type: FINAL,
             },
-            [S.Errored]: {
+            errored: {
               entry: [log('installation errored')],
+              tags: [Tag.Error],
               type: FINAL,
             },
           },
         },
-        [S.RunningScripts]: {
-          initial: S.Idle,
+        runningScripts: {
+          initial: 'idle',
           states: {
-            [S.Idle]: {
+            idle: {
               description:
                 'A list of scripts should be provided within the machine input; if it is empty, we can exit early',
               always: [
                 {
                   guard: {type: 'shouldRunScripts'},
-                  target: S.Running,
+                  target: 'running',
                 },
                 {
                   guard: not('shouldRunScripts'),
-                  target: S.Done,
-                  actions: [log('no scripts to run')],
+                  target: 'done',
+                  actions: [log('no custom scripts to run')],
                 },
               ],
             },
-            [S.Running]: {
+            running: {
               entry: [{type: 'sendPkgManagerRunScriptsBegin'}],
               always: [
                 {
                   guard: {type: 'hasError'},
-                  target: S.Errored,
+                  target: 'errored',
                 },
                 {
                   guard: {type: 'isRunningComplete'},
-                  target: S.Done,
+                  target: 'done',
                 },
                 {
                   guard: {type: 'hasRunScriptJobs'},
@@ -1366,18 +1448,19 @@ export const PkgManagerMachine = setup({
                 },
               },
             },
-            [S.Errored]: {
+            errored: {
               entry: log('script running errored'),
               type: FINAL,
+              tags: [Tag.Error],
             },
-            [S.Done]: {
+            done: {
               entry: log('script running complete'),
               type: FINAL,
             },
           },
         },
-        [S.Linting]: {
-          initial: S.Idle,
+        linting: {
+          initial: 'idle',
           on: {
             CHECK_RESULT: {
               description:
@@ -1405,52 +1488,26 @@ export const PkgManagerMachine = setup({
             },
           },
           states: {
-            [S.Idle]: {
+            idle: {
               description:
                 'If the `lint` flag was not passed into the Smoker options, we can exit early',
               always: [
                 {
                   guard: {type: 'shouldLint'},
-                  target: S.LintingPkgs,
+                  target: 'lintingPkgs',
                 },
                 {
                   guard: not('shouldLint'),
-                  target: S.Done,
+                  actions: log('no linting to do'),
+                  target: 'done',
                 },
               ],
             },
             // TODO error handling
-            [S.LintingPkgs]: {
+            lintingPkgs: {
               entry: [
                 {type: 'sendPkgManagerLintBegin'},
-                assign({
-                  ruleMachineRefs: ({
-                    self,
-                    spawn,
-                    context: {ruleDefs, ruleIds, ruleConfigs},
-                  }) => {
-                    assert.ok(ruleDefs);
-                    assert.ok(ruleIds);
-                    return Object.fromEntries(
-                      ruleDefs.map((def) => {
-                        const ruleId = ruleIds.get(def);
-                        assert.ok(ruleId);
-                        const id = uniqueId({prefix: 'rule', postfix: ruleId});
-                        const actorRef = spawn('RuleMachine', {
-                          id,
-                          input: {
-                            def,
-                            ruleId,
-                            config: ruleConfigs[ruleId],
-                            parentRef: self,
-                          },
-                        });
-                        // INDEXED BY RULE ID
-                        return [ruleId, actorRef];
-                      }),
-                    );
-                  },
-                }),
+                {type: 'assignRuleMachineRefs'},
               ],
               always: [
                 {
@@ -1483,7 +1540,7 @@ export const PkgManagerMachine = setup({
                     description:
                       'Send the RuleOk or RuleFailed event to the parent, then exit the state. This event should only be sent via raise()',
                     guard: {type: 'isLintingComplete'},
-                    target: S.Done,
+                    target: 'done',
                     actions: [
                       {
                         type: 'sendRuleEnd',
@@ -1510,9 +1567,14 @@ export const PkgManagerMachine = setup({
                 ],
               },
             },
-            [S.Done]: {
+            done: {
               entry: log('linting complete'),
               type: FINAL,
+            },
+            errored: {
+              entry: log('linting errored'),
+              type: FINAL,
+              tags: [Tag.Error],
             },
           },
         },
@@ -1520,26 +1582,26 @@ export const PkgManagerMachine = setup({
       onDone: [
         {
           guard: {type: 'shouldShutdown'},
-          target: S.Shutdown,
+          target: 'shutdown',
           actions: [log('shutting down')],
         },
       ],
     },
-    [S.Shutdown]: {
-      initial: S.Idle,
+    shutdown: {
+      initial: 'idle',
       states: {
-        [S.Idle]: {
+        idle: {
           always: [
             {
               guard: {type: 'shouldPruneTempDir'},
-              target: S.CleanupFilesystem,
+              target: 'cleanupFilesystem',
               actions: [
                 log(({context: {tmpdir}}) => `will destroy temp dir ${tmpdir}`),
               ],
             },
             {
-              guard: not('shouldPruneTempDir'),
-              target: S.TeardownLifecycle,
+              guard: {type: 'shouldLinger'},
+              target: 'teardownLifecycle',
               actions: [
                 {
                   type: 'sendLingered',
@@ -1550,9 +1612,16 @@ export const PkgManagerMachine = setup({
                 ),
               ],
             },
+            {
+              guard: {type: 'hasContext'},
+              target: 'teardownLifecycle',
+            },
+            {
+              target: 'done',
+            },
           ],
         },
-        [S.CleanupFilesystem]: {
+        cleanupFilesystem: {
           description: 'Prunes temp dir',
           invoke: {
             src: 'pruneTempDir',
@@ -1564,11 +1633,11 @@ export const PkgManagerMachine = setup({
               };
             },
             onDone: {
-              target: S.TeardownLifecycle,
+              target: 'teardownLifecycle',
             },
           },
         },
-        [S.TeardownLifecycle]: {
+        teardownLifecycle: {
           description: 'Runs teardown() of PkgManagerDef, if any',
           invoke: {
             src: 'teardownPkgManager',
@@ -1580,19 +1649,39 @@ export const PkgManagerMachine = setup({
               };
             },
             onDone: {
-              target: S.Done,
+              target: 'done',
+            },
+            onError: {
+              actions: [
+                {
+                  type: 'assignError',
+                  params: ({event: {error}, context: {spec, plugin}}) =>
+                    new LifecycleError(
+                      fromUnknownError(error),
+                      'teardown',
+                      'pkg-manager',
+                      spec.spec,
+                      plugin,
+                    ),
+                },
+              ],
+              target: 'errored',
             },
           },
         },
-        [S.Done]: {
+        done: {
+          type: FINAL,
+        },
+        errored: {
+          tags: [Tag.Error],
           type: FINAL,
         },
       },
       onDone: {
-        target: S.Done,
+        target: 'done',
       },
     },
-    [S.Done]: {
+    done: {
       type: FINAL,
     },
   },

@@ -74,9 +74,16 @@ export const JSONReporter: ReporterDef<JSONReporterContext> = {
       lingering: ctx.lingering,
     };
   },
-  onSmokeFailed(ctx, {error}) {
+  onSmokeFailed(ctx, results) {
     ctx.output = {
-      error,
+      results,
+      stats: ctx.stats,
+      lingering: ctx.lingering,
+    };
+  },
+  onSmokeError(ctx, results) {
+    ctx.output = {
+      results,
       stats: ctx.stats,
       lingering: ctx.lingering,
     };

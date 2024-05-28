@@ -9,8 +9,6 @@ import type {
 } from '#event/lint-events';
 import type {MachineEvent} from '#machine/util';
 
-export type AnyLintEvent = CtrlLintEvents & {type: 'LINT.*'};
-
 export type ComputedPkgManagerLintFields = 'totalPkgManagers' | 'totalRules';
 
 export type ComputedRuleEventFields = 'totalRules';

@@ -113,7 +113,16 @@ describe('midnight-smoker', function () {
               {
                 type: ERROR,
                 error: {
-                  code: ErrorCodes.ReporterError,
+                  code: ErrorCodes.MachineError,
+                  errors: [
+                    {
+                      code: ErrorCodes.LifecycleError,
+                      context: {
+                        stage: 'setup',
+                        kind: 'reporter',
+                      },
+                    },
+                  ],
                 },
               },
             );
@@ -136,7 +145,16 @@ describe('midnight-smoker', function () {
               {
                 type: ERROR,
                 error: {
-                  code: ErrorCodes.ReporterError,
+                  code: ErrorCodes.MachineError,
+                  errors: [
+                    {
+                      code: ErrorCodes.LifecycleError,
+                      context: {
+                        stage: 'teardown',
+                        kind: 'reporter',
+                      },
+                    },
+                  ],
                 },
               },
             );
@@ -184,7 +202,12 @@ describe('midnight-smoker', function () {
                 {
                   type: ERROR,
                   error: {
-                    code: ErrorCodes.ReporterError,
+                    code: ErrorCodes.MachineError,
+                    errors: [
+                      {
+                        code: ErrorCodes.ReporterListenerError,
+                      },
+                    ],
                   },
                 },
               );

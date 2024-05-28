@@ -6,6 +6,7 @@ import {type SomeRuleDef} from '#schema/some-rule-def';
 
 interface BaseInitPayload {
   plugin: Readonly<PluginMetadata>;
+  id: string;
 }
 
 export interface PkgManagerInitPayload extends BaseInitPayload {

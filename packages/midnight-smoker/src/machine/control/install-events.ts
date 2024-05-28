@@ -9,8 +9,6 @@ import {
 import {type MachineEvent} from '#machine/util';
 import {type ComputedPkgEventFields} from './pkg-events';
 
-export type AnyInstallEvent = CtrlInstallEvents & {type: 'INSTALL.*'};
-
 export type ComputedPkgManagerInstallFields = 'totalPkgs' | 'totalPkgManagers';
 
 export type CtrlInstallEvents =

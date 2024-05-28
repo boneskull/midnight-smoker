@@ -1,43 +1,40 @@
-import {type PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
+import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {type WorkspaceInfo} from '#schema/workspaces';
 import {red} from 'chalk';
+import {isString} from 'lodash';
 import {BaseSmokerError} from './base-error';
+import {fromUnknownError} from './from-unknown-error';
 
 /**
  * @group Errors
  */
-export class PackError extends BaseSmokerError<{
-  spec: string;
-  dest: string;
-  cwd?: string;
-  exitCode?: number;
-  output?: string;
-  error?: object;
-  workspace: WorkspaceInfo;
-}> {
+export class PackError extends BaseSmokerError<
+  {
+    spec: string;
+    dest: string;
+    workspace: WorkspaceInfo;
+  },
+  Error | undefined
+> {
   public readonly id = 'PackError';
 
   constructor(
     message: string,
-    pkgManager: string | PkgManagerSpec,
+    pkgManager: string | StaticPkgManagerSpec,
     workspace: WorkspaceInfo,
     dest: string,
-    {
-      cwd,
-      error,
-      exitCode,
-      output,
-    }: {cwd?: string; error?: object; exitCode?: number; output?: string} = {},
+    error?: unknown,
   ) {
-    super(`Package manager ${pkgManager} failed to pack: ${red(message)}`, {
-      error,
-      spec: `${pkgManager}`,
-      cwd,
-      dest,
-      exitCode,
-      output,
-      workspace,
-    });
+    const pmSpec = isString(pkgManager) ? pkgManager : pkgManager.spec;
+    super(
+      `Package manager ${pmSpec} failed to pack: ${red(message)}`,
+      {
+        spec: pmSpec,
+        dest,
+        workspace,
+      },
+      fromUnknownError(error),
+    );
   }
 }
 
@@ -56,11 +53,12 @@ export class PackParseError extends BaseSmokerError<
 
   constructor(
     message: string,
-    pkgManager: string | PkgManagerSpec,
+    pkgManager: string | StaticPkgManagerSpec,
     workspace: WorkspaceInfo,
     error: SyntaxError,
     output: string,
   ) {
-    super(message, {pkgManager: `${pkgManager}`, output, workspace}, error);
+    const pmSpec = isString(pkgManager) ? pkgManager : pkgManager.spec;
+    super(message, {pkgManager: pmSpec, output, workspace}, error);
   }
 }

@@ -1,5 +1,7 @@
 import {ERROR, FINAL, OK} from '#constants';
-import {type ReporterError} from '#error/reporter-error';
+import {fromUnknownError} from '#error/from-unknown-error';
+import {LifecycleError} from '#error/lifecycle-error';
+import {MachineError} from '#error/machine-error';
 import {type SomeDataForEvent} from '#event/events';
 import {type ActorOutput} from '#machine/util';
 import {type SmokerOptions} from '#options/options';
@@ -29,12 +31,7 @@ export type ReporterMachineOutput = ActorOutput;
  */
 export interface ReporterMachineContext
   extends Omit<ReporterMachineInput, 'smokerPkgJson' | 'smokerOptions'> {
-  /**
-   * If a `ReporterDef` throws an error, it will be caught and re-thrown as a
-   * {@link ReporterError} by {@link drainQueue}, {@link setupReporter} or
-   * {@link teardownReporter}.
-   */
-  error?: ReporterError;
+  error?: MachineError;
 
   /**
    * As events are emitted from the event bus, they are put into this queue.
@@ -132,7 +129,12 @@ export const ReporterMachine = setup({
      * Assigns to {@link ReporterMachineContext.error context.error}
      */
     assignError: assign({
-      error: (_, error: ReporterError) => error,
+      error: ({context, self}, error: Error) => {
+        if (context.error) {
+          return context.error.clone(error);
+        }
+        return new MachineError('Reporter errored', error, self.id);
+      },
     }),
 
     /**
@@ -220,7 +222,14 @@ export const ReporterMachine = setup({
           actions: [
             {
               type: 'assignError',
-              params: ({event: {error}}) => error as ReporterError,
+              params: ({event: {error}, context: {def, plugin}}) =>
+                new LifecycleError(
+                  fromUnknownError(error),
+                  'setup',
+                  'reporter',
+                  def.name,
+                  plugin.toJSON(),
+                ),
             },
           ],
         },
@@ -243,10 +252,11 @@ export const ReporterMachine = setup({
       description: 'Drains the event queue by emitting events to the reporter',
       invoke: {
         src: 'drainQueue',
-        input: ({context: {def, ctx, queue}}) => ({
+        input: ({context: {def, ctx, queue, plugin}}) => ({
           queue,
           def,
           ctx,
+          plugin: plugin.toJSON(),
         }),
         onDone: {
           target: '#ReporterMachine.listening',
@@ -256,7 +266,9 @@ export const ReporterMachine = setup({
           actions: [
             {
               type: 'assignError',
-              params: ({event: {error}}) => error as ReporterError,
+              // this will generally be a ReporterListenerError,
+              // but we can't be too sure.
+              params: ({event: {error}}) => fromUnknownError(error),
             },
           ],
         },
@@ -274,7 +286,14 @@ export const ReporterMachine = setup({
           actions: [
             {
               type: 'assignError',
-              params: ({event: {error}}) => error as ReporterError,
+              params: ({context: {def, plugin}, event: {error}}) =>
+                new LifecycleError(
+                  fromUnknownError(error),
+                  'teardown',
+                  'reporter',
+                  def.name,
+                  plugin.toJSON(),
+                ),
             },
           ],
         },

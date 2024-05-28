@@ -1,12 +1,15 @@
 import {
   DEFAULT_EXECUTOR_ID,
   ERROR,
+  FAILED,
   FINAL,
   OK,
   PARALLEL,
   SYSTEM_EXECUTOR_ID,
 } from '#constants';
 import {fromUnknownError} from '#error/from-unknown-error';
+import {MachineError} from '#error/machine-error';
+import {SmokeError} from '#error/smoke-error';
 import {SmokerEvent} from '#event/event-constants';
 import {type DataForEvent} from '#event/events';
 import {type Executor} from '#executor';
@@ -24,10 +27,16 @@ import {
 import * as MachineUtil from '#machine/util';
 import {type SmokerOptions} from '#options/options';
 import {type PluginRegistry} from '#plugin/plugin-registry';
-import {type LintResult} from '#schema/lint-result';
-import {type RunScriptResult} from '#schema/run-script-result';
+import {type LintResult, type LintResultFailed} from '#schema/lint-result';
+import {
+  type RunScriptResult,
+  type RunScriptResultFailed,
+} from '#schema/run-script-result';
+import {type SomeRuleDef} from '#schema/some-rule-def';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
+import {type StaticPluginMetadata} from '#schema/static-plugin-metadata';
 import {type WorkspaceInfo} from '#schema/workspaces';
+import {isSmokerError} from '#util/error-util';
 import {FileManager} from '#util/filemanager';
 import {uniqueId} from '#util/unique-id';
 import {isEmpty, map, uniqBy} from 'lodash';
@@ -88,41 +97,53 @@ export type CtrlOutputOk = MachineUtil.ActorOutputOk<{
 
 export interface CtrlMachineContext extends CtrlMachineInput {
   defaultExecutor: Executor;
-  error?: Error;
-  lingered?: string[];
+  error?: SmokeError;
   fileManager: FileManager;
+  installBusMachineRef?: ActorRefFrom<typeof InstallBusMachine>;
+  lingered?: string[];
+  lintBusMachineRef?: ActorRefFrom<typeof LintBusMachine>;
   lintResults?: LintResult[];
-  runScriptResults?: RunScriptResult[];
+  loaderMachineRefs: Record<string, ActorRefFrom<typeof LoaderMachine>>;
+  packBusMachineRef?: ActorRefFrom<typeof PackBusMachine>;
   pkgManagerInitPayloads: PkgManagerInitPayload[];
   pkgManagerMachineRefs?: Record<
     string,
     ActorRefFrom<typeof PkgManagerMachine>
   >;
-  loaderMachineRefs: Record<string, ActorRefFrom<typeof LoaderMachine>>;
+  pkgManagers?: StaticPkgManagerSpec[];
   reporterInitPayloads: ReporterInitPayload[];
   reporterMachineRefs: Record<string, ActorRefFrom<typeof ReporterMachine>>;
   ruleInitPayloads: RuleInitPayload[];
+  runScriptResults?: RunScriptResult[];
+  scriptBusMachineRef?: ActorRefFrom<typeof ScriptBusMachine>;
 
   /**
    * If `true`, the machine should shutdown after completing its work
    */
   shouldShutdown: boolean;
+  smokerPkgJson?: PackageJson;
+  startTime: number;
+  staticPlugins: StaticPluginMetadata[];
+  systemExecutor: Executor;
+  uniquePkgNames?: string[];
+  workspaceInfo: WorkspaceInfo[];
+}
+
+export interface CtrlMachineInput {
+  defaultExecutor?: Executor;
+  fileManager?: FileManager;
+  pluginRegistry: PluginRegistry;
 
   /**
-   * If `true`, the machine will tell each package manager to lint its packages
+   * If `true`, the machine should shutdown after completing its work
    */
-  shouldLint: boolean;
-  startTime: number;
-  systemExecutor: Executor;
-  workspaceInfo: WorkspaceInfo[];
-  smokerPkgJson?: PackageJson;
-  uniquePkgNames?: string[];
-  pkgManagers?: StaticPkgManagerSpec[];
-  packBusMachineRef?: ActorRefFrom<typeof PackBusMachine>;
-  installBusMachineRef?: ActorRefFrom<typeof InstallBusMachine>;
-  lintBusMachineRef?: ActorRefFrom<typeof LintBusMachine>;
+  shouldShutdown?: boolean;
+  smokerOptions: SmokerOptions;
+  systemExecutor?: Executor;
+}
 
-  scriptBusMachineRef?: ActorRefFrom<typeof ScriptBusMachine>;
+function delta(startTime: number): string {
+  return ((performance.now() - startTime) / 1000).toFixed(2);
 }
 
 /**
@@ -134,23 +155,6 @@ const BusActorRefs = {
   LintBusMachine: 'lintBusMachineRef',
   ScriptBusMachine: 'scriptBusMachineRef',
 } as const;
-
-export interface CtrlMachineInput {
-  defaultExecutor?: Executor;
-  fileManager?: FileManager;
-  pluginRegistry: PluginRegistry;
-  smokerOptions: SmokerOptions;
-  systemExecutor?: Executor;
-
-  /**
-   * If `true`, the machine should shutdown after completing its work
-   */
-  shouldShutdown?: boolean;
-}
-
-function delta(startTime: number): string {
-  return ((performance.now() - startTime) / 1000).toFixed(2);
-}
 
 /**
  * Main state machine for the `midnight-smoker` application.
@@ -178,6 +182,9 @@ export const ControlMachine = setup({
     LoaderMachine,
   },
   guards: {
+    didFail: ({context: {lintResults = [], runScriptResults = []}}) =>
+      lintResults.some(({type}) => type === FAILED) ||
+      runScriptResults.some(({type}) => type === FAILED),
     hasPkgManagers: ({context: {pkgManagers}}) => !isEmpty(pkgManagers),
 
     hasLingered: ({context: {lingered}}) => !isEmpty(lingered),
@@ -185,7 +192,11 @@ export const ControlMachine = setup({
     /**
      * If `true`, then the `LINT` event was received.
      */
-    shouldLint: ({context: {shouldLint}}) => shouldLint,
+    shouldLint: ({
+      context: {
+        smokerOptions: {lint},
+      },
+    }) => lint,
 
     /**
      * If `true`, then the `HALT` event was received.
@@ -324,16 +335,7 @@ export const ControlMachine = setup({
      * Spawns a {@link LoaderMachine} for each plugin
      */
     spawnLoaders: assign({
-      loaderMachineRefs: ({
-        context: {
-          pluginRegistry,
-          fileManager: fm,
-          systemExecutor,
-          defaultExecutor,
-          smokerOptions,
-        },
-        spawn,
-      }) =>
+      loaderMachineRefs: ({context: {pluginRegistry, smokerOptions}, spawn}) =>
         Object.fromEntries(
           pluginRegistry.plugins.map((plugin) => {
             const id = uniqueId({prefix: 'LoaderMachine'});
@@ -380,9 +382,21 @@ export const ControlMachine = setup({
       },
     ),
     assignError: assign({
-      // TODO: aggregate for multiple
-      error: ({context}, {error}: {error?: unknown}): Error | undefined =>
-        error ? fromUnknownError(error) : context.error,
+      error: ({context}, error: Error | Error[]) => {
+        if (isSmokerError(MachineError, error)) {
+          error = error.errors;
+        }
+        if (context.error) {
+          return context.error.clone(error, {
+            lint: context.lintResults,
+            script: context.runScriptResults,
+          });
+        }
+        return new SmokeError(error, {
+          lint: context.lintResults,
+          script: context.runScriptResults,
+        });
+      },
     }),
 
     /**
@@ -436,7 +450,6 @@ export const ControlMachine = setup({
       },
     ),
 
-    shouldLint: assign({shouldLint: true}),
     shouldShutdown: assign({shouldShutdown: true}),
 
     spawnComponentMachines: assign({
@@ -478,6 +491,7 @@ export const ControlMachine = setup({
         context: {
           pkgManagerMachineRefs,
           fileManager,
+          pluginRegistry,
           systemExecutor,
           defaultExecutor,
           workspaceInfo,
@@ -488,17 +502,21 @@ export const ControlMachine = setup({
             script: scripts,
             linger,
             add: additionalDeps,
+            lint: shouldLint,
           },
           pkgManagerInitPayloads,
           ruleInitPayloads,
-          shouldLint,
           shouldShutdown,
         },
       }) => {
         const useWorkspaces = all || !isEmpty(workspace);
         const signal = new AbortController().signal;
+        const ruleIds = new WeakMap<SomeRuleDef, string>();
+        for (const {def} of ruleInitPayloads) {
+          ruleIds.set(def, pluginRegistry.getComponentId(def));
+        }
         const newRefs = Object.fromEntries(
-          pkgManagerInitPayloads.map(({def, spec}, index) => {
+          pkgManagerInitPayloads.map(({def, spec, plugin}, index) => {
             const executor = spec.isSystem ? systemExecutor : defaultExecutor;
             const id = uniqueId({
               prefix: 'PkgManagerMachine',
@@ -511,6 +529,7 @@ export const ControlMachine = setup({
                 def,
                 workspaceInfo,
                 executor,
+                plugin: plugin.toJSON(),
                 fileManager,
                 parentRef: self,
                 linger,
@@ -520,7 +539,7 @@ export const ControlMachine = setup({
                 additionalDeps: [...new Set(additionalDeps)],
                 scripts,
                 ruleConfigs: rules,
-                ruleDefs: ruleInitPayloads.map(({def}) => def),
+                ruleInitPayloads,
                 shouldLint,
                 shouldShutdown,
               },
@@ -645,13 +664,16 @@ export const ControlMachine = setup({
     defaultExecutor ??= rest.pluginRegistry.getExecutor(DEFAULT_EXECUTOR_ID);
     systemExecutor ??= rest.pluginRegistry.getExecutor(SYSTEM_EXECUTOR_ID);
     fileManager ??= FileManager.create();
+    const staticPlugins = rest.pluginRegistry.plugins.map((plugin) =>
+      plugin.toJSON(),
+    );
     return {
       defaultExecutor,
       systemExecutor,
       fileManager,
       smokerOptions,
       ...rest,
-      shouldLint: smokerOptions.lint,
+      staticPlugins,
       loaderMachineRefs: {},
       reporterMachineRefs: {},
       shouldShutdown,
@@ -690,9 +712,7 @@ export const ControlMachine = setup({
             type: 'assignError',
             params: ({event: {output}}) => {
               MachineUtil.assertActorOutputNotOk(output);
-              return {
-                error: output.error,
-              };
+              return output.error;
             },
           },
           {type: 'stopReporterMachine', params: ({event}) => event},
@@ -775,7 +795,7 @@ export const ControlMachine = setup({
               actions: [
                 {
                   type: 'assignError',
-                  params: ({event: {error}}) => ({error}),
+                  params: ({event: {error}}) => fromUnknownError(error),
                 },
                 log(
                   ({event: {error}}) => `error querying workspaces: ${error}`,
@@ -819,9 +839,7 @@ export const ControlMachine = setup({
                     type: 'assignError',
                     params: ({event: {output}}) => {
                       MachineUtil.assertActorOutputNotOk(output);
-                      return {
-                        error: output.error,
-                      };
+                      return output.error;
                     },
                   },
                 ],
@@ -902,12 +920,11 @@ export const ControlMachine = setup({
                   smokerOptions,
                   pkgManagers,
                   uniquePkgNames,
-                  shouldLint,
                 },
                 self: parentRef,
               }) => {
                 // refuse to spawn if we shouldn't be linting anyway
-                if (!shouldLint) {
+                if (!smokerOptions.lint) {
                   return undefined;
                 }
                 assert.ok(pkgManagers);
@@ -979,7 +996,7 @@ export const ControlMachine = setup({
               actions: [
                 {
                   type: 'assignError',
-                  params: ({event: {error}}) => ({error}),
+                  params: ({event: {error}}) => fromUnknownError(error),
                 },
                 log(
                   ({event: {error}}) =>
@@ -1277,8 +1294,99 @@ export const ControlMachine = setup({
     shutdown: {
       description:
         'Graceful shutdown process; sends final events to reporters and tells them to gracefully shut themselves down. At this point, all package manager machines should have shut down gracefully',
-      initial: 'idle',
+      initial: 'reportResults',
       states: {
+        reportResult: {
+          always: [
+            {
+              guard: 'hasError',
+              actions: [
+                {
+                  type: 'report',
+                  params: ({
+                    context: {
+                      smokerOptions,
+                      runScriptResults = [],
+                      lintResults = [],
+                      pluginRegistry,
+                      error,
+                    },
+                  }): DataForEvent<typeof SmokerEvent.SmokeError> => {
+                    assert.ok(error);
+                    return {
+                      type: SmokerEvent.SmokeError,
+                      lint: lintResults,
+                      scripts: runScriptResults,
+                      error,
+                      plugins: pluginRegistry.plugins.map((plugin) =>
+                        plugin.toJSON(),
+                      ),
+                      opts: smokerOptions,
+                    };
+                  },
+                },
+              ],
+            },
+            {
+              guard: 'didFail',
+              actions: [
+                {
+                  type: 'report',
+                  params: ({
+                    context: {
+                      smokerOptions,
+                      runScriptResults = [],
+                      lintResults = [],
+                      pluginRegistry,
+                    },
+                  }): DataForEvent<typeof SmokerEvent.SmokeFailed> => {
+                    const scriptFailed = runScriptResults.filter(
+                      ({type}) => type === FAILED,
+                    ) as RunScriptResultFailed[];
+                    const lintFailed = lintResults.filter(
+                      ({type}) => type === FAILED,
+                    ) as LintResultFailed[];
+                    return {
+                      type: SmokerEvent.SmokeFailed,
+                      lint: lintResults,
+                      scripts: runScriptResults,
+                      scriptFailed,
+                      lintFailed,
+                      plugins: pluginRegistry.plugins.map((plugin) =>
+                        plugin.toJSON(),
+                      ),
+                      opts: smokerOptions,
+                    };
+                  },
+                },
+              ],
+            },
+            {
+              guard: not('didFail'),
+              actions: [
+                {
+                  type: 'report',
+                  params: ({
+                    context: {
+                      smokerOptions,
+                      runScriptResults,
+                      lintResults,
+                      pluginRegistry,
+                    },
+                  }): DataForEvent<typeof SmokerEvent.SmokeOk> => ({
+                    type: SmokerEvent.SmokeOk,
+                    lint: lintResults,
+                    scripts: runScriptResults,
+                    plugins: pluginRegistry.plugins.map((plugin) =>
+                      plugin.toJSON(),
+                    ),
+                    opts: smokerOptions,
+                  }),
+                },
+              ],
+            },
+          ],
+        },
         idle: {
           description:
             'Determines whether or not to report a lingering temp dir',

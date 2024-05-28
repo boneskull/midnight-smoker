@@ -1,16 +1,22 @@
+import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
+import {isString} from 'lodash';
 import {BaseSmokerError} from './base-error';
 
 /**
  * @group Errors
  */
 
-export class DirCreationError extends BaseSmokerError<
-  {prefix: string},
+export class TempDirError extends BaseSmokerError<
+  {spec: string},
   NodeJS.ErrnoException
 > {
-  public readonly id = 'DirCreationError';
+  public readonly id = 'TempDirError';
 
-  constructor(message: string, prefix: string, error: NodeJS.ErrnoException) {
-    super(message, {prefix}, error);
+  constructor(
+    message: string,
+    spec: string | StaticPkgManagerSpec,
+    error: NodeJS.ErrnoException,
+  ) {
+    super(message, {spec: isString(spec) ? spec : spec.spec}, error);
   }
 }

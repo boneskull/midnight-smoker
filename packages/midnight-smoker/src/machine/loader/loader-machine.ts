@@ -75,7 +75,11 @@ export const LoaderMachine = setup({
           return smokerOptions.rules[id]?.severity !== RuleSeverities.Off;
         });
 
-        return enabledRuleDefs.map((def) => ({def, plugin}));
+        return enabledRuleDefs.map((def) => ({
+          def,
+          plugin,
+          id: pluginRegistry.getComponentId(def),
+        }));
       },
     }),
 
@@ -154,9 +158,14 @@ export const LoaderMachine = setup({
               invoke: {
                 src: 'loadPkgManagers',
                 input: ({context}): LoadPkgManagersInput => {
-                  const {plugin, smokerOptions: smokerOpts} = context;
+                  const {
+                    plugin,
+                    smokerOptions: smokerOpts,
+                    pluginRegistry,
+                  } = context;
                   return {
                     plugin,
+                    pluginRegistry,
                     smokerOpts,
                   };
                 },

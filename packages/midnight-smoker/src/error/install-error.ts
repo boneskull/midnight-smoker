@@ -1,7 +1,11 @@
-import type {ExecError} from '#error/exec-error';
-import {type PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
+import {ExecError} from '#error/exec-error';
+import {isExecResult, type ExecResult} from '#schema/exec-result';
+import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
+import {isExecaError, isSmokerError} from '#util/error-util';
 import {red} from 'chalk';
+import {isString} from 'lodash';
 import {BaseSmokerError} from './base-error';
+import {fromUnknownError} from './from-unknown-error';
 
 /**
  * @group Errors
@@ -11,32 +15,43 @@ export class InstallError extends BaseSmokerError<
     pkgManager: string;
     pkgSpec: string;
     cwd: string;
-    exitCode?: number;
-    output?: string;
-    error?: object;
+    result?: ExecResult;
   },
-  ExecError | undefined
+  ExecError | Error | undefined
 > {
   public readonly id = 'InstallError';
 
   constructor(
     message: string,
-    pkgManager: string | PkgManagerSpec,
+    pkgManager: string | StaticPkgManagerSpec,
     pkgSpec: string,
     cwd: string,
-    {
-      error,
-      exitCode,
-      output,
-    }: {error?: object; exitCode?: number; output?: string} = {},
-    execError?: ExecError,
+    rawResult: unknown,
   ) {
+    const pmSpec = isString(pkgManager) ? pkgManager : pkgManager.spec;
+    let error: ExecError | Error | undefined;
+    let result: ExecResult | undefined;
+
+    if (isExecaError(rawResult)) {
+      error = isSmokerError(ExecError, rawResult)
+        ? rawResult
+        : new ExecError(rawResult);
+    } else if (!isExecResult(rawResult)) {
+      error = fromUnknownError(rawResult);
+    } else {
+      result = rawResult;
+    }
     super(
-      `Package manager ${pkgManager} failed to install "${pkgSpec}" in dir ${cwd}: ${red(
+      `Package manager ${pmSpec} failed to install "${pkgSpec}" in dir ${cwd}: ${red(
         message,
       )}`,
-      {pkgManager: `${pkgManager}`, pkgSpec, cwd, exitCode, output, error},
-      execError,
+      {
+        pkgManager: pmSpec,
+        pkgSpec,
+        cwd,
+        result,
+      },
+      error,
     );
   }
 }

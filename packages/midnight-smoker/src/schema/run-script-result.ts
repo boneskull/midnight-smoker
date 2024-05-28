@@ -7,13 +7,13 @@ import {z} from 'zod';
 import {ExecResultSchema} from './exec-result';
 import {ScriptErrorSchema} from './script-error';
 
-export type RunScriptErrorResult = z.infer<typeof RunScriptErrorResultSchema>;
+export type RunScriptResultError = z.infer<typeof RunScriptErrorResultSchema>;
 
-export type RunScriptFailedResult = z.infer<typeof RunScriptFailedResultSchema>;
+export type RunScriptResultFailed = z.infer<typeof RunScriptFailedResultSchema>;
 
-export type RunScriptOkResult = z.infer<typeof RunScriptOkResultSchema>;
+export type RunScriptResultOk = z.infer<typeof RunScriptOkResultSchema>;
 
-export type RunScriptSkippedResult = z.infer<
+export type RunScriptResultSkipped = z.infer<
   typeof RunScriptSkippedResultSchema
 >;
 

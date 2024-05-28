@@ -1,10 +1,10 @@
 import {type RunScriptManifest} from '#schema/run-script-manifest';
 import {
-  type RunScriptErrorResult,
-  type RunScriptFailedResult,
-  type RunScriptOkResult,
   type RunScriptResult,
-  type RunScriptSkippedResult,
+  type RunScriptResultError,
+  type RunScriptResultFailed,
+  type RunScriptResultOk,
+  type RunScriptResultSkipped,
 } from '#schema/run-script-result';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {type ScriptEvent} from './event-constants';
@@ -99,19 +99,19 @@ export interface RunScriptBeginEventData extends RunScriptEventDataBase {}
 
 export interface RunScriptOkEventData
   extends RunScriptEventDataBase,
-    Omit<RunScriptOkResult, 'type'> {}
+    Omit<RunScriptResultOk, 'type'> {}
 
 export interface RunScriptFailedEventData
   extends RunScriptEventDataBase,
-    Omit<RunScriptFailedResult, 'type'> {}
+    Omit<RunScriptResultFailed, 'type'> {}
 
 export interface RunScriptSkippedEventData
   extends RunScriptEventDataBase,
-    Omit<RunScriptSkippedResult, 'type'> {}
+    Omit<RunScriptResultSkipped, 'type'> {}
 
 export interface RunScriptErrorEventData
   extends RunScriptEventDataBase,
-    Omit<RunScriptErrorResult, 'type'> {}
+    Omit<RunScriptResultError, 'type'> {}
 
 export interface PkgManagerRunScriptsEventDataBase extends PkgManagerEventBase {
   manifests: RunScriptManifest[];

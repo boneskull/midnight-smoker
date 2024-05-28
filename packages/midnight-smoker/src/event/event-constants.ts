@@ -186,6 +186,8 @@ export const SmokerEvent = {
    */
   SmokeFailed: 'SmokeFailed',
 
+  SmokeError: 'SmokeError',
+
   /**
    * {@inheritDoc SmokerEvents.SmokeOk}
    */

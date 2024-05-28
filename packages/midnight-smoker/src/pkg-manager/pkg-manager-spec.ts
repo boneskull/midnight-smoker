@@ -178,7 +178,7 @@ export class PkgManagerOracle {
  * done, a {@link SemVer} object is created, and the {@link PkgManagerSpec} is
  * {@link PkgManagerSpec.hasSemVer considered valid}.
  */
-export class PkgManagerSpec {
+export class PkgManagerSpec implements StaticPkgManagerSpec {
   /**
    * If `true`, the `PkgManagerController` should treat this using the "system"
    * `Executor`.
@@ -225,8 +225,12 @@ export class PkgManagerSpec {
   /**
    * This returns `true` if the version is valid semantic version.
    */
-  public get hasSemVer() {
+  public get hasSemVer(): boolean {
     return Boolean(this.semver);
+  }
+
+  public get spec(): string {
+    return this.toString();
   }
 
   /**

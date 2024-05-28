@@ -619,7 +619,8 @@ export const ConsoleReporter: ReporterDef<ConsoleReporterContext> = {
       );
     }
   },
-  onSmokeFailed(ctx, {error: err}) {
+  // TODO: fix
+  onSmokeFailed(ctx) {
     // spinners.fail(err.message);
   },
   onSmokeOk() {

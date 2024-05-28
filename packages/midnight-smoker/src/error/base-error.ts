@@ -1,5 +1,5 @@
 import {isZodError} from '#util/error-util';
-import {castArray} from '#util/schema-util';
+import {castArray} from '#util/util';
 import {italic, white, whiteBright, yellow} from 'chalk';
 import Debug from 'debug';
 import {format, formatWithOptions} from 'node:util';
@@ -126,7 +126,7 @@ export abstract class AggregateSmokerError<Context extends object | void = void>
       isZodError(err) ? fromZodError(err) : err,
     );
     super(errs, message);
-    this.context = context;
+    this.context = context ?? undefined;
     this.errors = errs;
     this.code = getErrorCode(this);
   }

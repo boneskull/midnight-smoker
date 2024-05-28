@@ -5,7 +5,7 @@
  */
 import {handleRejection} from '#cli/cli-util';
 import {Smoker} from '#smoker';
-import {castArray} from '#util/schema-util';
+import {castArray} from '#util/util';
 import Debug from 'debug';
 import type {ArgumentsCamelCase, Argv, InferredOptionTypes} from 'yargs';
 import {BaseCommand} from './base-cmd';

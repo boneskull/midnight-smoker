@@ -11,17 +11,23 @@ import {
 export interface LoadPkgManagersInput {
   plugin: Readonly<PluginMetadata>;
   smokerOpts: SmokerOptions;
+  pluginRegistry: PluginRegistry;
 }
 
 export const loadPkgManagers = fromPromise<
   PkgManagerInitPayload[],
   LoadPkgManagersInput
->(async ({input: {plugin, smokerOpts}}) => {
+>(async ({input: {plugin, smokerOpts, pluginRegistry}}) => {
   const pkgManagerDefSpecs = await plugin.loadPkgManagers({
     cwd: smokerOpts.cwd,
     desiredPkgManagers: smokerOpts.pkgManager,
   });
-  return pkgManagerDefSpecs.map((defSpec) => ({...defSpec, plugin}));
+  return pkgManagerDefSpecs.map(({def, spec}) => ({
+    plugin,
+    def,
+    id: pluginRegistry.getComponentId(def),
+    spec,
+  }));
 });
 
 export interface LoadReportersInput {
@@ -44,5 +50,9 @@ export const loadReporters = fromPromise<
     return isFunction(def.when) ? def.when(smokerOptions) : false;
   });
 
-  return enabledReporterDefs.map((def) => ({def, plugin}));
+  return enabledReporterDefs.map((def) => ({
+    def,
+    plugin,
+    id: pluginRegistry.getComponentId(def),
+  }));
 });

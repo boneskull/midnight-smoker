@@ -113,11 +113,6 @@ function handleInstallError(
         spec.spec,
         pkgSpec,
         tmpdir,
-        {
-          error: parsedError,
-          output: errOrResult.all || errOrResult.stderr || errOrResult.stdout,
-          exitCode: errOrResult.exitCode,
-        },
         errOrResult,
       );
     } catch (e) {
@@ -126,10 +121,6 @@ function handleInstallError(
         spec.spec,
         pkgSpec,
         tmpdir,
-        {
-          output: errOrResult.all || errOrResult.stderr || errOrResult.stdout,
-          exitCode: errOrResult.exitCode,
-        },
         errOrResult,
       );
     }
@@ -139,10 +130,7 @@ function handleInstallError(
       spec.spec,
       pkgSpec,
       tmpdir,
-      {
-        output: errOrResult.all || errOrResult.stderr || errOrResult.stdout,
-        exitCode: errOrResult.exitCode,
-      },
+      errOrResult,
     );
   }
 }

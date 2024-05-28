@@ -6,7 +6,6 @@
  */
 import {TRANSIENT} from '#constants';
 import {InvalidArgError} from '#error/invalid-arg-error';
-import {type SmokerOptions} from '#options/options';
 import {
   loadPackageManagers,
   type LoadPackageManagersOpts,
@@ -23,7 +22,7 @@ import {type StaticPluginMetadata} from '#schema/static-plugin-metadata';
 import {type FileManager} from '#util/filemanager';
 import {assertNonEmptyArray, type NonEmptyArray} from '#util/util';
 import Debug from 'debug';
-import {curry, isFunction, isPlainObject, isString} from 'lodash';
+import {isPlainObject, isString} from 'lodash';
 import path from 'node:path';
 import type {LiteralUnion, PackageJson, SetRequired} from 'type-fest';
 
@@ -40,26 +39,6 @@ export interface PluginMetadataOpts {
   requestedAs?: string;
   pkgJson?: PackageJson;
 }
-
-const shouldEnableReporter = curry(
-  (
-    getComponentId: (def: object) => string,
-    opts: SmokerOptions,
-    def: ReporterDef,
-  ) => {
-    const desiredReporters = new Set(opts.reporter);
-    if (desiredReporters.has(getComponentId(def))) {
-      return true; // the user explicitly requested this reporter
-    }
-
-    if (isFunction(def.when) && def.when(opts)) {
-      return true; // enabled via `when`
-    }
-
-    return false;
-  },
-  3,
-);
 
 /**
  * All the metadata collected about a plugin.
