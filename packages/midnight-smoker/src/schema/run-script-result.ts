@@ -56,7 +56,7 @@ export const RunScriptOkResultSchema = z.object({
 
 export const RunScriptFailedResultSchema = z.object({
   type: z.literal(FAILED),
-  rawResult: ScriptResultRawResultSchema,
+  rawResult: ScriptResultRawResultSchema.optional(),
   error: instanceofSchema(ScriptFailedError),
 });
 
