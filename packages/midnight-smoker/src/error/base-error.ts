@@ -54,7 +54,7 @@ export abstract class BaseSmokerError<
   constructor(
     message: string,
     public readonly context: Context,
-    public readonly cause?: Cause,
+    public override readonly cause?: Cause,
   ) {
     super(message);
     this.code = getErrorCode(this);
@@ -109,6 +109,8 @@ export abstract class AggregateSmokerError<Context extends object | void = void>
   extends AggregateError
   implements SmokerError<Context>
 {
+  public override readonly cause?: void;
+
   public readonly context?: Context;
 
   public readonly code: SmokerErrorCode;

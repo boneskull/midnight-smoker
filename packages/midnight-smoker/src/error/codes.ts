@@ -9,6 +9,7 @@
  * error codes.
  */
 export const ErrorCodes = {
+  AbortError: 'ESMOKER_ABORT',
   CleanupError: 'ESMOKER_CLEANUP',
   ComponentCollisionError: 'ESMOKER_COMPONENTIDCOLLISION',
   TempDirError: 'ESMOKER_DIRCREATION',
