@@ -36,7 +36,7 @@ describe('midnight-smoker', function () {
         });
 
         describe('createTempDir()', function () {
-          describe('when mkdtemp() is successful', function () {
+          describe('when successful', function () {
             it('should return the path to the temp directory', async function () {
               await expect(
                 fm.createTempDir(),
@@ -46,7 +46,7 @@ describe('midnight-smoker', function () {
             });
           });
 
-          describe('when mkdtemp() fails', function () {
+          describe('when failing', function () {
             beforeEach(function () {
               sandbox
                 .stub(vol.promises, 'mkdtemp')
@@ -57,7 +57,7 @@ describe('midnight-smoker', function () {
               await expect(
                 fm.createTempDir(),
                 'to be rejected with error satisfying',
-                /Failed to create temp directory/i,
+                {code: 'DERP'},
               );
             });
           });
