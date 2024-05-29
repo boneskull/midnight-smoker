@@ -116,8 +116,11 @@ export class FileManager {
       prefix,
       path.sep,
     );
-    // this is only required if we're using an in-memory filesystem
-    await this.fs.promises.mkdir(fullPrefix, {recursive: true});
+    try {
+      // this is only required if we're using an in-memory filesystem
+      await this.fs.promises.mkdir(fullPrefix, {recursive: true});
+    } catch {}
+
     const tempDir = await this.fs.promises.mkdtemp(fullPrefix);
     this.tempDirs.add(tempDir);
     return tempDir;
