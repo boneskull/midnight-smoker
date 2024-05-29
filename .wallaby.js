@@ -19,10 +19,6 @@ module.exports = () => {
         instrument: false,
       },
       {
-        pattern: './packages/midnight-smoker/data/*.json',
-        instrument: false,
-      },
-      {
         pattern: './packages/midnight-smoker/test/**/fixture/**/*',
         instrument: false,
       },
@@ -61,6 +57,7 @@ module.exports = () => {
         ]),
       );
 
+      // @ts-expect-error private API
       const originalResolveFilename = Module._resolveFilename;
 
       /**
@@ -68,6 +65,7 @@ module.exports = () => {
        * @param {unknown} _parent
        * @returns {unknown}
        */
+      // @ts-expect-error private API
       Module._resolveFilename = function (request, _parent) {
         if (request in mappedImports) {
           const newRequest = path.join(
