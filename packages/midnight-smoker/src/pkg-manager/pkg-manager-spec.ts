@@ -7,7 +7,8 @@
 import {DEFAULT_PKG_MANAGER_BIN, DEFAULT_PKG_MANAGER_VERSION} from '#constants';
 import {type PkgManagerDef} from '#schema/pkg-manager-def';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
-import {FileManager, type FileManagerOpts} from '#util/filemanager';
+import {FileManager} from '#util/filemanager';
+import {type FileManagerOpts} from '#util/fs-api';
 import {getSystemPkgManagerVersion} from '#util/pkg-util';
 import type {NonEmptyArray} from '#util/util';
 import {globIterate} from 'glob';

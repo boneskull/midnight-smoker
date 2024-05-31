@@ -1,5 +1,5 @@
 import path from 'node:path';
-import {SKIPPED} from '../../../src/constants';
+import {OK} from '../../../src/constants';
 import {type ExecResult, type Executor} from '../../../src/executor';
 import {
   type InstallManifest,
@@ -39,7 +39,16 @@ export const nullPkgManager: PkgManagerDef = {
     return result;
   },
   async runScript() {
-    const result: RunScriptResult = {type: SKIPPED};
+    const result: RunScriptResult = {
+      type: OK,
+      rawResult: {
+        stdout: '',
+        stderr: '',
+        command: '',
+        exitCode: 0,
+        failed: false,
+      },
+    };
     return result;
   },
 };

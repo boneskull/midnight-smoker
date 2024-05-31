@@ -13,6 +13,7 @@ import {
   isObject,
   type Many,
 } from 'lodash';
+import path from 'node:path';
 
 export interface Serializable<T = unknown> {
   toJSON(): T;
@@ -127,4 +128,16 @@ export function memoize<
 
 export function castArray<T>(value?: Many<T>): T[] {
   return compact(_castArray(value));
+}
+
+/**
+ * Returns a relative path suitable for display
+ *
+ * @param value Path
+ * @param cwd Path from which to make the path relative
+ * @returns A relative path, prepended with a `.` and path separator
+ */
+export function niceRelativePath(value: string, cwd = process.cwd()) {
+  const relative = path.relative(cwd, value);
+  return relative.startsWith('..') ? relative : `.${path.sep}${relative}`;
 }

@@ -16,57 +16,21 @@ import {MissingPackageJsonError} from '#error/missing-pkg-json-error';
 import {UnreadablePackageJsonError} from '#error/unreadable-pkg-json-error';
 import Debug from 'debug';
 import {isObject} from 'lodash';
-import type fs from 'node:fs';
-import type nodeFsPromises from 'node:fs/promises';
 import type os from 'node:os';
 import path from 'node:path';
 import normalizePkgData from 'normalize-package-data';
 import {type PackageJson} from 'type-fest';
-import {memoize} from './util';
-
-export type FsApi = {
-  existsSync: typeof fs.existsSync;
-  readFileSync: typeof fs.readFileSync;
-  promises: Pick<
-    typeof nodeFsPromises,
-    | 'mkdtemp'
-    | 'rm'
-    | 'readFile'
-    | 'writeFile'
-    | 'mkdir'
-    | 'readdir'
-    | 'stat'
-    | 'lstat'
-    | 'readlink'
-    | 'realpath'
-  >;
-};
-
-export type GetHomeDir = () => string;
-
-export type GetTempDirRoot = () => string;
-
-export type NormalizedPackageJson = PackageJson & normalizePkgData.Package;
-
-export interface FileManagerOpts {
-  fs?: FsApi;
-  homedir?: GetHomeDir;
-  tmpdir?: GetTempDirRoot;
-}
-
-export interface ReadPkgJsonNormalizedResult extends ReadPkgJsonResult {
-  packageJson: NormalizedPackageJson;
-}
-
-export interface ReadPkgJsonOpts {
-  normalize?: boolean;
-  strict?: boolean;
-}
-
-export interface ReadPkgJsonResult {
-  packageJson: PackageJson;
-  path: string;
-}
+import {
+  type FileManagerOpts,
+  type FsApi,
+  type GetHomeDir,
+  type GetTempDirRoot,
+  type NormalizedPackageJson,
+  type ReadPkgJsonNormalizedResult,
+  type ReadPkgJsonOpts,
+  type ReadPkgJsonResult,
+} from './fs-api';
+import {memoize, niceRelativePath} from './util';
 
 export class FileManager {
   public readonly fs: FsApi;
@@ -120,7 +84,6 @@ export class FileManager {
       // this is only required if we're using an in-memory filesystem
       await this.fs.promises.mkdir(fullPrefix, {recursive: true});
     } catch {}
-
     const tempDir = await this.fs.promises.mkdtemp(fullPrefix);
     this.tempDirs.add(tempDir);
     return tempDir;
@@ -237,7 +200,7 @@ export class FileManager {
   ): Promise<PackageJson | NormalizedPackageJson> {
     try {
       const file = await this.fs.promises.readFile(filepath, 'utf8');
-      const relativePath = path.relative(process.cwd(), filepath);
+      const relativePath = niceRelativePath(filepath);
       const packageJson = JSON.parse(file) as PackageJson;
       if (options.normalize) {
         normalizePkgData(packageJson);

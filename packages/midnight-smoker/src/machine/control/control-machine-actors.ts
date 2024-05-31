@@ -35,7 +35,6 @@ export const queryWorkspaces = fromPromise<
     const {packageJson: rootPkgJson, path: rootPkgJsonPath} =
       await fm.findPkgUp(cwd, {
         strict: true,
-        normalize: true,
       });
 
     const getWorkspaceInfo = async (
@@ -119,6 +118,8 @@ export const queryWorkspaces = fromPromise<
     return [
       {
         pkgName: rootPkgJson.name,
+        pkgJson: rootPkgJson,
+        pkgJsonPath: rootPkgJsonPath,
         localPath: cwd,
       } as WorkspaceInfo,
     ];

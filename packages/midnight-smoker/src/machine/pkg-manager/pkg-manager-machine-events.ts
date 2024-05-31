@@ -39,14 +39,6 @@ export interface CheckInput {
   manifest: LintManifest;
 }
 
-/**
- * Represents a single package to be linted
- */
-export interface CheckItem {
-  manifest: LintManifest;
-  signal: AbortSignal;
-}
-
 export interface CheckOutputFailed extends CheckInput {
   result: CheckResultFailed[];
   actorId: string;
@@ -75,7 +67,7 @@ export interface PkgManagerMachineLintEvent {
 }
 
 export interface PkgManagerMachineLintItemEvent {
-  output: CheckItem;
+  output: LintManifest;
   type: 'xstate.done.actor.prepareLintItem.*';
 }
 

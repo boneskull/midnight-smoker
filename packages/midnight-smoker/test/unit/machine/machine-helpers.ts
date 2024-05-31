@@ -68,6 +68,7 @@ export function createMachineRunner<T extends AnyActorLogic>(
         }
       },
     });
+    // TODO - add timeout
     await toPromise(actor);
     if (queue.length) {
       throw new Error(`Event ${queue[0]} was never sent`);
@@ -84,7 +85,7 @@ export function createMachineRunner<T extends AnyActorLogic>(
       inspect: options.inspect ?? inspect,
     });
     try {
-      return await waitFor(actor, predicate);
+      return await waitFor(actor, predicate, {timeout: 1000});
     } finally {
       actor.stop();
     }

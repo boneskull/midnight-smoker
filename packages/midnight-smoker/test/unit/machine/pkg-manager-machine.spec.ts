@@ -5,8 +5,8 @@ import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
 import {createEmptyActor, type AnyActorRef} from 'xstate';
-import {ERROR, OK} from '../../../src/constants';
-import {ErrorCodes} from '../../../src/error';
+import {ERROR, FAILED, OK, SKIPPED} from '../../../src/constants';
+import {ErrorCodes, ScriptFailedError} from '../../../src/error';
 import {type RuleInitPayload} from '../../../src/machine/loader/loader-machine-types';
 import {
   PkgManagerMachine,
@@ -16,6 +16,7 @@ import {OptionParser, type SmokerOptions} from '../../../src/options';
 import {
   PkgManagerSpec,
   type PkgManagerDef,
+  type RunScriptResultFailed,
   type WorkspaceInfo,
 } from '../../../src/pkg-manager';
 import {type PluginMetadata} from '../../../src/plugin';
@@ -388,6 +389,7 @@ describe('midnight-smoker', function () {
                 );
               });
             });
+
             describe('when "shouldLint" flag is set and rules are enabled', function () {
               it('should lint', async function () {
                 await expect(
@@ -412,6 +414,160 @@ describe('midnight-smoker', function () {
                   }),
                   'to be rejected',
                 );
+              });
+            });
+          });
+          describe('runningScripts', function () {
+            describe('when no scripts were provided in SmokerOptions', function () {
+              it('should not run scripts', async function () {
+                await expect(
+                  runUntilSnapshot(
+                    (snapshot) =>
+                      snapshot.matches({working: {runningScripts: 'running'}}),
+                    {
+                      ...input,
+                      workspaceInfo: [workspaceInfo],
+                    },
+                  ),
+                  'to be rejected',
+                );
+              });
+            });
+
+            describe('when scripts were provided in SmokerOptions', function () {
+              it('should run scripts', async function () {
+                await expect(
+                  runUntilSnapshot(
+                    (snapshot) =>
+                      snapshot.matches({working: {runningScripts: 'running'}}),
+                    {
+                      ...input,
+                      scripts: ['test'],
+                      workspaceInfo: [workspaceInfo],
+                    },
+                  ),
+                  'to be fulfilled',
+                );
+              });
+
+              it('should send script events in order', async function () {
+                await expect(
+                  runUntilEvent(
+                    [
+                      'SCRIPT.PKG_MANAGER_RUN_SCRIPTS_BEGIN',
+                      'SCRIPT.RUN_SCRIPT_BEGIN',
+                      'SCRIPT.RUN_SCRIPT_OK',
+                      'SCRIPT.PKG_MANAGER_RUN_SCRIPTS_OK',
+                    ],
+                    {
+                      ...input,
+                      scripts: ['test'],
+                      workspaceInfo: [workspaceInfo],
+                    },
+                  ),
+                  'to be fulfilled',
+                );
+              });
+
+              describe('when a script was skipped', function () {
+                beforeEach(function () {
+                  sandbox.stub(def, 'runScript').resolves({type: SKIPPED});
+                });
+
+                it('should send the correct event', async function () {
+                  await expect(
+                    runUntilEvent('SCRIPT.RUN_SCRIPT_SKIPPED', {
+                      ...input,
+                      scripts: ['test'],
+                      workspaceInfo: [workspaceInfo],
+                    }),
+                    'to be fulfilled',
+                  );
+                });
+              });
+
+              describe('when a script failed', function () {
+                beforeEach(function () {
+                  const result: RunScriptResultFailed = {
+                    type: FAILED,
+                    rawResult: {
+                      exitCode: 1,
+                      stdout: '',
+                      stderr: '',
+                      failed: true,
+                      command: '',
+                    },
+                    error: new ScriptFailedError('failed', {
+                      script: 'test',
+                      pkgName: workspaceInfo.pkgName,
+                      command: '',
+                      exitCode: 1,
+                      pkgManager: 'test-pm',
+                      output: '',
+                    }),
+                  };
+                  sandbox.stub(def, 'runScript').resolves(result);
+                });
+
+                it('should send the correct event', async function () {
+                  await expect(
+                    runUntilEvent('SCRIPT.RUN_SCRIPT_FAILED', {
+                      ...input,
+                      scripts: ['test'],
+                      workspaceInfo: [workspaceInfo],
+                    }),
+                    'to be fulfilled',
+                  );
+                });
+              });
+
+              describe('when a script succeeds', function () {
+                it('should send the correct event', async function () {
+                  await expect(
+                    runUntilEvent('SCRIPT.RUN_SCRIPT_OK', {
+                      ...input,
+                      scripts: ['test'],
+                      workspaceInfo: [workspaceInfo],
+                    }),
+                    'to be fulfilled',
+                  );
+                });
+              });
+
+              describe('when a the script runner throws an error', function () {
+                beforeEach(function () {
+                  sandbox
+                    .stub(def, 'runScript')
+                    .rejects(new Error('dook dook dook'));
+                });
+
+                it('should send the correct event', async function () {
+                  await expect(
+                    runUntilEvent('SCRIPT.RUN_SCRIPT_ERROR', {
+                      ...input,
+                      scripts: ['test'],
+                      workspaceInfo: [workspaceInfo],
+                    }),
+                    'to be fulfilled',
+                  );
+                });
+
+                it('should bail', async function () {
+                  await expect(
+                    runUntilSnapshot(
+                      (snapshot) => snapshot.hasTag('Aborted'),
+                      // snapshot.matches({
+                      //   working: {runningScripts: 'errored'},
+                      // }),
+                      {
+                        ...input,
+                        scripts: ['test'],
+                        workspaceInfo: [workspaceInfo],
+                      },
+                    ),
+                    'to be fulfilled',
+                  );
+                });
               });
             });
           });

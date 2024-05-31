@@ -2,10 +2,8 @@ import {type Volume} from 'memfs/lib/volume';
 import sinon from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
-import {
-  FileManager,
-  type NormalizedPackageJson,
-} from '../../../src/util/filemanager';
+import {FileManager} from '../../../src/util/filemanager';
+import {type NormalizedPackageJson} from '../../../src/util/fs-api';
 import {createFsMocks} from '../mocks/fs';
 
 const expect = unexpected.clone().use(unexpectedSinon);

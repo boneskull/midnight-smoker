@@ -32,7 +32,6 @@ import {
   type RunScriptResult,
   type RunScriptResultFailed,
 } from '#schema/run-script-result';
-import {type SomeRuleDef} from '#schema/some-rule-def';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {type StaticPluginMetadata} from '#schema/static-plugin-metadata';
 import {type WorkspaceInfo} from '#schema/workspaces';
@@ -511,10 +510,7 @@ export const ControlMachine = setup({
       }) => {
         const useWorkspaces = all || !isEmpty(workspace);
         const signal = new AbortController().signal;
-        const ruleIds = new WeakMap<SomeRuleDef, string>();
-        for (const {def} of ruleInitPayloads) {
-          ruleIds.set(def, pluginRegistry.getComponentId(def));
-        }
+
         const newRefs = Object.fromEntries(
           pkgManagerInitPayloads.map(({def, spec, plugin}, index) => {
             const executor = spec.isSystem ? systemExecutor : defaultExecutor;
@@ -775,6 +771,7 @@ export const ControlMachine = setup({
             'Gathers information about workspaces in cwd. If this is not a monorepo, we will only have a single workspace. The root workspace is ignored if we do have a monorepo.',
           invoke: {
             src: 'queryWorkspaces',
+            id: 'queryWorkspaces',
             input: ({
               context: {
                 smokerOptions: {cwd, all, workspace},
@@ -990,6 +987,12 @@ export const ControlMachine = setup({
             src: 'readSmokerPkgJson',
             input: ({context: {fileManager}}) => fileManager,
             onDone: {
+              actions: [
+                {
+                  type: 'assignSmokerPkgJson',
+                  params: ({event: {output}}) => output,
+                },
+              ],
               target: 'spawningComponents',
             },
             onError: {

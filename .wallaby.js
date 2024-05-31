@@ -5,13 +5,18 @@
 /**
  * @returns {import('wallabyjs').IWallabyConfig}
  */
-module.exports = () => {
+module.exports = (wallaby) => {
   return {
     env: {
       type: 'node',
       params: {
         env: 'DEBUG=midnight-smoker*',
       },
+    },
+    compilers: {
+      '**/*.ts?(x)': wallaby.compilers.typeScript({
+        typescript: require('typescript'),
+      }),
     },
     files: [
       {
@@ -36,6 +41,7 @@ module.exports = () => {
       // '!./packages/docs/test/**/*',
     ],
     runMode: 'onsave',
+    debug: true,
     workers: {recycle: true},
     setup(wallaby) {
       process.env.WALLABY = '1';
