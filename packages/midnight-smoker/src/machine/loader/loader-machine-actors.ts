@@ -1,6 +1,7 @@
 import {type SmokerOptions} from '#options/options';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
 import {type PluginRegistry} from '#plugin/plugin-registry';
+import {type WorkspaceInfo} from '#schema/workspaces';
 import {isFunction} from 'lodash';
 import {fromPromise} from 'xstate';
 import {
@@ -12,13 +13,14 @@ export interface LoadPkgManagersInput {
   plugin: Readonly<PluginMetadata>;
   smokerOpts: SmokerOptions;
   pluginRegistry: PluginRegistry;
+  workspaceInfo: WorkspaceInfo[];
 }
 
 export const loadPkgManagers = fromPromise<
   PkgManagerInitPayload[],
   LoadPkgManagersInput
->(async ({input: {plugin, smokerOpts, pluginRegistry}}) => {
-  const pkgManagerDefSpecs = await plugin.loadPkgManagers({
+>(async ({input: {workspaceInfo, plugin, smokerOpts, pluginRegistry}}) => {
+  const pkgManagerDefSpecs = await plugin.loadPkgManagers(workspaceInfo, {
     cwd: smokerOpts.cwd,
     desiredPkgManagers: smokerOpts.pkgManager,
   });

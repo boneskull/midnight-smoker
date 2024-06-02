@@ -19,6 +19,7 @@ import {type RuleDef} from '#schema/rule-def';
 import {type RuleDefSchemaValue} from '#schema/rule-def-schema-value';
 import {type SomeRuleDef} from '#schema/some-rule-def';
 import {type StaticPluginMetadata} from '#schema/static-plugin-metadata';
+import {type WorkspaceInfo} from '#schema/workspaces';
 import {type FileManager} from '#util/filemanager';
 import {assertNonEmptyArray, type NonEmptyArray} from '#util/util';
 import Debug from 'debug';
@@ -310,11 +311,12 @@ export class PluginMetadata implements StaticPluginMetadata {
   }
 
   public async loadPkgManagers(
+    workspaceInfo: WorkspaceInfo[],
     opts: LoadPackageManagersOpts,
   ): Promise<NonEmptyArray<PkgManagerDefSpec>> {
-    const pkgManagerDefs = [...this.pkgManagerDefMap.values()];
-    assertNonEmptyArray(pkgManagerDefs);
-    return loadPackageManagers(pkgManagerDefs, opts);
+    const defs = [...this.pkgManagerDefMap.values()];
+    assertNonEmptyArray(defs);
+    return loadPackageManagers(defs, workspaceInfo, opts);
   }
 
   /**

@@ -7,14 +7,20 @@
 import {DEFAULT_PKG_MANAGER_BIN, DEFAULT_PKG_MANAGER_VERSION} from '#constants';
 import {type PkgManagerDef} from '#schema/pkg-manager-def';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
+import {type WorkspaceInfo} from '#schema/workspaces';
 import {FileManager} from '#util/filemanager';
-import {type FileManagerOpts} from '#util/fs-api';
-import {getSystemPkgManagerVersion} from '#util/pkg-util';
 import type {NonEmptyArray} from '#util/util';
+import Debug from 'debug';
 import {globIterate} from 'glob';
-import {isString} from 'lodash';
+import {isString, memoize} from 'lodash';
+import {execFile as _execFile} from 'node:child_process';
 import path from 'node:path';
+import {promisify} from 'node:util';
 import {parse, type SemVer} from 'semver';
+
+const debug = Debug('midnight-smoker:pkg-manager-spec');
+
+const execFile = promisify(_execFile);
 
 /**
  * Options for {@link PkgManagerSpec.fromPkgManagerDefs}.
@@ -22,12 +28,14 @@ import {parse, type SemVer} from 'semver';
 export interface FromPkgManagerDefsOpts {
   cwd?: string;
   desiredPkgManagers?: Array<string | Readonly<PkgManagerSpec>>;
+  workspaceInfo?: WorkspaceInfo[];
 }
 
 export interface PkgManagerOracleOpts {
-  fileManagerOpts?: FileManagerOpts;
+  fileManager?: FileManager;
   getSystemPkgManagerVersion?: (bin: string) => Promise<string>;
   cwd?: string;
+  workspaceInfo?: WorkspaceInfo[];
 }
 
 /**
@@ -47,7 +55,7 @@ export interface PkgManagerSpecOpts {
    *
    * @defaultValue `npm`
    */
-  pkgManager?: string;
+  bin?: string;
 
   /**
    * The version or dist-tag of the requested package manager.
@@ -57,30 +65,45 @@ export interface PkgManagerSpecOpts {
   version?: string | SemVer;
 }
 
+export interface GuessPkgManagerOptions {
+  cwd?: string;
+  workspaceInfo?: WorkspaceInfo[];
+}
+
 /**
  * @internal
  * @todo The coupling here sucks. do something about it
  */
 export class PkgManagerOracle {
-  private fm: FileManager;
+  private fileManager: FileManager;
 
   private getSystemPkgManagerVersion: (bin: string) => Promise<string>;
 
   public readonly cwd: string;
 
-  constructor(opts: PkgManagerOracleOpts = {}) {
-    this.getSystemPkgManagerVersion =
-      opts.getSystemPkgManagerVersion ?? getSystemPkgManagerVersion;
-    this.fm = FileManager.create(opts.fileManagerOpts);
-    this.cwd = opts.cwd ?? process.cwd();
+  private readonly workspaceInfo: WorkspaceInfo[];
+
+  constructor(
+    private readonly defs: NonEmptyArray<PkgManagerDef>,
+    {
+      fileManager = FileManager.create(),
+      getSystemPkgManagerVersion = PkgManagerOracle.defaultGetSystemPkgManagerVersion,
+      cwd = process.cwd(),
+      workspaceInfo = [],
+    }: PkgManagerOracleOpts = {},
+  ) {
+    this.getSystemPkgManagerVersion = getSystemPkgManagerVersion;
+    this.fileManager = fileManager;
+    this.cwd = cwd;
+    this.workspaceInfo = workspaceInfo;
   }
 
   public static guessPackageManager(
     this: void,
-    pkgManagerDefs: PkgManagerDef[],
-    cwd?: string,
+    defs: NonEmptyArray<PkgManagerDef>,
+    opts: GuessPkgManagerOptions = {},
   ): Promise<Readonly<PkgManagerSpec>> {
-    return new PkgManagerOracle({cwd}).guessPackageManager(pkgManagerDefs);
+    return new PkgManagerOracle(defs, opts).guessPackageManager();
   }
 
   /**
@@ -92,22 +115,19 @@ export class PkgManagerOracle {
    * @param pkgManagerDefs - An array of `PkgManagerDef` objects.
    * @returns Package manager bin, if found
    */
-  public async getPkgManagerFromLockfiles(
-    pkgManagerDefs: PkgManagerDef[],
-  ): Promise<string | undefined> {
-    const cwd = this.cwd;
+  public async getPkgManagerFromLockfiles(): Promise<string | undefined> {
+    const {cwd, defs, fileManager} = this;
     const lockfileMap = new Map(
-      pkgManagerDefs
+      defs
         .filter((def) => Boolean(def.lockfile))
         .map((def) => [path.join(cwd, def.lockfile!), def.bin]),
     );
 
     const patterns = [...lockfileMap.keys()];
-
     for await (const match of globIterate(patterns, {
-      fs: this.fm.fs,
+      fs: fileManager.fs,
       cwd,
-      absolute: false,
+      absolute: true,
     })) {
       if (lockfileMap.has(match)) {
         return lockfileMap.get(match)!;
@@ -123,10 +143,11 @@ export class PkgManagerOracle {
    *
    * @returns Package manager spec, if found
    */
-  public async getPkgManagerFromPackageJson(): Promise<
-    Readonly<PkgManagerSpec> | undefined
-  > {
-    const result = await this.fm.findPkgUp(this.cwd);
+  public async getPkgManagerFromPackageJson(
+    where: WorkspaceInfo | string = this.cwd,
+  ): Promise<Readonly<PkgManagerSpec> | undefined> {
+    const cwd = isString(where) ? where : where.localPath;
+    const result = await this.fileManager.findPkgUp(cwd);
     const pkgManager = result?.packageJson.packageManager;
 
     if (pkgManager) {
@@ -150,26 +171,43 @@ export class PkgManagerOracle {
    * spec" (with version). In the other two cases, we don't know what version is
    * involved, so we'll just use the "system" package manager.
    *
-   * @param pkgManagerDefs - Package manager definitions as provided by plugins
-   * @param cwd - Current working directory having an ancestor `package.json`
-   *   file
    * @returns Package manager spec
    */
-  public async guessPackageManager(
-    pkgManagerDefs: PkgManagerDef[],
-  ): Promise<Readonly<PkgManagerSpec>> {
+  public async guessPackageManager(): Promise<Readonly<PkgManagerSpec>> {
     // this should be tried first, as it's "canonical"
-    let spec = await this.getPkgManagerFromPackageJson();
-    if (!spec) {
-      const pkgManager = await this.getPkgManagerFromLockfiles(pkgManagerDefs);
-      if (pkgManager) {
-        const version = await this.getSystemPkgManagerVersion(pkgManager);
-        spec = PkgManagerSpec.create({pkgManager, version, isSystem: true});
-      }
+    const spec = await Promise.race([
+      ...this.workspaceInfo.map(async (ws) =>
+        this.getPkgManagerFromPackageJson(ws),
+      ),
+      this.getPkgManagerFromPackageJson(this.cwd),
+    ]);
+    if (spec) {
+      debug('Found package manager from package.json: %s', spec);
+      return spec;
     }
-
-    return spec ?? PkgManagerSpec.create();
+    const bin = await this.getPkgManagerFromLockfiles();
+    const version = await this.getSystemPkgManagerVersion(
+      bin ?? DEFAULT_PKG_MANAGER_BIN,
+    );
+    return PkgManagerSpec.create({bin, version, isSystem: true});
   }
+
+  /**
+   * Queries a package manager executable for its version
+   *
+   * @param bin Package manager executable; defined in a {@link PkgManagerDef}
+   * @returns Version string
+   */
+  public static defaultGetSystemPkgManagerVersion = memoize(
+    async (bin: string): Promise<string> => {
+      try {
+        const {stdout} = await execFile(bin, ['--version']);
+        return stdout.trim();
+      } catch {
+        return DEFAULT_PKG_MANAGER_VERSION;
+      }
+    },
+  );
 }
 
 /**
@@ -194,7 +232,7 @@ export class PkgManagerSpec implements StaticPkgManagerSpec {
   /**
    * The package manager executable name
    */
-  public readonly pkgManager: string;
+  public readonly bin: string;
 
   /**
    * The version or dist-tag of the requested package manager.
@@ -207,7 +245,7 @@ export class PkgManagerSpec implements StaticPkgManagerSpec {
    * @param opts - Options for the package manager specification
    */
   public constructor({
-    pkgManager = DEFAULT_PKG_MANAGER_BIN,
+    bin = DEFAULT_PKG_MANAGER_BIN,
     version = DEFAULT_PKG_MANAGER_VERSION,
     isSystem = false,
   }: PkgManagerSpecOpts = {}) {
@@ -219,7 +257,7 @@ export class PkgManagerSpec implements StaticPkgManagerSpec {
       this.version = version as string;
     }
 
-    this.pkgManager = pkgManager;
+    this.bin = bin;
     this.isSystem = Boolean(isSystem);
   }
 
@@ -249,14 +287,16 @@ export class PkgManagerSpec implements StaticPkgManagerSpec {
    * @returns A new read-only {@link PkgManagerSpec}
    */
   public static create({
-    pkgManager = DEFAULT_PKG_MANAGER_BIN,
+    bin: pkgManager = DEFAULT_PKG_MANAGER_BIN,
     version = DEFAULT_PKG_MANAGER_VERSION,
     isSystem = false,
   }: PkgManagerSpecOpts = {}): Readonly<PkgManagerSpec> {
     if (!isString(version)) {
       version = version.format();
     }
-    return Object.freeze(new PkgManagerSpec({pkgManager, version, isSystem}));
+    return Object.freeze(
+      new PkgManagerSpec({bin: pkgManager, version, isSystem}),
+    );
   }
 
   /**
@@ -299,16 +339,16 @@ export class PkgManagerSpec implements StaticPkgManagerSpec {
       const [pkgManager, version] = PkgManagerSpec.parse(specOrOpts) ?? [];
       if (pkgManager && version) {
         return PkgManagerSpec.create({
-          pkgManager,
+          bin: pkgManager,
           version,
           isSystem: specIsSystem,
         });
       }
-      specOrOpts = {pkgManager};
+      specOrOpts = {bin: pkgManager};
     }
 
     const {
-      pkgManager = DEFAULT_PKG_MANAGER_BIN,
+      bin: pkgManager = DEFAULT_PKG_MANAGER_BIN,
       version: allegedVersion,
       isSystem = false,
     } = specOrOpts;
@@ -317,10 +357,10 @@ export class PkgManagerSpec implements StaticPkgManagerSpec {
     // I think we route around it via guessPackageManager()
     const version =
       isSystem && !allegedVersion
-        ? await getSystemPkgManagerVersion(pkgManager)
+        ? await PkgManagerOracle.defaultGetSystemPkgManagerVersion(pkgManager)
         : allegedVersion || DEFAULT_PKG_MANAGER_VERSION;
 
-    return PkgManagerSpec.create({pkgManager, version, isSystem});
+    return PkgManagerSpec.create({bin: pkgManager, version, isSystem});
   }
 
   public static async fromMany(
@@ -343,7 +383,7 @@ export class PkgManagerSpec implements StaticPkgManagerSpec {
   public static async fromPkgManagerDefs(
     this: void,
     defs: NonEmptyArray<PkgManagerDef>,
-    {desiredPkgManagers = [], cwd = process.cwd()}: FromPkgManagerDefsOpts = {},
+    {desiredPkgManagers = [], cwd, workspaceInfo}: FromPkgManagerDefsOpts = {},
   ): Promise<NonEmptyArray<Readonly<PkgManagerSpec>>> {
     if (desiredPkgManagers.length) {
       const specs = (await PkgManagerSpec.fromMany(
@@ -353,7 +393,9 @@ export class PkgManagerSpec implements StaticPkgManagerSpec {
         return specs;
       }
     }
-    return [await PkgManagerOracle.guessPackageManager(defs, cwd)];
+    return [
+      await PkgManagerOracle.guessPackageManager(defs, {cwd, workspaceInfo}),
+    ];
   }
 
   /**
@@ -399,10 +441,10 @@ export class PkgManagerSpec implements StaticPkgManagerSpec {
   public toString() {
     if (this.isSystem) {
       return this.hasSemVer
-        ? `${this.pkgManager}@${this.version} (system)`
-        : `${this.pkgManager} (system)`;
+        ? `${this.bin}@${this.version} (system)`
+        : `${this.bin} (system)`;
     }
-    return `${this.pkgManager}@${this.version}`;
+    return `${this.bin}@${this.version}`;
   }
 }
 

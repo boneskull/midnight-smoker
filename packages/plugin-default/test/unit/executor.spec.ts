@@ -42,7 +42,7 @@ describe('@midnight-smoker/plugin-default', function () {
       beforeEach(async function () {
         await corepackExecutor(
           PkgManagerSpec.create({
-            pkgManager: 'nullpm',
+            bin: 'nullpm',
             version: '1.0.0',
           }).toJSON(),
           ['foo'],
@@ -69,7 +69,7 @@ describe('@midnight-smoker/plugin-default', function () {
       beforeEach(async function () {
         await corepackExecutor(
           PkgManagerSpec.create({
-            pkgManager: 'nullpm',
+            bin: 'nullpm',
             version: '1.0.0',
           }).toJSON(),
           ['foo'],
@@ -118,7 +118,7 @@ describe('@midnight-smoker/plugin-default', function () {
         await expect(
           corepackExecutor(
             PkgManagerSpec.create({
-              pkgManager: 'nullpm',
+              bin: 'nullpm',
               version: '1.0.0',
             }).toJSON(),
             ['foo'],

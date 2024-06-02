@@ -27,7 +27,7 @@ export const systemExecutor: Executor = async (
     // stuff and things
   }
 
-  const {pkgManager: bin} = spec;
+  const {bin} = spec;
 
   const proc = execa(bin, args, {
     ...spawnOpts,

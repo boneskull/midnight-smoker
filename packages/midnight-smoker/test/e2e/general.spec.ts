@@ -4,8 +4,8 @@ import snapshot from 'snap-shot-it';
 import unexpected from 'unexpected';
 import {DEFAULT_PKG_MANAGER_BIN} from '../../src/constants';
 import type {ExecResult} from '../../src/schema/exec-result';
+import {FileManager} from '../../src/util/filemanager';
 import {resolveFrom} from '../../src/util/loader-util';
-import {readPackageJson} from '../../src/util/pkg-util';
 import assertions from '../assertions';
 import {execSmoker, fixupOutput} from './cli-helpers';
 
@@ -65,7 +65,9 @@ describe('midnight-smoker [E2E]', function () {
         let pkgManager: string;
 
         before(async function () {
-          const {packageJson} = await readPackageJson({cwd, strict: true});
+          const {packageJson} = await FileManager.create().findPkgUp(cwd, {
+            strict: true,
+          });
           pkgManager = packageJson.packageManager!;
         });
 

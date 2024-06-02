@@ -7,8 +7,9 @@ import {LoadableComponents, LoaderMachine} from '../../../src/machine/loader';
 import {OptionParser, type SmokerOptions} from '../../../src/options';
 import {type PluginMetadata} from '../../../src/plugin';
 import {PluginRegistry} from '../../../src/plugin/plugin-registry';
+import {type WorkspaceInfo} from '../../../src/schema/workspaces';
 import {FileManager} from '../../../src/util/filemanager';
-import {nullPkgManager, nullReporter, nullRule} from '../mocks/component';
+import {nullPkgManagerDef, nullReporter, nullRule} from '../mocks/component';
 import {createMachineRunner} from './machine-helpers';
 
 const expect = unexpected.clone();
@@ -24,12 +25,20 @@ describe('midnight-smoker', function () {
       let vol: Volume;
       let smokerOptions: SmokerOptions;
       let sandbox: sinon.SinonSandbox;
-
+      let workspaceInfo: WorkspaceInfo[];
       beforeEach(async function () {
         ({vol} = memfs());
         fileManager = FileManager.create({fs: vol as any});
         pluginRegistry = PluginRegistry.create({fileManager});
         sandbox = createSandbox();
+        workspaceInfo = [
+          {
+            pkgName: 'example-package',
+            localPath: '/path/to/package',
+            pkgJson: {},
+            pkgJsonPath: '/path/to/package/package.json',
+          } as WorkspaceInfo,
+        ];
       });
 
       afterEach(function () {
@@ -42,14 +51,14 @@ describe('midnight-smoker', function () {
             plugin(api) {
               api
                 .defineReporter(nullReporter)
-                .definePackageManager(nullPkgManager)
+                .definePackageManager(nullPkgManagerDef)
                 .defineRule(nullRule);
             },
           });
           smokerOptions = OptionParser.buildSmokerOptionsSchema(
             pluginRegistry,
           ).parse({
-            pkgManager: 'test-pm',
+            pkgManager: 'nullpm',
             reporter: 'test-plugin/test-reporter',
           });
         });
@@ -59,6 +68,7 @@ describe('midnight-smoker', function () {
             await expect(
               runMachine({
                 plugin,
+                workspaceInfo,
                 pluginRegistry,
                 smokerOptions,
               }),
@@ -83,6 +93,7 @@ describe('midnight-smoker', function () {
             await expect(
               runMachine({
                 plugin,
+                workspaceInfo,
                 pluginRegistry,
                 smokerOptions,
                 component: LoadableComponents.Reporters,
@@ -104,6 +115,7 @@ describe('midnight-smoker', function () {
             await expect(
               runMachine({
                 plugin,
+                workspaceInfo,
                 pluginRegistry,
                 smokerOptions,
                 component: LoadableComponents.PkgManagers,
@@ -126,6 +138,7 @@ describe('midnight-smoker', function () {
               runMachine({
                 plugin,
                 pluginRegistry,
+                workspaceInfo,
                 smokerOptions,
                 component: LoadableComponents.Rules,
               }),
@@ -154,13 +167,14 @@ describe('midnight-smoker', function () {
           smokerOptions = OptionParser.buildSmokerOptionsSchema(
             pluginRegistry,
           ).parse({
-            pkgManager: 'test-pm',
+            pkgManager: 'nullpm',
             reporter: 'test-plugin/test-reporter',
           });
 
           await expect(
             runMachine({
               plugin,
+              workspaceInfo,
               pluginRegistry,
               smokerOptions,
               component: LoadableComponents.Reporters,
@@ -190,12 +204,13 @@ describe('midnight-smoker', function () {
           smokerOptions = OptionParser.buildSmokerOptionsSchema(
             pluginRegistry,
           ).parse({
-            pkgManager: 'test-pm',
+            pkgManager: 'nullpm',
             reporter: ['test-plugin/test-reporter'],
           });
 
           await expect(
             runMachine({
+              workspaceInfo,
               plugin,
               pluginRegistry,
               smokerOptions,
@@ -231,7 +246,7 @@ describe('midnight-smoker', function () {
             smokerOptions = OptionParser.buildSmokerOptionsSchema(
               pluginRegistry,
             ).parse({
-              pkgManager: 'test-pm',
+              pkgManager: 'nullpm',
             });
 
             await expect(
@@ -240,6 +255,7 @@ describe('midnight-smoker', function () {
                 pluginRegistry,
                 smokerOptions,
                 component: LoadableComponents.Reporters,
+                workspaceInfo,
               }),
               'to be fulfilled with value satisfying',
               {
@@ -257,13 +273,13 @@ describe('midnight-smoker', function () {
           it('should exit with error output', async function () {
             plugin = await pluginRegistry.registerPlugin('test-plugin', {
               plugin(api) {
-                api.definePackageManager(nullPkgManager);
+                api.definePackageManager(nullPkgManagerDef);
               },
             });
             smokerOptions = OptionParser.buildSmokerOptionsSchema(
               pluginRegistry,
             ).parse({
-              pkgManager: 'test-pm',
+              pkgManager: 'nullpm',
             });
 
             // this will cause plugin.loadPkgManagers to throw, because
@@ -274,6 +290,7 @@ describe('midnight-smoker', function () {
               runMachine({
                 plugin,
                 pluginRegistry,
+                workspaceInfo,
                 smokerOptions,
                 component: LoadableComponents.PkgManagers,
               }),

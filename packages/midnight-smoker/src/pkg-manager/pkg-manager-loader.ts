@@ -7,6 +7,7 @@
  */
 
 import {type PkgManagerDef} from '#schema/pkg-manager-def';
+import {type WorkspaceInfo} from '#schema/workspaces';
 import {type NonEmptyArray} from '#util/util';
 import {matchPkgManagers} from './pkg-manager-matcher';
 import {PkgManagerSpec, type PkgManagerDefSpec} from './pkg-manager-spec';
@@ -44,12 +45,14 @@ export interface LoadPackageManagersOpts {
  */
 export async function loadPackageManagers(
   defs: NonEmptyArray<PkgManagerDef>,
+  workspaceInfo: WorkspaceInfo[],
   opts: LoadPackageManagersOpts = {},
 ): Promise<NonEmptyArray<PkgManagerDefSpec>> {
-  const {cwd = process.cwd(), desiredPkgManagers = []} = opts;
+  const {cwd, desiredPkgManagers = []} = opts;
   const specs = await PkgManagerSpec.fromPkgManagerDefs(defs, {
     desiredPkgManagers,
     cwd,
+    workspaceInfo,
   });
   return matchPkgManagers(defs, specs);
 }

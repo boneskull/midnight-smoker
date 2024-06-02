@@ -2,7 +2,7 @@ import path from 'node:path';
 import snapshot from 'snap-shot-it';
 import unexpected from 'unexpected';
 import {type ExecError} from '../../src/error';
-import {readPackageJson} from '../../src/util';
+import {FileManager} from '../../src/util/filemanager';
 import assertions from '../assertions';
 import {execSmoker, fixupOutput} from './cli-helpers';
 
@@ -14,10 +14,8 @@ describe('midnight-smoker [E2E]', function () {
     let cwd: string;
 
     before(async function () {
-      const {packageJson, path: packageJsonPath} = await readPackageJson({
-        cwd: __dirname,
-        strict: true,
-      });
+      const {packageJson, path: packageJsonPath} =
+        await FileManager.create().findPkgUp(__dirname, {strict: true});
       version = packageJson.version!;
       cwd = path.dirname(packageJsonPath);
     });

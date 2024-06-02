@@ -2,17 +2,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import type {ExecaReturnValue} from 'execa';
-import {Helpers} from 'midnight-smoker/plugin';
 import type unexpected from 'unexpected';
-
-const {packageJson} = Helpers.readPackageJsonSync({
-  cwd: __dirname,
-  strict: true,
-});
 
 export default {
   name: 'unexpected-@midnight-smoker/plugins-internal',
-  version: packageJson.version,
   installInto(expect: typeof unexpected) {
     expect
       .addType({

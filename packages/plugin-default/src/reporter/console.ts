@@ -20,13 +20,13 @@ const ELLIPSIS = '…';
  * @returns `name@version` with some colors
  */
 function nameAndVersion({
-  pkgManager,
+  bin,
   version,
 }: {
-  pkgManager: string;
+  bin: string;
   version?: string;
 }): string {
-  return version ? `${pkgManager}${dim('@')}${white(version)}` : pkgManager;
+  return version ? `${bin}${dim('@')}${white(version)}` : bin;
 }
 
 // /**
@@ -602,7 +602,7 @@ export const ConsoleReporter: ReporterDef<ConsoleReporterContext> = {
   onSmokeBegin(ctx, {plugins}) {
     console.error(
       `💨 ${nameAndVersion({
-        pkgManager: blueBright.bold('midnight-smoker'),
+        bin: blueBright.bold('midnight-smoker'),
         version: ctx.pkgJson.version!,
       })}\n`,
     );
@@ -613,7 +613,7 @@ export const ConsoleReporter: ReporterDef<ConsoleReporterContext> = {
         pluralize('external plugin', extPlugins.length, true),
         extPlugins
           .map(({id, version}) =>
-            nameAndVersion({pkgManager: greenBright(id), version}),
+            nameAndVersion({bin: greenBright(id), version}),
           )
           .join(', '),
       );

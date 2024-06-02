@@ -1,27 +1,15 @@
-import rewiremock from 'rewiremock/node';
 import unexpected from 'unexpected';
 
 import {fileURLToPath} from 'url';
-import type * as Ctx from '../../../../src/rule/rule-context';
+import {RuleContext} from '../../../../src/rule/rule-context';
 import {type StaticRuleContext} from '../../../../src/schema/rule-static';
 import {type SomeRuleDef} from '../../../../src/schema/some-rule-def';
-import {createFsMocks} from '../../mocks/fs';
 
 const expect = unexpected.clone();
 
 describe('midnight-smoker', function () {
   describe('component', function () {
     describe('rule', function () {
-      let RuleContext: typeof Ctx.RuleContext;
-
-      beforeEach(function () {
-        const {mocks} = createFsMocks();
-        RuleContext = rewiremock.proxy(
-          () => require('../../../../src/rule/rule-context'),
-          mocks,
-        ).RuleContext;
-      });
-
       describe('RuleContext', function () {
         const ruleId = 'example-rule';
         const ruleDef = {
@@ -47,7 +35,7 @@ describe('midnight-smoker', function () {
 
         describe('static method', function () {
           describe('create()', function () {
-            let context: Readonly<Ctx.RuleContext>;
+            let context: Readonly<RuleContext>;
 
             beforeEach(function () {
               context = RuleContext.create(ruleDef, staticCtx, ruleId);
@@ -76,7 +64,7 @@ describe('midnight-smoker', function () {
         });
 
         describe('instance method', function () {
-          let context: Readonly<Ctx.RuleContext>;
+          let context: Readonly<RuleContext>;
 
           beforeEach(function () {
             context = RuleContext.create(ruleDef, staticCtx, ruleId);
@@ -193,7 +181,7 @@ describe('midnight-smoker', function () {
         });
 
         describe('computed property', function () {
-          let context: Readonly<Ctx.RuleContext>;
+          let context: Readonly<RuleContext>;
 
           beforeEach(function () {
             context = RuleContext.create(ruleDef, staticCtx, ruleId);

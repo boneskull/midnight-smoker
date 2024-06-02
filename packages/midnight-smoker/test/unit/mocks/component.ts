@@ -2,6 +2,7 @@ import path from 'node:path';
 import {OK} from '../../../src/constants';
 import {type ExecResult, type Executor} from '../../../src/executor';
 import {
+  PkgManagerSpec,
   type InstallManifest,
   type RunScriptResult,
 } from '../../../src/pkg-manager';
@@ -9,12 +10,13 @@ import {type ReporterDef} from '../../../src/reporter';
 import {type PkgManagerDef} from '../../../src/schema/pkg-manager-def';
 import {type RuleDef} from '../../../src/schema/rule-def';
 
-export const nullPkgManager: PkgManagerDef = {
-  bin: 'test-pm',
+export const nullPkgManagerDef: PkgManagerDef = {
+  bin: 'nullpm',
   description: 'test package manager',
   accepts() {
     return '1.0.0';
   },
+  lockfile: 'nullpm.lock',
   async setup() {},
   async teardown() {},
   async install() {
@@ -76,3 +78,9 @@ export const nullExecutor: Executor = async (): Promise<ExecResult> => {
   };
   return result;
 };
+
+export const nullPkgManagerSpec = new PkgManagerSpec({
+  bin: nullPkgManagerDef.bin,
+  version: '1.0.0',
+  isSystem: false,
+});

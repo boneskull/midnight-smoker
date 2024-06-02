@@ -1,5 +1,5 @@
 import {execSmoker, fixupOutput} from '@midnight-smoker/test-util';
-import {Helpers} from 'midnight-smoker/plugin';
+import {FileManager} from 'midnight-smoker/util';
 import path from 'node:path';
 import unexpected from 'unexpected';
 
@@ -17,8 +17,7 @@ describe('@midnight-smoker/plugin-default', function () {
         let pkgManager: string;
 
         before(async function () {
-          const {packageJson} = await Helpers.readPackageJson({
-            cwd,
+          const {packageJson} = await FileManager.create().findPkgUp(cwd, {
             strict: true,
           });
           pkgManager = `${packageJson.packageManager}`;

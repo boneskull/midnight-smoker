@@ -18,8 +18,6 @@ export * from '#schema/run-script-manifest';
 
 export * from '#schema/run-script-result';
 
-export * from '#schema/pkg-manager-spec';
-
 export * from '#schema/static-pkg-manager-spec';
 
 export {SemVer} from 'semver';

@@ -37,7 +37,7 @@ export const corepackExecutor: Executor = async (
     // stuff and things
   }
 
-  const proc = execa(COREPACK_PATH, [`${spec}`, ...args], {
+  const proc = execa(COREPACK_PATH, [spec.spec, ...args], {
     env: {...DEFAULT_ENV, ...spawnOpts.env},
     ...spawnOpts,
   });

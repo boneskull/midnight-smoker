@@ -4,6 +4,7 @@ import {type ActorOutputError, type ActorOutputOk} from '#machine/util';
 import {type SmokerOptions} from '#options/options';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
 import {type PluginRegistry} from '#plugin/plugin-registry';
+import type {WorkspaceInfo} from '#schema/workspaces';
 import {type PackageJson} from 'type-fest';
 import {assign, log, not, setup} from 'xstate';
 import {
@@ -32,6 +33,7 @@ export interface LoaderMachineInput {
   pluginRegistry: PluginRegistry;
   smokerOptions: SmokerOptions;
   component?: LoadableComponent;
+  workspaceInfo: WorkspaceInfo[];
 }
 
 export type LoaderMachineContext = LoaderMachineInput & {
@@ -162,8 +164,10 @@ export const LoaderMachine = setup({
                     plugin,
                     smokerOptions: smokerOpts,
                     pluginRegistry,
+                    workspaceInfo,
                   } = context;
                   return {
+                    workspaceInfo,
                     plugin,
                     pluginRegistry,
                     smokerOpts,

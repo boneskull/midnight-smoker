@@ -98,7 +98,7 @@ export const createTempDir = fromPromise<string, CreateTempDirInput>(
     if (signal.aborted) {
       throw new AbortError(signal.reason);
     }
-    return fileManager.createTempDir(`${spec.pkgManager}-${spec.version}`);
+    return fileManager.createTempDir(`${spec.bin}-${spec.version}`);
   },
 );
 

@@ -16,6 +16,7 @@ import {
   type InferredOptionTypes,
   type PositionalOptions,
 } from 'yargs';
+import {assertNonEmptyArray} from '../../util';
 import {BaseCommand} from './base-cmd';
 import {type GlobalOptionTypes} from './global-opts';
 import {JsonOptions, type CommandOptionRecord} from './opts';
@@ -45,6 +46,7 @@ export class ViewCommand extends BaseCommand {
     opts: ArgumentsCamelCase<ViewOptionTypes>,
   ) {
     const pkgManagerDefs = await Smoker.getPkgManagers();
+    assertNonEmptyArray(pkgManagerDefs);
     const pkgManager = await guessPackageManager(pkgManagerDefs);
 
     if (opts.json) {

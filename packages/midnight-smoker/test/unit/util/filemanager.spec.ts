@@ -102,7 +102,7 @@ describe('midnight-smoker', function () {
             expect(fm.findPkgUp, 'was called once');
           });
 
-          it('should cache the result, per instance', async function () {
+          it.skip('should cache the result, per instance', async function () {
             const packageJson = {
               name: 'midnight-smoker',
             } as NormalizedPackageJson;

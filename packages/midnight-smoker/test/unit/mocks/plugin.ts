@@ -1,11 +1,11 @@
 import type {Plugin} from '../../../src/plugin';
-import {nullPkgManager, nullReporter, nullRule} from './component';
+import {nullPkgManagerDef, nullReporter, nullRule} from './component';
 
 export const nullPlugin: Plugin = {
   plugin(api) {
     api
       .defineReporter(nullReporter)
-      .definePackageManager(nullPkgManager)
+      .definePackageManager(nullPkgManagerDef)
       .defineRule(nullRule);
   },
 };

@@ -1,6 +1,9 @@
 {
   "extends": ["../../../.config/tsconfig.test.json"],
   "include": ["."],
+  "compilerOptions": {
+    "resolveJsonModule": true
+  },
   "references": [
     {
       "path": "../src/tsconfig.json"

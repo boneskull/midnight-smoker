@@ -146,6 +146,44 @@ function delta(startTime: number): string {
 }
 
 /**
+ * Regex string to match a package name.
+ *
+ * Used by {@link PKG_NAME_REGEX} and {@link PKG_NAME_WITH_SPEC_REGEX}.
+ */
+const PKG_NAME_REGEX_STR =
+  '^(@[a-z0-9-~][a-z0-9-._~]*/)?[a-z0-9-~][a-z0-9-._~]*';
+
+/**
+ * Regex to match a package name without a spec
+ */
+const PKG_NAME_REGEX = new RegExp(`${PKG_NAME_REGEX_STR}$`);
+
+/**
+ * Regex to match a package name with a spec.
+ *
+ * @remarks
+ * This does not attempt to validate a semver string, though it could. If it
+ * did, it'd also need to allow any valid package tag. I'm not sure what the
+ * latter is, but the former can be found on
+ * {@link https://stackoverflow.com/a/72900791|StackOverflow}.
+ */
+const PKG_NAME_WITH_SPEC_REGEX = new RegExp(`${PKG_NAME_REGEX_STR}@.+$`);
+
+/**
+ * Fields in `package.json` that might have a dependency we want to install as
+ * an isolated package to help run smoke tests.
+ *
+ * @remarks
+ * Order is important; changing this should be a breaking change
+ */
+const DEP_FIELDS = [
+  'devDependencies',
+  'dependencies',
+  'optionalDependencies',
+  'peerDependencies',
+] as const;
+
+/**
  * Mapping of actor ID to actor reference in {@link CtrlMachineContext}
  */
 const BusActorRefs = {
@@ -334,7 +372,10 @@ export const ControlMachine = setup({
      * Spawns a {@link LoaderMachine} for each plugin
      */
     spawnLoaders: assign({
-      loaderMachineRefs: ({context: {pluginRegistry, smokerOptions}, spawn}) =>
+      loaderMachineRefs: ({
+        context: {pluginRegistry, smokerOptions, workspaceInfo},
+        spawn,
+      }) =>
         Object.fromEntries(
           pluginRegistry.plugins.map((plugin) => {
             const id = uniqueId({prefix: 'LoaderMachine'});
@@ -343,6 +384,7 @@ export const ControlMachine = setup({
               input: {
                 plugin,
                 pluginRegistry,
+                workspaceInfo,
                 smokerOptions,
                 component: LoadableComponents.All,
               },
@@ -490,7 +532,6 @@ export const ControlMachine = setup({
         context: {
           pkgManagerMachineRefs,
           fileManager,
-          pluginRegistry,
           systemExecutor,
           defaultExecutor,
           workspaceInfo,
@@ -644,6 +685,49 @@ export const ControlMachine = setup({
         enqueue.sendTo(ref, event);
       },
     ),
+
+    /**
+     * This tries to narrow down any additional dep.
+     *
+     * The aim is to match the version as present in the dependencies of the
+     * project. e.g., asking for an additional dep of `mocha` would use
+     * `mocha@10.1.0` from the devDeps.
+     *
+     * Given an `installable` which is both a) a valid npm package name and b)
+     * has no version specifier, determine the version to install.
+     *
+     * If the `package.json` within `cwd` contains the package of the same name,
+     * we will use that version; otherwise we will use the `latest` tag. If
+     * `installable` is not a package name at all, it passes thru verbatim.
+     */
+    updateAdditionalDeps: assign({
+      smokerOptions: ({context: {smokerOptions, workspaceInfo}}) => {
+        const additionalDeps = smokerOptions.add.map((installable) => {
+          if (PKG_NAME_WITH_SPEC_REGEX.test(installable)) {
+            // we were given a package name with a version spec. just use it
+            return installable;
+          }
+          if (PKG_NAME_REGEX.test(installable)) {
+            // we were given a package name, no version.
+            // try to see if it's in the package.json
+            const pkgName = installable;
+
+            for (const {pkgJson} of workspaceInfo) {
+              for (const field of DEP_FIELDS) {
+                const deps = pkgJson[field];
+                if (deps && pkgName in deps) {
+                  return `${pkgName}@${deps[pkgName]}`;
+                }
+              }
+            }
+
+            return `${pkgName}@latest`;
+          }
+          return installable;
+        });
+        return {...smokerOptions, add: additionalDeps};
+      },
+    }),
   },
 }).createMachine({
   id: 'ControlMachine',
@@ -764,86 +848,173 @@ export const ControlMachine = setup({
     loading: {
       entry: [log('loading environment, plugins and components')],
       exit: [log('loading complete')],
-      initial: 'queryingWorkspaces',
+      initial: 'prepare',
       states: {
-        queryingWorkspaces: {
-          description:
-            'Gathers information about workspaces in cwd. If this is not a monorepo, we will only have a single workspace. The root workspace is ignored if we do have a monorepo.',
-          invoke: {
-            src: 'queryWorkspaces',
-            id: 'queryWorkspaces',
-            input: ({
-              context: {
-                smokerOptions: {cwd, all, workspace},
-                fileManager,
+        prepare: {
+          type: PARALLEL,
+          states: {
+            queryingWorkspaces: {
+              initial: 'queryWorkspaces',
+              states: {
+                queryWorkspaces: {
+                  description:
+                    'Gathers information about workspaces in cwd. If this is not a monorepo, we will only have a single workspace. The root workspace is ignored if we do have a monorepo.',
+                  invoke: {
+                    src: 'queryWorkspaces',
+                    id: 'queryWorkspaces',
+                    input: ({
+                      context: {
+                        smokerOptions: {cwd, all, workspace},
+                        fileManager,
+                      },
+                    }) => ({all, workspace, fileManager, cwd}),
+                    onDone: {
+                      actions: [
+                        {
+                          type: 'assignWorkspaceInfo',
+                          params: ({event: {output}}) => output,
+                        },
+                        {
+                          type: 'updateAdditionalDeps',
+                        },
+                        log(
+                          ({event: {output}}) =>
+                            `found ${output.length} workspaces`,
+                        ),
+                      ],
+                      target: 'done',
+                    },
+                    onError: {
+                      actions: [
+                        {
+                          type: 'assignError',
+                          params: ({event: {error}}) => fromUnknownError(error),
+                        },
+                        log(
+                          ({event: {error}}) =>
+                            `error querying workspaces: ${error}`,
+                        ),
+                      ],
+                      target: 'errored',
+                    },
+                  },
+                },
+                done: {
+                  type: FINAL,
+                },
+                errored: {
+                  type: FINAL,
+                },
               },
-            }) => ({all, workspace, fileManager, cwd}),
-            onDone: {
-              actions: [
-                {
-                  type: 'assignWorkspaceInfo',
-                  params: ({event: {output}}) => output,
-                },
-                log(({event: {output}}) => `found ${output.length} workspaces`),
-              ],
-              target: 'loadingPlugins',
             },
-            onError: {
-              actions: [
-                {
-                  type: 'assignError',
-                  params: ({event: {error}}) => fromUnknownError(error),
+            readSmokerPkgJson: {
+              initial: 'reading',
+              states: {
+                reading: {
+                  description:
+                    'Reads our own package.json file (for use by reporters)',
+                  invoke: {
+                    src: 'readSmokerPkgJson',
+                    input: ({context: {fileManager}}) => fileManager,
+                    onDone: {
+                      actions: [
+                        {
+                          type: 'assignSmokerPkgJson',
+                          params: ({event: {output}}) => output,
+                        },
+                      ],
+                      target: 'done',
+                    },
+                    onError: {
+                      actions: [
+                        {
+                          type: 'assignError',
+                          params: ({event: {error}}) => fromUnknownError(error),
+                        },
+                        log(
+                          ({event: {error}}) =>
+                            `error reading smoker package.json: ${error}`,
+                        ),
+                      ],
+                      target: 'errored',
+                    },
+                  },
                 },
-                log(
-                  ({event: {error}}) => `error querying workspaces: ${error}`,
-                ),
-              ],
+                done: {
+                  type: FINAL,
+                },
+                errored: {
+                  type: FINAL,
+                },
+              },
+            },
+            loadingPlugins: {
+              initial: 'loading',
+              states: {
+                loading: {
+                  description:
+                    'Spawns LoaderMachines; one per plugin. These will ultimately provide the PkgManagerDef, ReporterDef and RuleDef objects',
+                  entry: [
+                    log('loading plugin components...'),
+                    {type: 'spawnLoaders'},
+                  ],
+                  on: {
+                    'xstate.done.actor.LoaderMachine.*': [
+                      {
+                        description:
+                          'Assigns init payloads (from LoaderMachine output) to the context',
+                        guard: {
+                          type: 'isMachineOutputOk',
+                          params: ({event: {output}}) => output,
+                        },
+                        actions: [
+                          {
+                            type: 'assignInitPayloads',
+                            params: ({event: {output}}) => {
+                              MachineUtil.assertActorOutputOk(output);
+                              return output;
+                            },
+                          },
+                        ],
+                        target: 'done',
+                      },
+                      {
+                        guard: {
+                          type: 'isMachineOutputNotOk',
+                          params: ({event: {output}}) => output,
+                        },
+                        actions: [
+                          {
+                            type: 'assignError',
+                            params: ({event: {output}}) => {
+                              MachineUtil.assertActorOutputNotOk(output);
+                              return output.error;
+                            },
+                          },
+                        ],
+                        target: 'errored',
+                      },
+                    ],
+                  },
+                },
+                done: {
+                  type: FINAL,
+                },
+                errored: {
+                  type: FINAL,
+                },
+              },
+            },
+          },
+          onDone: [
+            {
+              guard: 'hasError',
               target: '#ControlMachine.shutdown',
             },
-          },
-        },
-        loadingPlugins: {
-          description:
-            'Spawns LoaderMachines; one per plugin. These will ultimately provide the PkgManagerDef, ReporterDef and RuleDef objects',
-          entry: [log('loading plugin components...'), {type: 'spawnLoaders'}],
-          on: {
-            'xstate.done.actor.LoaderMachine.*': [
-              {
-                description:
-                  'Assigns init payloads (from LoaderMachine output) to the context',
-                guard: {
-                  type: 'isMachineOutputOk',
-                  params: ({event: {output}}) => output,
-                },
-                actions: [
-                  {
-                    type: 'assignInitPayloads',
-                    params: ({event: {output}}) => {
-                      MachineUtil.assertActorOutputOk(output);
-                      return output;
-                    },
-                  },
-                ],
-                target: 'spawningEventMachines',
-              },
-              {
-                guard: {
-                  type: 'isMachineOutputNotOk',
-                  params: ({event: {output}}) => output,
-                },
-                actions: [
-                  {
-                    type: 'assignError',
-                    params: ({event: {output}}) => {
-                      MachineUtil.assertActorOutputNotOk(output);
-                      return output.error;
-                    },
-                  },
-                ],
-                target: '#ControlMachine.shutdown',
-              },
-            ],
-          },
+            {
+              target: 'spawningEventMachines',
+            },
+          ],
         },
 
         /**
@@ -977,38 +1148,9 @@ export const ControlMachine = setup({
               target: '#ControlMachine.shutdown',
             },
             {
-              target: 'readSmokerPkgJson',
-            },
-          ],
-        },
-        readSmokerPkgJson: {
-          description: 'Reads our own package.json file (for use by reporters)',
-          invoke: {
-            src: 'readSmokerPkgJson',
-            input: ({context: {fileManager}}) => fileManager,
-            onDone: {
-              actions: [
-                {
-                  type: 'assignSmokerPkgJson',
-                  params: ({event: {output}}) => output,
-                },
-              ],
               target: 'spawningComponents',
             },
-            onError: {
-              actions: [
-                {
-                  type: 'assignError',
-                  params: ({event: {error}}) => fromUnknownError(error),
-                },
-                log(
-                  ({event: {error}}) =>
-                    `error reading smoker package.json: ${error}`,
-                ),
-              ],
-              target: '#ControlMachine.shutdown',
-            },
-          },
+          ],
         },
         spawningComponents: {
           description:
@@ -1299,7 +1441,7 @@ export const ControlMachine = setup({
         'Graceful shutdown process; sends final events to reporters and tells them to gracefully shut themselves down. At this point, all package manager machines should have shut down gracefully',
       initial: 'reportResults',
       states: {
-        reportResult: {
+        reportResults: {
           always: [
             {
               guard: 'hasError',

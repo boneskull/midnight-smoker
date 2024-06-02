@@ -1,31 +1,20 @@
-import rewiremock from 'rewiremock/node';
 import unexpected from 'unexpected';
 import {RuleSeverities} from '../../../../src/constants';
 import {RuleError} from '../../../../src/error/rule-error';
-import type * as I from '../../../../src/rule/rule-issue';
-import type * as IS from '../../../../src/schema/check-result';
+import {RuleIssue, type RuleIssueParams} from '../../../../src/rule/rule-issue';
+import {type CheckResultFailed} from '../../../../src/schema/check-result';
 import type {
   StaticRuleContext,
   StaticRuleDef,
 } from '../../../../src/schema/rule-static';
-import {createFsMocks} from '../../mocks/fs';
 
 const expect = unexpected.clone();
 
 describe('midnight-smoker', function () {
   describe('component', function () {
     describe('rule', function () {
-      let RuleIssue: typeof I.RuleIssue;
-
-      beforeEach(function () {
-        const {mocks} = createFsMocks();
-        ({RuleIssue} = rewiremock.proxy(
-          () => require('../../../../src/rule/rule-issue'),
-          mocks,
-        ));
-      });
       describe('RuleIssue', function () {
-        let params: I.RuleIssueParams<StaticRuleContext, StaticRuleDef>;
+        let params: RuleIssueParams<StaticRuleContext, StaticRuleDef>;
         const ruleId = 'example-rule';
         const exampleStaticRule: StaticRuleDef = {
           name: 'example-rule',
@@ -46,7 +35,7 @@ describe('midnight-smoker', function () {
           pkgManager: 'bebebebebee',
           ruleId,
         };
-        let issue: I.RuleIssue;
+        let issue: RuleIssue;
 
         beforeEach(function () {
           params = {
@@ -116,7 +105,7 @@ describe('midnight-smoker', function () {
         describe('instance method', function () {
           describe('toJSON()', function () {
             it('should return a StaticRuleIssue', function () {
-              const expected: IS.CheckResultFailed = {
+              const expected: CheckResultFailed = {
                 rule: params.rule,
                 ctx: params.ctx,
                 message: params.message,

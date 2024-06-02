@@ -19,7 +19,7 @@ function _matchPkgManager(
   def: PkgManagerDef,
 ): PkgManagerDefSpec | undefined {
   let version: SemVer | string | undefined;
-  if (def.bin === spec.pkgManager && (version = def.accepts(spec.version))) {
+  if (def.bin === spec.bin && (version = def.accepts(spec.version))) {
     return {spec: spec.clone({version}), def};
   }
 }
@@ -66,7 +66,7 @@ export const matchPkgManagers = (
       errors.push(
         new UnsupportedPackageManagerError(
           `No package manager implementation found that can handle "${spec}"`,
-          spec.pkgManager,
+          spec.bin,
           spec.version,
         ),
       );

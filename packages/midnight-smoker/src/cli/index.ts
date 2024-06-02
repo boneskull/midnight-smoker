@@ -8,12 +8,12 @@
 
 import {ConfigReader} from '#config/config-reader';
 import {SCRIPT_NAME} from '#constants';
-import {readSmokerPkgJson} from '#util/pkg-util';
 import Debug from 'debug';
 import {omit} from 'lodash';
 import terminalLink from 'terminal-link';
 import {hideBin} from 'yargs/helpers';
 import yargs from 'yargs/yargs';
+import {FileManager} from '../util';
 import {mergeOptions} from './cli-util';
 import {
   LintCommand,
@@ -33,7 +33,8 @@ const debug = Debug('midnight-smoker:cli');
 async function main(args: string[]): Promise<void> {
   const y = yargs(args);
 
-  const {name, version, homepage} = await readSmokerPkgJson();
+  const {name, version, homepage} =
+    await FileManager.create().readSmokerPkgJson();
 
   debug('%s v%s', name, version);
 
@@ -54,7 +55,7 @@ async function main(args: string[]): Promise<void> {
         fallback: false,
       })}\n`,
     )
-    .showHelpOnFail(false)
+    .showHelpOnFail(true)
     .help()
     .strict()
     .parseAsync();

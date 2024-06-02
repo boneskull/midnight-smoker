@@ -22,17 +22,15 @@ import {
 import {type PluginMetadata} from '../../../src/plugin';
 import {PluginRegistry} from '../../../src/plugin/plugin-registry';
 import {FileManager} from '../../../src/util/filemanager';
-import {nullExecutor, nullPkgManager, nullRule} from '../mocks/component';
+import {nullExecutor, nullPkgManagerDef, nullRule} from '../mocks/component';
 import {createMachineRunner} from './machine-helpers';
 const debug = Debug('midnight-smoker:test:machine');
 const expect = unexpected.clone().use(unexpectedSinon);
 
-const {runUntilSnapshot, runMachine, runUntilEvent} = createMachineRunner(
-  PkgManagerMachine,
-  {
+const {runUntilSnapshot, runUntilTransition, runMachine, runUntilEvent} =
+  createMachineRunner(PkgManagerMachine, {
     logger: debug,
-  },
-);
+  });
 
 describe('midnight-smoker', function () {
   describe('machine', function () {
@@ -57,11 +55,11 @@ describe('midnight-smoker', function () {
         sandbox = createSandbox();
         plugin = await pluginRegistry.registerPlugin('test-plugin', {
           plugin(api) {
-            api.definePackageManager(nullPkgManager);
+            api.definePackageManager(nullPkgManagerDef);
             api.defineRule(nullRule);
           },
         });
-        def = {...nullPkgManager};
+        def = {...nullPkgManagerDef};
         smokerOptions = OptionParser.buildSmokerOptionsSchema(
           pluginRegistry,
         ).parse({
@@ -70,7 +68,7 @@ describe('midnight-smoker', function () {
         rootActor = createEmptyActor();
         setup = sandbox.stub(def, 'setup').resolves();
         teardown = sandbox.stub(def, 'teardown').resolves();
-        spec = await PkgManagerSpec.from('test-pm@1.0.0');
+        spec = await PkgManagerSpec.from('nullpm@1.0.0');
         ruleInitPayloads = plugin.ruleDefs.map((def) => ({
           def,
           id: pluginRegistry.getComponentId(def),
@@ -502,7 +500,7 @@ describe('midnight-smoker', function () {
                       pkgName: workspaceInfo.pkgName,
                       command: '',
                       exitCode: 1,
-                      pkgManager: 'test-pm',
+                      pkgManager: 'nullpm',
                       output: '',
                     }),
                   };
@@ -554,11 +552,9 @@ describe('midnight-smoker', function () {
 
                 it('should bail', async function () {
                   await expect(
-                    runUntilSnapshot(
-                      (snapshot) => snapshot.hasTag('Aborted'),
-                      // snapshot.matches({
-                      //   working: {runningScripts: 'errored'},
-                      // }),
+                    runUntilTransition(
+                      'PkgManagerMachine.working.runningScripts.running',
+                      'PkgManagerMachine.working.runningScripts.errored',
                       {
                         ...input,
                         scripts: ['test'],

@@ -1,25 +1,13 @@
 import {type ExecaError} from 'execa';
 import {pick} from 'lodash';
-import rewiremock from 'rewiremock/node';
 import unexpected from 'unexpected';
-import type * as E from '../../../../src/error/exec-error';
-import {createFsMocks} from '../../mocks';
+import {ExecError} from '../../../../src/error/exec-error';
 
 const expect = unexpected.clone();
 
 describe('midnight-smoker', function () {
   describe('component', function () {
     describe('executor', function () {
-      let ExecError: typeof E.ExecError;
-
-      beforeEach(function () {
-        const {mocks} = createFsMocks();
-        ({ExecError} = rewiremock.proxy(
-          () => require('../../../../src/error/exec-error'),
-          mocks,
-        ));
-      });
-
       describe('ExecError', function () {
         it('should construct itself from an ExecaError', function () {
           const error: ExecaError = Object.assign(new Error('foo'), {

@@ -12,11 +12,7 @@ export const nullExecutor: Executor.Executor = async function exec(
   execOpts = {},
   spawnOpts = {},
 ): Promise<Executor.ExecResult> {
-  const proc = execaMock.node(
-    '/mock/thing',
-    [spec.pkgManager, ...args],
-    spawnOpts,
-  );
+  const proc = execaMock.node('/mock/thing', [spec.bin, ...args], spawnOpts);
 
   if (execOpts.verbose) {
     proc.stdout?.pipe(process.stdout);

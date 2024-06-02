@@ -18,7 +18,6 @@ import {FileManager} from '#util/filemanager';
 import {castArray} from '#util/util';
 import Debug from 'debug';
 import {createActor, toPromise, type AnyStateMachine} from 'xstate';
-import {createInspector} from 'xystate';
 import {type SmokeResults} from './event';
 import {type PkgManagerDef} from './pkg-manager';
 import {BLESSED_PLUGINS, PluginRegistry, isBlessedPlugin} from './plugin';
@@ -185,7 +184,6 @@ export class Smoker {
       fileManager,
       opts: smokerOptions,
     } = this;
-    const inspector = await createInspector();
     // TODO: trace logging; use xstate's inspector
     const controller = createActor(controlMachine, {
       id: 'smoke',
@@ -196,9 +194,6 @@ export class Smoker {
         shouldShutdown: true,
       },
       logger: Debug('midnight-smoker:ControlMachine'),
-      inspect: (evt) => {
-        inspector(evt);
-      },
     }).start();
 
     const output = (await toPromise(controller)) as CtrlMachineOutput;

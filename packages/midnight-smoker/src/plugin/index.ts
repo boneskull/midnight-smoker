@@ -8,8 +8,6 @@ export * from './create-plugin-api';
 
 export * from './blessed';
 
-export * from './fs-helpers';
-
 export * from './helpers';
 
 export * from './plugin';

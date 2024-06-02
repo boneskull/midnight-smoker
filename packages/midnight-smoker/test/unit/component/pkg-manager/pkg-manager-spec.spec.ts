@@ -8,7 +8,6 @@ import {
   DEFAULT_PKG_MANAGER_VERSION,
 } from '../../../../src/constants';
 import type * as PMS from '../../../../src/pkg-manager/pkg-manager-spec';
-import {type getSystemPkgManagerVersion} from '../../../../src/util/pkg-util';
 import {createFsMocks} from '../../mocks/fs';
 
 const expect = unexpected.clone().use(unexpectedSinon);
@@ -20,23 +19,21 @@ describe('midnight-smoker', function () {
         let sandbox: sinon.SinonSandbox;
         let PkgManagerSpec: typeof PMS.PkgManagerSpec;
         let getSystemPkgManagerVersionStub: sinon.SinonStubbedMember<
-          typeof getSystemPkgManagerVersion
+          (typeof PMS.PkgManagerOracle)['defaultGetSystemPkgManagerVersion']
         >;
+        let PkgManagerOracle: typeof PMS.PkgManagerOracle;
         beforeEach(function () {
           sandbox = createSandbox();
           const {mocks} = createFsMocks();
-          getSystemPkgManagerVersionStub = sandbox
-            .stub<[string], Promise<string>>()
-            .resolves('1.22.10');
-          ({PkgManagerSpec} = rewiremock.proxy(
+          ({PkgManagerSpec, PkgManagerOracle} = rewiremock.proxy(
             () => require('../../../../src/pkg-manager/pkg-manager-spec'),
             {
               ...mocks,
-              '../../../../src/util/pkg-util': {
-                getSystemPkgManagerVersion: getSystemPkgManagerVersionStub,
-              },
             },
           ));
+          getSystemPkgManagerVersionStub = sandbox
+            .stub(PkgManagerOracle, 'defaultGetSystemPkgManagerVersion')
+            .resolves('1.22.10');
         });
 
         afterEach(function () {
@@ -47,7 +44,7 @@ describe('midnight-smoker', function () {
           describe('when no arguments are provided', function () {
             it('should create a PkgManagerSpec with defaults applied', function () {
               expect(new PkgManagerSpec(), 'to satisfy', {
-                pkgManager: DEFAULT_PKG_MANAGER_BIN,
+                bin: DEFAULT_PKG_MANAGER_BIN,
                 version: DEFAULT_PKG_MANAGER_VERSION,
                 hasSemVer: false,
                 isSystem: false,
@@ -59,10 +56,10 @@ describe('midnight-smoker', function () {
             describe('when the version is valid', function () {
               it('should create a PkgManagerSpec with provided values', function () {
                 expect(
-                  new PkgManagerSpec({pkgManager: 'npm', version: '7.0.0'}),
+                  new PkgManagerSpec({bin: 'npm', version: '7.0.0'}),
                   'to satisfy',
                   {
-                    pkgManager: 'npm',
+                    bin: 'npm',
                     version: '7.0.0',
                     hasSemVer: true,
                     isSystem: false,
@@ -74,12 +71,12 @@ describe('midnight-smoker', function () {
                 it('should create a PkgManagerSpec with provided values', function () {
                   expect(
                     new PkgManagerSpec({
-                      pkgManager: 'npm',
+                      bin: 'npm',
                       version: new SemVer('7.0.0'),
                     }),
                     'to satisfy',
                     {
-                      pkgManager: 'npm',
+                      bin: 'npm',
                       version: '7.0.0',
                       hasSemVer: true,
                       isSystem: false,
@@ -92,10 +89,10 @@ describe('midnight-smoker', function () {
             describe('when the version is invalid', function () {
               it('should consider it a dist-tag', function () {
                 expect(
-                  new PkgManagerSpec({pkgManager: 'npm', version: 'foo'}),
+                  new PkgManagerSpec({bin: 'npm', version: 'foo'}),
                   'to satisfy',
                   {
-                    pkgManager: 'npm',
+                    bin: 'npm',
                     version: 'foo',
                     hasSemVer: false,
                     isSystem: false,
@@ -171,7 +168,7 @@ describe('midnight-smoker', function () {
                   expect(
                     String(
                       new PkgManagerSpec({
-                        pkgManager: 'npm',
+                        bin: 'npm',
                         isSystem: true,
                         version: '7.0.0',
                       }),
@@ -187,7 +184,7 @@ describe('midnight-smoker', function () {
                   expect(
                     String(
                       new PkgManagerSpec({
-                        pkgManager: 'npm',
+                        bin: 'npm',
                         isSystem: true,
                         version: 'latest',
                       }),
@@ -203,7 +200,7 @@ describe('midnight-smoker', function () {
                   expect(
                     String(
                       new PkgManagerSpec({
-                        pkgManager: 'foo',
+                        bin: 'foo',
                         isSystem: true,
                         version: 'bar',
                       }),
@@ -228,7 +225,7 @@ describe('midnight-smoker', function () {
             it('should create a new PkgManagerSpec with the same properties', function () {
               const clone = spec.clone();
               expect(clone, 'to satisfy', {
-                pkgManager: spec.pkgManager,
+                bin: spec.bin,
                 version: spec.version,
                 hasSemVer: spec.hasSemVer,
                 isSystem: spec.isSystem,
@@ -236,9 +233,9 @@ describe('midnight-smoker', function () {
             });
 
             it('should override properties with provided options', function () {
-              const clone = spec.clone({pkgManager: 'yarn', version: '1.22.0'});
+              const clone = spec.clone({bin: 'yarn', version: '1.22.0'});
               expect(clone, 'to satisfy', {
-                pkgManager: 'yarn',
+                bin: 'yarn',
                 version: '1.22.0',
                 hasSemVer: true,
                 isSystem: false,
@@ -247,7 +244,7 @@ describe('midnight-smoker', function () {
 
             it('should not modify the original PkgManagerSpec', function () {
               const original = {...spec};
-              spec.clone({pkgManager: 'yarn', version: '1.22.0'});
+              spec.clone({bin: 'yarn', version: '1.22.0'});
               expect(spec, 'to satisfy', original);
             });
           });
@@ -262,7 +259,7 @@ describe('midnight-smoker', function () {
             it('should return an object with the same properties', function () {
               const json = spec.toJSON();
               expect(json, 'to satisfy', {
-                pkgManager: spec.pkgManager,
+                bin: spec.bin,
                 version: spec.version,
                 isSystem: spec.isSystem,
               });
@@ -302,7 +299,7 @@ describe('midnight-smoker', function () {
               describe('when isSystem is true', function () {
                 it('should append a "(system)" suffix', function () {
                   const systemSpec = new PkgManagerSpec({
-                    pkgManager: 'npm',
+                    bin: 'npm',
                     version: '7.0.0',
                     isSystem: true,
                   });
@@ -317,7 +314,7 @@ describe('midnight-smoker', function () {
 
             describe('when the package manager is unknown and the version is invalid', function () {
               beforeEach(async function () {
-                spec = new PkgManagerSpec({pkgManager: 'bar', version: 'foo'});
+                spec = new PkgManagerSpec({bin: 'bar', version: 'foo'});
               });
 
               it('should return a string with the name and version', function () {
@@ -327,7 +324,7 @@ describe('midnight-smoker', function () {
               describe('when isSystem is true', function () {
                 it('should not contain the version and should append a "(system)" suffix', function () {
                   const systemSpec = new PkgManagerSpec({
-                    pkgManager: 'bar',
+                    bin: 'bar',
                     version: 'foo',
                     isSystem: true,
                   });
@@ -343,7 +340,7 @@ describe('midnight-smoker', function () {
             describe('when no arguments are provided', function () {
               it('should create a PkgManagerSpec with defaults applied', function () {
                 expect(PkgManagerSpec.create(), 'to satisfy', {
-                  pkgManager: DEFAULT_PKG_MANAGER_BIN,
+                  bin: DEFAULT_PKG_MANAGER_BIN,
                   version: DEFAULT_PKG_MANAGER_VERSION,
                   hasSemVer: false,
                   isSystem: false,
@@ -356,12 +353,12 @@ describe('midnight-smoker', function () {
                 it('should create a PkgManagerSpec with provided values', function () {
                   expect(
                     PkgManagerSpec.create({
-                      pkgManager: 'npm',
+                      bin: 'npm',
                       version: '7.0.0',
                     }),
                     'to satisfy',
                     {
-                      pkgManager: 'npm',
+                      bin: 'npm',
                       version: '7.0.0',
                       hasSemVer: true,
                       isSystem: false,
@@ -374,7 +371,7 @@ describe('midnight-smoker', function () {
                 it('should convert the version to a string', function () {
                   const version = new SemVer('7.0.0');
                   const spec = PkgManagerSpec.create({
-                    pkgManager: 'npm',
+                    bin: 'npm',
                     version,
                   });
                   expect(spec.version, 'to be a string').and(
@@ -398,7 +395,7 @@ describe('midnight-smoker', function () {
             describe('when the argument is an instance of PkgManagerSpec', function () {
               it('should return a clone of the instance', async function () {
                 const spec = new PkgManagerSpec({
-                  pkgManager: 'npm',
+                  bin: 'npm',
                   version: '7.0.0',
                 });
                 await expect(
@@ -415,7 +412,7 @@ describe('midnight-smoker', function () {
                   PkgManagerSpec.from('npm@7.0.0'),
                   'to be fulfilled with value satisfying',
                   {
-                    pkgManager: 'npm',
+                    bin: 'npm',
                     version: '7.0.0',
                   },
                 );
@@ -427,7 +424,7 @@ describe('midnight-smoker', function () {
                     PkgManagerSpec.from('pnpm'),
                     'to be fulfilled with value satisfying',
                     {
-                      pkgManager: 'pnpm',
+                      bin: 'pnpm',
                       version: 'latest',
                     },
                   );
@@ -449,12 +446,12 @@ describe('midnight-smoker', function () {
               it('should create a PkgManagerSpec with the provided options', async function () {
                 await expect(
                   PkgManagerSpec.from({
-                    pkgManager: 'yarn',
+                    bin: 'yarn',
                     version: '1.22.10',
                   }),
                   'to be fulfilled with value satisfying',
                   {
-                    pkgManager: 'yarn',
+                    bin: 'yarn',
                     version: '1.22.10',
                   },
                 );
@@ -465,7 +462,7 @@ describe('midnight-smoker', function () {
                   PkgManagerSpec.from({}),
                   'to be fulfilled with value satisfying',
                   {
-                    pkgManager: DEFAULT_PKG_MANAGER_BIN,
+                    bin: DEFAULT_PKG_MANAGER_BIN,
                     isSystem: false,
                     hasSemVer: false,
                     version: DEFAULT_PKG_MANAGER_VERSION,
@@ -475,7 +472,7 @@ describe('midnight-smoker', function () {
 
               it('should get the system package manager version when isSystem is true', async function () {
                 await PkgManagerSpec.from({
-                  pkgManager: 'yarn',
+                  bin: 'yarn',
                   isSystem: true,
                 });
                 expect(getSystemPkgManagerVersionStub, 'was called once');
