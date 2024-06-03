@@ -64,6 +64,8 @@ export const queryWorkspaces = fromPromise<
             } as WorkspaceInfo;
           }),
       );
+      // TODO maybe make this an option; ignore private workspaces
+      workspaces = workspaces.filter(({pkgJson}) => pkgJson.private !== true);
       if (!isEmpty(pickPkgNames)) {
         workspaces = workspaces.filter(({pkgName}) =>
           pickPkgNames.includes(pkgName),

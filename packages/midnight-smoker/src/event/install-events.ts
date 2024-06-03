@@ -2,6 +2,7 @@ import {type InstallError} from '#error/install-error';
 import {type ExecResult} from '#schema/exec-result';
 import {type InstallManifest} from '#schema/install-manifest';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
+import {type WorkspaceInfo} from '#schema/workspaces';
 import {type InstallEvent} from './event-constants';
 import {type PkgManagerEventBase} from './pkg-manager-events';
 
@@ -74,15 +75,11 @@ export interface InstallEventDataBase {
   /**
    * Total number of packages to install
    *
-   * `pkgManagers.length * totalPkgs`
+   * `pkgManagers.length * workspaceInfo.length`
    */
   totalPkgs: number;
 
-  /**
-   * List of unique package names which either will be or have been installed
-   * (depending on context).
-   */
-  uniquePkgs: string[];
+  workspaceInfo: WorkspaceInfo[];
 }
 
 export interface InstallFailedEventData extends InstallEventDataBase {
@@ -112,7 +109,6 @@ export interface PkgManagerInstallBeginEventData
 
 export interface PkgManagerInstallEventDataBase extends PkgManagerEventBase {
   manifests: InstallManifest[];
-  pkgManager: StaticPkgManagerSpec;
   totalPkgs: number;
 }
 

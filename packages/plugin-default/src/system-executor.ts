@@ -4,7 +4,7 @@
  * @packageDocumentation
  */
 
-import {node as execa} from 'execa';
+import execa from 'execa';
 import {InvalidArgError} from 'midnight-smoker/error';
 import {ExecError, isExecaError, type Executor} from 'midnight-smoker/executor';
 

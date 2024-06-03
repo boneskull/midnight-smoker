@@ -16,13 +16,13 @@ import {
   type ActorRefFrom,
   type AnyActorRef,
 } from 'xstate';
+import {type ListenEvent} from '.';
 import {type CtrlLintEvents} from './lint-events';
 
 export interface LintBusMachineInput {
   workspaceInfo: WorkspaceInfo[];
   smokerOptions: SmokerOptions;
   pkgManagers: StaticPkgManagerSpec[];
-  uniquePkgNames: string[];
   parentRef: AnyActorRef;
   ruleDefs: SomeRuleDef[];
 }
@@ -34,12 +34,7 @@ export interface LintBusMachineContext extends LintBusMachineInput {
   lintResults?: LintResult[];
 }
 
-export interface LintBusMachineLintEvent {
-  type: 'LINT';
-  actorIds: string[];
-}
-
-export type LintBusMachineEvents = LintBusMachineLintEvent | CtrlLintEvents;
+export type LintBusMachineEvents = ListenEvent | CtrlLintEvents;
 
 export type ReportableLintEventData = DataForEvent<keyof LintEventData>;
 
@@ -97,28 +92,24 @@ export const LintBusMachine = setup({
   states: {
     idle: {
       on: {
-        LINT: {
+        LISTEN: {
           actions: [assign({actorIds: ({event: {actorIds}}) => actorIds})],
-          target: 'working',
+          target: 'listening',
         },
       },
     },
-    working: {
+    listening: {
       entry: [
         {
           type: 'report',
           params: ({
-            context: {
-              pkgManagers = [],
-              smokerOptions,
-              uniquePkgNames: uniquePkgs = [],
-            },
+            context: {pkgManagers = [], smokerOptions, ruleDefs, workspaceInfo},
           }): DataForEvent<typeof SmokerEvent.LintBegin> => ({
             type: SmokerEvent.LintBegin,
             config: smokerOptions.rules,
-            totalRules: 0,
-            totalPkgManagers: pkgManagers.length,
-            totalUniquePkgs: uniquePkgs.length,
+            totalRules: ruleDefs.length,
+            pkgManagers,
+            workspaceInfo,
           }),
         },
       ],
@@ -133,6 +124,23 @@ export const LintBusMachine = setup({
         },
       ],
       on: {
+        'LINT.RULE_END': {
+          actions: [
+            {
+              type: 'report',
+              params: ({
+                context: {ruleDefs: rules},
+                event,
+              }): DataForEvent<typeof SmokerEvent.RuleEnd> => {
+                return {
+                  ...event,
+                  totalRules: rules.length,
+                  type: SmokerEvent.RuleEnd,
+                };
+              },
+            },
+          ],
+        },
         'LINT.RULE_BEGIN': {
           actions: [
             {
@@ -210,13 +218,18 @@ export const LintBusMachine = setup({
             {
               type: 'report',
               params: ({
-                context: {pkgManagers = [], ruleDefs: rules = []},
+                context: {
+                  pkgManagers = [],
+                  ruleDefs: rules = [],
+                  workspaceInfo,
+                },
                 event: {pkgManager},
               }): DataForEvent<typeof SmokerEvent.PkgManagerLintBegin> => {
                 return {
                   type: SmokerEvent.PkgManagerLintBegin,
                   pkgManager,
                   totalRules: rules.length,
+                  workspaceInfo,
                   totalPkgManagers: pkgManagers.length,
                 };
               },
@@ -236,10 +249,15 @@ export const LintBusMachine = setup({
             {
               type: 'report',
               params: ({
-                context: {pkgManagers = [], ruleDefs: rules = []},
+                context: {
+                  pkgManagers = [],
+                  ruleDefs: rules = [],
+                  workspaceInfo,
+                },
                 event: {pkgManager, results},
               }): DataForEvent<typeof SmokerEvent.PkgManagerLintFailed> => {
                 return {
+                  workspaceInfo,
                   type: SmokerEvent.PkgManagerLintFailed,
                   pkgManager,
                   results,
@@ -263,10 +281,15 @@ export const LintBusMachine = setup({
             {
               type: 'report',
               params: ({
-                context: {pkgManagers = [], ruleDefs: rules = []},
+                context: {
+                  pkgManagers = [],
+                  ruleDefs: rules = [],
+                  workspaceInfo,
+                },
                 event: {pkgManager, results},
               }): DataForEvent<typeof SmokerEvent.PkgManagerLintOk> => {
                 return {
+                  workspaceInfo,
                   type: SmokerEvent.PkgManagerLintOk,
                   pkgManager,
                   results,
@@ -284,18 +307,16 @@ export const LintBusMachine = setup({
           params: ({
             context: {
               pkgManagers = [],
-              uniquePkgNames = [],
               ruleDefs: rules = [],
               lintResults = [],
               smokerOptions: {rules: config},
+              workspaceInfo,
             },
             event,
           }):
             | DataForEvent<typeof SmokerEvent.LintOk>
             | DataForEvent<typeof SmokerEvent.LintFailed> => {
             const totalRules = rules.length;
-            const totalPkgManagers = pkgManagers.length;
-            const totalUniquePkgs = uniquePkgNames.length;
 
             if (lintResults.some((result) => result.type === FAILED)) {
               return {
@@ -303,8 +324,8 @@ export const LintBusMachine = setup({
                 results: lintResults,
                 config,
                 totalRules,
-                totalPkgManagers,
-                totalUniquePkgs,
+                pkgManagers,
+                workspaceInfo,
                 type: SmokerEvent.LintFailed,
               };
             }
@@ -313,8 +334,8 @@ export const LintBusMachine = setup({
               results: lintResults as LintResultOk[],
               config,
               totalRules: rules.length,
-              totalPkgManagers: pkgManagers.length,
-              totalUniquePkgs: uniquePkgNames.length,
+              pkgManagers,
+              workspaceInfo,
               type: SmokerEvent.LintOk,
             };
           },

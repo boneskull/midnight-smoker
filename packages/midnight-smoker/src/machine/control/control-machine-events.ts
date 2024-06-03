@@ -30,6 +30,11 @@ export type CtrlMachineEmitted = DataForEvent<
   | typeof SmokerEvent.SmokeError
 >;
 
+export interface ListenEvent {
+  type: 'LISTEN';
+  actorIds: string[];
+}
+
 /**
  * These events are emitted by the bus machines, and are identical to the "real"
  * events emitted by midnight-smoker.

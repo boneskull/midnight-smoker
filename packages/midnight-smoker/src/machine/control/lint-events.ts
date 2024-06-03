@@ -3,6 +3,7 @@ import type {
   PkgManagerLintFailedEventData,
   PkgManagerLintOkEventData,
   RuleBeginEventData,
+  RuleEndEventData,
   RuleErrorEventData,
   RuleFailedEventData,
   RuleOkEventData,
@@ -20,7 +21,13 @@ export type CtrlLintEvents =
   | CtrlRuleBeginEvent
   | CtrlRuleOkEvent
   | CtrlRuleFailedEvent
+  | CtrlRuleEndEvent
   | CtrlRuleErrorEvent;
+
+export type CtrlRuleEndEvent = MachineEvent<
+  'LINT.RULE_END',
+  Omit<RuleEndEventData, ComputedRuleEventFields>
+>;
 
 export type CtrlPkgManagerLintBeginEvent = MachineEvent<
   'LINT.PKG_MANAGER_LINT_BEGIN',

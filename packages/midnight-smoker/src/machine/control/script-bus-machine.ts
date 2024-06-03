@@ -1,13 +1,14 @@
-import {FAILED, FINAL, OK, SKIPPED} from '#constants';
-import {fromUnknownError} from '#error/from-unknown-error';
-import {SmokerEvent} from '#event/event-constants';
-import {type DataForEvent} from '#event/events';
-import {type ScriptEventData} from '#event/script-events';
-import {type ReporterMachine} from '#machine/reporter';
-import {type SmokerOptions} from '#options/options';
-import {type RunScriptResult} from '#schema/run-script-result';
-import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
-import {partition} from 'lodash';
+import { FAILED, FINAL, OK, SKIPPED } from '#constants';
+import { fromUnknownError } from '#error/from-unknown-error';
+import { SmokerEvent } from '#event/event-constants';
+import { type DataForEvent } from '#event/events';
+import { type ScriptEventData } from '#event/script-events';
+import { type ReporterMachine } from '#machine/reporter';
+import { type SmokerOptions } from '#options/options';
+import { type RunScriptResult } from '#schema/run-script-result';
+import { type StaticPkgManagerSpec } from '#schema/static-pkg-manager-spec';
+import { type WorkspaceInfo } from '#schema/workspaces';
+import { partition } from 'lodash';
 import assert from 'node:assert';
 import {
   assign,
@@ -16,13 +17,14 @@ import {
   type ActorRefFrom,
   type AnyActorRef,
 } from 'xstate';
-import {type CtrlScriptEvents} from './script-events';
+import { type ListenEvent } from './control-machine-events';
+import { type CtrlScriptEvents } from './script-events';
 
 export interface ScriptBusMachineInput {
   smokerOptions: SmokerOptions;
   pkgManagers: StaticPkgManagerSpec[];
-  uniquePkgNames: string[];
   parentRef: AnyActorRef;
+  workspaceInfo: WorkspaceInfo[];
 }
 
 export interface ScriptBusMachineContext extends ScriptBusMachineInput {
@@ -32,14 +34,7 @@ export interface ScriptBusMachineContext extends ScriptBusMachineInput {
   runScriptResults?: RunScriptResult[];
 }
 
-export interface ScriptBusMachineRunScriptsEvent {
-  type: 'RUN_SCRIPTS';
-  actorIds: string[];
-}
-
-export type ScriptBusMachineEvents =
-  | ScriptBusMachineRunScriptsEvent
-  | CtrlScriptEvents;
+export type ScriptBusMachineEvents = ListenEvent | CtrlScriptEvents;
 
 export type ReportableScriptEventData = DataForEvent<keyof ScriptEventData>;
 
@@ -99,7 +94,7 @@ export const ScriptBusMachine = setup({
   states: {
     idle: {
       on: {
-        RUN_SCRIPTS: {
+        LISTEN: {
           actions: [assign({actorIds: ({event: {actorIds = []}}) => actorIds})],
           target: 'working',
         },
@@ -113,13 +108,13 @@ export const ScriptBusMachine = setup({
             context: {
               pkgManagers = [],
               smokerOptions: {script: scripts},
-              uniquePkgNames: uniquePkgs = [],
+              workspaceInfo,
             },
           }): DataForEvent<typeof SmokerEvent.RunScriptsBegin> => ({
+            pkgManagers,
+            workspaceInfo,
             type: SmokerEvent.RunScriptsBegin,
             totalUniqueScripts: scripts.length,
-            totalUniquePkgs: uniquePkgs.length,
-            totalPkgManagers: pkgManagers.length,
           }),
         },
       ],
@@ -241,18 +236,18 @@ export const ScriptBusMachine = setup({
                     smokerOptions: {
                       script: {length: totalUniqueScripts},
                     },
-                    uniquePkgNames: {length: totalUniquePkgs},
+                    workspaceInfo,
                   },
                   event: {pkgManager, manifests},
                 }): DataForEvent<
                   typeof SmokerEvent.PkgManagerRunScriptsBegin
                 > => ({
+                  workspaceInfo,
                   manifests,
                   type: SmokerEvent.PkgManagerRunScriptsBegin,
                   pkgManager,
                   totalPkgManagers,
                   totalUniqueScripts,
-                  totalUniquePkgs,
                 }),
               },
             ],
@@ -269,7 +264,6 @@ export const ScriptBusMachine = setup({
                 context: {
                   pkgManagers = [],
                   smokerOptions: {script: scripts},
-                  uniquePkgNames,
                 },
                 event,
               }): DataForEvent<typeof SmokerEvent.PkgManagerRunScriptsOk> => ({
@@ -277,7 +271,6 @@ export const ScriptBusMachine = setup({
                 type: SmokerEvent.PkgManagerRunScriptsOk,
                 totalPkgManagers: pkgManagers.length,
                 totalUniqueScripts: scripts.length,
-                totalUniquePkgs: uniquePkgNames.length,
               }),
             },
           ],
@@ -291,7 +284,6 @@ export const ScriptBusMachine = setup({
                 context: {
                   pkgManagers = [],
                   smokerOptions: {script: scripts},
-                  uniquePkgNames,
                 },
                 event,
               }): DataForEvent<
@@ -301,7 +293,6 @@ export const ScriptBusMachine = setup({
                 type: SmokerEvent.PkgManagerRunScriptsFailed,
                 totalPkgManagers: pkgManagers.length,
                 totalUniqueScripts: scripts.length,
-                totalUniquePkgs: uniquePkgNames.length,
               }),
             },
           ],
@@ -313,11 +304,11 @@ export const ScriptBusMachine = setup({
           params: ({
             context: {
               runScriptResults: results,
-              pkgManagers: {length: totalPkgManagers},
+              pkgManagers,
+              workspaceInfo,
               smokerOptions: {
                 script: {length: totalUniqueScripts},
               },
-              uniquePkgNames: {length: totalUniquePkgs},
             },
           }): DataForEvent<
             | typeof SmokerEvent.RunScriptsOk
@@ -342,8 +333,8 @@ export const ScriptBusMachine = setup({
               skipped,
               failed,
               totalUniqueScripts,
-              totalUniquePkgs,
-              totalPkgManagers,
+              workspaceInfo,
+              pkgManagers,
               results,
             };
           },

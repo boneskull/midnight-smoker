@@ -81,8 +81,6 @@ export interface PackEventDataBase {
   pkgManagers: StaticPkgManagerSpec[];
   workspaceInfo: WorkspaceInfo[];
   packOptions?: PackOptions;
-  uniquePkgs: string[];
-  totalPkgs: number;
 }
 
 export interface PackBeginEventData extends PackEventDataBase {}

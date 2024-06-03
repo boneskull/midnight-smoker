@@ -32,7 +32,6 @@
     "./reporter": "./reporter/index.ts",
     "./executor": "./executor/index.ts",
     "./pkg-manager": "./pkg-manager/index.ts",
-    "./package.json": "./package.json",
     "./smoker": "./bin/smoker.js",
     "./constants": "./constants.ts",
     "./util": "./util/index.ts"

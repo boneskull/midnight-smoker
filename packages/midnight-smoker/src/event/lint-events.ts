@@ -1,4 +1,4 @@
-import type {RuleError} from '#error/rule-error';
+import {type RuleError} from '#error/rule-error';
 import {type CheckResultFailed, type CheckResultOk} from '#schema/check-result';
 import {type LintManifest} from '#schema/lint-manifest';
 import {type LintResult, type LintResultOk} from '#schema/lint-result';
@@ -7,8 +7,9 @@ import {
   type SomeRuleConfig,
 } from '#schema/rule-options';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
-import type {LintEvent} from './event-constants';
-import type {PkgManagerEventBase} from './pkg-manager-events';
+import {type WorkspaceInfo} from '#schema/workspaces';
+import {type LintEvent} from './event-constants';
+import {type PkgManagerEventBase} from './pkg-manager-events';
 
 export interface LintEventData {
   [LintEvent.PkgManagerLintBegin]: PkgManagerLintBeginEventData;
@@ -18,6 +19,7 @@ export interface LintEventData {
   [LintEvent.RuleOk]: RuleOkEventData;
   [LintEvent.RuleFailed]: RuleFailedEventData;
   [LintEvent.RuleError]: RuleErrorEventData;
+  [LintEvent.RuleEnd]: RuleEndEventData;
   [LintEvent.LintBegin]: LintBeginEventData;
   [LintEvent.LintOk]: LintOkEventData;
   [LintEvent.LintFailed]: LintFailedEventData;
@@ -53,6 +55,11 @@ export interface RuleFailedEventData extends RuleEventDataBase {
   result: CheckResultFailed[];
 }
 
+export interface RuleEndEventData extends RuleEventDataBase {
+  result?: CheckResultFailed[] | CheckResultOk;
+  error?: RuleError;
+}
+
 export interface RuleErrorEventData extends RuleEventDataBase {
   error: RuleError;
 }
@@ -64,8 +71,8 @@ export interface RuleOkEventData extends RuleEventDataBase {
 export interface LintEventDataBase {
   config: BaseRuleConfigRecord;
   totalRules: number;
-  totalPkgManagers: number;
-  totalUniquePkgs: number;
+  pkgManagers: StaticPkgManagerSpec[];
+  workspaceInfo: WorkspaceInfo[];
 }
 
 export interface LintBeginEventData extends LintEventDataBase {}

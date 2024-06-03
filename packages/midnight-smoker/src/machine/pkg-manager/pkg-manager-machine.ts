@@ -51,41 +51,11 @@ import {
   type ActorRefFrom,
   type AnyActorRef,
 } from 'xstate';
-import {
-  type CtrlPkgInstallBeginEvent,
-  type CtrlPkgInstallFailedEvent,
-  type CtrlPkgInstallOkEvent,
-  type CtrlPkgManagerInstallBeginEvent,
-  type CtrlPkgManagerInstallFailedEvent,
-  type CtrlPkgManagerInstallOkEvent,
-} from '../control/install-events';
-import {
-  type CtrlPkgManagerLintBeginEvent,
-  type CtrlPkgManagerLintFailedEvent,
-  type CtrlPkgManagerLintOkEvent,
-  type CtrlRuleBeginEvent,
-  type CtrlRuleFailedEvent,
-  type CtrlRuleOkEvent,
-} from '../control/lint-events';
-import {
-  type CtrlPkgManagerPackBeginEvent,
-  type CtrlPkgManagerPackFailedEvent,
-  type CtrlPkgManagerPackOkEvent,
-  type CtrlPkgPackBeginEvent,
-  type CtrlPkgPackFailedEvent,
-  type CtrlPkgPackOkEvent,
-} from '../control/pack-events';
-import {
-  type CtrlPkgManagerRunScriptsBeginEvent,
-  type CtrlPkgManagerRunScriptsFailedEvent,
-  type CtrlPkgManagerRunScriptsOkEvent,
-  type CtrlRunScriptBeginEvent,
-  type CtrlRunScriptErrorEvent,
-  type CtrlRunScriptFailedEvent,
-  type CtrlRunScriptOkEvent,
-  type CtrlRunScriptSkippedEvent,
-} from '../control/script-events';
-import {type CtrlLingeredEvent} from '../control/smoker-events';
+import type * as InstallEvents from '../control/install-events';
+import type * as LintEvents from '../control/lint-events';
+import type * as PackEvents from '../control/pack-events';
+import type * as ScriptEvents from '../control/script-events';
+import type * as SmokerEvents from '../control/smoker-events';
 import {type RuleInitPayload} from '../loader/loader-machine-types';
 import {
   createTempDir,
@@ -97,12 +67,7 @@ import {
   teardownPkgManager,
   type InstallInput,
 } from './pkg-manager-machine-actors';
-import {
-  type CheckOutput,
-  type PkgManagerMachineEvents,
-  type PkgManagerMachineRuleEndEvent,
-  type RunScriptOutput,
-} from './pkg-manager-machine-events';
+import type * as Event from './pkg-manager-machine-events';
 import {RuleMachine} from './rule-machine';
 
 export type PkgManagerMachineOutput = ActorOutput;
@@ -117,13 +82,11 @@ const Tag = {
   Aborted: 'Aborted',
 } as const;
 
-function isWorkspaceManifest(
-  value: InstallManifest,
-): value is InstallManifest & {
-  installPath: string;
-  localPath: string;
-  isAdditional?: false;
-} {
+function isWorkspaceManifest(value: InstallManifest): value is InstallManifest &
+  WorkspaceInfo & {
+    installPath: string;
+    isAdditional?: false;
+  } {
   return Boolean(value.installPath && value.localPath && !value.isAdditional);
 }
 
@@ -225,7 +188,7 @@ export const PkgManagerMachine = setup({
   types: {
     input: {} as PkgManagerMachineInput,
     context: {} as PkgManagerMachineContext,
-    events: {} as PkgManagerMachineEvents,
+    events: {} as Event.PkgManagerMachineEvents,
     output: {} as PkgManagerMachineOutput,
     tags: {} as PkgManagerMachineTags,
   },
@@ -242,7 +205,7 @@ export const PkgManagerMachine = setup({
   actions: {
     sendLingered: sendTo(
       ({context: {parentRef}}) => parentRef,
-      ({context}): CtrlLingeredEvent => {
+      ({context}): SmokerEvents.CtrlLingeredEvent => {
         const {tmpdir} = context;
         assert.ok(tmpdir);
         return {
@@ -251,39 +214,52 @@ export const PkgManagerMachine = setup({
         };
       },
     ),
-    sendRuleEnd: sendTo(
-      ({context: {parentRef}}) => parentRef,
+    sendRuleEnd: enqueueActions(
       (
-        {self, context},
+        {enqueue, self, context: {parentRef, spec}},
         {
           result,
           type,
           ruleId,
           config,
           ...output
-        }: CheckOutput & {config: SomeRuleConfig},
-      ): CtrlRuleFailedEvent | CtrlRuleOkEvent => {
+        }: Event.CheckOutput & {config: SomeRuleConfig},
+      ) => {
         const {id: sender} = self;
-        const {spec} = context;
-        return type === OK
-          ? {
-              ...output,
-              config,
-              result,
-              pkgManager: spec.toJSON(),
-              rule: ruleId,
-              sender,
-              type: 'LINT.RULE_OK',
-            }
-          : {
-              ...output,
-              config,
-              result,
-              pkgManager: spec.toJSON(),
-              rule: ruleId,
-              sender,
-              type: 'LINT.RULE_FAILED',
-            };
+        const pkgManager = spec.toJSON();
+        const ruleEndEvent: LintEvents.CtrlRuleEndEvent = {
+          ...output,
+          config,
+          result,
+          pkgManager,
+          rule: ruleId,
+          sender,
+          type: 'LINT.RULE_END',
+        };
+        enqueue.sendTo(parentRef, ruleEndEvent);
+        const specificRuleEndEvent:
+          | LintEvents.CtrlRuleOkEvent
+          | LintEvents.CtrlRuleFailedEvent =
+          type === OK
+            ? {
+                ...output,
+                config,
+                result,
+                pkgManager,
+                rule: ruleId,
+                sender,
+                type: 'LINT.RULE_OK',
+              }
+            : {
+                ...output,
+                config,
+                result,
+                pkgManager,
+                rule: ruleId,
+                sender,
+                type: 'LINT.RULE_FAILED',
+              };
+        enqueue.sendTo(parentRef, specificRuleEndEvent);
       },
     ),
 
@@ -354,7 +330,7 @@ export const PkgManagerMachine = setup({
       ({
         self,
         context: {workspaceInfo, spec},
-      }): CtrlPkgManagerPackBeginEvent => {
+      }): PackEvents.CtrlPkgManagerPackBeginEvent => {
         return {
           sender: self.id,
           type: 'PACK.PKG_MANAGER_PACK_BEGIN',
@@ -374,7 +350,9 @@ export const PkgManagerMachine = setup({
           workspaceInfo,
           spec,
         },
-      }): CtrlPkgManagerPackOkEvent | CtrlPkgManagerPackFailedEvent => {
+      }):
+        | PackEvents.CtrlPkgManagerPackOkEvent
+        | PackEvents.CtrlPkgManagerPackFailedEvent => {
         const data = {
           index: pkgManagerIndex,
           workspaceInfo,
@@ -398,22 +376,26 @@ export const PkgManagerMachine = setup({
       ({context: {parentRef}}) => parentRef,
       ({
         self,
-        context: {spec, installManifests = []},
-      }): CtrlPkgManagerInstallBeginEvent => ({
+        context: {spec, installManifests = [], workspaceInfo},
+      }): InstallEvents.CtrlPkgManagerInstallBeginEvent => ({
         manifests: installManifests,
         sender: self.id,
         type: 'INSTALL.PKG_MANAGER_INSTALL_BEGIN',
         pkgManager: spec.toJSON(),
+        workspaceInfo,
       }),
     ),
     sendPkgManagerInstallEnd: sendTo(
       ({context: {parentRef}}) => parentRef,
       ({
         self: {id: sender},
-        context: {installManifests = [], spec, error},
-      }): CtrlPkgManagerInstallOkEvent | CtrlPkgManagerInstallFailedEvent =>
+        context: {installManifests = [], spec, error, workspaceInfo},
+      }):
+        | InstallEvents.CtrlPkgManagerInstallOkEvent
+        | InstallEvents.CtrlPkgManagerInstallFailedEvent =>
         isSmokerError(InstallError, error)
           ? {
+              workspaceInfo,
               manifests: installManifests,
               type: 'INSTALL.PKG_MANAGER_INSTALL_FAILED',
               pkgManager: spec.toJSON(),
@@ -421,6 +403,7 @@ export const PkgManagerMachine = setup({
               error,
             }
           : {
+              workspaceInfo,
               type: 'INSTALL.PKG_MANAGER_INSTALL_OK',
               manifests: installManifests,
               pkgManager: spec.toJSON(),
@@ -429,25 +412,26 @@ export const PkgManagerMachine = setup({
     ),
     raiseRuleEnd: raise(
       (
-        {self: {id: sender}},
-        {output, config}: {output: CheckOutput; config: SomeRuleConfig},
-      ): PkgManagerMachineRuleEndEvent => ({
-        type: 'RULE_END',
-        config,
-        output,
-        sender,
-      }),
+        _,
+        {output, config}: {output: Event.CheckOutput; config: SomeRuleConfig},
+      ): Event.PkgManagerMachineRuleEndEvent => {
+        return {
+          type: 'RULE_END',
+          config,
+          output,
+        };
+      },
     ),
     sendRunScriptEnd: sendTo(
       ({context: {parentRef}}) => parentRef,
       (
         {self: {id: sender}, context: {spec}},
-        {result, manifest}: RunScriptOutput,
+        {result, manifest}: Event.RunScriptOutput,
       ):
-        | CtrlRunScriptOkEvent
-        | CtrlRunScriptFailedEvent
-        | CtrlRunScriptErrorEvent
-        | CtrlRunScriptSkippedEvent => {
+        | ScriptEvents.CtrlRunScriptOkEvent
+        | ScriptEvents.CtrlRunScriptFailedEvent
+        | ScriptEvents.CtrlRunScriptErrorEvent
+        | ScriptEvents.CtrlRunScriptSkippedEvent => {
         const baseEventData = {
           pkgManager: spec.toJSON(),
           manifest,
@@ -502,7 +486,7 @@ export const PkgManagerMachine = setup({
           assert.ok(job);
           const {runScriptManifest} = job;
           const staticSpec = spec.toJSON();
-          const evt: CtrlRunScriptBeginEvent = {
+          const evt: ScriptEvents.CtrlRunScriptBeginEvent = {
             type: 'SCRIPT.RUN_SCRIPT_BEGIN',
             pkgManager: staticSpec,
             manifest: runScriptManifest,
@@ -544,7 +528,7 @@ export const PkgManagerMachine = setup({
           const workspace = queue.shift();
           assert.ok(workspace);
           const staticSpec = spec.toJSON();
-          const evt: CtrlPkgPackBeginEvent = {
+          const evt: PackEvents.CtrlPkgPackBeginEvent = {
             sender,
             type: 'PACK.PKG_PACK_BEGIN',
             pkgManager: staticSpec,
@@ -575,16 +559,19 @@ export const PkgManagerMachine = setup({
       (
         {self: {id: sender}, context: {spec}},
         installManifest: InstallManifest,
-      ): CtrlPkgPackOkEvent => {
-        assert.ok(installManifest.localPath);
+      ): PackEvents.CtrlPkgPackOkEvent => {
+        assert.ok(isWorkspaceManifest(installManifest));
+        const workspace = {
+          localPath: installManifest.localPath,
+          pkgName: installManifest.pkgName,
+          pkgJson: installManifest.pkgJson,
+          pkgJsonPath: installManifest.pkgJsonPath,
+        } as WorkspaceInfo;
         return {
           sender,
           type: 'PACK.PKG_PACK_OK',
           pkgManager: spec.toJSON(),
-          workspace: <WorkspaceInfo>{
-            localPath: installManifest.localPath,
-            pkgName: installManifest.pkgName,
-          },
+          workspace,
           installManifest,
         };
       },
@@ -592,27 +579,32 @@ export const PkgManagerMachine = setup({
     sendPkgManagerRunScriptsBegin: sendTo(
       ({context: {parentRef}}) => parentRef,
       ({
-        context: {spec, runScriptManifests = []},
-      }): CtrlPkgManagerRunScriptsBeginEvent => {
-        return {
-          type: 'SCRIPT.PKG_MANAGER_RUN_SCRIPTS_BEGIN',
-          manifests: runScriptManifests,
-          pkgManager: spec.toJSON(),
-        };
-      },
+        context: {spec, runScriptManifests = [], workspaceInfo},
+      }): ScriptEvents.CtrlPkgManagerRunScriptsBeginEvent => ({
+        workspaceInfo,
+        type: 'SCRIPT.PKG_MANAGER_RUN_SCRIPTS_BEGIN',
+        manifests: runScriptManifests,
+        pkgManager: spec.toJSON(),
+      }),
     ),
     sendPkgManagerRunScriptsEnd: sendTo(
       ({context: {parentRef}}) => parentRef,
       ({
-        context: {runScriptManifests = [], runScriptResults = [], spec},
+        context: {
+          runScriptManifests = [],
+          runScriptResults = [],
+          spec,
+          workspaceInfo,
+        },
       }):
-        | CtrlPkgManagerRunScriptsOkEvent
-        | CtrlPkgManagerRunScriptsFailedEvent => {
+        | ScriptEvents.CtrlPkgManagerRunScriptsOkEvent
+        | ScriptEvents.CtrlPkgManagerRunScriptsFailedEvent => {
         const type = runScriptResults?.some((r) => r.type === ERROR)
           ? 'SCRIPT.PKG_MANAGER_RUN_SCRIPTS_FAILED'
           : 'SCRIPT.PKG_MANAGER_RUN_SCRIPTS_OK';
         return {
           type,
+          workspaceInfo,
           pkgManager: spec.toJSON(),
           results: runScriptResults,
           manifests: runScriptManifests,
@@ -624,6 +616,8 @@ export const PkgManagerMachine = setup({
      * Drains the lint queue
      *
      * Spawns check actors; one per lint queue item per rule
+     *
+     * @todo Change this to only take a single item
      */
     drainLintQueue: enqueueActions(
       ({
@@ -649,7 +643,7 @@ export const PkgManagerMachine = setup({
           for (const {id: ruleId} of ruleInitPayloads) {
             assert.ok(ruleId);
             const config = ruleConfigs[ruleId];
-            const evt: CtrlRuleBeginEvent = {
+            const evt: LintEvents.CtrlRuleBeginEvent = {
               sender,
               type: 'LINT.RULE_BEGIN',
               manifest: job,
@@ -734,7 +728,7 @@ export const PkgManagerMachine = setup({
       (
         {self, context},
         {installManifest, rawResult}: InstallResult,
-      ): CtrlPkgInstallOkEvent => ({
+      ): InstallEvents.CtrlPkgInstallOkEvent => ({
         sender: self.id,
         rawResult,
         type: 'INSTALL.PKG_INSTALL_OK',
@@ -744,18 +738,26 @@ export const PkgManagerMachine = setup({
     ),
     sendPkgManagerLintBegin: sendTo(
       ({context: {parentRef}}) => parentRef,
-      ({self, context}): CtrlPkgManagerLintBeginEvent => ({
-        type: 'LINT.PKG_MANAGER_LINT_BEGIN',
-        pkgManager: context.spec.toJSON(),
-        sender: self.id,
-      }),
+      ({
+        self,
+        context: {spec, workspaceInfo},
+      }): LintEvents.CtrlPkgManagerLintBeginEvent => {
+        return {
+          type: 'LINT.PKG_MANAGER_LINT_BEGIN',
+          pkgManager: spec.toJSON(),
+          workspaceInfo,
+          sender: self.id,
+        };
+      },
     ),
     sendPkgManagerLintEnd: sendTo(
       ({context: {parentRef}}) => parentRef,
       ({
         self: {id: sender},
-        context: {spec, error, ruleResultMap, lintManifests},
-      }): CtrlPkgManagerLintOkEvent | CtrlPkgManagerLintFailedEvent => {
+        context: {spec, error, ruleResultMap, lintManifests, workspaceInfo},
+      }):
+        | LintEvents.CtrlPkgManagerLintOkEvent
+        | LintEvents.CtrlPkgManagerLintFailedEvent => {
         let hasIssues = false;
 
         const manifestsByInstallPath = keyBy(lintManifests, 'installPath');
@@ -793,12 +795,14 @@ export const PkgManagerMachine = setup({
               type: 'LINT.PKG_MANAGER_LINT_FAILED',
               pkgManager: spec.toJSON(),
               sender,
+              workspaceInfo,
               results: lintResults,
             }
           : {
               type: 'LINT.PKG_MANAGER_LINT_OK',
               pkgManager: spec.toJSON(),
               results: lintResults,
+              workspaceInfo,
               sender,
             };
       },
@@ -845,7 +849,7 @@ export const PkgManagerMachine = setup({
       ({
         self: {id: sender},
         context: {spec, currentInstallJob},
-      }): CtrlPkgInstallBeginEvent => {
+      }): InstallEvents.CtrlPkgInstallBeginEvent => {
         assert.ok(currentInstallJob);
         return {
           type: 'INSTALL.PKG_INSTALL_BEGIN',
@@ -860,7 +864,7 @@ export const PkgManagerMachine = setup({
       (
         {self: {id: sender}, context: {spec, currentInstallJob}},
         error: InstallError,
-      ): CtrlPkgInstallFailedEvent => {
+      ): InstallEvents.CtrlPkgInstallFailedEvent => {
         assert.ok(currentInstallJob);
         return {
           installManifest: currentInstallJob.installManifest,
@@ -876,7 +880,7 @@ export const PkgManagerMachine = setup({
       (
         {self: {id: sender}, context: {spec}},
         error: PackError | PackParseError,
-      ): CtrlPkgPackFailedEvent => ({
+      ): PackEvents.CtrlPkgPackFailedEvent => ({
         sender,
         workspace: error.context.workspace,
         type: 'PACK.PKG_PACK_FAILED',
@@ -890,8 +894,21 @@ export const PkgManagerMachine = setup({
     freeRuleResultMap: assign({
       ruleResultMap: new Map(),
     }),
+    freeRuleMachineRefs: enqueueActions(
+      ({enqueue, context: {ruleMachineRefs = {}}}) => {
+        for (const ref of Object.values(ruleMachineRefs)) {
+          enqueue.stopChild(ref);
+        }
+        enqueue.assign({
+          ruleMachineRefs: undefined,
+        });
+      },
+    ),
     updateRuleResultMap: assign({
-      ruleResultMap: ({context: {ruleResultMap}}, output: CheckOutput) => {
+      ruleResultMap: (
+        {context: {ruleResultMap}},
+        output: Event.CheckOutput,
+      ) => {
         // ☠️
         const ruleResultsForManifestMap =
           ruleResultMap.get(output.ctx.installPath) ??
@@ -995,23 +1012,16 @@ export const PkgManagerMachine = setup({
     hasRuleDefs: ({context: {ruleDefs}}) => !isEmpty(ruleDefs),
     shouldLint: and(['hasRuleDefs', ({context: {shouldLint}}) => shouldLint]),
     shouldRunScripts: ({context: {scripts}}) => !isEmpty(scripts),
-    isLintingComplete: and([
-      not('hasLintJobs'),
-      'hasRuleDefs',
-      ({context: {lintManifests = [], ruleResultMap, ruleDefs = []}}) => {
-        if (
-          isEmpty(lintManifests) ||
-          !ruleResultMap.size ||
-          isEmpty(ruleDefs)
-        ) {
-          return false;
-        }
-        const ruleCount = ruleDefs.length;
-        return lintManifests.every((manifest) => {
-          return ruleResultMap.get(manifest.installPath)?.size === ruleCount;
-        });
-      },
-    ]),
+    isLintingComplete: ({
+      context: {workspaceInfo, ruleResultMap, ruleDefs = []},
+    }) => {
+      return (
+        ruleResultMap.size === workspaceInfo.length &&
+        [...ruleResultMap.values()].every(
+          (result) => result.size === ruleDefs.length,
+        )
+      );
+    },
     isRunningComplete: and([
       'shouldRunScripts',
       ({context: {installManifests = [], runScriptResults = []}}) =>
@@ -1024,7 +1034,9 @@ export const PkgManagerMachine = setup({
 }).createMachine({
   id: 'PkgManagerMachine',
   exit: [
-    log(({context: {spec}}) => `PkgManagerMachine ${spec} exiting gracefully`),
+    log(
+      ({context: {spec}}) => `PkgManagerMachine for ${spec} exiting gracefully`,
+    ),
   ],
   entry: [
     log(({context: {spec, workspaceInfo, shouldLint, scripts}}) => {
@@ -1534,9 +1546,21 @@ export const PkgManagerMachine = setup({
         linting: {
           initial: 'idle',
           on: {
+            LINT: {
+              actions: [
+                {
+                  type: 'appendLintManifest',
+                  params: ({event: {manifest}}) => manifest,
+                },
+                {
+                  type: 'enqueueLintItem',
+                  params: ({event: {manifest}}) => manifest,
+                },
+              ],
+            },
             CHECK_RESULT: {
               description:
-                'Once a RuleMachine has completed a rule check, it will send this event; we want to raise it locally as a RULE_END event to avoid duplication, since we must conditionally take a different action if all checks have been completed',
+                'Once a RuleMachine has completed a rule check, it will send this event',
               actions: [
                 log(
                   ({
@@ -1553,8 +1577,11 @@ export const PkgManagerMachine = setup({
                   params: ({event: {output}}) => output,
                 },
                 {
-                  type: 'raiseRuleEnd',
-                  params: ({event: {output, config}}) => ({output, config}),
+                  type: 'sendRuleEnd',
+                  params: ({event}) => ({
+                    ...event.output,
+                    config: event.config,
+                  }),
                 },
               ],
             },
@@ -1565,7 +1592,7 @@ export const PkgManagerMachine = setup({
                 'If the `lint` flag was not passed into the Smoker options, we can exit early',
               always: [
                 {
-                  guard: {type: 'shouldLint'},
+                  guard: and(['shouldLint', 'hasLintJobs']),
                   target: 'lintingPkgs',
                 },
                 {
@@ -1586,55 +1613,16 @@ export const PkgManagerMachine = setup({
                   guard: {type: 'hasLintJobs'},
                   actions: [{type: 'drainLintQueue'}],
                 },
+                {
+                  guard: {type: 'isLintingComplete'},
+                  target: 'done',
+                },
               ],
               exit: [
                 {type: 'sendPkgManagerLintEnd'},
                 {type: 'freeRuleResultMap'},
+                {type: 'freeRuleMachineRefs'},
               ],
-              on: {
-                LINT: {
-                  actions: [
-                    {
-                      type: 'appendLintManifest',
-                      params: ({event: {manifest}}) => manifest,
-                    },
-                    {
-                      type: 'enqueueLintItem',
-                      params: ({event: {manifest}}) => manifest,
-                    },
-                  ],
-                },
-                RULE_END: [
-                  {
-                    description:
-                      'Send the RuleOk or RuleFailed event to the parent, then exit the state. This event should only be sent via raise()',
-                    guard: {type: 'isLintingComplete'},
-                    target: 'done',
-                    actions: [
-                      {
-                        type: 'sendRuleEnd',
-                        params: ({event}) => ({
-                          ...event.output,
-                          config: event.config,
-                        }),
-                      },
-                    ],
-                  },
-                  {
-                    description:
-                      'Send the RuleOk or RuleFailed event to the parent. This event should only be sent via raise()',
-                    actions: [
-                      {
-                        type: 'sendRuleEnd',
-                        params: ({event}) => ({
-                          ...event.output,
-                          config: event.config,
-                        }),
-                      },
-                    ],
-                  },
-                ],
-              },
             },
             done: {
               entry: log('linting complete'),
@@ -1707,6 +1695,9 @@ export const PkgManagerMachine = setup({
               };
             },
             onDone: {
+              actions: [
+                log(({context: {tmpdir}}) => `BLASTED temp dir ${tmpdir}`),
+              ],
               target: 'teardownLifecycle',
             },
             onError: {

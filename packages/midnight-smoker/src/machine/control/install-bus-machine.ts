@@ -15,30 +15,24 @@ import {
   type ActorRefFrom,
   type AnyActorRef,
 } from 'xstate';
+import {type ListenEvent} from '.';
 import {type CtrlInstallEvents} from './install-events';
 
 export interface InstallBusMachineInput {
   workspaceInfo: WorkspaceInfo[];
   smokerOptions: SmokerOptions;
   pkgManagers: StaticPkgManagerSpec[];
-  uniquePkgNames: string[];
   parentRef: AnyActorRef;
 }
 
 export interface InstallBusMachineContext extends InstallBusMachineInput {
   actorIds?: string[];
   pkgManagerDidInstallCount: number;
+  totalPkgs: number;
   error?: Error;
 }
 
-export interface InstallBusMachineInstallEvent {
-  type: 'INSTALL';
-  actorIds: string[];
-}
-
-export type InstallBusMachineEvents =
-  | InstallBusMachineInstallEvent
-  | CtrlInstallEvents;
+export type InstallBusMachineEvents = ListenEvent | CtrlInstallEvents;
 
 export type ReportableInstallEventData = DataForEvent<keyof InstallEventData>;
 
@@ -52,9 +46,7 @@ export const InstallBusMachine = setup({
     hasError: ({context: {error}}) => Boolean(error),
     isInstallingComplete: ({
       context: {pkgManagerDidInstallCount, pkgManagers = []},
-    }) => {
-      return pkgManagerDidInstallCount === pkgManagers.length;
-    },
+    }) => pkgManagerDidInstallCount === pkgManagers.length,
   },
   actions: {
     report: enqueueActions(
@@ -86,12 +78,16 @@ export const InstallBusMachine = setup({
 }).createMachine({
   id: 'InstallBusMachine',
   systemId: 'InstallBusMachine',
-  context: ({input}) => ({...input, pkgManagerDidInstallCount: 0}),
+  context: ({input}) => ({
+    ...input,
+    pkgManagerDidInstallCount: 0,
+    totalPkgs: input.workspaceInfo.length + input.smokerOptions.add.length,
+  }),
   initial: 'idle',
   states: {
     idle: {
       on: {
-        INSTALL: {
+        LISTEN: {
           actions: [assign({actorIds: ({event: {actorIds}}) => actorIds})],
           target: 'working',
         },
@@ -105,16 +101,16 @@ export const InstallBusMachine = setup({
             context: {
               smokerOptions: {add: additionalDeps = []},
               pkgManagers = [],
-              uniquePkgNames: uniquePkgs = [],
+              totalPkgs,
               workspaceInfo,
             },
           }): DataForEvent<typeof SmokerEvent.InstallBegin> => {
             return {
               type: SmokerEvent.InstallBegin,
-              uniquePkgs,
               pkgManagers,
+              workspaceInfo,
               additionalDeps,
-              totalPkgs: pkgManagers.length * workspaceInfo.length,
+              totalPkgs,
             };
           },
         },
@@ -135,9 +131,7 @@ export const InstallBusMachine = setup({
             {
               type: 'report',
               params: ({
-                context: {
-                  workspaceInfo: {length: totalPkgs},
-                },
+                context: {totalPkgs},
                 event,
               }): DataForEvent<typeof SmokerEvent.PkgInstallBegin> => ({
                 totalPkgs,
@@ -152,9 +146,7 @@ export const InstallBusMachine = setup({
             {
               type: 'report',
               params: ({
-                context: {
-                  workspaceInfo: {length: totalPkgs},
-                },
+                context: {totalPkgs},
                 event,
               }): DataForEvent<typeof SmokerEvent.PkgInstallOk> => ({
                 totalPkgs,
@@ -169,9 +161,7 @@ export const InstallBusMachine = setup({
             {
               type: 'report',
               params: ({
-                context: {
-                  workspaceInfo: {length: totalPkgs},
-                },
+                context: {totalPkgs},
                 event,
               }): DataForEvent<typeof SmokerEvent.PkgInstallFailed> => {
                 return {
@@ -189,13 +179,14 @@ export const InstallBusMachine = setup({
             {
               type: 'report',
               params: ({
-                context: {pkgManagers = []},
-                event: {pkgManager, manifests},
+                context: {pkgManagers = [], totalPkgs},
+                event: {pkgManager, manifests, workspaceInfo},
               }): DataForEvent<typeof SmokerEvent.PkgManagerInstallBegin> => ({
                 type: SmokerEvent.PkgManagerInstallBegin,
+                workspaceInfo,
                 pkgManager,
                 manifests,
-                totalPkgs: manifests.length, // TODO is this right?
+                totalPkgs,
                 totalPkgManagers: pkgManagers.length,
               }),
             },
@@ -213,13 +204,14 @@ export const InstallBusMachine = setup({
             {
               type: 'report',
               params: ({
-                context: {pkgManagers = []},
-                event: {pkgManager, manifests},
+                context: {pkgManagers = [], totalPkgs},
+                event: {pkgManager, manifests, workspaceInfo},
               }): DataForEvent<typeof SmokerEvent.PkgManagerInstallOk> => ({
+                workspaceInfo,
                 type: SmokerEvent.PkgManagerInstallOk,
                 manifests,
                 pkgManager,
-                totalPkgs: manifests.length,
+                totalPkgs,
                 totalPkgManagers: pkgManagers.length,
               }),
             },
@@ -237,14 +229,15 @@ export const InstallBusMachine = setup({
             {
               type: 'report',
               params: ({
-                context: {pkgManagers = []},
-                event: {pkgManager, manifests, error},
+                context: {pkgManagers = [], totalPkgs},
+                event: {pkgManager, manifests, error, workspaceInfo},
               }): DataForEvent<typeof SmokerEvent.PkgManagerInstallFailed> => ({
                 type: SmokerEvent.PkgManagerInstallFailed,
+                workspaceInfo,
                 manifests,
                 pkgManager,
                 error,
-                totalPkgs: manifests.length,
+                totalPkgs,
                 totalPkgManagers: pkgManagers.length,
               }),
             },
@@ -261,30 +254,29 @@ export const InstallBusMachine = setup({
           params: ({
             context: {
               smokerOptions: {add: additionalDeps},
-              uniquePkgNames: uniquePkgs,
               pkgManagers,
               workspaceInfo,
               error,
+              totalPkgs,
             },
           }):
             | DataForEvent<typeof SmokerEvent.InstallFailed>
             | DataForEvent<typeof SmokerEvent.InstallOk> => {
-            const totalPkgs = pkgManagers.length * workspaceInfo.length;
             return error
               ? {
                   error: error as InstallError,
                   type: SmokerEvent.InstallFailed,
                   pkgManagers,
-                  uniquePkgs,
                   additionalDeps,
                   totalPkgs,
+                  workspaceInfo,
                 }
               : {
                   type: SmokerEvent.InstallOk,
                   pkgManagers,
                   additionalDeps,
-                  uniquePkgs,
                   totalPkgs,
+                  workspaceInfo,
                 };
           },
         },

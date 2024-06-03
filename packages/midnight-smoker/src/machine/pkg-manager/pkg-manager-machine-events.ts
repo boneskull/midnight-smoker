@@ -84,7 +84,6 @@ export interface PkgManagerMachinePackErrorEvent {
 export interface PkgManagerMachineRuleEndEvent {
   output: CheckOutput;
   config: SomeRuleConfig;
-  sender: string;
   type: 'RULE_END';
 }
 

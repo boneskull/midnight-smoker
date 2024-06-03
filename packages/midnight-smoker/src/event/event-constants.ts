@@ -132,6 +132,8 @@ export const LintEvent = {
    */
   RuleFailed: 'RuleFailed',
 
+  RuleEnd: 'RuleEnd',
+
   /**
    * {@inheritDoc SmokerEvents.RuleOk}
    */

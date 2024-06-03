@@ -133,7 +133,11 @@ export const ReporterMachine = setup({
         if (context.error) {
           return context.error.clone(error);
         }
-        return new MachineError('Reporter errored', error, self.id);
+        return new MachineError(
+          `Reporter errored: ${error.message}`,
+          error,
+          self.id,
+        );
       },
     }),
 

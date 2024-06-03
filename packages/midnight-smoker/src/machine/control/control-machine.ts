@@ -38,9 +38,9 @@ import {type WorkspaceInfo} from '#schema/workspaces';
 import {isSmokerError} from '#util/error-util';
 import {FileManager} from '#util/filemanager';
 import {uniqueId} from '#util/unique-id';
-import {isEmpty, map, uniqBy} from 'lodash';
+import {isEmpty} from 'lodash';
 import assert from 'node:assert';
-import {type PackageJson} from 'type-fest';
+import {type PackageJson, type ValueOf} from 'type-fest';
 import {
   and,
   assign,
@@ -124,7 +124,6 @@ export interface CtrlMachineContext extends CtrlMachineInput {
   startTime: number;
   staticPlugins: StaticPluginMetadata[];
   systemExecutor: Executor;
-  uniquePkgNames?: string[];
   workspaceInfo: WorkspaceInfo[];
 }
 
@@ -184,14 +183,18 @@ const DEP_FIELDS = [
 ] as const;
 
 /**
- * Mapping of actor ID to actor reference in {@link CtrlMachineContext}
+ * Mapping of actor ID to actor reference in {@link CtrlMachineContext}.
+ *
+ * Used for various actions
  */
-const BusActorRefs = {
+const BusActors = {
   PackBusMachine: 'packBusMachineRef',
   InstallBusMachine: 'installBusMachineRef',
   LintBusMachine: 'lintBusMachineRef',
   ScriptBusMachine: 'scriptBusMachineRef',
 } as const;
+
+type BusActor = ValueOf<typeof BusActors>;
 
 /**
  * Main state machine for the `midnight-smoker` application.
@@ -280,54 +283,19 @@ export const ControlMachine = setup({
      */
     assignWorkspaceInfo: assign({
       workspaceInfo: (_, workspaceInfo: WorkspaceInfo[]) => workspaceInfo,
-      uniquePkgNames: (_, workspaceInfo: WorkspaceInfo[]) =>
-        map(uniqBy(workspaceInfo, 'pkgName'), 'pkgName'),
     }),
 
     /**
-     * Sends enabled reporter system IDs to the PackBusMachine so it can begin
-     * processing
+     * Generic action to send a {@link Event.ListenEvent} to a bus machine
      */
-    beginPacking: sendTo(
-      ({context: {packBusMachineRef}}) => packBusMachineRef!,
-      ({context: {reporterMachineRefs}}) => ({
-        type: 'PACK',
-        actorIds: Object.keys(reporterMachineRefs),
-      }),
-    ),
-
-    /**
-     * Send enabled reporter system IDs to the InstallBusMachine so it can begin
-     * processing
-     */
-    beginInstalling: sendTo(
-      ({context: {installBusMachineRef}}) => installBusMachineRef!,
-      ({context: {reporterMachineRefs}}) => ({
-        type: 'INSTALL',
-        actorIds: Object.keys(reporterMachineRefs),
-      }),
-    ),
-
-    /**
-     * Send enabled reporter system IDs to the LintBusMachine so it can begin
-     * processing
-     */
-    beginLinting: sendTo(
-      ({context: {lintBusMachineRef}}) => lintBusMachineRef!,
-      ({context: {reporterMachineRefs}}) => ({
-        type: 'LINT',
-        actorIds: Object.keys(reporterMachineRefs),
-      }),
-    ),
-
-    /**
-     * Send enabled reporter system IDs to the ScriptBusMachine so it can begin
-     * processing
-     */
-    beginRunningScripts: sendTo(
-      ({context: {scriptBusMachineRef}}) => scriptBusMachineRef!,
-      ({context: {reporterMachineRefs}}) => ({
-        type: 'RUN_SCRIPTS',
+    listen: sendTo(
+      ({context}, prop: BusActor) => {
+        const ref = context[prop];
+        assert.ok(ref);
+        return ref;
+      },
+      ({context: {reporterMachineRefs}}): Event.ListenEvent => ({
+        type: 'LISTEN',
         actorIds: Object.keys(reporterMachineRefs),
       }),
     ),
@@ -422,6 +390,13 @@ export const ControlMachine = setup({
         });
       },
     ),
+
+    /**
+     * Creates or updates an aggregate {@link SmokerError}.
+     *
+     * If an aggregate {@link MachineError} is passed, the errors within it will
+     * be dereferenced.
+     */
     assignError: assign({
       error: ({context}, error: Error | Error[]) => {
         if (isSmokerError(MachineError, error)) {
@@ -491,8 +466,31 @@ export const ControlMachine = setup({
       },
     ),
 
+    /**
+     * Assigns `true` to
+     * {@link CtrlMachineContext.shouldShutdown shouldShutdown}.
+     *
+     * This does _not_ imply an immediate shutdown; it just tells the machine to
+     * go ahead and shutdown after its work is complete.
+     */
     shouldShutdown: assign({shouldShutdown: true}),
 
+    /**
+     * Spawns machines for each enabled `ReporterDef` and `PkgManagerDef` added
+     * by plugins.
+     *
+     * At this point, the following should be true:
+     *
+     * 1. `midnight-smoker`'s `package.json` will have been read and assigned to
+     *    {@link CtrlMachineContext.smokerPkgJson smokerPkgJson}
+     * 2. The `LoaderMachine` will have completed successfully and output the "init
+     *    payload" objects, assigned to
+     *    {@link CtrlMachineContext.pkgManagerInitPayloads pkgManagerInitPayloads}
+     *    and
+     *    {@link CtrlMachineContext.reporterInitPayloads reporterInitPayloads}
+     * 3. Workspaces will have been queried and assigned to
+     *    {@link CtrlMachineContext.workspaceInfo workspaceInfo}
+     */
     spawnComponentMachines: assign({
       reporterMachineRefs: ({
         spawn,
@@ -644,14 +642,16 @@ export const ControlMachine = setup({
     }),
 
     /**
-     * Generic action to free an event bus machine reference
+     * Generic action to free an event bus machine reference (and stop the
+     * machine)
      */
-    freeBusMachineRef: enqueueActions(
-      ({enqueue}, id: keyof typeof BusActorRefs) => {
-        const prop = BusActorRefs[id];
-        enqueue.assign({[prop]: undefined});
-      },
-    ),
+    freeBusMachineRef: enqueueActions(({enqueue, context}, prop: BusActor) => {
+      const ref = context[prop];
+      if (ref) {
+        enqueue.stopChild(ref);
+      }
+      enqueue.assign({[prop]: undefined});
+    }),
 
     /**
      * Generic action to re-emit an event to a bus machine.
@@ -669,10 +669,10 @@ export const ControlMachine = setup({
       (
         {enqueue, context},
         {
-          id,
+          prop,
           event,
         }: {
-          id: keyof typeof BusActorRefs;
+          prop: BusActor;
           event:
             | PackBusMachineEvents
             | InstallBusMachineEvents
@@ -680,7 +680,7 @@ export const ControlMachine = setup({
             | ScriptBusMachineEvents;
         },
       ) => {
-        const ref = context[BusActorRefs[id]];
+        const ref = context[prop];
         assert.ok(ref);
         enqueue.sendTo(ref, event);
       },
@@ -1012,7 +1012,7 @@ export const ControlMachine = setup({
               target: '#ControlMachine.shutdown',
             },
             {
-              target: 'spawningEventMachines',
+              target: 'spawningEventBusMachines',
             },
           ],
         },
@@ -1021,27 +1021,20 @@ export const ControlMachine = setup({
          * These "event bus" machines are kept separate because this machine was
          * already huge.
          */
-        spawningEventMachines: {
+        spawningEventBusMachines: {
           description: 'Spawns machines which emit events to the reporters',
           entry: [
             assign({
               packBusMachineRef: ({
                 spawn,
-                context: {
-                  workspaceInfo,
-                  smokerOptions,
-                  pkgManagers,
-                  uniquePkgNames,
-                },
+                context: {workspaceInfo, smokerOptions, pkgManagers},
                 self: parentRef,
               }) => {
                 assert.ok(pkgManagers);
-                assert.ok(uniquePkgNames);
                 const input: PackBusMachineInput = {
                   workspaceInfo,
                   smokerOptions,
                   pkgManagers,
-                  uniquePkgNames,
                   parentRef,
                 };
                 const actor = spawn('PackBusMachine', {
@@ -1055,21 +1048,14 @@ export const ControlMachine = setup({
               },
               installBusMachineRef: ({
                 spawn,
-                context: {
-                  workspaceInfo,
-                  smokerOptions,
-                  pkgManagers,
-                  uniquePkgNames,
-                },
+                context: {workspaceInfo, smokerOptions, pkgManagers},
                 self: parentRef,
               }) => {
                 assert.ok(pkgManagers);
-                assert.ok(uniquePkgNames);
                 const input: InstallBusMachineInput = {
                   workspaceInfo,
                   smokerOptions,
                   pkgManagers,
-                  uniquePkgNames,
                   parentRef,
                 };
                 const actor = spawn('InstallBusMachine', {
@@ -1087,7 +1073,7 @@ export const ControlMachine = setup({
                   workspaceInfo,
                   smokerOptions,
                   pkgManagers,
-                  uniquePkgNames,
+                  ruleInitPayloads,
                 },
                 self: parentRef,
               }) => {
@@ -1096,14 +1082,12 @@ export const ControlMachine = setup({
                   return undefined;
                 }
                 assert.ok(pkgManagers);
-                assert.ok(uniquePkgNames);
                 const input: LintBusMachineInput = {
                   workspaceInfo,
                   smokerOptions,
                   pkgManagers,
-                  uniquePkgNames,
                   parentRef,
-                  ruleDefs: [],
+                  ruleDefs: ruleInitPayloads.map(({def}) => def),
                 };
                 const actor = spawn('LintBusMachine', {
                   input,
@@ -1116,7 +1100,7 @@ export const ControlMachine = setup({
               },
               scriptBusMachineRef: ({
                 spawn,
-                context: {smokerOptions, pkgManagers, uniquePkgNames},
+                context: {smokerOptions, pkgManagers, workspaceInfo},
                 self: parentRef,
               }) => {
                 // refuse to spawn anything if there are no scripts requested
@@ -1124,12 +1108,11 @@ export const ControlMachine = setup({
                   return undefined;
                 }
                 assert.ok(pkgManagers);
-                assert.ok(uniquePkgNames);
                 const input: ScriptBusMachineInput = {
                   smokerOptions,
                   pkgManagers,
-                  uniquePkgNames,
                   parentRef,
+                  workspaceInfo,
                 };
                 const actor = spawn('ScriptBusMachine', {
                   input,
@@ -1210,7 +1193,8 @@ export const ControlMachine = setup({
                 'Tells the PackBusMachine to emit PackBegin and start listening for events coming out of the PkgManagerMachines',
               entry: [
                 {
-                  type: 'beginPacking',
+                  type: 'listen',
+                  params: BusActors.PackBusMachine,
                 },
               ],
               always: [
@@ -1219,13 +1203,21 @@ export const ControlMachine = setup({
                   target: 'errored',
                 },
               ],
-              exit: [{type: 'freeBusMachineRef', params: 'PackBusMachine'}],
+              exit: [
+                {
+                  type: 'freeBusMachineRef',
+                  params: BusActors.PackBusMachine,
+                },
+              ],
               on: {
                 'PACK.*': {
                   actions: [
                     {
                       type: 'resend',
-                      params: ({event}) => ({id: 'PackBusMachine', event}),
+                      params: ({event}) => ({
+                        prop: BusActors.PackBusMachine,
+                        event,
+                      }),
                     },
                   ],
                 },
@@ -1258,7 +1250,8 @@ export const ControlMachine = setup({
             working: {
               entry: [
                 {
-                  type: 'beginInstalling',
+                  type: 'listen',
+                  params: BusActors.InstallBusMachine,
                 },
               ],
               always: [
@@ -1270,7 +1263,7 @@ export const ControlMachine = setup({
               exit: [
                 {
                   type: 'freeBusMachineRef',
-                  params: 'InstallBusMachine',
+                  params: BusActors.InstallBusMachine,
                 },
               ],
               on: {
@@ -1278,7 +1271,12 @@ export const ControlMachine = setup({
                   actions: [
                     {
                       type: 'resend',
-                      params: ({event}) => ({id: 'InstallBusMachine', event}),
+                      params: ({event}) => {
+                        return {
+                          prop: BusActors.InstallBusMachine,
+                          event,
+                        };
+                      },
                     },
                   ],
                 },
@@ -1311,29 +1309,40 @@ export const ControlMachine = setup({
               ],
               on: {
                 'INSTALL.PKG_INSTALL_OK': {
+                  actions: [
+                    {
+                      type: 'listen',
+                      params: BusActors.LintBusMachine,
+                    },
+                  ],
                   target: 'working',
                 },
               },
             },
             working: {
-              entry: [
-                {
-                  type: 'beginLinting',
-                },
-              ],
               always: [
                 {
                   guard: 'hasError',
                   target: 'errored',
                 },
               ],
-              exit: [{type: 'freeBusMachineRef', params: 'LintBusMachine'}],
+              exit: [
+                {
+                  type: 'freeBusMachineRef',
+                  params: BusActors.LintBusMachine,
+                },
+              ],
               on: {
                 'LINT.*': {
                   actions: [
                     {
                       type: 'resend',
-                      params: ({event}) => ({id: 'LintBusMachine', event}),
+                      params: ({event}) => {
+                        return {
+                          prop: BusActors.LintBusMachine,
+                          event,
+                        };
+                      },
                     },
                   ],
                 },
@@ -1384,7 +1393,8 @@ export const ControlMachine = setup({
             working: {
               entry: [
                 {
-                  type: 'beginRunningScripts',
+                  type: 'listen',
+                  params: BusActors.ScriptBusMachine,
                 },
               ],
 
@@ -1395,13 +1405,21 @@ export const ControlMachine = setup({
                 },
               ],
 
-              exit: [{type: 'freeBusMachineRef', params: 'ScriptBusMachine'}],
+              exit: [
+                {
+                  type: 'freeBusMachineRef',
+                  params: BusActors.ScriptBusMachine,
+                },
+              ],
               on: {
                 'SCRIPT.*': {
                   actions: [
                     {
                       type: 'resend',
-                      params: ({event}) => ({id: 'ScriptBusMachine', event}),
+                      params: ({event}) => ({
+                        prop: BusActors.ScriptBusMachine,
+                        event,
+                      }),
                     },
                   ],
                 },
@@ -1471,6 +1489,7 @@ export const ControlMachine = setup({
                   },
                 },
               ],
+              target: 'maybeReportLingered',
             },
             {
               guard: 'didFail',
@@ -1505,6 +1524,7 @@ export const ControlMachine = setup({
                   },
                 },
               ],
+              target: 'maybeReportLingered',
             },
             {
               guard: not('didFail'),
@@ -1529,10 +1549,11 @@ export const ControlMachine = setup({
                   }),
                 },
               ],
+              target: 'maybeReportLingered',
             },
           ],
         },
-        idle: {
+        maybeReportLingered: {
           description:
             'Determines whether or not to report a lingering temp dir',
           always: [

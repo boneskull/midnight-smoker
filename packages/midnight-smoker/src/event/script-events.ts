@@ -7,6 +7,7 @@ import {
   type RunScriptResultSkipped,
 } from '#schema/run-script-result';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
+import {type WorkspaceInfo} from '#schema/workspaces';
 import {type ScriptEvent} from './event-constants';
 import {type PkgManagerEventBase} from './pkg-manager-events';
 
@@ -74,8 +75,8 @@ export interface ScriptEventData {
 
 export interface RunScriptsEventDataBase {
   totalUniqueScripts: number;
-  totalUniquePkgs: number;
-  totalPkgManagers: number;
+  workspaceInfo: WorkspaceInfo[];
+  pkgManagers: StaticPkgManagerSpec[];
 }
 
 export interface RunScriptsBeginEventData extends RunScriptsEventDataBase {}
@@ -116,7 +117,6 @@ export interface RunScriptErrorEventData
 export interface PkgManagerRunScriptsEventDataBase extends PkgManagerEventBase {
   manifests: RunScriptManifest[];
   totalUniqueScripts: number;
-  totalUniquePkgs: number;
 }
 
 export interface PkgManagerRunScriptsBeginEventData

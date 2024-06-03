@@ -194,6 +194,7 @@ export class Smoker {
         shouldShutdown: true,
       },
       logger: Debug('midnight-smoker:ControlMachine'),
+      inspect: () => {},
     }).start();
 
     const output = (await toPromise(controller)) as CtrlMachineOutput;
