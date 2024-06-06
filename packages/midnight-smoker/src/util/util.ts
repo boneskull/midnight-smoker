@@ -9,55 +9,10 @@ import {
   memoize as _memoize,
   once as _once,
   compact,
-  isFunction,
-  isObject,
   type Many,
 } from 'lodash';
 import path from 'node:path';
-
-export interface Serializable<T = unknown> {
-  toJSON(): T;
-}
-
-/**
- * Type guard for an object with a `toJSON` method.
- *
- * @param value Any value
- * @returns - `true` if `value` is an object with a `toJSON` method
- */
-export function isSerializable<T, U = unknown>(
-  value: T,
-): value is T & Serializable<U> {
-  return isObject(value) && 'toJSON' in value && isFunction(value.toJSON);
-}
-
-/**
- * This is just the identity if `T` is not serializable.
- *
- * @param value - The value to be serialized.
- * @returns The original value.
- */
-export function serialize<T>(value: T): T;
-
-/**
- * Serializes a value to JSON-able if it is serializable.
- *
- * This should be used where we have a `ThingOne` and a `ThingTwo implements
- * ThingOne` and `ThingTwo.toJSON()` returns a `ThingOne`, and we want the
- * `ThingOne` only. Yes, this is a convention.
- *
- * @param value - The value to be serialized.
- * @returns The serialized value if it is serializable, otherwise the original
- *   value.
- */
-export function serialize<T extends Serializable<U>, U = unknown>(value: T): U;
-
-export function serialize<T>(value: T) {
-  if (isSerializable(value)) {
-    return value.toJSON();
-  }
-  return value;
-}
+import {type Result, type WorkspaceInfo} from '../pkg-manager';
 
 export function once<This, Args extends any[], TReturn>(
   target: (this: This, ...args: Args) => TReturn,
@@ -140,4 +95,23 @@ export function castArray<T>(value?: Many<T>): T[] {
 export function niceRelativePath(value: string, cwd = process.cwd()) {
   const relative = path.relative(cwd, value);
   return relative.startsWith('..') ? relative : `.${path.sep}${relative}`;
+}
+
+export function randomItem<T>(items: [T, ...T[]] | readonly [T, ...T[]]): T {
+  const index = Math.floor(Math.random() * items.length);
+  return items[index];
+}
+
+/**
+ * Converts an object extending {@link WorkspaceInfo} to a {@link Result},
+ * suitable for serialization
+ *
+ * @param obj Any object extending {@link WorkspaceInfo}
+ * @returns A {@link Result} object
+ */
+export function asResult<T extends WorkspaceInfo>(obj: T): Result<T> {
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+  const result: Result<T> = {...obj} as any;
+  delete result.pkgJson;
+  return result;
 }

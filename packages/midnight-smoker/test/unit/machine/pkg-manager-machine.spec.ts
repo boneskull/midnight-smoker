@@ -16,12 +16,14 @@ import {OptionParser, type SmokerOptions} from '../../../src/options';
 import {
   PkgManagerSpec,
   type PkgManagerDef,
+  type RunScriptManifest,
   type RunScriptResultFailed,
   type WorkspaceInfo,
 } from '../../../src/pkg-manager';
 import {type PluginMetadata} from '../../../src/plugin';
 import {PluginRegistry} from '../../../src/plugin/plugin-registry';
 import {FileManager} from '../../../src/util/filemanager';
+import {serialize} from '../../../src/util/serialize';
 import {nullExecutor, nullPkgManagerDef, nullRule} from '../mocks/component';
 import {createMachineRunner} from './machine-helpers';
 const debug = Debug('midnight-smoker:test:machine');
@@ -86,7 +88,7 @@ describe('midnight-smoker', function () {
           input = {
             def,
             executor: nullExecutor,
-            plugin: plugin.toJSON(),
+            plugin: serialize(plugin),
             fileManager,
             index: 0,
             parentRef: rootActor,
@@ -172,7 +174,7 @@ describe('midnight-smoker', function () {
             input = {
               def,
               executor: nullExecutor,
-              plugin: plugin.toJSON(),
+              plugin: serialize(plugin),
               fileManager,
               index: 0,
               parentRef: rootActor,
@@ -269,7 +271,7 @@ describe('midnight-smoker', function () {
             input = {
               def,
               executor: nullExecutor,
-              plugin: plugin.toJSON(),
+              plugin: serialize(plugin),
               fileManager,
               index: 0,
               parentRef: rootActor,
@@ -469,7 +471,10 @@ describe('midnight-smoker', function () {
 
               describe('when a script was skipped', function () {
                 beforeEach(function () {
-                  sandbox.stub(def, 'runScript').resolves({type: SKIPPED});
+                  sandbox.stub(def, 'runScript').resolves({
+                    manifest: {} as RunScriptManifest,
+                    type: SKIPPED,
+                  });
                 });
 
                 it('should send the correct event', async function () {
@@ -495,6 +500,7 @@ describe('midnight-smoker', function () {
                       failed: true,
                       command: '',
                     },
+                    manifest: {} as RunScriptManifest,
                     error: new ScriptFailedError('failed', {
                       script: 'test',
                       pkgName: workspaceInfo.pkgName,

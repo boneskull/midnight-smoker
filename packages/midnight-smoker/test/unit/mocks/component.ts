@@ -11,6 +11,7 @@ import {type PkgManagerDef} from '../../../src/schema/pkg-manager-def';
 import {type RuleDef} from '../../../src/schema/rule-def';
 
 export const nullPkgManagerDef: PkgManagerDef = {
+  name: 'null',
   bin: 'nullpm',
   description: 'test package manager',
   accepts() {
@@ -40,7 +41,7 @@ export const nullPkgManagerDef: PkgManagerDef = {
     };
     return result;
   },
-  async runScript() {
+  async runScript({manifest}) {
     const result: RunScriptResult = {
       type: OK,
       rawResult: {
@@ -50,6 +51,7 @@ export const nullPkgManagerDef: PkgManagerDef = {
         exitCode: 0,
         failed: false,
       },
+      manifest,
     };
     return result;
   },

@@ -4,7 +4,7 @@ import {
   type PackParseError,
   type ScriptError,
 } from '#error/pkg-manager';
-import {type CheckResultFailed, type CheckResultOk} from '#schema/check-result';
+import {type CheckFailed, type CheckOk} from '#schema/check-result';
 import {type InstallManifest} from '#schema/install-manifest';
 import {type LintManifest} from '#schema/lint-manifest';
 import {type SomeRuleConfig, type SomeRuleOptions} from '#schema/rule-options';
@@ -12,6 +12,7 @@ import {type StaticRuleContext} from '#schema/rule-static';
 import {type RunScriptManifest} from '#schema/run-script-manifest';
 import {type RunScriptResult} from '#schema/run-script-result';
 import {type SomeRuleDef} from '#schema/some-rule-def';
+import {type Result} from '#schema/workspaces';
 
 export type CheckOutput = CheckOutputOk | CheckOutputFailed;
 
@@ -39,14 +40,21 @@ export interface CheckInput {
   manifest: LintManifest;
 }
 
-export interface CheckOutputFailed extends CheckInput {
-  result: CheckResultFailed[];
+export interface BaseCheckOutput {
+  installPath: string;
+  opts: SomeRuleOptions;
+  ruleId: string;
+  manifest: Result<LintManifest>;
+}
+
+export interface CheckOutputFailed extends BaseCheckOutput {
+  result: CheckFailed[];
   actorId: string;
   type: typeof FAILED;
 }
 
-export interface CheckOutputOk extends CheckInput {
-  result: CheckResultOk;
+export interface CheckOutputOk extends BaseCheckOutput {
+  result: CheckOk;
   actorId: string;
   type: typeof OK;
 }

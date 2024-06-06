@@ -4,6 +4,7 @@ import {scheduler} from 'node:timers/promises';
 import {TEST_TMPDIR} from './constants';
 
 export const nullPmDef: PkgManagerDef = {
+  name: 'null',
   bin: 'nullpm',
   accepts(value: string) {
     return value;
@@ -31,7 +32,7 @@ export const nullPmDef: PkgManagerDef = {
       installPath: `${TEST_TMPDIR}/node_modules/bar`,
     };
   },
-  async runScript() {
+  async runScript({manifest}) {
     await scheduler.wait(1500);
     return {
       rawResult: {
@@ -43,6 +44,7 @@ export const nullPmDef: PkgManagerDef = {
       },
       skipped: false,
       type: OK,
+      manifest,
     };
   },
 };

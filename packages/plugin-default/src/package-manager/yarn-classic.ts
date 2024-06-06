@@ -1,4 +1,3 @@
-import Debug from 'debug';
 import {curry} from 'lodash';
 import {ERROR, FAILED, OK, SKIPPED} from 'midnight-smoker/constants';
 import {
@@ -22,8 +21,6 @@ import {isSmokerError} from 'midnight-smoker/util';
 import path from 'node:path';
 import {Range} from 'semver';
 import {yarnVersionData} from './data';
-
-const debug = Debug('smoker:pkg-manager:yarn-classic');
 
 interface YarnWorkspaceInfo {
   location: string;
@@ -49,8 +46,8 @@ export async function runScript(
   ctx: PkgManagerRunScriptContext,
   isScriptNotFound: (value: string) => boolean,
 ): Promise<RunScriptResult> {
-  const {executor, spec, runScriptManifest, loose} = ctx;
-  const {script, pkgName, cwd} = runScriptManifest;
+  const {executor, spec, manifest, loose} = ctx;
+  const {script, pkgName, cwd} = manifest;
   let rawResult: ExecResult | undefined;
   let error: ScriptFailedError | undefined;
   try {
@@ -59,7 +56,7 @@ export async function runScript(
     if (isSmokerError(ExecError, err)) {
       if (isScriptNotFound(err.stderr)) {
         if (loose) {
-          return {type: SKIPPED};
+          return {type: SKIPPED, manifest};
         }
         return {
           type: ERROR,
@@ -68,9 +65,11 @@ export async function runScript(
             script,
             pkgName,
           ),
+          manifest,
         };
       }
       return {
+        manifest,
         type: ERROR,
         error: new RunScriptError(err, script, pkgName, spec.spec),
       };
@@ -82,9 +81,11 @@ export async function runScript(
     if (isScriptNotFound(rawResult.stderr)) {
       return loose
         ? {
+            manifest,
             type: SKIPPED,
           }
         : {
+            manifest,
             rawResult,
             error: new UnknownScriptError(
               `Script "${script}" in package "${pkgName}" not found`,
@@ -109,7 +110,9 @@ export async function runScript(
     });
   }
 
-  return error ? {type: FAILED, rawResult, error} : {type: OK, rawResult};
+  return error
+    ? {type: FAILED, manifest, rawResult, error}
+    : {type: OK, manifest, rawResult};
 }
 
 export const accepts = curry((supportedVersionRange: Range, value: string) => {
@@ -120,6 +123,7 @@ export const accepts = curry((supportedVersionRange: Range, value: string) => {
 }, 2);
 
 export const YarnClassic = {
+  name: 'yarn-classic',
   bin: 'yarn',
 
   lockfile: 'yarn.lock',

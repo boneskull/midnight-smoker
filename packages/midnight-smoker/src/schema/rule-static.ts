@@ -1,23 +1,16 @@
 import {RuleSeveritySchema} from '#schema/rule-severity';
-import {NonEmptyStringSchema, PackageJsonSchema} from '#util/schema-util';
+import {NonEmptyStringSchema} from '#util/schema-util';
 import {z} from 'zod';
+import {WorkspaceInfoSchema} from './workspaces';
 
-export const StaticRuleContextSchema = z
-  .object({
-    pkgName: NonEmptyStringSchema,
-    localPath: NonEmptyStringSchema,
-    pkgJson: PackageJsonSchema,
-    pkgJsonPath: NonEmptyStringSchema,
-    installPath: NonEmptyStringSchema,
-    severity: RuleSeveritySchema,
-    ruleId: NonEmptyStringSchema,
-    pkgManager: NonEmptyStringSchema.describe(
-      'Package manager name w/ version',
-    ),
-  })
-  .describe(
-    'Static representation of a RuleContext, suitable for serialization',
-  );
+export const StaticRuleContextSchema = WorkspaceInfoSchema.extend({
+  installPath: NonEmptyStringSchema,
+  severity: RuleSeveritySchema,
+  ruleId: NonEmptyStringSchema,
+  pkgManager: NonEmptyStringSchema.describe('Package manager name w/ version'),
+}).describe(
+  'Static representation of a RuleContext, suitable for serialization',
+);
 
 /**
  * The bits of a {@link RuleContext} suitable for serialization.

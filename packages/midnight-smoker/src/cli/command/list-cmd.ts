@@ -40,7 +40,6 @@ export class ListCommand extends BaseCommand {
   ): Argv<ListOptionTypes> {
     return argv
       .positional('component', ListPositionals.component)
-      .demandOption('component')
       .options(ListOptions);
   }
 
@@ -57,7 +56,6 @@ export class ListCommand extends BaseCommand {
       case 'rules':
         return ListCommand.listRules(opts);
     }
-    // TODO: throw
   }
 
   /**
@@ -219,6 +217,7 @@ const ListPositionals = {
     describe: 'Type of component to query',
     choices: ['plugins', 'pkg-managers', 'reporters', 'rules'],
     type: 'string',
+    demandOption: true,
   },
 } as const satisfies Record<string, PositionalOptions>;
 

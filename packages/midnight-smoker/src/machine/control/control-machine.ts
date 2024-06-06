@@ -34,7 +34,7 @@ import {
 } from '#schema/run-script-result';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {type StaticPluginMetadata} from '#schema/static-plugin-metadata';
-import {type WorkspaceInfo} from '#schema/workspaces';
+import {type Result, type WorkspaceInfo} from '#schema/workspaces';
 import {isSmokerError} from '#util/error-util';
 import {FileManager} from '#util/filemanager';
 import {uniqueId} from '#util/unique-id';
@@ -51,6 +51,8 @@ import {
   setup,
   type ActorRefFrom,
 } from 'xstate';
+import {serialize} from '../../util/serialize';
+import {asResult} from '../../util/util';
 import {
   type PkgManagerInitPayload,
   type ReporterInitPayload,
@@ -81,18 +83,21 @@ import {
 
 export type CtrlMachineOutput = CtrlOutputOk | CtrlOutputError;
 
-export type CtrlOutputError = MachineUtil.ActorOutputError<
-  Error,
-  {
-    lintResults?: LintResult[];
-    runScriptResults?: RunScriptResult[];
-  }
->;
-
-export type CtrlOutputOk = MachineUtil.ActorOutputOk<{
+export interface BaseCtrlMachineOutput {
+  id: string;
   lintResults?: LintResult[];
   runScriptResults?: RunScriptResult[];
-}>;
+  workspaceInfo: Result<WorkspaceInfo>[];
+  pkgManagers: StaticPkgManagerSpec[];
+  plugins: StaticPluginMetadata[];
+}
+
+export type CtrlOutputError = MachineUtil.ActorOutputError<
+  Error,
+  BaseCtrlMachineOutput
+>;
+
+export type CtrlOutputOk = MachineUtil.ActorOutputOk<BaseCtrlMachineOutput>;
 
 export interface CtrlMachineContext extends CtrlMachineInput {
   defaultExecutor: Executor;
@@ -564,7 +569,7 @@ export const ControlMachine = setup({
                 def,
                 workspaceInfo,
                 executor,
-                plugin: plugin.toJSON(),
+                plugin: serialize(plugin),
                 fileManager,
                 parentRef: self,
                 linger,
@@ -626,7 +631,7 @@ export const ControlMachine = setup({
       ruleInitPayloads: (_, {ruleInitPayloads}: LoaderMachineOutputOk) =>
         ruleInitPayloads,
       pkgManagers: (_, {pkgManagerInitPayloads}: LoaderMachineOutputOk) =>
-        pkgManagerInitPayloads.map(({spec}) => spec.toJSON()),
+        pkgManagerInitPayloads.map(({spec}) => serialize(spec)),
     }),
 
     /**
@@ -744,9 +749,7 @@ export const ControlMachine = setup({
     defaultExecutor ??= rest.pluginRegistry.getExecutor(DEFAULT_EXECUTOR_ID);
     systemExecutor ??= rest.pluginRegistry.getExecutor(SYSTEM_EXECUTOR_ID);
     fileManager ??= FileManager.create();
-    const staticPlugins = rest.pluginRegistry.plugins.map((plugin) =>
-      plugin.toJSON(),
-    );
+    const staticPlugins = serialize(rest.pluginRegistry.plugins);
     return {
       defaultExecutor,
       systemExecutor,
@@ -1175,12 +1178,17 @@ export const ControlMachine = setup({
         {
           type: 'report',
           params: ({
-            context: {pluginRegistry, smokerOptions},
-          }): DataForEvent<typeof SmokerEvent.SmokeBegin> => ({
-            type: SmokerEvent.SmokeBegin,
-            plugins: pluginRegistry.plugins.map((plugin) => plugin.toJSON()),
-            opts: smokerOptions,
-          }),
+            context: {staticPlugins, smokerOptions, workspaceInfo, pkgManagers},
+          }): DataForEvent<typeof SmokerEvent.SmokeBegin> => {
+            assert.ok(pkgManagers);
+            return {
+              type: SmokerEvent.SmokeBegin,
+              plugins: staticPlugins,
+              opts: smokerOptions,
+              workspaceInfo: workspaceInfo.map(asResult),
+              pkgManagers,
+            };
+          },
         },
       ],
       type: PARALLEL,
@@ -1471,19 +1479,22 @@ export const ControlMachine = setup({
                       smokerOptions,
                       runScriptResults = [],
                       lintResults = [],
-                      pluginRegistry,
                       error,
+                      workspaceInfo,
+                      pkgManagers,
+                      staticPlugins,
                     },
                   }): DataForEvent<typeof SmokerEvent.SmokeError> => {
+                    assert.ok(pkgManagers);
                     assert.ok(error);
                     return {
                       type: SmokerEvent.SmokeError,
                       lint: lintResults,
                       scripts: runScriptResults,
                       error,
-                      plugins: pluginRegistry.plugins.map((plugin) =>
-                        plugin.toJSON(),
-                      ),
+                      plugins: staticPlugins,
+                      pkgManagers,
+                      workspaceInfo: workspaceInfo.map(asResult),
                       opts: smokerOptions,
                     };
                   },
@@ -1501,7 +1512,9 @@ export const ControlMachine = setup({
                       smokerOptions,
                       runScriptResults = [],
                       lintResults = [],
-                      pluginRegistry,
+                      pkgManagers,
+                      staticPlugins,
+                      workspaceInfo,
                     },
                   }): DataForEvent<typeof SmokerEvent.SmokeFailed> => {
                     const scriptFailed = runScriptResults.filter(
@@ -1510,15 +1523,16 @@ export const ControlMachine = setup({
                     const lintFailed = lintResults.filter(
                       ({type}) => type === FAILED,
                     ) as LintResultFailed[];
+                    assert.ok(pkgManagers);
                     return {
                       type: SmokerEvent.SmokeFailed,
                       lint: lintResults,
                       scripts: runScriptResults,
                       scriptFailed,
                       lintFailed,
-                      plugins: pluginRegistry.plugins.map((plugin) =>
-                        plugin.toJSON(),
-                      ),
+                      plugins: staticPlugins,
+                      workspaceInfo: workspaceInfo.map(asResult),
+                      pkgManagers,
                       opts: smokerOptions,
                     };
                   },
@@ -1536,17 +1550,22 @@ export const ControlMachine = setup({
                       smokerOptions,
                       runScriptResults,
                       lintResults,
-                      pluginRegistry,
+                      staticPlugins,
+                      workspaceInfo,
+                      pkgManagers,
                     },
-                  }): DataForEvent<typeof SmokerEvent.SmokeOk> => ({
-                    type: SmokerEvent.SmokeOk,
-                    lint: lintResults,
-                    scripts: runScriptResults,
-                    plugins: pluginRegistry.plugins.map((plugin) =>
-                      plugin.toJSON(),
-                    ),
-                    opts: smokerOptions,
-                  }),
+                  }): DataForEvent<typeof SmokerEvent.SmokeOk> => {
+                    assert.ok(pkgManagers);
+                    return {
+                      type: SmokerEvent.SmokeOk,
+                      lint: lintResults,
+                      scripts: runScriptResults,
+                      plugins: staticPlugins,
+                      workspaceInfo: workspaceInfo.map(asResult),
+                      pkgManagers,
+                      opts: smokerOptions,
+                    };
+                  },
                 },
               ],
               target: 'maybeReportLingered',
@@ -1632,10 +1651,33 @@ export const ControlMachine = setup({
     },
   },
   output: ({
-    self: {id},
-    context: {error, lintResults, runScriptResults},
-  }): CtrlMachineOutput =>
-    error
-      ? {type: ERROR, id, error, lintResults, runScriptResults}
-      : {type: OK, id, lintResults, runScriptResults},
+    self,
+    context: {
+      error,
+      lintResults,
+      runScriptResults,
+      workspaceInfo,
+      pkgManagers = [],
+      staticPlugins,
+    },
+  }): CtrlMachineOutput => {
+    const baseOutput: BaseCtrlMachineOutput = {
+      id: self.id,
+      lintResults,
+      runScriptResults,
+      workspaceInfo: workspaceInfo.map(asResult),
+      pkgManagers,
+      plugins: staticPlugins,
+    };
+    return error
+      ? {
+          type: ERROR,
+          error,
+          ...baseOutput,
+        }
+      : {
+          type: OK,
+          ...baseOutput,
+        };
+  },
 });

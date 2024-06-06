@@ -86,6 +86,8 @@ export const ScriptEvent = {
    */
   RunScriptOk: 'RunScriptOk',
 
+  RunScriptEnd: 'RunScriptEnd',
+
   /**
    * {@inheritDoc SmokerEvents.RunScriptError}
    */

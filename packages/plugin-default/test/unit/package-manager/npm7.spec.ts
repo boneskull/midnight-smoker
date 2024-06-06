@@ -290,7 +290,7 @@ describe('@midnight-smoker/plugin-default', function () {
               executor,
               tmpdir: MOCK_TMPDIR,
               loose: false,
-              runScriptManifest: {
+              manifest: {
                 cwd: `${MOCK_TMPDIR}/node_modules/foo`,
                 pkgName: 'foo',
                 pkgJson: {},

@@ -7,6 +7,7 @@ import {type ActorOutput} from '#machine/util';
 import {type SmokerOptions} from '#options/options';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
 import {type ReporterContext, type ReporterDef} from '#schema/reporter-def';
+import {serialize} from '#util/serialize';
 import {isEmpty} from 'lodash';
 import {type PackageJson} from 'type-fest';
 import {and, assign, log, not, setup} from 'xstate';
@@ -160,7 +161,7 @@ export const ReporterMachine = setup({
     shouldHalt: false,
     plugin,
     ctx: {
-      plugin: plugin.toJSON(),
+      plugin: serialize(plugin),
       opts: smokerOptions,
       pkgJson: smokerPkgJson,
     },
@@ -226,13 +227,13 @@ export const ReporterMachine = setup({
           actions: [
             {
               type: 'assignError',
-              params: ({event: {error}, context: {def, plugin}}) =>
+              params: ({event: {error}, context: {def, ctx}}) =>
                 new LifecycleError(
                   fromUnknownError(error),
                   'setup',
                   'reporter',
                   def.name,
-                  plugin.toJSON(),
+                  ctx.plugin,
                 ),
             },
           ],
@@ -256,11 +257,10 @@ export const ReporterMachine = setup({
       description: 'Drains the event queue by emitting events to the reporter',
       invoke: {
         src: 'drainQueue',
-        input: ({context: {def, ctx, queue, plugin}}) => ({
+        input: ({context: {def, ctx, queue}}) => ({
           queue,
           def,
           ctx,
-          plugin: plugin.toJSON(),
         }),
         onDone: {
           target: '#ReporterMachine.listening',
@@ -290,13 +290,13 @@ export const ReporterMachine = setup({
           actions: [
             {
               type: 'assignError',
-              params: ({context: {def, plugin}, event: {error}}) =>
+              params: ({context: {def, ctx}, event: {error}}) =>
                 new LifecycleError(
                   fromUnknownError(error),
                   'teardown',
                   'reporter',
                   def.name,
-                  plugin.toJSON(),
+                  ctx.plugin,
                 ),
             },
           ],

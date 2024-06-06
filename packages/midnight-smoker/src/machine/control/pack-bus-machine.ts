@@ -8,6 +8,7 @@ import {type ReporterMachine} from '#machine/reporter';
 import {type SmokerOptions} from '#options/options';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {type WorkspaceInfo} from '#schema/workspaces';
+import {asResult} from '#util/util';
 import {
   assign,
   enqueueActions,
@@ -200,7 +201,7 @@ export const PackBusMachine = setup({
                   workspaces,
                 },
                 totalPkgManagers: pkgManagers.length,
-                workspaceInfo,
+                workspaceInfo: workspaceInfo.map(asResult),
               }),
             },
           ],

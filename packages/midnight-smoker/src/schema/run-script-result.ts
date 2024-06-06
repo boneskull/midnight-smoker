@@ -5,7 +5,9 @@ import {UnknownScriptError} from '#error/unknown-script-error';
 import {instanceofSchema} from '#util/schema-util';
 import {z} from 'zod';
 import {ExecResultSchema} from './exec-result';
+import {RunScriptManifestSchema} from './run-script-manifest';
 import {ScriptErrorSchema} from './script-error';
+import {asResultSchema} from './workspaces';
 
 export type RunScriptResultError = z.infer<typeof RunScriptErrorResultSchema>;
 
@@ -36,7 +38,11 @@ export const ScriptResultRawResultSchema = ExecResultSchema.describe(
   'Raw result of running the script',
 );
 
-export const RunScriptErrorResultSchema = z.object({
+export const BaseRunScriptResultSchema = z.strictObject({
+  manifest: asResultSchema(RunScriptManifestSchema),
+});
+
+export const RunScriptErrorResultSchema = BaseRunScriptResultSchema.extend({
   type: z.literal(ERROR),
   error: z.union([
     instanceofSchema(RunScriptError),
@@ -45,16 +51,16 @@ export const RunScriptErrorResultSchema = z.object({
   rawResult: ScriptResultRawResultSchema.optional(),
 });
 
-export const RunScriptSkippedResultSchema = z.object({
+export const RunScriptSkippedResultSchema = BaseRunScriptResultSchema.extend({
   type: z.literal(SKIPPED),
 });
 
-export const RunScriptOkResultSchema = z.object({
+export const RunScriptOkResultSchema = BaseRunScriptResultSchema.extend({
   type: z.literal(OK),
   rawResult: ScriptResultRawResultSchema,
 });
 
-export const RunScriptFailedResultSchema = z.object({
+export const RunScriptFailedResultSchema = BaseRunScriptResultSchema.extend({
   type: z.literal(FAILED),
   rawResult: ScriptResultRawResultSchema.optional(),
   error: instanceofSchema(ScriptFailedError),

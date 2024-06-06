@@ -2,11 +2,12 @@ import unexpected from 'unexpected';
 import {RuleSeverities} from '../../../../src/constants';
 import {RuleError} from '../../../../src/error/rule-error';
 import {RuleIssue, type RuleIssueParams} from '../../../../src/rule/rule-issue';
-import {type CheckResultFailed} from '../../../../src/schema/check-result';
+import {type CheckFailed} from '../../../../src/schema/check-result';
 import type {
   StaticRuleContext,
   StaticRuleDef,
 } from '../../../../src/schema/rule-static';
+import {asResult} from '../../../../src/util/util';
 
 const expect = unexpected.clone();
 
@@ -14,7 +15,7 @@ describe('midnight-smoker', function () {
   describe('component', function () {
     describe('rule', function () {
       describe('RuleIssue', function () {
-        let params: RuleIssueParams<StaticRuleContext, StaticRuleDef>;
+        let params: RuleIssueParams;
         const ruleId = 'example-rule';
         const exampleStaticRule: StaticRuleDef = {
           name: 'example-rule',
@@ -71,14 +72,14 @@ describe('midnight-smoker', function () {
             describe('when severity is Error', function () {
               it('should return true', function () {
                 params.ctx.severity = RuleSeverities.Error;
-                expect(issue.failed, 'to be true');
+                expect(issue.isError, 'to be true');
               });
             });
 
             describe('when severity is Warn', function () {
               it('should return false', function () {
                 params.ctx.severity = RuleSeverities.Warn;
-                expect(issue.failed, 'to be false');
+                expect(issue.isError, 'to be false');
               });
             });
           });
@@ -105,14 +106,14 @@ describe('midnight-smoker', function () {
         describe('instance method', function () {
           describe('toJSON()', function () {
             it('should return a StaticRuleIssue', function () {
-              const expected: CheckResultFailed = {
+              const expected: CheckFailed = {
                 rule: params.rule,
-                ctx: params.ctx,
+                ctx: asResult(params.ctx),
                 message: params.message,
                 data: params.data,
                 error: params.error,
                 id: issue.id,
-                failed: issue.failed,
+                isError: issue.isError,
                 filepath: issue.filepath,
                 type: 'FAILED',
               };

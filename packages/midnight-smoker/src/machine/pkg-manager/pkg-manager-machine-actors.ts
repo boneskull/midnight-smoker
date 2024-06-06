@@ -224,7 +224,7 @@ export const runScript = fromPromise<RunScriptOutput, RunScriptInput>(
     if (signal.aborted) {
       throw new AbortError(signal.reason);
     }
-    const {runScriptManifest: manifest} = ctx;
+    const {manifest} = ctx;
     try {
       const result = await def.runScript(ctx);
       return {result, manifest};
@@ -234,12 +234,13 @@ export const runScript = fromPromise<RunScriptOutput, RunScriptInput>(
         isSmokerError(RunScriptError, err) ||
         isSmokerError(UnknownScriptError, err)
       ) {
-        result = {type: ERROR, error: err};
+        result = {type: ERROR, error: err, manifest};
       } else if (isSmokerError(ScriptFailedError, err)) {
-        result = {type: FAILED, error: err};
+        result = {type: FAILED, error: err, manifest};
       } else {
         result = {
           type: ERROR,
+          manifest,
           error: new UnknownScriptError(
             `Failed to run script ${manifest.script} for package ${manifest.pkgName}`,
             manifest.script,

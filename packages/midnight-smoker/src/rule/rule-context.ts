@@ -1,7 +1,13 @@
 import {fromUnknownError} from '#error/from-unknown-error';
 import {RuleError} from '#error/rule-error';
-import {type StaticRuleContext, type StaticRuleDef} from '#schema/rule-static';
-import {serialize} from '#util/util';
+import {type CheckFailed, type CheckOk} from '#schema/check-result';
+import {
+  StaticRuleDefSchema,
+  type StaticRuleContext,
+  type StaticRuleDef,
+} from '#schema/rule-static';
+import {serialize} from '#util/serialize';
+import {asResult} from '#util/util';
 import {type PackageJson} from 'type-fest';
 import {RuleIssue} from './rule-issue';
 
@@ -184,18 +190,25 @@ export class RuleContext implements StaticRuleContext {
   }
 
   /**
-   * Finalizes the rule context and returns the collected issues.
+   * Finalizes the rule context and returns a result object.
    *
-   * @returns An array of {@link RuleIssue} objects or `undefined` if no issues
-   *   were collected.
-   * @todo This is currently called by the RuleRunner, but it should be called
-   *   by something else instead. a RuleRunnerController?
+   * @returns A {@link FinalizedRuleContextResult} object, discriminated on prop
+   *   `type`.
    */
-  public finalize(): readonly RuleIssue[] | undefined {
+  public finalize(): FinalizedRuleContextResult {
     const issues = Object.freeze(this.#issues);
     if (issues.length) {
-      return issues;
+      const checkRuleFailures = serialize<RuleIssue>([...issues]);
+      return Object.freeze({
+        type: 'FAILED',
+        result: Object.freeze(checkRuleFailures),
+      });
     }
+    return Object.freeze({
+      type: 'OK',
+      rule: StaticRuleDefSchema.parse(this.staticRuleDef),
+      ctx: asResult(serialize(this)),
+    });
   }
 
   /**
@@ -207,3 +220,13 @@ export class RuleContext implements StaticRuleContext {
     return {...this.staticCtx};
   }
 }
+
+/**
+ * The return type of {@link RuleContext.finalize}
+ */
+export type FinalizedRuleContextResult =
+  | Readonly<CheckOk>
+  | Readonly<{
+      type: 'FAILED';
+      result: readonly CheckFailed[];
+    }>;

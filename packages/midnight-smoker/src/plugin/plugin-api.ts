@@ -59,17 +59,17 @@ export interface PluginAPI {
   plugins: readonly StaticPluginMetadata[];
 
   /**
-   * Defines an {@link Executor.Executor} component
+   * Defines an {@link Executor} component
    */
   defineExecutor: DefineExecutorFn;
 
   /**
-   * Defines a {@link PkgManager.PkgManager} component
+   * Defines a {@link PkgManagerDef} component
    */
   definePackageManager: DefinePackageManagerFn;
 
   /**
-   * Defines a {@link Rule.RuleDef} component
+   * Defines a {@link RuleDef} component
    *
    * @example
    *

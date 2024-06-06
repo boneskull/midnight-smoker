@@ -8,6 +8,7 @@ import {
 } from '#schema/run-script-result';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {type WorkspaceInfo} from '#schema/workspaces';
+import {type Simplify} from 'type-fest';
 import {type ScriptEvent} from './event-constants';
 import {type PkgManagerEventBase} from './pkg-manager-events';
 
@@ -71,10 +72,12 @@ export interface ScriptEventData {
   [ScriptEvent.RunScriptSkipped]: RunScriptSkippedEventData;
 
   [ScriptEvent.RunScriptError]: RunScriptErrorEventData;
+
+  [ScriptEvent.RunScriptEnd]: RunScriptEndEventData;
 }
 
 export interface RunScriptsEventDataBase {
-  totalUniqueScripts: number;
+  totalScripts: number;
   workspaceInfo: WorkspaceInfo[];
   pkgManagers: StaticPkgManagerSpec[];
 }
@@ -92,31 +95,37 @@ export interface RunScriptsFailedEventData extends RunScriptsOkEventData {}
 
 export interface RunScriptEventDataBase {
   manifest: RunScriptManifest;
-  totalUniqueScripts: number;
+  totalScripts: number;
   pkgManager: StaticPkgManagerSpec;
 }
 
 export interface RunScriptBeginEventData extends RunScriptEventDataBase {}
 
-export interface RunScriptOkEventData
-  extends RunScriptEventDataBase,
-    Omit<RunScriptResultOk, 'type'> {}
+export type RunScriptEndEventData =
+  | RunScriptOkEventData
+  | RunScriptFailedEventData
+  | RunScriptSkippedEventData
+  | RunScriptErrorEventData;
 
-export interface RunScriptFailedEventData
-  extends RunScriptEventDataBase,
-    Omit<RunScriptResultFailed, 'type'> {}
+export type RunScriptOkEventData = Simplify<
+  RunScriptEventDataBase & Omit<RunScriptResultOk, 'type'>
+>;
 
-export interface RunScriptSkippedEventData
-  extends RunScriptEventDataBase,
-    Omit<RunScriptResultSkipped, 'type'> {}
+export type RunScriptFailedEventData = Simplify<
+  RunScriptEventDataBase & Omit<RunScriptResultFailed, 'type'>
+>;
 
-export interface RunScriptErrorEventData
-  extends RunScriptEventDataBase,
-    Omit<RunScriptResultError, 'type'> {}
+export type RunScriptSkippedEventData = Simplify<
+  RunScriptEventDataBase & Omit<RunScriptResultSkipped, 'type'>
+>;
+
+export type RunScriptErrorEventData = Simplify<
+  RunScriptEventDataBase & Omit<RunScriptResultError, 'type'>
+>;
 
 export interface PkgManagerRunScriptsEventDataBase extends PkgManagerEventBase {
   manifests: RunScriptManifest[];
-  totalUniqueScripts: number;
+  totalScripts: number;
 }
 
 export interface PkgManagerRunScriptsBeginEventData

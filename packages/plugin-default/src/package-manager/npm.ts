@@ -269,10 +269,10 @@ export const BaseNpmPackageManager = {
     executor,
     loose,
     spec,
-    runScriptManifest,
+    manifest,
     signal,
   }: PkgManagerRunScriptContext): Promise<RunScriptResult> {
-    const {script, pkgName, cwd} = runScriptManifest;
+    const {script, pkgName, cwd} = manifest;
 
     let rawResult: ExecResult | undefined;
     let error: ScriptFailedError | undefined;
@@ -290,9 +290,10 @@ export const BaseNpmPackageManager = {
       if (isSmokerError(ExecError, err)) {
         if (isMissingScript(err.stderr)) {
           if (loose) {
-            return {type: SKIPPED};
+            return {type: SKIPPED, manifest};
           }
           return {
+            manifest,
             type: ERROR,
             error: new UnknownScriptError(
               `Script "${script}" in package "${pkgName}" not found`,
@@ -302,6 +303,7 @@ export const BaseNpmPackageManager = {
           };
         }
         return {
+          manifest,
           type: ERROR,
           error: new RunScriptError(err, script, pkgName, spec.spec),
         };
@@ -313,9 +315,11 @@ export const BaseNpmPackageManager = {
       if (isMissingScript(rawResult.stderr)) {
         return loose
           ? {
+              manifest,
               type: SKIPPED,
             }
           : {
+              manifest,
               rawResult,
               error: new UnknownScriptError(
                 `Script "${script}" in package "${pkgName}" not found`,
@@ -340,6 +344,8 @@ export const BaseNpmPackageManager = {
       });
     }
 
-    return error ? {type: FAILED, rawResult, error} : {type: OK, rawResult};
+    return error
+      ? {type: FAILED, manifest, rawResult, error}
+      : {type: OK, manifest, rawResult};
   },
 } as const satisfies Partial<PkgManagerDef>;

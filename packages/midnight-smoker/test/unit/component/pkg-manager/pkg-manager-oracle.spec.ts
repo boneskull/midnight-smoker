@@ -1,6 +1,5 @@
 import {type Volume} from 'memfs/lib/volume';
 import path from 'node:path';
-import {scheduler} from 'node:timers/promises';
 import util from 'node:util';
 import rewiremock from 'rewiremock/node';
 import {createSandbox} from 'sinon';
@@ -9,59 +8,14 @@ import unexpectedSinon from 'unexpected-sinon';
 import {
   DEFAULT_PKG_MANAGER_BIN,
   DEFAULT_PKG_MANAGER_VERSION,
-  OK,
 } from '../../../../src/constants';
 import type * as PMO from '../../../../src/pkg-manager/pkg-manager-spec';
-import {type PkgManagerDef} from '../../../../src/schema/pkg-manager-def';
 import {type WorkspaceInfo} from '../../../../src/schema/workspaces';
 import {FileManager} from '../../../../src/util';
+import {nullPkgManagerDef} from '../../mocks';
 import {createFsMocks} from '../../mocks/fs';
-const expect = unexpected.clone().use(unexpectedSinon);
-const TEST_TMPDIR = '/tmp';
 
-export const nullPmDef: PkgManagerDef = {
-  bin: 'nullpm',
-  accepts(value: string) {
-    return value;
-  },
-  lockfile: 'nullpm.lock',
-  async install() {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({
-          stdout: '',
-          stderr: '',
-          command: 'something',
-          exitCode: 0,
-          failed: false,
-        });
-      }, 500);
-    });
-  },
-  async pack() {
-    await scheduler.wait(1500);
-    return {
-      pkgSpec: `${TEST_TMPDIR}/bar.tgz`,
-      pkgName: 'bar',
-      cwd: TEST_TMPDIR,
-      installPath: `${TEST_TMPDIR}/node_modules/bar`,
-    };
-  },
-  async runScript() {
-    await scheduler.wait(1500);
-    return {
-      rawResult: {
-        stdout: '',
-        stderr: '',
-        command: '',
-        exitCode: 0,
-        failed: false,
-      },
-      skipped: false,
-      type: OK,
-    };
-  },
-};
+const expect = unexpected.clone().use(unexpectedSinon);
 
 describe('midnight-smoker', function () {
   describe('component', function () {
@@ -120,7 +74,7 @@ describe('midnight-smoker', function () {
           let oracle: PMO.PkgManagerOracle;
 
           beforeEach(function () {
-            oracle = new PkgManagerOracle([nullPmDef], {
+            oracle = new PkgManagerOracle([nullPkgManagerDef], {
               workspaceInfo,
               fileManager,
               cwd: '/',
@@ -157,7 +111,7 @@ describe('midnight-smoker', function () {
                   JSON.stringify({}),
                 );
                 await fs.promises.writeFile(
-                  path.normalize(`/${nullPmDef.lockfile}`),
+                  path.normalize(`/${nullPkgManagerDef.lockfile}`),
                   '',
                 );
               });
@@ -167,7 +121,7 @@ describe('midnight-smoker', function () {
                   oracle.guessPackageManager(),
                   'to be fulfilled with value satisfying',
                   {
-                    bin: nullPmDef.bin,
+                    bin: nullPkgManagerDef.bin,
                     version: SYSTEM_PKG_MANAGER_VERSION,
                     isSystem: true,
                   },

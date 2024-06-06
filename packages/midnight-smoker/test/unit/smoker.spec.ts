@@ -15,8 +15,10 @@ import {type CtrlMachineOutput} from '../../src/machine/control';
 import {type RawSmokerOptions} from '../../src/options/options';
 import {OptionParser} from '../../src/options/parser';
 import {PluginRegistry} from '../../src/plugin/plugin-registry';
+import {type Result, type WorkspaceInfo} from '../../src/schema/workspaces';
 import {Smoker} from '../../src/smoker';
-import {FileManager} from '../../src/util';
+import {FileManager} from '../../src/util/filemanager';
+import {serialize} from '../../src/util/serialize';
 
 const expect = unexpected.clone().use(unexpectedSinon);
 
@@ -40,6 +42,9 @@ describe('midnight-smoker', function () {
       lintResults: [],
       type: 'OK',
       id: 'test',
+      workspaceInfo: [] as Result<WorkspaceInfo>[],
+      pkgManagers: [],
+      plugins: serialize(pluginRegistry.plugins),
     };
     outputStub = sandbox.stub().returns(controlOutput);
     mockControlMachine = setup({

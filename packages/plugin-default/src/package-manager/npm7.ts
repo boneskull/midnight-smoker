@@ -10,6 +10,8 @@ import {npmVersionData} from './data';
 import {BaseNpmPackageManager, install} from './npm';
 
 const Npm7 = {
+  name: 'npm7',
+
   ...BaseNpmPackageManager,
 
   supportedVersionRange: new Range('^7.0.0 || ^8.0.0'),

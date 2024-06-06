@@ -77,7 +77,7 @@ export const PkgManagerInstallContextSchema = PkgManagerContextSchema.extend({
 });
 
 export const PkgManagerRunScriptContextSchema = PkgManagerContextSchema.extend({
-  runScriptManifest: RunScriptManifestSchema,
+  manifest: RunScriptManifestSchema,
   signal: AbortSignalSchema,
 });
 
@@ -158,6 +158,12 @@ export type PkgManagerSupportedVersionRange = z.infer<
  */
 export const PkgManagerDefSchema = fancyObjectSchema(
   z.object({
+    /**
+     * The name of the package manager. Does not need to be unique. Used for
+     * display purposes only.
+     */
+    name: NonEmptyStringSchema,
+
     /**
      * The name of the package manager's executable.
      */

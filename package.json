@@ -83,13 +83,14 @@
     "snap-shot-it": "7.9.10",
     "ts-node": "10.9.2",
     "tsd": "0.31.0",
+    "type-fest": "4.19.0",
     "typescript": "5.2.2",
     "unexpected": "13.2.1",
     "unexpected-sinon": "11.1.0"
   },
   "overrides": {
     "debug": "4.3.4",
-    "type-fest": "4.8.3"
+    "type-fest": "$type-fest"
   },
   "prettier": {
     "bracketSpacing": false,

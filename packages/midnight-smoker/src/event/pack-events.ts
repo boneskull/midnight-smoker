@@ -2,7 +2,7 @@ import {type PackError, type PackParseError} from '#error/pack-error';
 import {type InstallManifest} from '#schema/install-manifest';
 import {type PackOptions} from '#schema/pack-options';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
-import {type WorkspaceInfo} from '#schema/workspaces';
+import {type Result, type WorkspaceInfo} from '#schema/workspaces';
 import type {PackEvent} from './event-constants';
 import type {PkgManagerEventBase} from './pkg-manager-events';
 
@@ -45,7 +45,7 @@ export interface PackEventData {
 }
 
 export interface PkgPackEventDataBase {
-  workspace: WorkspaceInfo;
+  workspace: Result<WorkspaceInfo>;
   pkgManager: StaticPkgManagerSpec;
   totalPkgs: number;
 }
@@ -53,7 +53,7 @@ export interface PkgPackEventDataBase {
 export interface PkgPackBeginEventData extends PkgPackEventDataBase {}
 
 export interface PkgPackOkEventData extends PkgPackEventDataBase {
-  installManifest: InstallManifest;
+  installManifest: Result<InstallManifest>;
 }
 
 export interface PkgPackFailedEventData extends PkgPackEventDataBase {
@@ -61,7 +61,7 @@ export interface PkgPackFailedEventData extends PkgPackEventDataBase {
 }
 
 export interface PkgManagerPackEventDataBase extends PkgManagerEventBase {
-  workspaceInfo: WorkspaceInfo[];
+  workspaceInfo: Result<WorkspaceInfo>[];
   packOptions?: PackOptions;
 }
 

@@ -8,7 +8,8 @@ import type {EventEmitter} from 'node:events';
 import {Range, SemVer} from 'semver';
 import type {CamelCase, Class, KebabCase, PackageJson} from 'type-fest';
 import {z} from 'zod';
-import {castArray, isSerializable} from './util';
+import {isSerializable} from './serialize';
+import {castArray} from './util';
 
 /**
  * Schema representing a non-empty string

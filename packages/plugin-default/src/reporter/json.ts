@@ -38,7 +38,7 @@ export const JSONReporter: ReporterDef<JSONReporterContext> = {
     ctx.stats.totalPackages = workspaceInfo.length * pkgManagers.length;
     ctx.stats.totalPackageManagers = pkgManagers.length;
   },
-  onRunScriptsBegin(ctx, {totalUniqueScripts: total}) {
+  onRunScriptsBegin(ctx, {totalScripts: total}) {
     ctx.stats.totalScripts = total;
   },
   onRunScriptsFailed(ctx, {failed, passed}) {

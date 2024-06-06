@@ -1,22 +1,23 @@
 import {type StaticRuleContext, type StaticRuleDef} from '#schema/rule-static';
+import {type Result} from './workspaces';
 
 export interface BaseCheckResult {
   rule: StaticRuleDef;
-  ctx: StaticRuleContext;
+  ctx: Result<StaticRuleContext>;
 }
 
-export interface CheckResultOk extends BaseCheckResult {
+export interface CheckOk extends BaseCheckResult {
   type: 'OK';
 }
 
-export interface CheckResultFailed extends BaseCheckResult {
+export interface CheckFailed extends BaseCheckResult {
   type: 'FAILED';
   id: string;
   message: string;
-  failed: boolean;
+  isError: boolean;
   filepath?: string;
   data?: unknown;
   error?: Error;
 }
 
-export type CheckResult = CheckResultOk | CheckResultFailed;
+export type CheckResult = CheckOk | CheckFailed;

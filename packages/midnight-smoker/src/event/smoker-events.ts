@@ -5,7 +5,9 @@ import {
   type RunScriptResult,
   type RunScriptResultFailed,
 } from '#schema/run-script-result';
+import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {type StaticPluginMetadata} from '#schema/static-plugin-metadata';
+import {type Result, type WorkspaceInfo} from '#schema/workspaces';
 import type {SmokerEvent} from './event-constants';
 
 /**
@@ -36,6 +38,8 @@ export interface LingeredEventData {
 export interface SmokeBeginEventData {
   plugins: StaticPluginMetadata[];
   opts: SmokerOptions;
+  workspaceInfo: Result<WorkspaceInfo>[];
+  pkgManagers: StaticPkgManagerSpec[];
 }
 
 interface SmokeEndEventData extends SmokeBeginEventData {
@@ -81,7 +85,10 @@ export interface UnknownErrorEventData {
 /**
  * The final result type of a `midnight-smoker` run
  */
-export type SmokeResults = SmokeOkEventData;
+export type SmokeResults = Omit<
+  SmokeOkEventData,
+  'pkgManagers' | 'workspaceInfo'
+>;
 
 export interface SmokerEventData {
   [SmokerEvent.BeforeExit]: BeforeExitEventData;

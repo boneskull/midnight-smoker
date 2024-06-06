@@ -12,6 +12,7 @@ import Npm7 from './npm7';
 
 const Npm9 = {
   ...Npm7,
+  name: 'npm9',
   supportedVersionRange: new Range('>=9.0.0'),
 
   accepts(value: string): PkgManagerAcceptsResult {

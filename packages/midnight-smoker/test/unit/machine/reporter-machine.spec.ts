@@ -25,6 +25,7 @@ import {type PluginMetadata} from '../../../src/plugin';
 import {PluginRegistry} from '../../../src/plugin/plugin-registry';
 import {type ReporterDef} from '../../../src/reporter';
 import {FileManager} from '../../../src/util/filemanager';
+import {serialize} from '../../../src/util/serialize';
 import {nullReporter} from '../mocks/component';
 import {createMachineRunner} from './machine-helpers';
 
@@ -253,7 +254,7 @@ describe('midnight-smoker', function () {
                 ctx: {
                   opts: smokerOptions,
                   pkgJson: smokerPkgJson,
-                  plugin: plugin.toJSON(),
+                  plugin: serialize(plugin),
                 },
                 queue,
               };
@@ -271,7 +272,7 @@ describe('midnight-smoker', function () {
                 ctx: {
                   opts: smokerOptions,
                   pkgJson: smokerPkgJson,
-                  plugin: plugin.toJSON(),
+                  plugin: serialize(plugin),
                 },
                 queue,
               };
@@ -288,7 +289,7 @@ describe('midnight-smoker', function () {
               ctx: {
                 opts: smokerOptions,
                 pkgJson: smokerPkgJson,
-                plugin: plugin.toJSON(),
+                plugin: serialize(plugin),
               },
             };
             await createMachineRunner(setupReporter).runMachine(input);

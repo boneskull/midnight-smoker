@@ -13,8 +13,8 @@ import {
 import {
   DEFAULT_RULE_SEVERITY,
   getDefaultRuleOptions,
-  type CheckResultFailed,
-  type CheckResultOk,
+  type CheckFailed,
+  type CheckOk,
   type RuleDefSchemaValue,
   type RuleOptions,
   type SomeRuleDef,
@@ -30,7 +30,7 @@ import {type LintManifest} from '../../midnight-smoker/src/schema/lint-manifest'
 export type NamedRuleRunner = (
   installPath: string,
   opts?: SomeRuleOptions,
-) => Promise<CheckResultOk | CheckResultFailed[]>;
+) => Promise<CheckOk | CheckFailed[]>;
 
 /**
  * A rule runner function which can run any rule defined by the plugin factory.
@@ -41,7 +41,7 @@ export type RuleRunner = (
   name: string,
   installPath: string,
   opts?: SomeRuleOptions,
-) => Promise<CheckResultOk | CheckResultFailed[]>;
+) => Promise<CheckOk | CheckFailed[]>;
 
 /**
  * Factory function which creates a {@link NamedRuleRunner}.
@@ -134,7 +134,7 @@ export async function runRule<T extends SomeRuleDef>(
   def: T,
   installPath: string,
   opts?: RuleOptions<T['schema']>,
-): Promise<CheckResultOk | CheckResultFailed[]> {
+): Promise<CheckOk | CheckFailed[]> {
   const plan = 1;
   const defaultOpts = getDefaultRuleOptions(def.schema as RuleDefSchemaValue);
   const someConfig = {

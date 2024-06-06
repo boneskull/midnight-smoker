@@ -18,6 +18,7 @@ const supportedVersionRange = new Range('>=2.0.0');
 
 export const YarnBerry = {
   ...YarnClassic,
+  name: 'yarn-berry',
   accepts: accepts(supportedVersionRange),
   async runScript(ctx: PkgManagerRunScriptContext): Promise<RunScriptResult> {
     return runScript(ctx, (value) =>

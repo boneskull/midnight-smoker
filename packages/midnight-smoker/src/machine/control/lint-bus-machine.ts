@@ -9,6 +9,7 @@ import {type LintResult, type LintResultOk} from '#schema/lint-result';
 import {type SomeRuleDef} from '#schema/some-rule-def';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {type WorkspaceInfo} from '#schema/workspaces';
+import {asResult} from '#util/util';
 import {
   assign,
   enqueueActions,
@@ -16,7 +17,7 @@ import {
   type ActorRefFrom,
   type AnyActorRef,
 } from 'xstate';
-import {type ListenEvent} from '.';
+import {type ListenEvent} from './control-machine-events';
 import {type CtrlLintEvents} from './lint-events';
 
 export interface LintBusMachineInput {
@@ -109,7 +110,7 @@ export const LintBusMachine = setup({
             config: smokerOptions.rules,
             totalRules: ruleDefs.length,
             pkgManagers,
-            workspaceInfo,
+            workspaceInfo: workspaceInfo.map(asResult),
           }),
         },
       ],
@@ -229,7 +230,7 @@ export const LintBusMachine = setup({
                   type: SmokerEvent.PkgManagerLintBegin,
                   pkgManager,
                   totalRules: rules.length,
-                  workspaceInfo,
+                  workspaceInfo: workspaceInfo.map(asResult),
                   totalPkgManagers: pkgManagers.length,
                 };
               },
@@ -257,7 +258,7 @@ export const LintBusMachine = setup({
                 event: {pkgManager, results},
               }): DataForEvent<typeof SmokerEvent.PkgManagerLintFailed> => {
                 return {
-                  workspaceInfo,
+                  workspaceInfo: workspaceInfo.map(asResult),
                   type: SmokerEvent.PkgManagerLintFailed,
                   pkgManager,
                   results,
@@ -289,7 +290,7 @@ export const LintBusMachine = setup({
                 event: {pkgManager, results},
               }): DataForEvent<typeof SmokerEvent.PkgManagerLintOk> => {
                 return {
-                  workspaceInfo,
+                  workspaceInfo: workspaceInfo.map(asResult),
                   type: SmokerEvent.PkgManagerLintOk,
                   pkgManager,
                   results,
@@ -325,7 +326,7 @@ export const LintBusMachine = setup({
                 config,
                 totalRules,
                 pkgManagers,
-                workspaceInfo,
+                workspaceInfo: workspaceInfo.map(asResult),
                 type: SmokerEvent.LintFailed,
               };
             }
@@ -335,7 +336,7 @@ export const LintBusMachine = setup({
               config,
               totalRules: rules.length,
               pkgManagers,
-              workspaceInfo,
+              workspaceInfo: workspaceInfo.map(asResult),
               type: SmokerEvent.LintOk,
             };
           },

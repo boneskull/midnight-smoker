@@ -133,6 +133,8 @@ module.exports = {
           {fixMixedExportsWithInlineTypeSpecifier: true},
         ],
 
+        '@typescript-eslint/switch-exhaustiveness-check': 'error',
+
         '@stylistic/ts/lines-around-comment': [
           'warn',
           {

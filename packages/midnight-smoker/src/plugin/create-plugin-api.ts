@@ -56,17 +56,18 @@ export const createPluginAPI = (
     return pluginApi;
   };
 
-  const definePackageManager: DefinePackageManagerFn = (
-    pkgManagerDef,
-    name = DEFAULT_COMPONENT_ID,
-  ) => {
+  const definePackageManager: DefinePackageManagerFn = (pkgManagerDef) => {
     try {
       PkgManagerDefSchema.parse(pkgManagerDef);
     } catch (err) {
       throw fromZodError(err as ZodError);
     }
-    metadata.addPkgManagerDef(name, pkgManagerDef);
-    registerComponent(ComponentKinds.PkgManagerDef, pkgManagerDef, name);
+    metadata.addPkgManagerDef(pkgManagerDef);
+    registerComponent(
+      ComponentKinds.PkgManagerDef,
+      pkgManagerDef,
+      pkgManagerDef.name,
+    );
     return pluginApi;
   };
 
@@ -80,7 +81,7 @@ export const createPluginAPI = (
       throw fromZodError(err as ZodError);
     }
     metadata.addExecutor(name, executor);
-    registerComponent(ComponentKinds.Executor, executor, name); //?
+    registerComponent(ComponentKinds.Executor, executor, name);
     return pluginApi;
   };
 

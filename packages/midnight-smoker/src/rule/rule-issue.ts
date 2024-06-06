@@ -3,29 +3,31 @@
  *
  * @packageDocumentation
  */
-
 import {PACKAGE_JSON, RuleSeverities} from '#constants';
 import type {RuleError} from '#error/rule-error';
-import {type CheckResultFailed} from '#schema/check-result';
-import {type StaticRuleContext, type StaticRuleDef} from '#schema/rule-static';
+import {type CheckFailed} from '#schema/check-result';
+import {
+  StaticRuleDefSchema,
+  type StaticRuleContext,
+  type StaticRuleDef,
+} from '#schema/rule-static';
+import {type Result} from '#schema/workspaces';
 import {uniqueId, type UniqueId} from '#util/unique-id';
-import {serialize} from '#util/util';
+import {asResult} from '#util/util';
 import path from 'node:path';
 import {fileURLToPath} from 'url';
+import {serialize} from '../util/serialize';
 
 /**
  * Properties for a {@link RuleIssue}.
  *
  * Accepted by {@link RuleIssue.create}
  */
-export interface RuleIssueParams<
-  Ctx extends StaticRuleContext,
-  RuleDef extends StaticRuleDef,
-> {
+export interface RuleIssueParams {
   /**
    * The {@link StaticRuleContext} for this issue, for public consumption.
    */
-  ctx: Ctx;
+  ctx: StaticRuleContext;
 
   /**
    * Arbitrary data attached to the issue by the rule implementation
@@ -46,7 +48,7 @@ export interface RuleIssueParams<
   /**
    * The serialized rule definition for this issue
    */
-  rule: RuleDef;
+  rule: StaticRuleDef;
 
   filepath?: string | URL;
 }
@@ -54,13 +56,13 @@ export interface RuleIssueParams<
 /**
  * An issue raised by a {@link RuleCheckFn}
  */
-export class RuleIssue implements CheckResultFailed {
+export class RuleIssue implements CheckFailed {
   public readonly type = 'FAILED';
 
   /**
    * {@inheritDoc RuleIssueParams.ctx}
    */
-  public readonly ctx: StaticRuleContext;
+  public readonly ctx: Result<StaticRuleContext>;
 
   /**
    * {@inheritDoc RuleIssueParams.data}
@@ -96,9 +98,9 @@ export class RuleIssue implements CheckResultFailed {
     data,
     error,
     filepath,
-  }: RuleIssueParams<StaticRuleContext, StaticRuleDef>) {
-    this.rule = rule;
-    this.ctx = ctx;
+  }: RuleIssueParams) {
+    this.rule = StaticRuleDefSchema.parse(rule);
+    this.ctx = asResult(ctx);
     this.message = message;
     this.data = data;
     this.error = error;
@@ -111,14 +113,10 @@ export class RuleIssue implements CheckResultFailed {
           : path.join(ctx.localPath, PACKAGE_JSON);
   }
 
-  public get pkgManager() {
-    return this.ctx.pkgManager;
-  }
-
   /**
    * This will be `true` if {@link severity} is {@link RuleSeverities.Error}.
    */
-  public get failed() {
+  public get isError() {
     return this.severity === RuleSeverities.Error;
   }
 
@@ -132,15 +130,10 @@ export class RuleIssue implements CheckResultFailed {
   /**
    * Creates a new readonly {@link RuleIssue}.
    *
-   * @template Ctx
-   * @template RuleDef
    * @param params - _Required_ parameters
    * @returns A new readonly {@link RuleIssue}
    */
-  public static create<
-    Ctx extends StaticRuleContext,
-    RuleDef extends StaticRuleDef,
-  >(params: RuleIssueParams<Ctx, RuleDef>): Readonly<RuleIssue> {
+  public static create(params: RuleIssueParams): Readonly<RuleIssue> {
     return Object.freeze(new RuleIssue(params));
   }
 
@@ -149,8 +142,8 @@ export class RuleIssue implements CheckResultFailed {
    *
    * @returns The JSON representation of the {@link RuleIssue} object.
    */
-  public toJSON(): CheckResultFailed {
-    const {rule, ctx, message, data, error, id, failed, filepath} = this;
+  public toJSON(): CheckFailed {
+    const {rule, ctx, message, data, error, id, isError, filepath} = this;
     return {
       type: 'FAILED',
       rule,
@@ -159,7 +152,7 @@ export class RuleIssue implements CheckResultFailed {
       data: serialize(data),
       error,
       id,
-      failed,
+      isError,
       filepath,
     };
   }

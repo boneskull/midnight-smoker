@@ -1,12 +1,11 @@
 import {FAILED, FINAL, OK} from '#constants';
 import {RuleContext} from '#rule/rule-context';
-import {type CheckResultOk} from '#schema/check-result';
 import {type LintManifest} from '#schema/lint-manifest';
 import {type SomeRuleConfig} from '#schema/rule-options';
 import {type StaticRuleContext} from '#schema/rule-static';
 import {type SomeRuleDef} from '#schema/some-rule-def';
 import {uniqueId} from '#util/unique-id';
-import {serialize} from '#util/util';
+import {asResult} from '#util/util';
 import {isEmpty, isNumber} from 'lodash';
 import {
   and,
@@ -18,9 +17,12 @@ import {
   type ActorRefFrom,
   type AnyActorRef,
 } from 'xstate';
+import {serialize} from '../../util/serialize';
 import {
   type CheckInput,
   type CheckOutput,
+  type CheckOutputFailed,
+  type CheckOutputOk,
   type PkgManagerMachineCheckResultEvent,
 } from './pkg-manager-machine-events';
 
@@ -74,19 +76,35 @@ export const check = fromPromise<CheckOutput, CheckInput>(
     } catch (err) {
       ctx.addIssueFromError(err);
     }
-    const issues = ctx.finalize() ?? [];
-    if (isEmpty(issues)) {
-      const ok: CheckResultOk = {type: OK, ctx, rule: serialize(def)};
-      return {...input, result: ok, type: OK, actorId: self.id};
+    const result = ctx.finalize();
+    switch (result.type) {
+      case 'OK': {
+        const output: CheckOutputOk = {
+          opts,
+          manifest: asResult(serialize(input.manifest)),
+          ruleId,
+          result,
+          type: OK,
+          actorId: self.id,
+          installPath: ctx.installPath,
+        };
+        return output;
+      }
+      case 'FAILED': {
+        const output: CheckOutputFailed = {
+          installPath: ctx.installPath,
+          opts,
+          manifest: asResult(serialize(input.manifest)),
+          ruleId,
+          // TODO fix this readonly disagreement.  it _should_ be read-only, but that breaks somewhere down the line
+          result: [...result.result],
+          actorId: self.id,
+          type: FAILED,
+        };
+
+        return output;
+      }
     }
-    return {
-      ...input,
-      // TODO fix this readonly disagreement.  it _should_ be read-only, but that breaks somewhere down the line
-      result: [...issues],
-      actorId: self.id,
-      ctx,
-      type: FAILED,
-    };
   },
 );
 

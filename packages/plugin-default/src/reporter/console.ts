@@ -1,469 +1,263 @@
-import {blueBright, dim, greenBright, italic, red, white, yellow} from 'chalk';
-import {MultiBar, Presets, type SingleBar} from 'cli-progress';
-import Debug from 'debug';
-import {isError} from 'lodash';
-import {error, warning} from 'log-symbols';
 import {
-  type RuleFailedEventData,
-  type RunScriptFailedEventData,
-} from 'midnight-smoker/event';
+  blueBright,
+  bold,
+  cyanBright,
+  dim,
+  green,
+  greenBright,
+  italic,
+  magentaBright,
+  red,
+  white,
+  yellow,
+} from 'chalk';
+import spinners from 'cli-spinners';
+import {groupBy, head, isEmpty, isError} from 'lodash';
+import {error, info, warning} from 'log-symbols';
 import {isBlessedPlugin} from 'midnight-smoker/plugin';
 import {type ReporterDef} from 'midnight-smoker/reporter';
+import {
+  RuleSeverities,
+  type CheckFailed,
+  type StaticRuleDef,
+} from 'midnight-smoker/rule';
+import {niceRelativePath, randomItem} from 'midnight-smoker/util';
+import ora, {type Ora} from 'ora';
 import pluralize from 'pluralize';
-
-const debug = Debug('midnight-smoker:reporter:console');
+import {type LiteralUnion} from 'type-fest';
 
 const ELLIPSIS = '…';
 
+type Digit = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+
 /**
- * Given the name of a pkg manager and optionally a version, return a fancy
- * string
+ * Mapping of single-digit integers to English words
+ */
+const NUM_WORDS = new Map([
+  [0, 'zero'],
+  [1, 'one'],
+  [2, 'two'],
+  [3, 'three'],
+  [4, 'four'],
+  [5, 'five'],
+  [6, 'six'],
+  [7, 'seven'],
+  [8, 'eight'],
+  [9, 'nine'],
+] as const);
+
+/**
+ * Converts a number to an English word, or returns the number as a string if it
+ * doesn't exist in {@link NUM_WORDS}
  *
- * @param spec Spec
+ * @param num - Number to convert
+ * @returns English word for `num`, or `num` as a string
+ */
+function numberToString(num: LiteralUnion<Digit, number>) {
+  return NUM_WORDS.get(num as Digit) ?? String(num);
+}
+
+/**
+ * Wrap {@link pluralize} with {@link numberToString} and the integer in parens
+ *
+ * @param str - String to pluralize
+ * @param count - Count
+ * @param withNumber - Whether to show the number
+ * @returns A nice string
+ */
+function plural(str: string, count: number, withNumber = false) {
+  return withNumber
+    ? `${numberToString(count)} (${cyanBright(count)}) ${pluralize(str, count)}`
+    : pluralize(str, count);
+}
+
+/**
+ * Given the name of a thing and optionally a version, return a fancy string
+ *
+ * @param name Name
+ * @param version Version
  * @returns `name@version` with some colors
  */
-function specString({bin, version}: {bin: string; version?: string}): string {
-  return version ? `${bin}${dim('@')}${white(version)}` : bin;
+function nameAndVersion(name: string, version?: string) {
+  return version ? `${name}${dim('@')}${white(version)}` : name;
 }
 
-// /**
-//  * Pretty string for a package manager
-//  *
-//  * @param pkgManager Package manager spec
-//  * @param pkgManagerIndex Index of the current package manager
-//  * @param totalPkgManagers Total number of package managers
-//  * @returns A pretty string
-//  */
-// function pkgManagerToString(
-//   {pkgManager, version}: StaticPkgManagerSpec,
-//   pkgManagerIndex?: number,
-//   totalPkgManagers?: number,
-// ) {
-//   let text = `${nameAndVersion(green(pkgManager), version)}`;
-//   if (pkgManagerIndex && totalPkgManagers && totalPkgManagers > 1) {
-//     text += ` (${currentOfTotal(pkgManagerIndex, totalPkgManagers)})`;
-//   }
-//   return text;
-// }
+function pkgManager(spec: string) {
+  const parts = spec.split('@');
+  if (parts.length === 1) {
+    return green(parts[0]);
+  }
+  const other = parts[1].split(' ');
+  if (other.length === 1) {
+    return `${green(parts[0])}${dim('@')}${green(parts[1])}`;
+  }
+  return `${green(parts[0])}${dim('@')}${green(other[0])} ${dim(other[1])}`;
+}
 
-/**
- * Reporter-specific context object for the {@link ConsoleReporter}
- */
 type ConsoleReporterContext = {
-  // spinners: Spinnies;
-  scriptFailedEvents: RunScriptFailedEventData[];
-  ruleFailedEvents: RuleFailedEventData[];
-  multiBar: MultiBar;
-  bars: Map<string, SingleBar>;
-  log: string[];
+  spinner: Ora;
 };
 
-// function currentOfTotal(current: number, total: number) {
-//   return `${current}/${total}`;
-// }
-
-/**
- * Tag function for pluralizing strings.
- *
- * Mostly just wanted to name a function `plur`
- *
- * @example
- *
- * ```ts
- * // my love gave me 2 turtledoves
- * const str = plur`my love gave me ${['turtledove', 2, true]}`;
- * // my love gave me turtledoves
- * const str2 = plur`my love gave me ${['turtledove', 2]}`;
- * ```
- *
- * @param strings
- * @param values
- * @returns
- */
-export function plur(
-  strings: TemplateStringsArray,
-  ...values: [noun: string, count: number, withNumber?: boolean][]
-) {
-  const exprs = [...values];
-  const computed = [];
-  while (exprs.length) {
-    const [thing, count, showNumber = false] = exprs.shift() as [
-      noun: string,
-      count: number,
-      withNumber?: boolean,
-    ];
-    computed.push(pluralize(thing, count, showNumber));
-  }
-  // TemplateStringsArray is immutable
-  const strs = [...strings];
-  // if the string starts with an expression, then the first value is an empty string.
-  // after this, strs.length === computed.length
-  const textArr: string[] = [strs.shift() as string];
-
-  while (strs.length) {
-    const nextVal = computed.shift()!;
-    const nextStr = strs.shift()!;
-    textArr.push(nextVal, nextStr);
-  }
-  return textArr.join('').replace(/\s{2,}/g, ' ');
-}
+const spinnerMsgs = [
+  `Jokin' and smokin'`,
+  `Pickin' and grinnin'`,
+  `Lovin' and sinnin'`,
+  `Midnight tokin'`,
+] as const;
 
 export const ConsoleReporter: ReporterDef<ConsoleReporterContext> = {
   name: 'console',
   description: 'Default console reporter (for humans)',
   setup(ctx) {
-    ctx.log = [];
-    ctx.bars = new Map();
-    ctx.multiBar = new MultiBar(
-      {format: ' {bar} | {operation} | {value}/{total} {unit}', fps: 30},
-      Presets.rect,
-    );
-    debug('Setup complete');
+    ctx.spinner = ora({spinner: spinners.random});
   },
-  teardown(ctx) {
-    for (const [id, bar] of ctx.bars) {
-      bar.stop();
-      ctx.bars.delete(id);
-    }
-    ctx.multiBar.stop();
-  },
-
-  //    ▄███████▄    ▄████████  ▄████████    ▄█   ▄█▄
-  //   ███    ███   ███    ███ ███    ███   ███ ▄███▀
-  //   ███    ███   ███    ███ ███    █▀    ███▐██▀
-  //   ███    ███   ███    ███ ███         ▄█████▀
-  // ▀█████████▀  ▀███████████ ███        ▀▀█████▄
-  //   ███          ███    ███ ███    █▄    ███▐██▄
-  //   ███          ███    ███ ███    ███   ███ ▀███▄
-  //  ▄████▀        ███    █▀  ████████▀    ███   ▀█▀
-  //                                        ▀
-
-  onPackBegin({multiBar, bars}, {workspaceInfo, pkgManagers}) {
-    // let text = `Packing`;
-    // if (packOptions?.workspaces?.length) {
-    //   text += plur` ${['workspace', packOptions?.workspaces.length, true]}`;
-    // } else if (packOptions?.allWorkspaces) {
-    //   text += ' all workspaces';
-    //   if (packOptions?.includeWorkspaceRoot) {
-    //     text += ' (and the workspace root)';
-    //   }
-    // } else {
-    //   text += ' current project';
-    // }
-    // text += `${ELLIPSIS}`;
-    if (pkgManagers.length > 1) {
-      bars.set(
-        'pack',
-        multiBar.create(pkgManagers.length, 0, {
-          operation: 'packing',
-          unit: 'package managers',
-        }),
-      );
-    }
-  },
-
-  onPkgManagerPackBegin({bars, multiBar}, {pkgManager, workspaceInfo}) {
-    const spec = specString(pkgManager);
-    const bar = multiBar.create(workspaceInfo.length, 0, {
-      operation: `${spec} packing`,
-      unit: plur`${['workspace', workspaceInfo.length]}`,
-    });
-    bars.set(`pack-${spec}`, bar);
-  },
-
-  onPkgPackBegin({bars}, {pkgManager, workspace, workspace: {pkgName}}) {},
-
-  onPkgPackFailed({bars}, {pkgManager, workspace}) {
-    const spec = specString(pkgManager);
-    bars.get(`pack-${spec}`)?.increment();
-  },
-
-  onPkgPackOk({bars}, {pkgManager, workspace}) {
-    const spec = specString(pkgManager);
-    bars.get(`pack-${spec}`)?.increment();
-  },
-
-  onPkgManagerPackOk({bars}, {pkgManager}) {
-    bars.get('pack')?.increment();
-    const spec = specString(pkgManager);
-    bars.get(`pack-${spec}`)?.stop();
-  },
-
-  onPkgManagerPackFailed({bars}, {pkgManager}) {
-    bars.get('pack')?.increment();
-    const spec = specString(pkgManager);
-    bars.get(`pack-${spec}`)?.stop();
-  },
-
-  onPackOk({bars}) {
-    bars.get('pack')?.stop();
-  },
-
-  onPackFailed({bars, log, opts}, {error}) {
-    const text = error.format(opts.verbose);
-    log.push(text);
-    bars.get('pack')?.stop();
-  },
-
-  // ▄█  ███▄▄▄▄      ▄████████     ███        ▄████████  ▄█        ▄█
-  // ███  ███▀▀▀██▄   ███    ███ ▀█████████▄   ███    ███ ███       ███
-  // ███▌ ███   ███   ███    █▀     ▀███▀▀██   ███    ███ ███       ███
-  // ███▌ ███   ███   ███            ███   ▀   ███    ███ ███       ███
-  // ███▌ ███   ███ ▀███████████     ███     ▀███████████ ███       ███
-  // ███  ███   ███          ███     ███       ███    ███ ███       ███
-  // ███  ███   ███    ▄█    ███     ███       ███    ███ ███▌    ▄ ███▌    ▄
-  // █▀    ▀█   █▀   ▄████████▀     ▄████▀     ███    █▀  █████▄▄██ █████▄▄██
-  //                                                       ▀         ▀
-
-  onInstallBegin({multiBar, bars}, {pkgManagers}) {
-    if (pkgManagers.length > 1) {
-      bars.set(
-        'install',
-        multiBar.create(pkgManagers.length, 0, {
-          operation: 'installing',
-          unit: 'package managers',
-        }),
-      );
-    }
-  },
-  onInstallOk({bars}) {
-    bars.get('install')?.stop();
-  },
-  onInstallFailed({bars, log, opts}, {error: err}) {
-    bars.get('install')?.stop();
-    const text = err.format(opts.verbose);
-    log.push(text);
-  },
-  onPkgManagerInstallBegin({bars, multiBar}, {pkgManager, totalPkgs}) {
-    const spec = specString(pkgManager);
-    const bar = multiBar.create(totalPkgs, 0, {
-      operation: `${spec} installing`,
-      unit: plur`${['package', totalPkgs]}`,
-    });
-    bars.set(`install-${spec}`, bar);
-  },
-  onPkgManagerInstallOk({bars}, {pkgManager}) {
-    bars.get('install')?.increment();
-    const spec = specString(pkgManager);
-    bars.get(`install-${spec}`)?.stop();
-  },
-  onPkgManagerInstallFailed({bars}, {pkgManager}) {
-    bars.get('install')?.increment();
-    const spec = specString(pkgManager);
-    bars.get(`install-${spec}`)?.stop();
-  },
-  onPkgInstallBegin({bars}, {pkgManager}) {},
-  onPkgInstallOk({bars}, {pkgManager}) {
-    const spec = specString(pkgManager);
-    bars.get(`install-${spec}`)?.increment();
-  },
-  onPkgInstallFailed({bars}, {pkgManager}) {
-    const spec = specString(pkgManager);
-    bars.get(`install-${spec}`)?.increment();
-  },
-
-  //  ▄█        ▄█  ███▄▄▄▄       ███
-  // ███       ███  ███▀▀▀██▄ ▀█████████▄
-  // ███       ███▌ ███   ███    ▀███▀▀██
-  // ███       ███▌ ███   ███     ███   ▀
-  // ███       ███▌ ███   ███     ███
-  // ███       ███  ███   ███     ███
-  // ███▌    ▄ ███  ███   ███     ███
-  // █████▄▄██ █▀    ▀█   █▀     ▄████▀
-  // ▀
-
-  onLintBegin({multiBar, bars}, {pkgManagers}) {
-    if (pkgManagers.length > 1) {
-      bars.set(
-        'lint',
-        multiBar.create(pkgManagers.length, 0, {
-          operation: 'linting',
-          unit: 'package managers',
-        }),
-      );
-    }
-  },
-  onLintOk({bars}) {
-    bars.get('lint')?.stop();
-  },
-  onLintFailed({bars}) {
-    bars.get('lint')?.stop();
-  },
-  onPkgManagerLintBegin({multiBar, bars}, {pkgManager, workspaceInfo}) {
-    const spec = specString(pkgManager);
-    const bar = multiBar.create(workspaceInfo.length, 0, {
-      operation: `${spec} linting`,
-      unit: plur`${['workspace', workspaceInfo.length]}`,
-    });
-    bars.set(`lint-${spec}`, bar);
-  },
-  onPkgManagerLintOk({bars}, {pkgManager}) {
-    bars.get('lint')?.increment();
-    const spec = specString(pkgManager);
-    bars.get(`lint-${spec}`)?.stop();
-  },
-  onPkgManagerLintFailed({bars}, {pkgManager}) {
-    bars.get('lint')?.increment();
-    const spec = specString(pkgManager);
-    bars.get(`lint-${spec}`)?.stop();
-  },
-  onRuleBegin({multiBar, bars}, {pkgManager, manifest, totalRules}) {
-    const spec = specString(pkgManager);
-    const barId = `lint-${manifest.pkgName}-${spec}`;
-    const bar =
-      bars.get(barId) ??
-      multiBar.create(totalRules, 0, {
-        operation: `${spec} linting: ${manifest.pkgName}`,
-        unit: plur`${['rule', totalRules]}`,
-      });
-    bars.set(barId, bar);
-  },
-  onRuleEnd({bars}, {pkgManager, manifest}) {
-    const spec = specString(pkgManager);
-    const barId = `lint-${manifest.pkgName}-${spec}`;
-    const bar = bars.get(barId);
-    bar?.increment();
-    if (bar?.getProgress() === 1) {
-      const spec = specString(pkgManager);
-      bars.get(`lint-${spec}`)?.increment();
-    }
-  },
-
-  //    ▄████████  ▄████████    ▄████████  ▄█     ▄███████▄     ███        ▄████████
-  //   ███    ███ ███    ███   ███    ███ ███    ███    ███ ▀█████████▄   ███    ███
-  //   ███    █▀  ███    █▀    ███    ███ ███▌   ███    ███    ▀███▀▀██   ███    █▀
-  //   ███        ███         ▄███▄▄▄▄██▀ ███▌   ███    ███     ███   ▀   ███
-  // ▀███████████ ███        ▀▀███▀▀▀▀▀   ███▌ ▀█████████▀      ███     ▀███████████
-  //          ███ ███    █▄  ▀███████████ ███    ███            ███              ███
-  //    ▄█    ███ ███    ███   ███    ███ ███    ███            ███        ▄█    ███
-  //  ▄████████▀  ████████▀    ███    ███ █▀    ▄████▀         ▄████▀    ▄████████▀
-  //                           ███    ███
-
-  onRunScriptsBegin() {
-    // const text = `Running ${pluralize(
-    //   'script',
-    //   totalUniqueScripts,
-    //   true,
-    // )} across ${pluralize('package', totalUniquePkgs, true)} using ${pluralize(
-    //   'package manager',
-    //   totalPkgManagers,
-    //   true,
-    // )}${ELLIPSIS}`;
-    // spinners.add('scripts', {text});
-  },
-  onRunScriptsOk() {
-    // const text = `Scripts completed successfully; executed ${pluralize(
-    //   'script',
-    //   totalUniqueScripts,
-    //   true,
-    // )} across ${pluralize('package', totalUniquePkgs, true)} using ${pluralize(
-    //   'package manager',
-    //   totalPkgManagers,
-    //   true,
-    // )}`;
-    // spinners.get('scripts').update({status: 'success', text});
-  },
-  onRunScriptsFailed() {
-    // const text = `Scripts completed with ${pluralize(
-    //   'failure',
-    //   failed,
-    //   true,
-    // )}; executed ${pluralize(
-    //   'script',
-    //   totalUniqueScripts,
-    //   true,
-    // )} across ${pluralize('package', totalUniquePkgs, true)} using ${pluralize(
-    //   'package manager',
-    //   totalPkgManagers,
-    //   true,
-    // )}`;
-    // spinners.get('scripts').update({status: 'fail', text});
-  },
-  onPkgManagerRunScriptsBegin() {
-    // const text = `${pkgManagerToString(
-    //   pkgManager,
-    // )} running 0/${totalUniqueScripts} ${pluralize(
-    //   'script',
-    //   totalUniqueScripts,
-    // )}${ELLIPSIS}`;
-    // spinners.add(`scripts-${pkgManager.spec}`, {text, indent: 2});
-  },
-  onPkgManagerRunScriptsOk() {
-    // const text = `${pkgManagerToString(pkgManager)} ran ${pluralize(
-    //   'script',
-    //   totalUniqueScripts,
-    //   true,
-    // )}`;
-    // spinners
-    //   .get(`scripts-${pkgManager.spec}`)
-    //   .update({status: 'success', text});
-  },
-  onPkgManagerRunScriptsFailed() {
-    // const text = `${pkgManagerToString(pkgManager)} ran ${pluralize(
-    //   'script',
-    //   totalUniqueScripts,
-    //   true,
-    // )}`;
-    // spinners.get(`scripts-${pkgManager.spec}`).update({status: 'fail', text});
-  },
-  onRunScriptBegin() {
-    // const text = `${pkgManagerToString(
-    //   pkgManager,
-    // )} running ${currentScript}/${totalUniqueScripts} ${pluralize(
-    //   'script',
-    //   totalUniqueScripts,
-    // )}${ELLIPSIS}`;
-    // spinners.get(`scripts-${pkgManager.spec}`).update({text});
-  },
-  onRunScriptFailed(ctx, evt) {
-    ctx.scriptFailedEvents.push(evt);
-  },
-  onRunScriptOk() {},
-
-  //    ▄████████   ▄▄▄▄███▄▄▄▄    ▄██████▄     ▄█   ▄█▄    ▄████████
-  //   ███    ███ ▄██▀▀▀███▀▀▀██▄ ███    ███   ███ ▄███▀   ███    ███
-  //   ███    █▀  ███   ███   ███ ███    ███   ███▐██▀     ███    █▀
-  //   ███        ███   ███   ███ ███    ███  ▄█████▀     ▄███▄▄▄
-  // ▀███████████ ███   ███   ███ ███    ███ ▀▀█████▄    ▀▀███▀▀▀
-  //          ███ ███   ███   ███ ███    ███   ███▐██▄     ███    █▄
-  //    ▄█    ███ ███   ███   ███ ███    ███   ███ ▀███▄   ███    ███
-  //  ▄████████▀   ▀█   ███   █▀   ▀██████▀    ███   ▀█▀   ██████████
-  //                                           ▀
-
-  onSmokeBegin(ctx, {plugins}) {
+  onSmokeBegin(
+    {pkgJson, spinner},
+    {plugins, workspaceInfo, pkgManagers, opts},
+  ) {
     console.error(
-      `💨 ${specString({
-        bin: blueBright.bold('midnight-smoker'),
-        version: ctx.pkgJson.version!,
-      })}\n`,
+      `💨 ${nameAndVersion(
+        blueBright.bold('midnight-smoker'),
+        pkgJson.version,
+      )}\n`,
     );
     const extPlugins = plugins.filter(({id}) => !isBlessedPlugin(id));
     if (extPlugins.length) {
       console.error(
         '🔌 Loaded %s: %s',
-        pluralize('external plugin', extPlugins.length, true),
+        plural('external plugin', extPlugins.length, true),
         extPlugins
-          .map(({id, version}) => specString({bin: greenBright(id), version}))
+          .map(({id, version}) => nameAndVersion(greenBright(id), version))
           .join(', '),
       );
     }
+
+    const allRuleNames = new Set(plugins.flatMap(({ruleNames}) => ruleNames));
+    const enabledRuleCount = Object.entries(opts.rules)
+      .filter(
+        ([ruleName, {severity}]) =>
+          severity !== RuleSeverities.Off && allRuleNames.has(ruleName),
+      )
+      .map(([ruleName]) => ruleName).length;
+
+    const planLintText = `${bold('lint')} using ${plural(
+      'rule',
+      enabledRuleCount,
+      true,
+    )}`;
+    const scriptLintText = `${bold('run')} ${plural(
+      'script',
+      opts.script.length,
+      true,
+    )}}`;
+
+    const planOperation =
+      opts.lint && !isEmpty(opts.script)
+        ? `will ${planLintText} and ${scriptLintText}`
+        : opts.lint
+          ? `will ${planLintText}`
+          : `will ${scriptLintText}`;
+
+    let msg = `Plan: ${planOperation} in `;
+    if (workspaceInfo.length > 1) {
+      msg += plural('workspace', workspaceInfo.length, true);
+    } else {
+      msg += magentaBright(head(workspaceInfo)!.pkgName);
+    }
+    if (pkgManagers.length > 1) {
+      msg += ` using ${plural('package manager', pkgManagers.length, true)}`;
+    } else {
+      msg += ` using ${pkgManager(head(pkgManagers)!.spec)}`;
+    }
+
+    console.error(`${info} ${msg}\n`);
+    spinner.start(`${randomItem(spinnerMsgs)}${ELLIPSIS}`);
   },
-  // TODO: fix
-  onSmokeFailed(ctx) {
-    // spinners.fail(err.message);
+  onPackFailed({spinner, opts}, {error: err}) {
+    spinner.fail(err.format(opts.verbose));
   },
-  onSmokeOk() {
-    // spinners.succeed('Lovey-dovey! 💖');
+  onInstallFailed({spinner, opts}, {error: err}) {
+    spinner.fail(err.format(opts.verbose));
+  },
+  onLintFailed({spinner}, {results: lintResults}) {
+    for (const {pkgName, results} of lintResults) {
+      const failed = results.filter(
+        ({type}) => type === 'FAILED',
+      ) as CheckFailed[];
+      if (isEmpty(failed)) {
+        continue;
+      }
+      const lines = [
+        `${plural('Issue', failed.length)} found in package ${magentaBright(
+          pkgName,
+        )}:`,
+      ];
+      const isError = failed.some(
+        ({ctx: {severity}}) => severity === RuleSeverities.Error,
+      );
+
+      const failedByFilepath = groupBy(
+        failed,
+        ({filepath, ctx: {pkgJsonPath}}) => filepath ?? pkgJsonPath,
+      );
+
+      const ruleNameError = (rule: StaticRuleDef) =>
+        `${dim('[')}${red(rule.name)}${dim(']')}`;
+      const ruleNameWarning = (rule: StaticRuleDef) =>
+        `${dim('[')}${yellow(rule.name)}${dim(']')}`;
+      for (const [filepath, failed] of Object.entries(failedByFilepath)) {
+        lines.push(`│ ${yellow(bold(niceRelativePath(filepath)))}:`);
+        for (const {
+          message,
+          ctx: {severity},
+          rule,
+        } of failed) {
+          if (severity === RuleSeverities.Error) {
+            lines.push(`│   ${error} ${ruleNameError(rule)} — ${message}`);
+          } else {
+            lines.push(`│   ${warning} ${ruleNameWarning(rule)} — ${message}`);
+          }
+        }
+      }
+
+      const msg = lines.join('\n');
+      if (isError) {
+        spinner.fail(msg);
+      } else {
+        spinner.warn(msg);
+      }
+    }
+  },
+  onRuleError({spinner}, {error: err}) {
+    spinner.fail(err.message);
+  },
+  onRunScriptsFailed({spinner, opts}, {results}) {
+    for (const result of results) {
+      if (result.type === 'FAILED') {
+        // TODO: this is not verbose enough
+        const details = result.error.format(opts.verbose);
+        spinner.warn(
+          `Script execution failure details for package ${bold(
+            magentaBright(result.manifest.pkgName),
+          )}:\n- ${details}\n`,
+        );
+      }
+    }
+  },
+  onSmokeFailed({spinner}) {
+    spinner.fail('🤮 Maurice!');
+  },
+  onSmokeOk({spinner}) {
+    spinner.succeed('💖 Lovey-dovey!');
   },
   onLingered(_, {directories: dirs}) {
     console.error(
-      `${warning} Lingering ${pluralize('temp directory', dirs.length)}:\n`,
+      `${warning} Lingering ${plural('temp directory', dirs.length)}:\n`,
     );
     for (const dir of dirs) {
       console.error(yellow(dir));
     }
   },
-  onBeforeExit() {},
   onUnknownError({opts}, {error: err}) {
     console.error(
       `${error} midnight-smoker encountered an unexpected fatal error:`,

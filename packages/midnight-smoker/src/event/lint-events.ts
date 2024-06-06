@@ -1,5 +1,5 @@
 import {type RuleError} from '#error/rule-error';
-import {type CheckResultFailed, type CheckResultOk} from '#schema/check-result';
+import {type CheckFailed, type CheckOk} from '#schema/check-result';
 import {type LintManifest} from '#schema/lint-manifest';
 import {type LintResult, type LintResultOk} from '#schema/lint-result';
 import {
@@ -7,7 +7,7 @@ import {
   type SomeRuleConfig,
 } from '#schema/rule-options';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
-import {type WorkspaceInfo} from '#schema/workspaces';
+import {type Result, type WorkspaceInfo} from '#schema/workspaces';
 import {type LintEvent} from './event-constants';
 import {type PkgManagerEventBase} from './pkg-manager-events';
 
@@ -42,7 +42,7 @@ export interface PkgManagerLintOkEventData extends PkgManagerLintEventDataBase {
 }
 
 export interface RuleEventDataBase {
-  manifest: LintManifest;
+  manifest: Result<LintManifest>;
   rule: string;
   config: SomeRuleConfig;
   totalRules: number;
@@ -52,11 +52,11 @@ export interface RuleEventDataBase {
 export interface RuleBeginEventData extends RuleEventDataBase {}
 
 export interface RuleFailedEventData extends RuleEventDataBase {
-  result: CheckResultFailed[];
+  result: CheckFailed[];
 }
 
 export interface RuleEndEventData extends RuleEventDataBase {
-  result?: CheckResultFailed[] | CheckResultOk;
+  result?: CheckFailed[] | CheckOk;
   error?: RuleError;
 }
 
@@ -65,14 +65,14 @@ export interface RuleErrorEventData extends RuleEventDataBase {
 }
 
 export interface RuleOkEventData extends RuleEventDataBase {
-  result: CheckResultOk;
+  result: CheckOk;
 }
 
 export interface LintEventDataBase {
   config: BaseRuleConfigRecord;
   totalRules: number;
   pkgManagers: StaticPkgManagerSpec[];
-  workspaceInfo: WorkspaceInfo[];
+  workspaceInfo: Result<WorkspaceInfo>[];
 }
 
 export interface LintBeginEventData extends LintEventDataBase {}

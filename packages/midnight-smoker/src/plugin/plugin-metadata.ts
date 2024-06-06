@@ -30,15 +30,16 @@ import type {LiteralUnion, PackageJson, SetRequired} from 'type-fest';
 const debug = Debug('midnight-smoker:plugin:metadata');
 
 export interface PluginMetadataOpts {
+  description?: string;
+
   /**
    * Path to plugin entry point. If a `string`, it should be absolute
    */
   entryPoint: LiteralUnion<typeof TRANSIENT, string>;
-  description?: string;
-  version?: string;
   id?: string;
-  requestedAs?: string;
   pkgJson?: PackageJson;
+  requestedAs?: string;
+  version?: string;
 }
 
 /**
@@ -55,8 +56,6 @@ export interface PluginMetadataOpts {
  */
 export class PluginMetadata implements StaticPluginMetadata {
   /**
-   * {@inheritDoc }
-   *
    * @internal
    */
   public static readonly Transient = TRANSIENT;
@@ -175,20 +174,32 @@ export class PluginMetadata implements StaticPluginMetadata {
     this.version = this.version ?? this.pkgJson?.version;
   }
 
-  public get isBlessed() {
+  public get isBlessed(): boolean {
     return BLESSED_PLUGINS.includes(this.id as BlessedPlugin);
   }
 
-  public get pkgManagerDefs() {
+  public get pkgManagerDefs(): PkgManagerDef[] {
     return [...this.pkgManagerDefMap.values()];
   }
 
-  public get reporterDefs() {
+  public get pkgManagerNames(): string[] {
+    return this.pkgManagerDefs.map(({name}) => name);
+  }
+
+  public get reporterDefs(): ReporterDef[] {
     return [...this.reporterDefMap.values()];
   }
 
-  public get ruleDefs() {
+  public get reporterNames(): string[] {
+    return this.reporterDefs.map(({name}) => name);
+  }
+
+  public get ruleDefs(): SomeRuleDef[] {
     return [...this.ruleDefMap.values()];
+  }
+
+  public get ruleNames(): string[] {
+    return this.ruleDefs.map(({name}) => name);
   }
 
   /**
@@ -294,13 +305,14 @@ export class PluginMetadata implements StaticPluginMetadata {
    *
    * @internal
    */
-  public addPkgManagerDef(name: string, value: PkgManagerDef): void {
-    this.pkgManagerDefMap.set(name, value);
-    debug('Plugin %s added pkg manager "%s"', this, name);
+  public addPkgManagerDef(value: PkgManagerDef): void {
+    this.pkgManagerDefMap.set(value.name, value);
+    debug('Plugin %s added pkg manager "%s"', this, value.name);
   }
 
   public addReporterDef(value: ReporterDef): void {
     this.reporterDefMap.set(value.name, value);
+    debug('Plugin %s added reporter "%s"', this, value.name);
   }
 
   public addRuleDef<Schema extends RuleDefSchemaValue | void = void>(
@@ -328,6 +340,9 @@ export class PluginMetadata implements StaticPluginMetadata {
       version: this.version,
       description: this.description,
       entryPoint: this.entryPoint,
+      ruleNames: this.ruleNames,
+      pkgManagerNames: this.pkgManagerNames,
+      reporterNames: this.reporterNames,
     };
   }
 
@@ -335,9 +350,9 @@ export class PluginMetadata implements StaticPluginMetadata {
    * Returns a string representation of this metadata
    */
   public toString(): string {
-    return `[PluginMetadata] ${this.id}${
-      this.version ? `@${this.version}` : ''
-    } (${this.entryPoint})`;
+    return `[Plugin] ${this.id}${this.version ? `@${this.version}` : ''} (${
+      this.entryPoint
+    })`;
   }
 }
 
