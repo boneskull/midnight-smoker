@@ -2,6 +2,7 @@ import {
   createRuleRunner,
   type NamedRuleRunner,
 } from '@midnight-smoker/test-util';
+import {FAILED, OK} from 'midnight-smoker/constants';
 import {normalize} from 'node:path';
 import unexpected from 'unexpected';
 import noMissingExports from '../../../src/rules/no-missing-exports';
@@ -24,7 +25,11 @@ describe('@midnight-smoker/plugin-default', function () {
         );
 
         it('should not return a failure', async function () {
-          await expect(runRule(fixture), 'to be fulfilled with', undefined);
+          await expect(
+            runRule(fixture),
+            'to be fulfilled with value satisfying',
+            {type: OK},
+          );
         });
       });
 
@@ -38,12 +43,14 @@ describe('@midnight-smoker/plugin-default', function () {
             await expect(
               runRule(fixture),
               'to be fulfilled with value satisfying',
-              [
-                {
-                  rule: name,
-                  message: /.exports. unreadable at path: \.\/index\.js$/,
-                },
-              ],
+              {
+                result: [
+                  {
+                    rule: name,
+                    message: /.exports. unreadable at path: \.\/index\.js$/,
+                  },
+                ],
+              },
             );
           });
         });
@@ -54,7 +61,11 @@ describe('@midnight-smoker/plugin-default', function () {
           );
 
           it('should not return a failure', async function () {
-            await expect(runRule(fixture), 'to be fulfilled with', undefined);
+            await expect(
+              runRule(fixture),
+              'to be fulfilled with value satisfying',
+              {type: OK},
+            );
           });
         });
       });
@@ -69,13 +80,15 @@ describe('@midnight-smoker/plugin-default', function () {
             await expect(
               runRule(fixture),
               'to be fulfilled with value satisfying',
-              [
-                {
-                  rule: name,
-                  message:
-                    /\.\/missing\.js. unreadable at path: \.\/index-missing\.js$/,
-                },
-              ],
+              {
+                result: [
+                  {
+                    rule: name,
+                    message:
+                      /\.\/missing\.js. unreadable at path: \.\/index-missing\.js$/,
+                  },
+                ],
+              },
             );
           });
         });
@@ -86,7 +99,11 @@ describe('@midnight-smoker/plugin-default', function () {
           );
 
           it('should not return a failure', async function () {
-            await expect(runRule(fixture), 'to be fulfilled with', undefined);
+            await expect(
+              runRule(fixture),
+              'to be fulfilled with value satisfying',
+              {type: OK},
+            );
           });
         });
 
@@ -100,12 +117,14 @@ describe('@midnight-smoker/plugin-default', function () {
               await expect(
                 runRule(fixture),
                 'to be fulfilled with value satisfying',
-                [
-                  {
-                    message:
-                      /\.\/\*\.js. matches no files using glob: \.\/lib\/\*\.js$/,
-                  },
-                ],
+                {
+                  result: [
+                    {
+                      message:
+                        /\.\/\*\.js. matches no files using glob: \.\/lib\/\*\.js$/,
+                    },
+                  ],
+                },
               );
             });
           });
@@ -116,7 +135,11 @@ describe('@midnight-smoker/plugin-default', function () {
             );
 
             it('should not return a failure', async function () {
-              await expect(runRule(fixture), 'to be fulfilled with', undefined);
+              await expect(
+                runRule(fixture),
+                'to be fulfilled with value satisfying',
+                {type: OK},
+              );
             });
           });
 
@@ -129,11 +152,13 @@ describe('@midnight-smoker/plugin-default', function () {
               await expect(
                 runRule(fixture, {glob: false}),
                 'to be fulfilled with value satisfying',
-                [
-                  {
-                    message: /\.\/\*\.js. contains a glob pattern$/,
-                  },
-                ],
+                {
+                  result: [
+                    {
+                      message: /\.\/\*\.js. contains a glob pattern$/,
+                    },
+                  ],
+                },
               );
             });
           });
@@ -150,13 +175,15 @@ describe('@midnight-smoker/plugin-default', function () {
             await expect(
               runRule(fixture),
               'to be fulfilled with value satisfying',
-              [
-                {
-                  rule: name,
-                  message:
-                    /require. unreadable at path: \.\/index-missing\.js$/,
-                },
-              ],
+              {
+                result: [
+                  {
+                    rule: name,
+                    message:
+                      /require. unreadable at path: \.\/index-missing\.js$/,
+                  },
+                ],
+              },
             );
           });
         });
@@ -170,12 +197,15 @@ describe('@midnight-smoker/plugin-default', function () {
             await expect(
               runRule(fixture),
               'to be fulfilled with value satisfying',
-              [
-                {
-                  rule: name,
-                  message: /\[1\]. unreadable at path: \.\/index-missing\.js$/,
-                },
-              ],
+              {
+                result: [
+                  {
+                    rule: name,
+                    message:
+                      /\[1\]. unreadable at path: \.\/index-missing\.js$/,
+                  },
+                ],
+              },
             );
           });
         });
@@ -186,7 +216,11 @@ describe('@midnight-smoker/plugin-default', function () {
           );
 
           it('should not return a failure', async function () {
-            await expect(runRule(fixture), 'to be fulfilled with', undefined);
+            await expect(
+              runRule(fixture),
+              'to be fulfilled with value satisfying',
+              {type: OK},
+            );
           });
 
           describe('when a "require" export is present', function () {
@@ -199,13 +233,15 @@ describe('@midnight-smoker/plugin-default', function () {
                 await expect(
                   runRule(fixture),
                   'to be fulfilled with value satisfying',
-                  [
-                    {
-                      rule: name,
-                      message:
-                        /require. to be a CJS script at path: \.\/index\.js$/,
-                    },
-                  ],
+                  {
+                    result: [
+                      {
+                        rule: name,
+                        message:
+                          /require. to be a CJS script at path: \.\/index\.js$/,
+                      },
+                    ],
+                  },
                 );
               });
             });
@@ -220,13 +256,15 @@ describe('@midnight-smoker/plugin-default', function () {
                 await expect(
                   runRule(fixture),
                   'to be fulfilled with value satisfying',
-                  [
-                    {
-                      rule: name,
-                      message:
-                        /import. to be an ESM module at path: \.\/index\.js$/,
-                    },
-                  ],
+                  {
+                    result: [
+                      {
+                        rule: name,
+                        message:
+                          /import. to be an ESM module at path: \.\/index\.js$/,
+                      },
+                    ],
+                  },
                 );
               });
             });
@@ -242,13 +280,15 @@ describe('@midnight-smoker/plugin-default', function () {
                 await expect(
                   runRule(fixture),
                   'to be fulfilled with value satisfying',
-                  [
-                    {
-                      rule: name,
-                      message:
-                        /types. to be a \.d\.ts file at path: \.\/index\.js$/,
-                    },
-                  ],
+                  {
+                    result: [
+                      {
+                        rule: name,
+                        message:
+                          /types. to be a \.d\.ts file at path: \.\/index\.js$/,
+                      },
+                    ],
+                  },
                 );
               });
             });
@@ -264,12 +304,14 @@ describe('@midnight-smoker/plugin-default', function () {
                 await expect(
                   runRule(fixture),
                   'to be fulfilled with value satisfying',
-                  [
-                    {
-                      rule: name,
-                      message: /must be the last export$/,
-                    },
-                  ],
+                  {
+                    result: [
+                      {
+                        rule: name,
+                        message: /must be the last export$/,
+                      },
+                    ],
+                  },
                 );
               });
             });
@@ -281,8 +323,8 @@ describe('@midnight-smoker/plugin-default', function () {
               it('should not return a failure', async function () {
                 await expect(
                   runRule(fixture),
-                  'to be fulfilled with',
-                  undefined,
+                  'to be fulfilled with value satisfying',
+                  {type: OK},
                 );
               });
             });
@@ -295,8 +337,8 @@ describe('@midnight-smoker/plugin-default', function () {
               it('should not return a failure', async function () {
                 await expect(
                   runRule(fixture, {order: false}),
-                  'to be fulfilled with',
-                  undefined,
+                  'to be fulfilled with value satisfying',
+                  {type: OK},
                 );
               });
             });
@@ -314,7 +356,7 @@ describe('@midnight-smoker/plugin-default', function () {
             await expect(
               runRule(fixture),
               'to be fulfilled with value satisfying',
-              expect.it('to be an array'),
+              {type: FAILED},
             );
           });
         });

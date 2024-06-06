@@ -2,6 +2,7 @@ import {
   createRuleRunner,
   type NamedRuleRunner,
 } from '@midnight-smoker/test-util';
+import {OK} from 'midnight-smoker/constants';
 import {RuleSeverities} from 'midnight-smoker/rule';
 import {normalize} from 'node:path';
 import unexpected from 'unexpected';
@@ -29,19 +30,21 @@ describe('@midnight-smoker/plugin-default', function () {
               await expect(
                 runRule(fixture),
                 'to be fulfilled with value satisfying',
-                [
-                  {
-                    rule: name,
-                    message:
-                      'File "no-missing-pkg-files" from "bin" field unreadable at path: ./bin/no-missing-pkg-files.js',
-                    context: {
-                      pkgJson: expect.it('to be an object'),
-                      pkgJsonPath: expect.it('to be a string'),
-                      installPath: expect.it('to be a string'),
-                      severity: RuleSeverities.Error,
+                {
+                  result: [
+                    {
+                      rule: name,
+                      message:
+                        'File "no-missing-pkg-files" from "bin" field unreadable at path: ./bin/no-missing-pkg-files.js',
+                      context: {
+                        pkgJson: expect.it('to be an object'),
+                        pkgJsonPath: expect.it('to be a string'),
+                        installPath: expect.it('to be a string'),
+                        severity: RuleSeverities.Error,
+                      },
                     },
-                  },
-                ],
+                  ],
+                },
               );
             });
           });
@@ -52,7 +55,11 @@ describe('@midnight-smoker/plugin-default', function () {
             );
 
             it('should not return a failure', async function () {
-              await expect(runRule(fixture), 'to be fulfilled with', undefined);
+              await expect(
+                runRule(fixture),
+                'to be fulfilled with value satisfying',
+                {type: OK},
+              );
             });
           });
         });
@@ -66,19 +73,21 @@ describe('@midnight-smoker/plugin-default', function () {
             await expect(
               runRule(fixture),
               'to be fulfilled with value satisfying',
-              [
-                {
-                  rule: name,
-                  message:
-                    'File from "bin" field unreadable at path: ./bin/no-missing-pkg-files.js',
-                  context: {
-                    pkgJson: expect.it('to be an object'),
-                    pkgJsonPath: expect.it('to be a string'),
-                    installPath: expect.it('to be a string'),
-                    severity: RuleSeverities.Error,
+              {
+                result: [
+                  {
+                    rule: name,
+                    message:
+                      'File from "bin" field unreadable at path: ./bin/no-missing-pkg-files.js',
+                    context: {
+                      pkgJson: expect.it('to be an object'),
+                      pkgJsonPath: expect.it('to be a string'),
+                      installPath: expect.it('to be a string'),
+                      severity: RuleSeverities.Error,
+                    },
                   },
-                },
-              ],
+                ],
+              },
             );
           });
         });
@@ -92,19 +101,21 @@ describe('@midnight-smoker/plugin-default', function () {
             await expect(
               runRule(fixture),
               'to be fulfilled with value satisfying',
-              [
-                {
-                  rule: name,
-                  message:
-                    'File from "types" field unreadable at path: index.d.ts',
-                  context: {
-                    pkgJson: expect.it('to be an object'),
-                    pkgJsonPath: expect.it('to be a string'),
-                    installPath: expect.it('to be a string'),
-                    severity: RuleSeverities.Error,
+              {
+                result: [
+                  {
+                    rule: name,
+                    message:
+                      'File from "types" field unreadable at path: index.d.ts',
+                    context: {
+                      pkgJson: expect.it('to be an object'),
+                      pkgJsonPath: expect.it('to be a string'),
+                      installPath: expect.it('to be a string'),
+                      severity: RuleSeverities.Error,
+                    },
                   },
-                },
-              ],
+                ],
+              },
             );
           });
         });
@@ -118,19 +129,21 @@ describe('@midnight-smoker/plugin-default', function () {
             await expect(
               runRule(fixture),
               'to be fulfilled with value satisfying',
-              [
-                {
-                  rule: name,
-                  message:
-                    'File from "browser" field unreadable at path: index.browser.js',
-                  context: {
-                    pkgJson: expect.it('to be an object'),
-                    pkgJsonPath: expect.it('to be a string'),
-                    installPath: expect.it('to be a string'),
-                    severity: RuleSeverities.Error,
+              {
+                result: [
+                  {
+                    rule: name,
+                    message:
+                      'File from "browser" field unreadable at path: index.browser.js',
+                    context: {
+                      pkgJson: expect.it('to be an object'),
+                      pkgJsonPath: expect.it('to be a string'),
+                      installPath: expect.it('to be a string'),
+                      severity: RuleSeverities.Error,
+                    },
                   },
-                },
-              ],
+                ],
+              },
             );
           });
         });
@@ -146,8 +159,8 @@ describe('@midnight-smoker/plugin-default', function () {
             it('should return no failures', async function () {
               await expect(
                 runRule(fixture, {bin: false}),
-                'to be fulfilled with',
-                undefined,
+                'to be fulfilled with value satisfying',
+                {type: OK},
               );
             });
           });

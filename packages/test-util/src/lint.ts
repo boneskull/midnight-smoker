@@ -4,7 +4,12 @@ import {
   DEFAULT_PKG_MANAGER_VERSION,
 } from 'midnight-smoker/constants';
 import {PluginInitError, fromUnknownError} from 'midnight-smoker/error';
-import {RuleMachine, createActor, toPromise} from 'midnight-smoker/machine';
+import {
+  RuleMachine,
+  createActor,
+  toPromise,
+  type CheckOutput,
+} from 'midnight-smoker/machine';
 import {
   PluginMetadata,
   createPluginAPI,
@@ -13,8 +18,6 @@ import {
 import {
   DEFAULT_RULE_SEVERITY,
   getDefaultRuleOptions,
-  type CheckFailed,
-  type CheckOk,
   type RuleDefSchemaValue,
   type RuleOptions,
   type SomeRuleDef,
@@ -30,7 +33,7 @@ import {type LintManifest} from '../../midnight-smoker/src/schema/lint-manifest'
 export type NamedRuleRunner = (
   installPath: string,
   opts?: SomeRuleOptions,
-) => Promise<CheckOk | CheckFailed[]>;
+) => Promise<CheckOutput>;
 
 /**
  * A rule runner function which can run any rule defined by the plugin factory.
@@ -41,7 +44,7 @@ export type RuleRunner = (
   name: string,
   installPath: string,
   opts?: SomeRuleOptions,
-) => Promise<CheckOk | CheckFailed[]>;
+) => Promise<CheckOutput>;
 
 /**
  * Factory function which creates a {@link NamedRuleRunner}.
@@ -134,7 +137,7 @@ export async function runRule<T extends SomeRuleDef>(
   def: T,
   installPath: string,
   opts?: RuleOptions<T['schema']>,
-): Promise<CheckOk | CheckFailed[]> {
+): Promise<CheckOutput> {
   const plan = 1;
   const defaultOpts = getDefaultRuleOptions(def.schema as RuleDefSchemaValue);
   const someConfig = {
@@ -169,9 +172,5 @@ export async function runRule<T extends SomeRuleDef>(
       pkgName: '',
     } as LintManifest,
   });
-  const output = await toPromise(ruleMachine);
-  if (output.length !== plan) {
-    throw new Error(`Expected exactly ${plan} result(s)`);
-  }
-  return output.shift()!.result;
+  return toPromise(ruleMachine);
 }

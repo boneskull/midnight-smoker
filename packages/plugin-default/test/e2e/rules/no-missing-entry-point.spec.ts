@@ -2,6 +2,7 @@ import {
   createRuleRunner,
   type NamedRuleRunner,
 } from '@midnight-smoker/test-util';
+import {OK} from 'midnight-smoker/constants';
 import {RuleSeverities} from 'midnight-smoker/rule';
 import {normalize} from 'node:path';
 import unexpected from 'unexpected';
@@ -25,7 +26,11 @@ describe('@midnight-smoker/plugin-default', function () {
         );
 
         it('should not return a failure', async function () {
-          await expect(runRule(fixture), 'to be fulfilled with', undefined);
+          await expect(
+            runRule(fixture),
+            'to be fulfilled with value satisfying',
+            {type: OK},
+          );
         });
       });
 
@@ -39,19 +44,21 @@ describe('@midnight-smoker/plugin-default', function () {
             await expect(
               runRule(fixture),
               'to be fulfilled with value satisfying',
-              [
-                {
-                  rule: name,
-                  message:
-                    'No entry point found for package "no-missing-entry-point"; file from field "main" unreadable at path: index.js',
-                  context: {
-                    pkgJson: expect.it('to be an object'),
-                    pkgJsonPath: expect.it('to be a string'),
-                    installPath: expect.it('to be a string'),
-                    severity: RuleSeverities.Error,
+              {
+                result: [
+                  {
+                    rule: name,
+                    message:
+                      'No entry point found for package "no-missing-entry-point"; file from field "main" unreadable at path: index.js',
+                    context: {
+                      pkgJson: expect.it('to be an object'),
+                      pkgJsonPath: expect.it('to be a string'),
+                      installPath: expect.it('to be a string'),
+                      severity: RuleSeverities.Error,
+                    },
                   },
-                },
-              ],
+                ],
+              },
             );
           });
         });
@@ -62,7 +69,11 @@ describe('@midnight-smoker/plugin-default', function () {
           );
 
           it('should not return a failure', async function () {
-            await expect(runRule(fixture), 'to be fulfilled with', undefined);
+            await expect(
+              runRule(fixture),
+              'to be fulfilled with value satisfying',
+              {type: OK},
+            );
           });
         });
       });
@@ -77,19 +88,21 @@ describe('@midnight-smoker/plugin-default', function () {
             await expect(
               runRule(fixture),
               'to be fulfilled with value satisfying',
-              [
-                {
-                  rule: name,
-                  message:
-                    'No entry point found for package "no-missing-entry-point"; file from field "main" unreadable at path: index.js',
-                  context: {
-                    pkgJson: expect.it('to be an object'),
-                    pkgJsonPath: expect.it('to be a string'),
-                    installPath: expect.it('to be a string'),
-                    severity: RuleSeverities.Error,
+              {
+                result: [
+                  {
+                    rule: name,
+                    message:
+                      'No entry point found for package "no-missing-entry-point"; file from field "main" unreadable at path: index.js',
+                    context: {
+                      pkgJson: expect.it('to be an object'),
+                      pkgJsonPath: expect.it('to be a string'),
+                      installPath: expect.it('to be a string'),
+                      severity: RuleSeverities.Error,
+                    },
                   },
-                },
-              ],
+                ],
+              },
             );
           });
         });
@@ -103,7 +116,7 @@ describe('@midnight-smoker/plugin-default', function () {
             await expect(
               runRule(fixture),
               'to be fulfilled with value satisfying',
-              expect.it('to be undefined'),
+              {type: OK},
             );
           });
         });

@@ -26,18 +26,20 @@ describe('@midnight-smoker/plugin-default', function () {
           await expect(
             runRule(fixture),
             'to be fulfilled with value satisfying',
-            [
-              {
-                rule: name,
-                message: 'Banned file found: id_rsa (Private SSH key)',
-                context: {
-                  pkgJson: expect.it('to be an object'),
-                  pkgJsonPath: expect.it('to be a string'),
-                  installPath: expect.it('to be a string'),
-                  severity: RuleSeverities.Error,
+            {
+              result: [
+                {
+                  rule: name,
+                  message: 'Banned file found: id_rsa (Private SSH key)',
+                  context: {
+                    pkgJson: expect.it('to be an object'),
+                    pkgJsonPath: expect.it('to be a string'),
+                    installPath: expect.it('to be a string'),
+                    severity: RuleSeverities.Error,
+                  },
                 },
-              },
-            ],
+              ],
+            },
           );
         });
       });
@@ -54,19 +56,21 @@ describe('@midnight-smoker/plugin-default', function () {
           await expect(
             runRule(fixture, config),
             'to be fulfilled with value satisfying',
-            [
-              {
-                rule: name,
-                message:
-                  'Banned file found: anarchist-cookbook.txt (per custom deny list)',
-                context: {
-                  pkgJson: expect.it('to be an object'),
-                  pkgJsonPath: expect.it('to be a string'),
-                  installPath: expect.it('to be a string'),
-                  severity: RuleSeverities.Error,
+            {
+              result: [
+                {
+                  rule: name,
+                  message:
+                    'Banned file found: anarchist-cookbook.txt (per custom deny list)',
+                  context: {
+                    pkgJson: expect.it('to be an object'),
+                    pkgJsonPath: expect.it('to be a string'),
+                    installPath: expect.it('to be a string'),
+                    severity: RuleSeverities.Error,
+                  },
                 },
-              },
-            ],
+              ],
+            },
           );
         });
       });
