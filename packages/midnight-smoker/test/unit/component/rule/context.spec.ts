@@ -1,5 +1,6 @@
+import {OK} from '#constants';
+import {omit} from 'lodash';
 import unexpected from 'unexpected';
-
 import {fileURLToPath} from 'url';
 import {RuleContext} from '../../../../src/rule/rule-context';
 import {type StaticRuleContext} from '../../../../src/schema/rule-static';
@@ -124,9 +125,9 @@ describe('midnight-smoker', function () {
                   message: 'Rule "example-rule" threw an exception',
                   error: {cause: error},
                   rule: ruleDef,
-                  ctx: staticCtx,
+                  ctx: omit(staticCtx, 'pkgJson'),
                 },
-              ]).and('to have length', 1);
+              ]);
             });
 
             it('should be bound to the RuleContext', function () {
@@ -138,7 +139,7 @@ describe('midnight-smoker', function () {
                   message: 'Rule "example-rule" threw an exception',
                   error: {cause: error},
                   rule: ruleDef,
-                  ctx: staticCtx,
+                  ctx: omit(staticCtx, 'pkgJson'),
                 },
               ]).and('to have length', 1);
             });
@@ -160,21 +161,23 @@ describe('midnight-smoker', function () {
               it('should return the collected issues', function () {
                 context.addIssue('foo', {data: 'bar'});
                 const issues = context.finalize();
-                expect(issues, 'to satisfy', [
-                  {
-                    message: 'foo',
-                    rule: ruleDef,
-                    data: 'bar',
-                    ctx: staticCtx,
-                  },
-                ]);
+                expect(issues, 'to satisfy', {
+                  result: [
+                    {
+                      message: 'foo',
+                      rule: ruleDef,
+                      data: 'bar',
+                      ctx: omit(staticCtx, 'pkgJson'),
+                    },
+                  ],
+                });
               });
             });
 
             describe('when no issues were collected', function () {
-              it('should return undefined', function () {
+              it('should return OK', function () {
                 const issues = context.finalize();
-                expect(issues, 'to be', undefined);
+                expect(issues, 'to satisfy', {type: OK});
               });
             });
           });

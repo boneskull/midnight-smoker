@@ -1,8 +1,8 @@
 import {PACKAGE_JSON} from '#constants';
+import {AbortError} from '#error/abort-error';
 import {WorkspacesConfigSchema, type WorkspaceInfo} from '#schema/workspaces';
 import {type FileManager} from '#util/filemanager';
 import assert from 'assert';
-import {glob} from 'glob';
 import {isEmpty, partition} from 'lodash';
 import {minimatch} from 'minimatch';
 import path from 'path';
@@ -14,11 +14,23 @@ export interface QueryWorkspacesInput {
   cwd: string;
   fileManager: FileManager;
   workspace: string[];
+  signal: AbortSignal;
 }
 
-export const readSmokerPkgJson = fromPromise<PackageJson, FileManager>(
-  async ({input: fileManager}) => fileManager.readSmokerPkgJson(),
-);
+export interface ReadSmokerPkgJsonInput {
+  fileManager: FileManager;
+  signal: AbortSignal;
+}
+
+export const readSmokerPkgJson = fromPromise<
+  PackageJson,
+  ReadSmokerPkgJsonInput
+>(async ({input: {fileManager, signal}}) => {
+  if (signal.aborted) {
+    throw new AbortError(signal.reason);
+  }
+  return fileManager.readSmokerPkgJson();
+});
 
 export const queryWorkspaces = fromPromise<
   WorkspaceInfo[],
@@ -27,23 +39,33 @@ export const queryWorkspaces = fromPromise<
   async ({
     input: {
       cwd,
-      fileManager: fm,
+      fileManager,
       all: allWorkspaces,
       workspace: onlyWorkspaces,
+      signal,
     },
   }): Promise<WorkspaceInfo[]> => {
+    if (signal.aborted) {
+      throw new AbortError(signal.reason);
+    }
+
     const {packageJson: rootPkgJson, path: rootPkgJsonPath} =
-      await fm.findPkgUp(cwd, {
+      await fileManager.findPkgUp(cwd, {
         strict: true,
       });
+
+    if (signal.aborted) {
+      throw new AbortError(signal.reason);
+    }
 
     const getWorkspaceInfo = async (
       patterns: string[],
       pickPkgNames: string[] = [],
     ): Promise<WorkspaceInfo[]> => {
-      const workspacePaths = await glob(patterns, {
+      const workspacePaths = await fileManager.glob(patterns, {
         cwd,
         withFileTypes: true,
+        signal,
       });
       let workspaces = await Promise.all(
         workspacePaths
@@ -51,7 +73,10 @@ export const queryWorkspaces = fromPromise<
           .map(async (workspace) => {
             const fullpath = workspace.fullpath();
             const pkgJsonPath = path.join(fullpath, PACKAGE_JSON);
-            const workspacePkgJson = await fm.readPkgJson(pkgJsonPath);
+            const workspacePkgJson = await fileManager.readPkgJson(
+              pkgJsonPath,
+              {signal},
+            );
             assert.ok(
               workspacePkgJson.name,
               `no package name in workspace ${PACKAGE_JSON}: ${pkgJsonPath}`,
@@ -79,14 +104,6 @@ export const queryWorkspaces = fromPromise<
     let patterns: string[] = [];
     if (result.success) {
       patterns = result.data;
-      // if (includeWorkspaceRoot) {
-      //   assert.ok(
-      //     rootPkgJson.name,
-      //     `no package name in root ${PACKAGE_JSON}: ${rootPkgJsonPath}`,
-      //   );
-
-      //   patterns = [cwd, ...patterns];
-      // }
       if (allWorkspaces) {
         return getWorkspaceInfo(patterns);
       }

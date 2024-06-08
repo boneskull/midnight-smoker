@@ -18,8 +18,4 @@ export class AbortError extends BaseSmokerError<{reason?: unknown}> {
     super(msg, {reason});
     debug(msg);
   }
-
-  public override get stack() {
-    return undefined;
-  }
 }

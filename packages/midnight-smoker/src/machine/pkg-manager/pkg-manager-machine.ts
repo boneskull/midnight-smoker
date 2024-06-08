@@ -1097,6 +1097,9 @@ export const PkgManagerMachine = setup({
     },
   }) => {
     const abortController = new AbortController();
+    if (signal.aborted) {
+      throw new AbortError(signal.reason);
+    }
     return {
       ...input,
       spec,

@@ -130,6 +130,15 @@ export interface CtrlMachineContext extends CtrlMachineInput {
   staticPlugins: StaticPluginMetadata[];
   systemExecutor: Executor;
   workspaceInfo: WorkspaceInfo[];
+
+  /**
+   * The "root" `AbortController`
+   *
+   * @remarks
+   * Any and all actors this machine spawns should receive a signal from this
+   * controller.
+   */
+  abortController: AbortController;
 }
 
 export interface CtrlMachineInput {
@@ -346,7 +355,12 @@ export const ControlMachine = setup({
      */
     spawnLoaders: assign({
       loaderMachineRefs: ({
-        context: {pluginRegistry, smokerOptions, workspaceInfo},
+        context: {
+          pluginRegistry,
+          smokerOptions,
+          workspaceInfo,
+          abortController: {signal},
+        },
         spawn,
       }) =>
         Object.fromEntries(
@@ -360,6 +374,7 @@ export const ControlMachine = setup({
                 workspaceInfo,
                 smokerOptions,
                 component: LoadableComponents.All,
+                signal,
               },
             });
 
@@ -504,6 +519,7 @@ export const ControlMachine = setup({
           smokerOptions,
           reporterInitPayloads,
           smokerPkgJson,
+          abortController: {signal},
         },
       }) => {
         assert.ok(smokerPkgJson);
@@ -518,6 +534,7 @@ export const ControlMachine = setup({
               smokerOptions,
               plugin,
               smokerPkgJson,
+              signal,
             };
             const actor = spawn('ReporterMachine', {
               id,
@@ -751,6 +768,7 @@ export const ControlMachine = setup({
     fileManager ??= FileManager.create();
     const staticPlugins = serialize(rest.pluginRegistry.plugins);
     return {
+      abortController: new AbortController(),
       defaultExecutor,
       systemExecutor,
       fileManager,
@@ -769,7 +787,12 @@ export const ControlMachine = setup({
   },
   initial: 'loading',
   entry: [log('starting control machine')],
-  exit: [log('stopped')],
+  exit: [
+    log('stopped'),
+    ({context: {abortController}}) => {
+      abortController.abort();
+    },
+  ],
   always: {
     guard: 'hasError',
     actions: [log(({context: {error}}) => `ERROR: ${error?.message}`)],
@@ -869,8 +892,15 @@ export const ControlMachine = setup({
                       context: {
                         smokerOptions: {cwd, all, workspace},
                         fileManager,
+                        abortController: {signal},
                       },
-                    }) => ({all, workspace, fileManager, cwd}),
+                    }) => ({
+                      all,
+                      workspace,
+                      fileManager,
+                      cwd,
+                      signal,
+                    }),
                     onDone: {
                       actions: [
                         {
@@ -918,7 +948,12 @@ export const ControlMachine = setup({
                     'Reads our own package.json file (for use by reporters)',
                   invoke: {
                     src: 'readSmokerPkgJson',
-                    input: ({context: {fileManager}}) => fileManager,
+                    input: ({
+                      context: {
+                        fileManager,
+                        abortController: {signal},
+                      },
+                    }) => ({fileManager, signal}),
                     onDone: {
                       actions: [
                         {

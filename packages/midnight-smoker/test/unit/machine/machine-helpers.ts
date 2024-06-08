@@ -1,10 +1,10 @@
 import {noop} from 'lodash';
 import {scheduler} from 'timers/promises';
 import {
+  Actor,
   createActor,
   toPromise,
   waitFor,
-  type Actor,
   type AnyActorLogic,
   type InputFrom,
   type InspectionEvent,
@@ -42,9 +42,11 @@ export function createMachineRunner<T extends AnyActorLogic>(
       logger,
       inspect,
     });
+    // order is important: create promise, then start.
+    const actorPromise = toPromise(actor);
     actor.start();
-    return await Promise.race([
-      toPromise(actor),
+    return Promise.race([
+      actorPromise,
       scheduler.wait(timeout).then(() => {
         throw new Error(`Machine did not complete in ${timeout}ms`);
       }),
@@ -112,26 +114,46 @@ export function createMachineRunner<T extends AnyActorLogic>(
 
   const runUntilSnapshot = async (
     predicate: (snapshot: SnapshotFrom<T>) => boolean,
-    input: InputFrom<T>,
+    input: InputFrom<T> | Actor<T>,
     {
       logger = defaultLogger,
       inspect = defaultInspector,
       timeout = defaultTimeout,
     }: MachineRunnerOptions = {},
   ): Promise<SnapshotFrom<T>> => {
-    const actor = startMachine(input, {
-      logger,
-      inspect,
-    });
+    const actor =
+      input instanceof Actor
+        ? input
+        : startMachine(input, {
+            logger,
+            inspect,
+          });
     try {
       return await waitFor(actor, predicate, {
         timeout,
       });
+    } catch (err) {
+      if ((err as Error)?.message.startsWith('Timeout of')) {
+        throw new Error(
+          `Machine snapshot did not match predicate in ${timeout}ms`,
+        );
+      }
+      throw err;
     } finally {
       actor.stop();
     }
   };
 
+  /**
+   * Runs the machine until a transition from the `source` state to the `target`
+   * state occurs.
+   *
+   * @param source Source state ID
+   * @param target Target state ID
+   * @param input Machine input
+   * @param opts Options
+   * @returns Promise that resolves when the transition occurs
+   */
   const runUntilTransition = async (
     source: string,
     target: string,
@@ -162,7 +184,7 @@ export function createMachineRunner<T extends AnyActorLogic>(
         toPromise(actor),
         scheduler.wait(timeout).then(() => {
           throw new Error(
-            `Failed to find a transition from ${source} to ${target} in ${timeout}ms`,
+            `Failed to detect a transition from ${source} to ${target} in ${timeout}ms`,
           );
         }),
       ]);

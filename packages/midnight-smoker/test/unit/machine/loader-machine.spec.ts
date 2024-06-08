@@ -26,6 +26,7 @@ describe('midnight-smoker', function () {
       let smokerOptions: SmokerOptions;
       let sandbox: sinon.SinonSandbox;
       let workspaceInfo: WorkspaceInfo[];
+      let signal: AbortSignal;
       beforeEach(async function () {
         ({vol} = memfs());
         fileManager = FileManager.create({fs: vol as any});
@@ -39,6 +40,7 @@ describe('midnight-smoker', function () {
             pkgJsonPath: '/path/to/package/package.json',
           } as WorkspaceInfo,
         ];
+        ({signal} = new AbortController());
       });
 
       afterEach(function () {
@@ -71,6 +73,7 @@ describe('midnight-smoker', function () {
                 workspaceInfo,
                 pluginRegistry,
                 smokerOptions,
+                signal,
               }),
               'to be fulfilled with value satisfying',
               {
@@ -97,6 +100,7 @@ describe('midnight-smoker', function () {
                 pluginRegistry,
                 smokerOptions,
                 component: LoadableComponents.Reporters,
+                signal,
               }),
               'to be fulfilled with value satisfying',
               {
@@ -119,6 +123,7 @@ describe('midnight-smoker', function () {
                 pluginRegistry,
                 smokerOptions,
                 component: LoadableComponents.PkgManagers,
+                signal,
               }),
               'to be fulfilled with value satisfying',
               {
@@ -141,6 +146,7 @@ describe('midnight-smoker', function () {
                 workspaceInfo,
                 smokerOptions,
                 component: LoadableComponents.Rules,
+                signal,
               }),
               'to be fulfilled with value satisfying',
               {
@@ -178,6 +184,7 @@ describe('midnight-smoker', function () {
               pluginRegistry,
               smokerOptions,
               component: LoadableComponents.Reporters,
+              signal,
             }),
             'to be fulfilled with value satisfying',
             {
@@ -215,6 +222,7 @@ describe('midnight-smoker', function () {
               pluginRegistry,
               smokerOptions,
               component: LoadableComponents.Reporters,
+              signal,
             }),
             'to be fulfilled with value satisfying',
             {
@@ -256,6 +264,7 @@ describe('midnight-smoker', function () {
                 smokerOptions,
                 component: LoadableComponents.Reporters,
                 workspaceInfo,
+                signal,
               }),
               'to be fulfilled with value satisfying',
               {
@@ -293,6 +302,7 @@ describe('midnight-smoker', function () {
                 workspaceInfo,
                 smokerOptions,
                 component: LoadableComponents.PkgManagers,
+                signal,
               }),
               'to be fulfilled with value satisfying',
               {

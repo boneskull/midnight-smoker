@@ -27,7 +27,7 @@ export type GetTempDirRoot = () => string;
 
 export type NormalizedPackageJson = PackageJson & normalizePkgData.Package;
 
-export interface FileManagerOpts {
+export interface FileManagerOptions {
   fs?: FsApi;
   homedir?: GetHomeDir;
   tmpdir?: GetTempDirRoot;
@@ -37,7 +37,8 @@ export interface ReadPkgJsonNormalizedResult extends ReadPkgJsonResult {
   packageJson: NormalizedPackageJson;
 }
 
-export interface ReadPkgJsonOpts {
+export interface ReadPkgJsonOptions {
+  signal?: AbortSignal;
   normalize?: boolean;
   strict?: boolean;
 }

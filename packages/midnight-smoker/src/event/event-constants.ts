@@ -175,6 +175,8 @@ export const SmokerEvent = {
    */
   BeforeExit: 'BeforeExit',
 
+  Noop: 'Noop',
+
   /**
    * {@inheritDoc SmokerEvents.Lingered}
    */

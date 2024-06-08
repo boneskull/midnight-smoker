@@ -219,7 +219,10 @@ export const RuleMachine = setup({
     },
   },
   actions: {
-    enqueueCheck: assign({
+    /**
+     * Creates a new {@link check} actor
+     */
+    check: assign({
       checkRefs: (
         {
           spawn,
@@ -243,6 +246,16 @@ export const RuleMachine = setup({
         };
       },
     }),
+
+    /**
+     * Emits a {@link RuleMachineCheckResultEvent}.
+     *
+     * If a {@link RuleMachineContext.parentRef} is present, a
+     * {@link PkgManagerMachineCheckResultEvent} is sent to it.
+     *
+     * @remarks
+     * The two events are structurally identical
+     */
     report: enqueueActions(({enqueue, context}, output: CheckOutput) => {
       const {parentRef, config} = context;
       const evt: PkgManagerMachineCheckResultEvent = {
@@ -255,6 +268,11 @@ export const RuleMachine = setup({
       }
       enqueue.emit(evt as RuleMachineCheckResultEvent);
     }),
+
+    /**
+     * Stops a {@link check} actor and removes it from
+     * {@link RuleMachineContext.checkRefs}
+     */
     stopCheckActor: enqueueActions(
       ({enqueue, context: {checkRefs = {}}}, actorId: string) => {
         const actor = checkRefs[actorId];
@@ -267,6 +285,11 @@ export const RuleMachine = setup({
         enqueue.assign({checkRefs: rest});
       },
     ),
+
+    /**
+     * Appends the result of a {@link check} actor to
+     * {@link RuleMachineContext.results}
+     */
     appendCheckResult: assign({
       results: ({context: {results}}, output: CheckOutput) => [
         ...results,
@@ -313,7 +336,7 @@ export const RuleMachine = setup({
         CHECK: {
           actions: [
             {
-              type: 'enqueueCheck',
+              type: 'check',
               params: ({event}) => event,
             },
           ],

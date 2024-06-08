@@ -19,6 +19,13 @@ import type {SmokerEvent} from './event-constants';
 export type BeforeExitEventData = void;
 
 /**
+ * Does nothing and not emitted anyway!
+ *
+ * @event
+ */
+export type NoopEventData = void;
+
+/**
  * Emitted only if the `--linger` option was provided; a list of temp
  * directories used by `midnight-smoker` and left on disk at user behest.
  *
@@ -98,4 +105,5 @@ export interface SmokerEventData {
   [SmokerEvent.SmokeOk]: SmokeOkEventData;
   [SmokerEvent.SmokeError]: SmokeErrorEventData;
   [SmokerEvent.UnknownError]: UnknownErrorEventData;
+  [SmokerEvent.Noop]: NoopEventData;
 }

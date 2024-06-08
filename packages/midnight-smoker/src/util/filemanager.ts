@@ -11,26 +11,44 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 
 import {MIDNIGHT_SMOKER, PACKAGE_JSON, UNKNOWN_TMPDIR_PREFIX} from '#constants';
+import {AbortError} from '#error/abort-error';
 import {fromUnknownError} from '#error/from-unknown-error';
 import {MissingPackageJsonError} from '#error/missing-pkg-json-error';
 import {UnreadablePackageJsonError} from '#error/unreadable-pkg-json-error';
-import Debug from 'debug';
-import {isObject} from 'lodash';
-import type os from 'node:os';
-import path from 'node:path';
-import normalizePkgData from 'normalize-package-data';
-import {type PackageJson} from 'type-fest';
+import {isSmokerError} from '#util/error-util';
 import {
-  type FileManagerOpts,
+  type FileManagerOptions,
   type FsApi,
   type GetHomeDir,
   type GetTempDirRoot,
   type NormalizedPackageJson,
   type ReadPkgJsonNormalizedResult,
-  type ReadPkgJsonOpts,
+  type ReadPkgJsonOptions,
   type ReadPkgJsonResult,
-} from './fs-api';
-import {memoize, niceRelativePath} from './util';
+} from '#util/fs-api';
+import {memoize, niceRelativePath} from '#util/util';
+import Debug from 'debug';
+import {
+  glob,
+  type GlobOptions,
+  type GlobOptionsWithFileTypesFalse,
+  type GlobOptionsWithFileTypesTrue,
+  type GlobOptionsWithFileTypesUnset,
+  type Path,
+} from 'glob';
+import type os from 'node:os';
+import path from 'node:path';
+import normalizePkgData from 'normalize-package-data';
+import {type PackageJson} from 'type-fest';
+
+export interface FindUpOptions {
+  followSymlinks?: boolean;
+  signal?: AbortSignal;
+}
+
+export interface ReadSmokerPkgJsonOptions {
+  signal?: AbortSignal;
+}
 
 export class FileManager {
   public readonly fs: FsApi;
@@ -41,8 +59,8 @@ export class FileManager {
 
   public readonly tempDirs: Set<string> = new Set();
 
-  constructor(opts?: FileManagerOpts) {
-    const anyOpts = opts ?? ({} as FileManagerOpts);
+  constructor(opts?: FileManagerOptions) {
+    const anyOpts = opts ?? ({} as FileManagerOptions);
     this.fs = anyOpts.fs ?? (require('node:fs') as FsApi);
     this.getHomeDir =
       anyOpts.homedir ??
@@ -52,18 +70,8 @@ export class FileManager {
       ((require('node:os') as typeof os).tmpdir as GetTempDirRoot);
   }
 
-  public static create(this: void, opts?: FileManagerOpts): FileManager {
+  public static create(this: void, opts?: FileManagerOptions): FileManager {
     return new FileManager(opts);
-  }
-
-  /**
-   * Type guard for a CJS module with an `__esModule` property
-   *
-   * @param value - Any value
-   * @returns `true` if the value is an object with an `__esModule` property
-   */
-  public static isErsatzESModule(value: unknown): value is {__esModule: true} {
-    return isObject(value) && '__esModule' in value;
   }
 
   /**
@@ -91,28 +99,31 @@ export class FileManager {
 
   public async findPkgUp(
     cwd: string,
-    options: ReadPkgJsonOpts & {normalize: true; strict: true},
+    options: ReadPkgJsonOptions & {normalize: true; strict: true},
   ): Promise<ReadPkgJsonNormalizedResult>;
   public async findPkgUp(
     cwd: string,
-    options: ReadPkgJsonOpts & {normalize: true},
+    options: ReadPkgJsonOptions & {normalize: true},
   ): Promise<ReadPkgJsonNormalizedResult | undefined>;
   public async findPkgUp(
     cwd: string,
-    options: ReadPkgJsonOpts & {strict: true},
+    options: ReadPkgJsonOptions & {strict: true},
   ): Promise<ReadPkgJsonResult | ReadPkgJsonNormalizedResult>;
   public async findPkgUp(
     cwd: string,
-    options?: ReadPkgJsonOpts,
+    options?: ReadPkgJsonOptions,
   ): Promise<ReadPkgJsonResult | ReadPkgJsonNormalizedResult | undefined>;
   @memoize((cwd, opts) => JSON.stringify({cwd, opts}))
   public async findPkgUp(
     cwd: string,
-    options: ReadPkgJsonOpts = {},
+    {strict, signal, normalize}: ReadPkgJsonOptions = {},
   ): Promise<ReadPkgJsonResult | ReadPkgJsonNormalizedResult | undefined> {
-    const filepath = await this.findUp(PACKAGE_JSON, cwd);
+    if (signal?.aborted) {
+      throw new AbortError(signal.reason);
+    }
+    const filepath = await this.findUp(PACKAGE_JSON, cwd, {signal});
     if (!filepath) {
-      if (options.strict) {
+      if (strict) {
         throw new MissingPackageJsonError(
           `Could not find ${PACKAGE_JSON} from ${cwd}`,
           cwd,
@@ -120,9 +131,12 @@ export class FileManager {
       }
       return;
     }
-    const pkgJson = await (options.normalize
-      ? this.readPkgJson(filepath, {normalize: true})
-      : this.readPkgJson(filepath));
+    if (signal?.aborted) {
+      throw new AbortError(signal.reason);
+    }
+    const pkgJson = await (normalize
+      ? this.readPkgJson(filepath, {normalize: true, signal})
+      : this.readPkgJson(filepath, {signal}));
     return {
       packageJson: pkgJson,
       path: filepath,
@@ -140,8 +154,11 @@ export class FileManager {
   public async findUp(
     filename: string,
     from: string,
-    {followSymlinks}: {followSymlinks?: boolean} = {},
+    {followSymlinks, signal}: FindUpOptions = {},
   ): Promise<string | undefined> {
+    if (signal?.aborted) {
+      throw new AbortError(signal.reason);
+    }
     const method = followSymlinks ? 'lstat' : 'stat';
     do {
       const allegedPath = path.join(from, filename);
@@ -163,6 +180,41 @@ export class FileManager {
       from = nextFrom;
       // eslint-disable-next-line no-constant-condition
     } while (true);
+  }
+
+  public async glob(
+    patterns: string | string[],
+    opts?: GlobOptionsWithFileTypesUnset,
+  ): Promise<string[]>;
+  public async glob(
+    patterns: string | string[],
+    opts: GlobOptionsWithFileTypesTrue,
+  ): Promise<Path[]>;
+  public async glob(
+    patterns: string | string[],
+    opts: GlobOptionsWithFileTypesFalse,
+  ): Promise<string[]>;
+  public async glob(
+    patterns: string | string[],
+    opts: GlobOptions,
+  ): Promise<Path[] | string[]>;
+  public async glob(
+    patterns: string | string[],
+    opts?:
+      | GlobOptions
+      | GlobOptionsWithFileTypesFalse
+      | GlobOptionsWithFileTypesTrue
+      | GlobOptionsWithFileTypesUnset,
+  ): Promise<Path[] | string[]> {
+    const {fs} = this;
+    return opts
+      ? glob(patterns, {
+          ...opts,
+          fs,
+        })
+      : glob(patterns, {
+          fs,
+        });
   }
 
   public async pruneTempDir(dir: string): Promise<void> {
@@ -188,21 +240,35 @@ export class FileManager {
     return this.fs.promises.readFile(filepath, 'utf8');
   }
 
-  public async readPkgJson(filepath: string): Promise<PackageJson>;
   public async readPkgJson(
     filepath: string,
-    options: {normalize: true},
+    options: ReadPkgJsonOptions & {normalize: true},
   ): Promise<NormalizedPackageJson>;
+  public async readPkgJson(
+    filepath: string,
+    options: ReadPkgJsonOptions & {normalize: false},
+  ): Promise<PackageJson>;
+  public async readPkgJson(
+    filepath: string,
+    options?: ReadPkgJsonOptions,
+  ): Promise<PackageJson | NormalizedPackageJson>;
   @memoize((filepath, opts) => JSON.stringify({filepath, opts}))
   public async readPkgJson(
     filepath: string,
-    options: {normalize?: boolean} = {},
+    options: ReadPkgJsonOptions = {},
   ): Promise<PackageJson | NormalizedPackageJson> {
+    const {normalize, signal} = options;
+    if (signal?.aborted) {
+      throw new AbortError(signal.reason);
+    }
     try {
-      const file = await this.fs.promises.readFile(filepath, 'utf8');
+      const file = await this.fs.promises.readFile(filepath, {
+        encoding: 'utf8',
+        signal,
+      });
       const relativePath = niceRelativePath(filepath);
       const packageJson = JSON.parse(file) as PackageJson;
-      if (options.normalize) {
+      if (normalize) {
         normalizePkgData(packageJson);
         debug('Normalized JSON at %s', relativePath);
         return packageJson as NormalizedPackageJson;
@@ -210,6 +276,9 @@ export class FileManager {
       debug('Read JSON at %s', relativePath);
       return packageJson;
     } catch (err) {
+      if (isSmokerError(AbortError, err)) {
+        throw err;
+      }
       throw new UnreadablePackageJsonError(
         `Could not read ${filepath}`,
         path.dirname(filepath),
@@ -219,8 +288,10 @@ export class FileManager {
   }
 
   @memoize()
-  public async readSmokerPkgJson(): Promise<PackageJson> {
-    const result = await this.findPkgUp(__dirname, {strict: true});
+  public async readSmokerPkgJson({
+    signal,
+  }: ReadSmokerPkgJsonOptions = {}): Promise<PackageJson> {
+    const result = await this.findPkgUp(__dirname, {strict: true, signal});
     return result.packageJson;
   }
 

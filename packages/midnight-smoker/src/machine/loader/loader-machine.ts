@@ -29,6 +29,7 @@ export type LoadableComponent =
   (typeof LoadableComponents)[keyof typeof LoadableComponents];
 
 export interface LoaderMachineInput {
+  signal: AbortSignal;
   plugin: Readonly<PluginMetadata>;
   pluginRegistry: PluginRegistry;
   smokerOptions: SmokerOptions;

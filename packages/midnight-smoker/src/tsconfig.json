@@ -1,5 +1,8 @@
 {
-  "extends": ["../../../.config/tsconfig.src.json"],
+  "extends": [
+    "../../../.config/tsconfig.src.json",
+    "../.config/tsconfig.paths.json"
+  ],
   "compilerOptions": {
     "outDir": "../dist"
   },

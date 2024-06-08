@@ -1,3 +1,4 @@
+import {omit} from 'lodash';
 import unexpected from 'unexpected';
 import {RuleSeverities} from '../../../../src/constants';
 import {RuleError} from '../../../../src/error/rule-error';
@@ -58,7 +59,7 @@ describe('midnight-smoker', function () {
           it('should correctly initialize properties', function () {
             expect(issue, 'to satisfy', {
               rule: params.rule,
-              ctx: params.ctx,
+              ctx: omit(params.ctx, 'pkgJson'),
               message: params.message,
               data: params.data,
               error: params.error,
@@ -68,17 +69,48 @@ describe('midnight-smoker', function () {
         });
 
         describe('computed property', function () {
-          describe('failed', function () {
+          describe('isError', function () {
             describe('when severity is Error', function () {
+              beforeEach(function () {
+                params = {
+                  rule: exampleStaticRule,
+                  ctx: exampleStaticRuleContext,
+                  message: 'Test message',
+                  data: {foo: 'bar'},
+                  error: new RuleError(
+                    'Test error',
+                    exampleStaticRuleContext,
+                    'example-rule',
+                    new Error('Test error'),
+                  ),
+                };
+                issue = new RuleIssue(params);
+              });
               it('should return true', function () {
-                params.ctx.severity = RuleSeverities.Error;
                 expect(issue.isError, 'to be true');
               });
             });
 
             describe('when severity is Warn', function () {
+              beforeEach(function () {
+                params = {
+                  rule: exampleStaticRule,
+                  ctx: {
+                    ...exampleStaticRuleContext,
+                    severity: RuleSeverities.Warn,
+                  },
+                  message: 'Test message',
+                  data: {foo: 'bar'},
+                  error: new RuleError(
+                    'Test error',
+                    exampleStaticRuleContext,
+                    'example-rule',
+                    new Error('Test error'),
+                  ),
+                };
+                issue = new RuleIssue(params);
+              });
               it('should return false', function () {
-                params.ctx.severity = RuleSeverities.Warn;
                 expect(issue.isError, 'to be false');
               });
             });
