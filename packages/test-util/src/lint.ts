@@ -150,6 +150,7 @@ export async function runRule<T extends SomeRuleDef>(
       ruleId: def.name,
       config: someConfig,
       plan,
+      signal: new AbortSignal(),
     },
   });
   ruleMachine.send({

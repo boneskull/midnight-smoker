@@ -38,6 +38,8 @@ export interface CheckInput {
    * This is for round-tripping
    */
   manifest: LintManifest;
+
+  signal: AbortSignal;
 }
 
 export interface BaseCheckOutput {

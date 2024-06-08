@@ -965,12 +965,17 @@ export const PkgManagerMachine = setup({
     }),
     assignError: assign({
       error: ({self, context}, error: Error) => {
-        if (isSmokerError(AbortError, error)) {
+        if (
+          isSmokerError(AbortError, context.error) &&
+          isSmokerError(AbortError, error)
+        ) {
           return context.error;
         }
+
         if (context.error) {
           return context.error.clone(error);
         }
+
         return new MachineError(
           `Package manager encountered an error`,
           error,
@@ -982,7 +987,7 @@ export const PkgManagerMachine = setup({
       ruleMachineRefs: ({
         self,
         spawn,
-        context: {ruleInitPayloads, ruleConfigs},
+        context: {ruleInitPayloads, ruleConfigs, signal},
       }) => {
         return Object.fromEntries(
           ruleInitPayloads.map(({def, id: ruleId}) => {
@@ -995,6 +1000,7 @@ export const PkgManagerMachine = setup({
                 ruleId,
                 config: ruleConfigs[ruleId],
                 parentRef: self,
+                signal,
               },
             });
             // INDEXED BY RULE ID

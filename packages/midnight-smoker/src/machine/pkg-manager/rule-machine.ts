@@ -1,4 +1,5 @@
 import {FAILED, FINAL, OK} from '#constants';
+import {AbortError} from '#error/abort-error';
 import {RuleContext} from '#rule/rule-context';
 import {type LintManifest} from '#schema/lint-manifest';
 import {type SomeRuleConfig} from '#schema/rule-options';
@@ -57,6 +58,11 @@ export interface RuleMachineInput {
    * Used by test code
    */
   plan?: number;
+
+  /**
+   * The signal to abort the operation
+   */
+  signal: AbortSignal;
 }
 
 /**
@@ -132,7 +138,10 @@ export type RuleMachineEvents =
  */
 export const check = fromPromise<CheckOutput, CheckInput>(
   async ({self, input}) => {
-    const {ctx: staticCtx, opts, def, ruleId} = input;
+    const {ctx: staticCtx, opts, def, ruleId, signal} = input;
+    if (signal.aborted) {
+      throw new AbortError(signal.reason);
+    }
 
     const ctx = RuleContext.create(def, staticCtx, ruleId);
 
@@ -231,6 +240,7 @@ export const RuleMachine = setup({
             config: {opts},
             checkRefs = {},
             ruleId,
+            signal,
           },
         },
         {ctx, manifest}: {ctx: StaticRuleContext; manifest: LintManifest},
@@ -238,7 +248,7 @@ export const RuleMachine = setup({
         const id = uniqueId({prefix: 'check', postfix: ruleId});
         const actor = spawn('check', {
           id,
-          input: {def, ruleId, opts, ctx, manifest},
+          input: {def, ruleId, opts, ctx, manifest, signal},
         });
         return {
           ...checkRefs,
