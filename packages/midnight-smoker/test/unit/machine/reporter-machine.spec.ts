@@ -6,7 +6,7 @@ import {createSandbox} from 'sinon';
 import {type PackageJson} from 'type-fest';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
-import {createActor, toPromise, type Actor} from 'xstate';
+import {toPromise, type Actor} from 'xstate';
 import {ERROR} from '../../../src/constants';
 import {
   SmokerEvent,
@@ -32,7 +32,7 @@ import {createMachineRunner} from './machine-helpers';
 
 const expect = unexpected.clone().use(unexpectedSinon);
 
-const {startMachine, runUntilSnapshot} = createMachineRunner(ReporterMachine);
+const {startMachine} = createMachineRunner(ReporterMachine);
 
 describe('midnight-smoker', function () {
   describe('machine', function () {
@@ -50,8 +50,6 @@ describe('midnight-smoker', function () {
       let def: ReporterDef;
       let setup: sinon.SinonStub;
       let teardown: sinon.SinonStub;
-      let ac: AbortController;
-      let signal: AbortSignal;
       let staticPlugin: StaticPluginMetadata;
 
       beforeEach(async function () {
@@ -73,8 +71,6 @@ describe('midnight-smoker', function () {
         });
         setup = sandbox.stub(def, 'setup').resolves();
         teardown = sandbox.stub(def, 'teardown').resolves();
-        ac = new AbortController();
-        ({signal} = ac);
       });
 
       afterEach(function () {
@@ -88,7 +84,6 @@ describe('midnight-smoker', function () {
             plugin,
             smokerPkgJson,
             smokerOptions,
-            signal,
           });
           actor.send({type: 'HALT'});
           await toPromise(actor);
@@ -101,7 +96,6 @@ describe('midnight-smoker', function () {
             plugin,
             smokerPkgJson,
             smokerOptions,
-            signal,
           });
           actor.send({type: 'HALT'});
           await toPromise(actor);
@@ -116,7 +110,6 @@ describe('midnight-smoker', function () {
               plugin,
               smokerPkgJson,
               smokerOptions,
-              signal,
             });
             await expect(
               toPromise(actor),
@@ -148,7 +141,6 @@ describe('midnight-smoker', function () {
               plugin,
               smokerPkgJson,
               smokerOptions,
-              signal,
             });
             actor.send({type: 'HALT'});
             await expect(
@@ -187,7 +179,6 @@ describe('midnight-smoker', function () {
             plugin,
             smokerPkgJson,
             smokerOptions,
-            signal,
           });
         });
 
@@ -293,30 +284,6 @@ describe('midnight-smoker', function () {
 
       describe('actors', function () {
         describe('drainQueue', function () {
-          describe('when the signal is aborted', function () {
-            it('should throw an AbortError', async function () {
-              const queue: DataForEvent<keyof EventData>[] = [
-                {type: SmokerEvent.BeforeExit},
-              ];
-              const input: DrainQueueInput = {
-                def,
-                ctx: {
-                  opts: smokerOptions,
-                  pkgJson: smokerPkgJson,
-                  plugin: staticPlugin,
-                },
-                queue,
-                signal,
-              };
-              ac.abort();
-              await expect(
-                createMachineRunner(drainQueue).runMachine(input),
-                'to be rejected with error satisfying',
-                {code: ErrorCodes.AbortError},
-              );
-            });
-          });
-
           describe('when a listener throws', function () {
             it('should reject with a ReporterListenerError', async function () {
               const queue: DataForEvent<keyof EventData>[] = [
@@ -331,7 +298,6 @@ describe('midnight-smoker', function () {
                   plugin: staticPlugin,
                 },
                 queue,
-                signal,
               };
               await expect(
                 createMachineRunner(drainQueue).runMachine(input),
@@ -355,7 +321,6 @@ describe('midnight-smoker', function () {
                   plugin: staticPlugin,
                 },
                 queue,
-                signal,
               };
               await createMachineRunner(drainQueue).runMachine(input);
               expect(def.onBeforeExit, 'was called once');
@@ -374,7 +339,6 @@ describe('midnight-smoker', function () {
                   plugin: staticPlugin,
                 },
                 queue,
-                signal,
               };
               await createMachineRunner(drainQueue).runMachine(input);
               expect(queue.shift, 'was not called');
@@ -391,30 +355,9 @@ describe('midnight-smoker', function () {
                 pkgJson: smokerPkgJson,
                 plugin: staticPlugin,
               },
-              signal,
             };
             await createMachineRunner(setupReporter).runMachine(input);
             expect(setup, 'was called once');
-          });
-
-          describe('when the signal is aborted', function () {
-            it('should throw an AbortError', async function () {
-              const input: ReporterLifecycleHookInput = {
-                def,
-                ctx: {
-                  opts: smokerOptions,
-                  pkgJson: smokerPkgJson,
-                  plugin: staticPlugin,
-                },
-                signal,
-              };
-              ac.abort();
-              await expect(
-                createMachineRunner(setupReporter).runMachine(input),
-                'to be rejected with error satisfying',
-                {code: ErrorCodes.AbortError},
-              );
-            });
           });
         });
 
@@ -427,106 +370,10 @@ describe('midnight-smoker', function () {
                 pkgJson: smokerPkgJson,
                 plugin: staticPlugin,
               },
-              signal,
             };
             await createMachineRunner(teardownReporter).runMachine(input);
             expect(teardown, 'was called once');
           });
-
-          describe('when the signal is aborted', function () {
-            it('should throw an AbortError', async function () {
-              const input: ReporterLifecycleHookInput = {
-                def,
-                ctx: {
-                  opts: smokerOptions,
-                  pkgJson: smokerPkgJson,
-                  plugin: staticPlugin,
-                },
-                signal,
-              };
-              ac.abort();
-              await expect(
-                createMachineRunner(teardownReporter).runMachine(input),
-                'to be rejected with error satisfying',
-                {code: ErrorCodes.AbortError},
-              );
-            });
-          });
-        });
-      });
-
-      describe('startup', function () {
-        describe('when the signal was aborted before starting the machine', function () {
-          /**
-           * @see {@link https://github.com/statelyai/xstate/issues/4928}
-           */
-          it('should fail', async function () {
-            const ac = new AbortController();
-            signal = ac.signal;
-            ac.abort(new Error('abort'));
-            const actor = createActor(ReporterMachine, {
-              input: {
-                def,
-                plugin,
-                smokerPkgJson,
-                smokerOptions,
-                signal,
-              },
-            });
-            const promise = toPromise(actor);
-            actor.start();
-            await expect(promise, 'to be rejected with error satisfying', {
-              code: ErrorCodes.AbortError,
-            });
-          });
-        });
-
-        describe('when the signal was aborted after starting the machine', function () {
-          it('should exit with ERROR output', async function () {
-            const ac = new AbortController();
-            signal = ac.signal;
-
-            const actor = createActor(ReporterMachine, {
-              input: {
-                def,
-                plugin,
-                smokerPkgJson,
-                smokerOptions,
-                signal,
-              },
-            });
-            const promise = toPromise(actor);
-            actor.start();
-            ac.abort(new Error('abort'));
-            await expect(promise, 'to be fulfilled with value satisfying', {
-              type: ERROR,
-              error: {
-                code: ErrorCodes.MachineError,
-              },
-            });
-          });
-        });
-      });
-
-      describe('shutdown', function () {
-        it('should always abort the drain queue', async function () {
-          const actor = startMachine({
-            def,
-            plugin,
-            smokerPkgJson,
-            smokerOptions,
-            signal,
-          });
-
-          actor.send({type: 'HALT'});
-          await expect(
-            runUntilSnapshot(
-              (snapshot) =>
-                snapshot.context.drainAbortController.signal.aborted,
-              actor,
-            ),
-            'to be fulfilled',
-          );
         });
       });
     });

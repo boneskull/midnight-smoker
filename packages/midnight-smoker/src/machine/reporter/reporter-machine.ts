@@ -1,5 +1,4 @@
 import {ERROR, FINAL, OK} from '#constants';
-import {AbortError} from '#error/abort-error';
 import {fromUnknownError} from '#error/from-unknown-error';
 import {MachineError} from '#error/machine-error';
 import {type SomeDataForEvent} from '#event/events';
@@ -7,21 +6,10 @@ import {type ActorOutput} from '#machine/util';
 import {type SmokerOptions} from '#options/options';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
 import {type ReporterContext, type ReporterDef} from '#schema/reporter-def';
-import {isSmokerError} from '#util/error-util';
 import {serialize} from '#util/serialize';
-import {uniqueId} from '#util/unique-id';
 import {isEmpty} from 'lodash';
 import {type PackageJson} from 'type-fest';
-import {
-  and,
-  assign,
-  log,
-  not,
-  setup,
-  stopChild,
-  type ActorRefFrom,
-} from 'xstate';
-import {abortListener} from '../util/abort-listener';
+import {and, assign, log, not, setup} from 'xstate';
 import {
   drainQueue,
   setupReporter,
@@ -67,17 +55,6 @@ export interface ReporterMachineContext
    * The object passed to all of the `ReporterDef`'s listener methods.
    */
   ctx: ReporterContext;
-
-  /**
-   * Abort controller which can interrupt event queue draining
-   */
-  drainAbortController: AbortController;
-
-  /**
-   * Reference to an {@link abortListener} actor, listening if
-   * {@link ReporterMachineInput.signal} aborts
-   */
-  abortListenerRef?: ActorRefFrom<typeof abortListener>;
 }
 
 /**
@@ -103,11 +80,6 @@ export interface ReporterMachineInput {
    * Contents of `midnight-smoker`'s `package.json`
    */
   smokerPkgJson: PackageJson;
-
-  /**
-   * Signal from parent machine
-   */
-  signal: AbortSignal;
 }
 
 /**
@@ -122,17 +94,11 @@ export const ReporterMachine = setup({
     output: {} as ReporterMachineOutput,
   },
   actors: {
-    abortListener,
     drainQueue,
     setupReporter,
     teardownReporter,
   },
   guards: {
-    /**
-     * If the parent signal was aborted, return `true`
-     */
-    aborted: ({context: {signal}}) => signal.aborted,
-
     /**
      * If the queue contains events, this guard will return `true`.
      */
@@ -149,17 +115,13 @@ export const ReporterMachine = setup({
      */
     shouldHalt: and(['hasNoEvents', 'shouldShutdown']),
 
-    /**
-     * If the `shouldShutdown` context property is `true`, this guard will
-     * return `true`
-     */
     shouldShutdown: ({context: {shouldShutdown}}) => Boolean(shouldShutdown),
 
     /**
      * If the `shouldHalt` context property is falsy, this guard will return
      * `true`.
      */
-    shouldListen: and([not('aborted'), not('shouldHalt')]),
+    shouldListen: not('shouldHalt'),
   },
   actions: {
     /**
@@ -167,12 +129,6 @@ export const ReporterMachine = setup({
      */
     assignError: assign({
       error: ({context, self}, {error}: {error: unknown}) => {
-        if (
-          isSmokerError(AbortError, context.error) &&
-          isSmokerError(AbortError, error)
-        ) {
-          return context.error;
-        }
         const err = fromUnknownError(error);
 
         if (context.error) {
@@ -187,18 +143,6 @@ export const ReporterMachine = setup({
     }),
 
     /**
-     * Aborts the
-     * {@link ReporterMachineContext.drainAbortController drain abort controller}
-     * with an optional error (reason)
-     */
-    abort: (
-      {context: {drainAbortController}},
-      {error}: {error?: unknown} = {},
-    ) => {
-      drainAbortController.abort(error);
-    },
-
-    /**
      * Enqueues any event emitted by the event bus machines
      */
     enqueue: assign({
@@ -207,50 +151,15 @@ export const ReporterMachine = setup({
         event,
       ],
     }),
-
-    /**
-     * Sets {@link ReporterMachineContext.shouldShutdown} to `true`, which begins
-     * the shutdown process
-     */
     shouldShutdown: assign({shouldShutdown: true}),
-
-    /**
-     * Spawn an {@link abortListener} actor to listen for the parent signal
-     */
-    startAbortListener: assign({
-      abortListenerRef: ({context: {def, signal}, spawn}) => {
-        const id = uniqueId({prefix: 'abortListener', postfix: def.name});
-        return spawn('abortListener', {id, input: signal});
-      },
-    }),
-
-    /**
-     * Stops the {@link ReporterMachineContext.abortListenerRef abort listener}
-     */
-    stopAbortListener: assign({
-      abortListenerRef: ({context: {abortListenerRef}}) => {
-        if (abortListenerRef) {
-          abortListenerRef.send({type: 'OFF'});
-          stopChild(abortListenerRef);
-        }
-        return undefined;
-      },
-    }),
   },
 }).createMachine({
   initial: 'setup',
   context: ({
-    input: {signal, plugin, smokerOptions, smokerPkgJson, ...input},
+    input: {plugin, smokerOptions, smokerPkgJson, ...input},
   }): ReporterMachineContext => {
-    if (signal.aborted) {
-      throw new AbortError(signal.reason);
-    }
-    const abortController = new AbortController();
-
     return {
       ...input,
-      drainAbortController: abortController,
-      signal,
       queue: [],
       shouldShutdown: false,
       plugin,
@@ -267,22 +176,9 @@ export const ReporterMachine = setup({
       ({context: {def, plugin}}) =>
         `Starting ReporterMachine for reporter: ${def.name} from ${plugin.id}`,
     ),
-    {type: 'startAbortListener'},
   ],
-  exit: [
-    {type: 'abort'},
-    {type: 'stopAbortListener'},
-    log('stopping reporter'),
-  ],
+  exit: [log('stopping reporter')],
   on: {
-    ABORT: {
-      description: 'Aborts in-process operations and triggers shutdown routine',
-      actions: [
-        {type: 'assignError', params: {error: new AbortError()}},
-        {type: 'abort'},
-        {type: 'shouldShutdown'},
-      ],
-    },
     HALT: {
       description: 'Mark the machine for halting after draining the queue',
       actions: [
@@ -326,7 +222,7 @@ export const ReporterMachine = setup({
     setup: {
       invoke: {
         src: 'setupReporter',
-        input: ({context: {def, ctx, signal}}) => ({def, ctx, signal}),
+        input: ({context: {def, ctx}}) => ({def, ctx}),
         onDone: {
           target: 'listening',
         },
@@ -358,13 +254,10 @@ export const ReporterMachine = setup({
       description: 'Drains the event queue by emitting events to the reporter',
       invoke: {
         src: 'drainQueue',
-        input: ({
-          context: {def, ctx, queue, drainAbortController, signal},
-        }) => ({
+        input: ({context: {def, ctx, queue}}) => ({
           queue,
           def,
           ctx,
-          signal: AbortSignal.any([drainAbortController.signal, signal]),
         }),
         onDone: {
           target: 'listening',
@@ -376,25 +269,15 @@ export const ReporterMachine = setup({
               type: 'assignError',
               params: ({event: {error}}) => ({error}),
             },
-            {
-              type: 'abort',
-              params: ({event: {error}}) => ({error}),
-            },
           ],
         },
       },
     },
     teardown: {
-      enter: [
-        {
-          type: 'abort',
-        },
-      ],
-      description:
-        'Runs teardown lifecycle hook for the reporter; will not abort on error',
+      description: 'Runs teardown lifecycle hook for the reporter',
       invoke: {
         src: 'teardownReporter',
-        input: ({context: {def, ctx, signal}}) => ({def, ctx, signal}),
+        input: ({context: {def, ctx}}) => ({def, ctx}),
         onDone: {
           target: 'done',
         },
