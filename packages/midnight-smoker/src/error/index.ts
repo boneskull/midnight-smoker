@@ -1,11 +1,3 @@
-/**
- * All errors which aren't unique to a specific component or other area.
- *
- * Includes building blocks for other errors.
- *
- * @module midnight-smoker/error
- */
-
 export * from './abort-error';
 
 export * from './aggregate-pkg-manager-error';

@@ -1,3 +1,5 @@
+// TODO: remove this when @types/node adds AbortSignal.any
+
 export {};
 
 declare global {

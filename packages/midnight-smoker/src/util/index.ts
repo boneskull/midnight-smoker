@@ -17,3 +17,5 @@ export * from './util';
 export * from './unique-id';
 
 export * from './serialize';
+
+export * from '#cli/cli-util';

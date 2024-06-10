@@ -13,6 +13,7 @@ import {type RunScriptManifest} from '#schema/run-script-manifest';
 import {type RunScriptResult} from '#schema/run-script-result';
 import {type SomeRuleDef} from '#schema/some-rule-def';
 import {type Result} from '#schema/workspaces';
+import {type AbortEvent} from '../util/abort-listener';
 
 export type CheckOutput = CheckOutputOk | CheckOutputFailed;
 
@@ -26,7 +27,8 @@ export type PkgManagerMachineEvents =
   | PkgManagerMachineRunScriptEvent
   | PkgManagerMachineCheckResultEvent
   | PkgManagerMachineRunScriptErrorEvent
-  | PkgManagerMachineRuleEndEvent;
+  | PkgManagerMachineRuleEndEvent
+  | AbortEvent;
 
 export interface CheckInput {
   ctx: StaticRuleContext;

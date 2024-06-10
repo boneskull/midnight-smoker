@@ -1,3 +1,4 @@
+import {ErrorCodes} from '#error/codes';
 import {memfs} from 'memfs';
 import {type Volume} from 'memfs/lib/volume';
 import {createSandbox} from 'sinon';
@@ -269,7 +270,10 @@ describe('midnight-smoker', function () {
               'to be fulfilled with value satisfying',
               {
                 type: ERROR,
-                error,
+                error: {
+                  code: ErrorCodes.MachineError,
+                  errors: [error],
+                },
                 id: expect.it('to be a string'),
               },
             );

@@ -21,7 +21,7 @@ import {
   type CheckFailed,
   type StaticRuleDef,
 } from 'midnight-smoker/rule';
-import {niceRelativePath, randomItem} from 'midnight-smoker/util';
+import {hrRelativePath, randomItem} from 'midnight-smoker/util';
 import ora, {type Ora} from 'ora';
 import pluralize from 'pluralize';
 import {type LiteralUnion} from 'type-fest';
@@ -206,7 +206,7 @@ export const ConsoleReporter: ReporterDef<ConsoleReporterContext> = {
       const ruleNameWarning = (rule: StaticRuleDef) =>
         `${dim('[')}${yellow(rule.name)}${dim(']')}`;
       for (const [filepath, failed] of Object.entries(failedByFilepath)) {
-        lines.push(`│ ${yellow(bold(niceRelativePath(filepath)))}:`);
+        lines.push(`│ ${yellow(bold(hrRelativePath(filepath)))}:`);
         for (const {
           message,
           ctx: {severity},

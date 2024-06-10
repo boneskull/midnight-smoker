@@ -1,3 +1,4 @@
+import {type StaticPluginMetadata} from '#schema/static-plugin-metadata';
 import Debug from 'debug';
 import {memfs} from 'memfs';
 import {type Volume} from 'memfs/lib/volume';
@@ -44,11 +45,14 @@ describe('midnight-smoker', function () {
       let smokerOptions: SmokerOptions;
       let sandbox: sinon.SinonSandbox;
       let def: PkgManagerDef;
-      let rootActor: AnyActorRef;
+      let parentRef: AnyActorRef;
       let spec: PkgManagerSpec;
       let setup: sinon.SinonStub;
       let teardown: sinon.SinonStub;
       let ruleInitPayloads: RuleInitPayload[];
+      let staticPlugin: StaticPluginMetadata;
+      let ac: AbortController;
+      let signal: AbortSignal;
 
       beforeEach(async function () {
         ({vol} = memfs());
@@ -67,7 +71,7 @@ describe('midnight-smoker', function () {
         ).parse({
           reporter: 'test-plugin/test-reporter',
         });
-        rootActor = createEmptyActor();
+        parentRef = createEmptyActor();
         setup = sandbox.stub(def, 'setup').resolves();
         teardown = sandbox.stub(def, 'teardown').resolves();
         spec = await PkgManagerSpec.from('nullpm@1.0.0');
@@ -76,6 +80,9 @@ describe('midnight-smoker', function () {
           id: pluginRegistry.getComponentId(def),
           plugin,
         }));
+        staticPlugin = serialize(plugin);
+        ac = new AbortController();
+        ({signal} = ac);
       });
 
       afterEach(function () {
@@ -88,16 +95,15 @@ describe('midnight-smoker', function () {
           input = {
             def,
             executor: nullExecutor,
-            plugin: serialize(plugin),
+            plugin: staticPlugin,
             fileManager,
-            index: 0,
-            parentRef: rootActor,
+            parentRef,
             ruleConfigs: smokerOptions.rules,
-            signal: new AbortController().signal,
             spec,
             useWorkspaces: false,
             workspaceInfo: [],
             shouldShutdown: true,
+            signal,
           };
         });
 
@@ -172,14 +178,13 @@ describe('midnight-smoker', function () {
           let input: PkgManagerMachineInput;
           beforeEach(async function () {
             input = {
+              signal,
               def,
               executor: nullExecutor,
-              plugin: serialize(plugin),
+              plugin: staticPlugin,
               fileManager,
-              index: 0,
-              parentRef: rootActor,
+              parentRef,
               ruleConfigs: smokerOptions.rules,
-              signal: new AbortController().signal,
               spec,
               useWorkspaces: false,
               workspaceInfo: [],
@@ -269,14 +274,13 @@ describe('midnight-smoker', function () {
 
           beforeEach(async function () {
             input = {
+              signal,
               def,
               executor: nullExecutor,
-              plugin: serialize(plugin),
+              plugin: staticPlugin,
               fileManager,
-              index: 0,
-              parentRef: rootActor,
+              parentRef,
               ruleConfigs: smokerOptions.rules,
-              signal: new AbortController().signal,
               spec,
               useWorkspaces: false,
               workspaceInfo: [],
@@ -318,7 +322,7 @@ describe('midnight-smoker', function () {
                   {
                     context: {
                       currentInstallJob: {
-                        installManifest: {pkgSpec: 'foo@1.0.0'},
+                        pkgSpec: 'foo@1.0.0',
                       },
                     },
                   },
@@ -329,7 +333,7 @@ describe('midnight-smoker', function () {
 
           describe('packing', function () {
             describe('packingPkgs', function () {
-              it('should send pack events in order', async function () {
+              it('should send expected events in order', async function () {
                 await expect(
                   runUntilEvent(
                     [
@@ -345,6 +349,30 @@ describe('midnight-smoker', function () {
                   ),
                   'to be fulfilled',
                 );
+              });
+
+              describe('when packing fails', function () {
+                beforeEach(function () {
+                  def.pack = sandbox.stub().rejects(new Error('packing BAD'));
+                });
+
+                it('should send PKG_PACK_FAILED and PKG_MANAGER_PACK_FAILED events', async function () {
+                  await expect(
+                    runUntilEvent(
+                      [
+                        'PACK.PKG_MANAGER_PACK_BEGIN',
+                        'PACK.PKG_PACK_BEGIN',
+                        'PACK.PKG_PACK_FAILED',
+                        'PACK.PKG_MANAGER_PACK_FAILED',
+                      ],
+                      {
+                        ...input,
+                        workspaceInfo: [workspaceInfo],
+                      },
+                    ),
+                    'to be fulfilled',
+                  );
+                });
               });
             });
           });
@@ -368,6 +396,32 @@ describe('midnight-smoker', function () {
                     ),
                     'to be fulfilled',
                   );
+                });
+
+                describe('when installation fails', function () {
+                  beforeEach(function () {
+                    def.install = sandbox
+                      .stub()
+                      .rejects(new Error('install BAD'));
+                  });
+
+                  it('should send INSTALL.PKG_INSTALL_FAILED and INSTALL.PKG_MANAGER_INSTALL_FAILED events', async function () {
+                    await expect(
+                      runUntilEvent(
+                        [
+                          'INSTALL.PKG_MANAGER_INSTALL_BEGIN',
+                          'INSTALL.PKG_INSTALL_BEGIN',
+                          'INSTALL.PKG_INSTALL_FAILED',
+                          'INSTALL.PKG_MANAGER_INSTALL_FAILED',
+                        ],
+                        {
+                          ...input,
+                          workspaceInfo: [workspaceInfo],
+                        },
+                      ),
+                      'to be fulfilled',
+                    );
+                  });
                 });
               });
             });

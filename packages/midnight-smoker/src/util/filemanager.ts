@@ -10,6 +10,7 @@
 
 /* eslint-disable @typescript-eslint/no-var-requires */
 
+import {hrRelativePath} from '#cli/cli-util';
 import {MIDNIGHT_SMOKER, PACKAGE_JSON, UNKNOWN_TMPDIR_PREFIX} from '#constants';
 import {AbortError} from '#error/abort-error';
 import {fromUnknownError} from '#error/from-unknown-error';
@@ -26,7 +27,7 @@ import {
   type ReadPkgJsonOptions,
   type ReadPkgJsonResult,
 } from '#util/fs-api';
-import {memoize, niceRelativePath} from '#util/util';
+import {memoize} from '#util/util';
 import Debug from 'debug';
 import {
   glob,
@@ -266,7 +267,7 @@ export class FileManager {
         encoding: 'utf8',
         signal,
       });
-      const relativePath = niceRelativePath(filepath);
+      const relativePath = hrRelativePath(filepath);
       const packageJson = JSON.parse(file) as PackageJson;
       if (normalize) {
         normalizePkgData(packageJson);

@@ -90,6 +90,11 @@
       "default": "./dist/pkg-manager/index.js"
     },
     "./package.json": "./package.json",
+    "./schema": {
+      "types": "./dist/schema/index.d.ts",
+      "typedoc": "./src/schema/index.ts",
+      "default": "./dist/schema/index.js"
+    },
     "./smoker": "./bin/smoker.js",
     "./constants": {
       "types": "./dist/constants.d.ts",

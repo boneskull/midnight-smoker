@@ -38,6 +38,7 @@ import {type Result, type WorkspaceInfo} from '#schema/workspaces';
 import {isSmokerError} from '#util/error-util';
 import {FileManager} from '#util/filemanager';
 import {uniqueId} from '#util/unique-id';
+import {delta} from '#util/util';
 import {isEmpty} from 'lodash';
 import assert from 'node:assert';
 import {type PackageJson, type ValueOf} from 'type-fest';
@@ -58,6 +59,7 @@ import {
   type ReporterInitPayload,
   type RuleInitPayload,
 } from '../loader/loader-machine-types';
+import {abortListener} from '../util/abort-listener';
 import {queryWorkspaces, readSmokerPkgJson} from './control-machine-actors';
 import type * as Event from './control-machine-events';
 import {
@@ -77,20 +79,13 @@ import {
 } from './pack-bus-machine';
 import {
   ScriptBusMachine,
-  type ScriptBusMachineEvents,
+  type ScriptBusMachineEvent,
   type ScriptBusMachineInput,
 } from './script-bus-machine';
 
-export type CtrlMachineOutput = CtrlOutputOk | CtrlOutputError;
+type BusActor = ValueOf<typeof BusActors>;
 
-export interface BaseCtrlMachineOutput {
-  id: string;
-  lintResults?: LintResult[];
-  runScriptResults?: RunScriptResult[];
-  workspaceInfo: Result<WorkspaceInfo>[];
-  pkgManagers: StaticPkgManagerSpec[];
-  plugins: StaticPluginMetadata[];
-}
+export type CtrlMachineOutput = CtrlOutputOk | CtrlOutputError;
 
 export type CtrlOutputError = MachineUtil.ActorOutputError<
   Error,
@@ -99,7 +94,21 @@ export type CtrlOutputError = MachineUtil.ActorOutputError<
 
 export type CtrlOutputOk = MachineUtil.ActorOutputOk<BaseCtrlMachineOutput>;
 
+interface BaseCtrlMachineOutput {
+  id: string;
+  lintResults?: LintResult[];
+  pkgManagers: StaticPkgManagerSpec[];
+  plugins: StaticPluginMetadata[];
+  runScriptResults?: RunScriptResult[];
+  workspaceInfo: Result<WorkspaceInfo>[];
+}
+
 export interface CtrlMachineContext extends CtrlMachineInput {
+  /**
+   * The "root" `AbortController`
+   */
+  abortController: AbortController;
+  abortListenerRef?: ActorRefFrom<typeof abortListener>;
   defaultExecutor: Executor;
   error?: SmokeError;
   fileManager: FileManager;
@@ -130,15 +139,6 @@ export interface CtrlMachineContext extends CtrlMachineInput {
   staticPlugins: StaticPluginMetadata[];
   systemExecutor: Executor;
   workspaceInfo: WorkspaceInfo[];
-
-  /**
-   * The "root" `AbortController`
-   *
-   * @remarks
-   * Any and all actors this machine spawns should receive a signal from this
-   * controller.
-   */
-  abortController: AbortController;
 }
 
 export interface CtrlMachineInput {
@@ -150,12 +150,9 @@ export interface CtrlMachineInput {
    * If `true`, the machine should shutdown after completing its work
    */
   shouldShutdown?: boolean;
+  signal?: AbortSignal;
   smokerOptions: SmokerOptions;
   systemExecutor?: Executor;
-}
-
-function delta(startTime: number): string {
-  return ((performance.now() - startTime) / 1000).toFixed(2);
 }
 
 /**
@@ -208,8 +205,6 @@ const BusActors = {
   ScriptBusMachine: 'scriptBusMachineRef',
 } as const;
 
-type BusActor = ValueOf<typeof BusActors>;
-
 /**
  * Main state machine for the `midnight-smoker` application.
  *
@@ -225,6 +220,7 @@ export const ControlMachine = setup({
     output: {} as CtrlMachineOutput,
   },
   actors: {
+    abortListener,
     ScriptBusMachine,
     PackBusMachine,
     InstallBusMachine,
@@ -519,7 +515,6 @@ export const ControlMachine = setup({
           smokerOptions,
           reporterInitPayloads,
           smokerPkgJson,
-          abortController: {signal},
         },
       }) => {
         assert.ok(smokerPkgJson);
@@ -534,7 +529,6 @@ export const ControlMachine = setup({
               smokerOptions,
               plugin,
               smokerPkgJson,
-              signal,
             };
             const actor = spawn('ReporterMachine', {
               id,
@@ -564,16 +558,16 @@ export const ControlMachine = setup({
             add: additionalDeps,
             lint: shouldLint,
           },
+          abortController: {signal},
           pkgManagerInitPayloads,
           ruleInitPayloads,
           shouldShutdown,
         },
       }) => {
         const useWorkspaces = all || !isEmpty(workspace);
-        const signal = new AbortController().signal;
 
         const newRefs = Object.fromEntries(
-          pkgManagerInitPayloads.map(({def, spec, plugin}, index) => {
+          pkgManagerInitPayloads.map(({def, spec, plugin}) => {
             const executor = spec.isSystem ? systemExecutor : defaultExecutor;
             const id = uniqueId({
               prefix: 'PkgManagerMachine',
@@ -582,6 +576,7 @@ export const ControlMachine = setup({
             const actorRef = spawn('PkgManagerMachine', {
               id,
               input: {
+                signal,
                 spec,
                 def,
                 workspaceInfo,
@@ -591,8 +586,6 @@ export const ControlMachine = setup({
                 parentRef: self,
                 linger,
                 useWorkspaces,
-                index: index + 1,
-                signal,
                 additionalDeps: [...new Set(additionalDeps)],
                 scripts,
                 ruleConfigs: rules,
@@ -607,6 +600,34 @@ export const ControlMachine = setup({
         return {...pkgManagerMachineRefs, ...newRefs};
       },
     }),
+
+    abort: ({context: {abortController}}) => {
+      abortController.abort();
+    },
+
+    spawnAbortListener: assign({
+      abortListenerRef: ({spawn, context: {abortController, signal}}) => {
+        const input = signal
+          ? AbortSignal.any([signal, abortController.signal])
+          : abortController.signal;
+        return spawn('abortListener', {
+          id: 'abortListener',
+          input,
+          systemId: 'abortListener',
+        });
+      },
+    }),
+
+    stopAbortListener: enqueueActions(
+      ({enqueue, context: {abortListenerRef}}) => {
+        if (abortListenerRef) {
+          enqueue.sendTo(abortListenerRef, {
+            type: 'STOP',
+          });
+          enqueue.assign({abortListenerRef: undefined});
+        }
+      },
+    ),
 
     /**
      * Stops a {@link PkgManagerMachine}.
@@ -687,7 +708,7 @@ export const ControlMachine = setup({
      * events; this is _a_ reason why the events are not sent directly from
      * `PkgManagerMachine` to the bus machines.
      */
-    resend: enqueueActions(
+    forward: enqueueActions(
       (
         {enqueue, context},
         {
@@ -699,7 +720,7 @@ export const ControlMachine = setup({
             | PackBusMachineEvents
             | InstallBusMachineEvents
             | LintBusMachineEvents
-            | ScriptBusMachineEvents;
+            | ScriptBusMachineEvent;
         },
       ) => {
         const ref = context[prop];
@@ -760,6 +781,7 @@ export const ControlMachine = setup({
       systemExecutor,
       smokerOptions,
       shouldShutdown = false,
+      signal,
       ...rest
     },
   }): CtrlMachineContext => {
@@ -767,18 +789,20 @@ export const ControlMachine = setup({
     systemExecutor ??= rest.pluginRegistry.getExecutor(SYSTEM_EXECUTOR_ID);
     fileManager ??= FileManager.create();
     const staticPlugins = serialize(rest.pluginRegistry.plugins);
+
     return {
+      ...rest,
+      signal,
       abortController: new AbortController(),
       defaultExecutor,
       systemExecutor,
       fileManager,
       smokerOptions,
-      ...rest,
+      shouldShutdown,
       staticPlugins,
+      startTime: performance.now(),
       loaderMachineRefs: {},
       reporterMachineRefs: {},
-      shouldShutdown,
-      startTime: performance.now(),
       workspaceInfo: [],
       pkgManagerInitPayloads: [],
       reporterInitPayloads: [],
@@ -786,13 +810,8 @@ export const ControlMachine = setup({
     };
   },
   initial: 'loading',
-  entry: [log('starting control machine')],
-  exit: [
-    log('stopped'),
-    ({context: {abortController}}) => {
-      abortController.abort();
-    },
-  ],
+  entry: [log('starting control machine'), {type: 'spawnAbortListener'}],
+  exit: [log('stopped'), {type: 'abort'}, {type: 'stopAbortListener'}],
   always: {
     guard: 'hasError',
     actions: [log(({context: {error}}) => `ERROR: ${error?.message}`)],
@@ -1256,7 +1275,7 @@ export const ControlMachine = setup({
                 'PACK.*': {
                   actions: [
                     {
-                      type: 'resend',
+                      type: 'forward',
                       params: ({event}) => ({
                         prop: BusActors.PackBusMachine,
                         event,
@@ -1313,7 +1332,7 @@ export const ControlMachine = setup({
                 'INSTALL.*': {
                   actions: [
                     {
-                      type: 'resend',
+                      type: 'forward',
                       params: ({event}) => {
                         return {
                           prop: BusActors.InstallBusMachine,
@@ -1379,7 +1398,7 @@ export const ControlMachine = setup({
                 'LINT.*': {
                   actions: [
                     {
-                      type: 'resend',
+                      type: 'forward',
                       params: ({event}) => {
                         return {
                           prop: BusActors.LintBusMachine,
@@ -1458,7 +1477,7 @@ export const ControlMachine = setup({
                 'SCRIPT.*': {
                   actions: [
                     {
-                      type: 'resend',
+                      type: 'forward',
                       params: ({event}) => ({
                         prop: BusActors.ScriptBusMachine,
                         event,

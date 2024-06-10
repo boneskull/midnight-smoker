@@ -5,6 +5,7 @@ import {AggregateSmokerError} from './base-error';
  * Generic aggregate error for machines
  *
  * @group Errors
+ * @todo Add a `toJSON` which maps the internal errors to the origin machine IDs
  */
 export class MachineError extends AggregateSmokerError<{
   machineId: string;
@@ -15,25 +16,26 @@ export class MachineError extends AggregateSmokerError<{
     machineId: string;
   };
 
-  static originators = new WeakMap<Error, string>();
+  static #originMachineIds = new WeakMap<Error, string>();
 
   constructor(message: string, errors: Error[] | Error, machineId: string) {
     errors = castArray(errors);
     for (const error of errors) {
-      MachineError.originators.set(error, machineId);
+      if (!MachineError.#originMachineIds.has(error)) {
+        MachineError.#originMachineIds.set(error, machineId);
+      }
     }
     super(message, errors, {machineId});
     this.context = {machineId};
   }
 
   /**
-   * Clone this instance with additional errors and options.
+   * Clone this instance with additional errors.
    *
    * @param error Zero or more errors to append to the aggregate
-   * @param options Results of linting and running scripts, if any
-   * @returns New instance of `SmokeError` with the given errors and options
+   * @returns New instance of `MachineError` with the given errors and options
    */
-  clone(error: Error | Error[] = []): MachineError {
+  cloneWith(error: Error | Error[] = []): MachineError {
     return new MachineError(
       this.message,
       [...this.errors, ...castArray(error)],

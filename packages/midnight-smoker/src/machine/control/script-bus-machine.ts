@@ -35,7 +35,7 @@ export interface ScriptBusMachineContext extends ScriptBusMachineInput {
   runScriptResults?: RunScriptResult[];
 }
 
-export type ScriptBusMachineEvents = ListenEvent | CtrlScriptEvents;
+export type ScriptBusMachineEvent = ListenEvent | CtrlScriptEvents;
 
 export type ReportableScriptEventData = DataForEvent<keyof ScriptEventData>;
 
@@ -43,7 +43,7 @@ export const ScriptBusMachine = setup({
   types: {
     input: {} as ScriptBusMachineInput,
     context: {} as ScriptBusMachineContext,
-    events: {} as ScriptBusMachineEvents,
+    events: {} as ScriptBusMachineEvent,
   },
   guards: {
     hasError: ({context: {error}}) => Boolean(error),
@@ -88,6 +88,9 @@ export const ScriptBusMachine = setup({
     }),
   },
 }).createMachine({
+  /**
+   * @xstate-layout N4IgpgJg5mDOIC5QGUDGAnAlgBwC4CEBXWAWQENUALTAOzADpMIAbMAYgBkBJZAFQFEAcgG0ADAF1EobAHtYmXJhk0pIAB6IAjACYArPQCcRgwHYAbNs3mTog7oA0IAJ6IDADlH1tAFhOWAzCYGmt4GFgC+4Y5oWHhEpBTUdPQA7jLoANa0UGzIAMIASlwACrz0BQCqggD6+UWl1fj8AOJcIhKqsvKKyqoaCP6i3vQe3mZB2iZj-t5uji4Ibm763oH+urOaZma6PpHRGDgExORUtAxpmdm5hSVllTV1d9UAYgCCXBz8ACJikkggLoKJQqAH9QbaeiafzaUawsx2NxheaIcz+eiifyaHSaIzeTRIsz7EAxI7xU5JC7pLI0HJPUrlKq1W4NZAAaRKxR+f06cmBvTBiG0dkMlmWJj8-jcWwczkQZm8ngssyRVis2nGxNJcROiXOqWp13p9yZxuqAHk2TyAUCeqDQOCtoZzLpdCZpSYYbsUQhdASvASdmYZgYNf4DFrDjqEmdkpcaXSWSbHknqkJfh0bXy7X1EFjIaJtDM9GHxnZvD7vNpIRrXUExm5FcKiVESVHjjHKQarrSbvUysU2c1qiQ3oI3s1+AVqg9mf3kI0Wm1rdJsyDcwgiwYoboLKIzI3xrtXT6YWZ6PndIXdG4TBsCSZI7EOxT9fGjUn6IPh6Px5Pp7OxoLpaK6AmuAoOkKfoXrC2ISu6Bi+P4PraJihj7hqpg7KIQT7k+ZK6rGVI9om-ZfkOI5jhOU4zqaSYLu8nzcpmq7dOugqbv456zKsWLLAYOHjNoPrSvQV6iJiCJVmYWx6Ph0avnGhq9qBtrsZBCDBsMnreIqqwKhJ4Y+u42lFlMohuHovgIvJL56kpJFsMImj-Kx-L2uo8ozPQOl6VxiqYgYPqaEM6LVoEuK8SYmgbJErY0DIEBwKo2p2URvJsRBnkIAAtGYPp5bZ5L2QwTCsBl7kblWwWGfQSHmMKkweJ6RWEV2760hVOYces6Lho2ehuIMPEbMZbjnuGoVbKYfrrK1nb6hAyhgF16nZUsbiGIEu4bFiZiiN6coICF+J1Z6d6iDoG0ta2qXFUR9BgOg6DpJAq1Zf0G1bXeOyrFsB3CUd7iQqYgTRbs+6zC2kRAA
+   */
   id: 'ScriptBusMachine',
   systemId: 'ScriptBusMachine',
   context: ({input}) => ({...input, pkgManagerDidRunScriptCount: 0}),

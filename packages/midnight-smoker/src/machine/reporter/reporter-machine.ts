@@ -132,7 +132,7 @@ export const ReporterMachine = setup({
         const err = fromUnknownError(error);
 
         if (context.error) {
-          return context.error.clone(err);
+          return context.error.cloneWith(err);
         }
         return new MachineError(
           `Reporter errored: ${err.message}`,
@@ -157,19 +157,17 @@ export const ReporterMachine = setup({
   initial: 'setup',
   context: ({
     input: {plugin, smokerOptions, smokerPkgJson, ...input},
-  }): ReporterMachineContext => {
-    return {
-      ...input,
-      queue: [],
-      shouldShutdown: false,
-      plugin,
-      ctx: {
-        plugin: serialize(plugin),
-        opts: smokerOptions,
-        pkgJson: smokerPkgJson,
-      },
-    };
-  },
+  }): ReporterMachineContext => ({
+    ...input,
+    queue: [],
+    shouldShutdown: false,
+    plugin,
+    ctx: {
+      plugin: serialize(plugin),
+      opts: smokerOptions,
+      pkgJson: smokerPkgJson,
+    },
+  }),
   id: 'ReporterMachine',
   entry: [
     log(

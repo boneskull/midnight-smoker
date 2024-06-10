@@ -2,16 +2,12 @@ import {type SmokerOptions} from '#options/options';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
 import {type PluginRegistry} from '#plugin/plugin-registry';
 import {type WorkspaceInfo} from '#schema/workspaces';
-import {isFunction} from 'lodash';
 import {fromPromise} from 'xstate';
-import {
-  type PkgManagerInitPayload,
-  type ReporterInitPayload,
-} from './loader-machine-types';
+import {type PkgManagerInitPayload} from './loader-machine-types';
 
 export interface LoadPkgManagersInput {
   plugin: Readonly<PluginMetadata>;
-  smokerOpts: SmokerOptions;
+  smokerOptions: SmokerOptions;
   pluginRegistry: PluginRegistry;
   workspaceInfo: WorkspaceInfo[];
 }
@@ -19,10 +15,10 @@ export interface LoadPkgManagersInput {
 export const loadPkgManagers = fromPromise<
   PkgManagerInitPayload[],
   LoadPkgManagersInput
->(async ({input: {workspaceInfo, plugin, smokerOpts, pluginRegistry}}) => {
+>(async ({input: {workspaceInfo, plugin, smokerOptions, pluginRegistry}}) => {
   const pkgManagerDefSpecs = await plugin.loadPkgManagers(workspaceInfo, {
-    cwd: smokerOpts.cwd,
-    desiredPkgManagers: smokerOpts.pkgManager,
+    cwd: smokerOptions.cwd,
+    desiredPkgManagers: smokerOptions.pkgManager,
   });
   return pkgManagerDefSpecs.map(({def, spec}) => ({
     plugin,
@@ -37,24 +33,3 @@ export interface LoadReportersInput {
   smokerOptions: SmokerOptions;
   pluginRegistry: PluginRegistry;
 }
-
-export const loadReporters = fromPromise<
-  ReporterInitPayload[],
-  LoadReportersInput
->(async ({input: {plugin, smokerOptions, pluginRegistry}}) => {
-  const {reporterDefs} = plugin;
-  const desiredReporters = new Set(smokerOptions.reporter);
-  const enabledReporterDefs = reporterDefs.filter((def) => {
-    const id = pluginRegistry.getComponentId(def);
-    if (desiredReporters.has(id)) {
-      return true;
-    }
-    return isFunction(def.when) ? def.when(smokerOptions) : false;
-  });
-
-  return enabledReporterDefs.map((def) => ({
-    def,
-    plugin,
-    id: pluginRegistry.getComponentId(def),
-  }));
-});

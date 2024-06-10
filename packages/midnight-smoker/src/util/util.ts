@@ -9,9 +9,8 @@ import {
   memoize as _memoize,
   once as _once,
   compact,
-  type Many,
+  flow,
 } from 'lodash';
-import path from 'node:path';
 import {type Result, type WorkspaceInfo} from '../pkg-manager';
 
 export function once<This, Args extends any[], TReturn>(
@@ -67,7 +66,9 @@ export function memoize<
       this[context.name] = _memoize(func, resolver);
     });
   };
-} /**
+}
+
+/**
  * Casts a defined value to an array of non-`undefined` values.
  *
  * If `value` is `undefined`, returns an empty array. If `value` is an `Array`,
@@ -81,22 +82,14 @@ export function memoize<
  * @returns An array, for sure!
  */
 
-export function castArray<T>(value?: Many<T>): T[] {
-  return compact(_castArray(value));
-}
+export const castArray = flow(_castArray, compact);
 
 /**
- * Returns a relative path suitable for display
+ * Picks a random item from a non-empty list
  *
- * @param value Path
- * @param cwd Path from which to make the path relative
- * @returns A relative path, prepended with a `.` and path separator
+ * @param items List of items
+ * @returns Some item
  */
-export function niceRelativePath(value: string, cwd = process.cwd()) {
-  const relative = path.relative(cwd, value);
-  return relative.startsWith('..') ? relative : `.${path.sep}${relative}`;
-}
-
 export function randomItem<T>(items: [T, ...T[]] | readonly [T, ...T[]]): T {
   const index = Math.floor(Math.random() * items.length);
   return items[index];
@@ -114,4 +107,15 @@ export function asResult<T extends WorkspaceInfo>(obj: T): Result<T> {
   const result: Result<T> = {...obj} as any;
   delete result.pkgJson;
   return result;
+}
+
+/**
+ * Returns string representing difference between `startTime` and now _in
+ * seconds_.
+ *
+ * @param startTime Start timestamp
+ * @returns Delta
+ */
+export function delta(startTime: number): string {
+  return ((performance.now() - startTime) / 1000).toFixed(2);
 }

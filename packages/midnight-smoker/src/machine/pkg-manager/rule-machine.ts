@@ -9,14 +9,13 @@ import {uniqueId} from '#util/unique-id';
 import {asResult} from '#util/util';
 import {isEmpty, isNumber} from 'lodash';
 import {
-  and,
   assign,
   enqueueActions,
   fromPromise,
-  not,
   setup,
+  type ActorRef,
   type ActorRefFrom,
-  type AnyActorRef,
+  type Snapshot,
 } from 'xstate';
 import {serialize} from '../../util/serialize';
 import {
@@ -49,7 +48,7 @@ export interface RuleMachineInput {
   /**
    * The parent machine reference
    */
-  parentRef?: AnyActorRef;
+  parentRef?: ActorRef<Snapshot<unknown>, PkgManagerMachineCheckResultEvent>;
 
   /**
    * The count of calls to {@link RuleMachineInput.def.check} expected to be run.
@@ -128,7 +127,7 @@ export type RuleMachineEmitted = RuleMachineCheckResultEvent;
 /**
  * Union of events listened to by {@link RuleMachine}
  */
-export type RuleMachineEvents =
+export type RuleMachineEvent =
   | RuleMachineCheckEvent
   | RuleMachineCheckActorDoneEvent;
 
@@ -196,7 +195,7 @@ export const RuleMachine = setup({
   types: {
     context: {} as RuleMachineContext,
     input: {} as RuleMachineInput,
-    events: {} as RuleMachineEvents,
+    events: {} as RuleMachineEvent,
     output: {} as RuleMachineOutput,
     emitted: {} as RuleMachineEmitted,
   },
@@ -212,8 +211,7 @@ export const RuleMachine = setup({
     isChecking: ({context: {checkRefs}}) => !isEmpty(checkRefs),
 
     /**
-     * Returns `true` if the count of {@link RuleMachineContext.results} is equal
-     * to the expected {@link RuleMachineContext.plan}.
+     * Returns `true` if all possible checks have been run.
      */
     shouldHalt: ({context: {results = [], plan}}) => {
       if (!isNumber(plan)) {
@@ -312,16 +310,17 @@ export const RuleMachine = setup({
   },
 }).createMachine({
   id: 'RuleMachine',
+  description: 'Runs checks for a single rule. Unique to a package manager',
   context: ({input}) => ({...input, results: []}),
   initial: 'ready',
   states: {
     ready: {
-      always: [
-        {
-          guard: and([not('isChecking'), 'shouldHalt']),
-          target: 'done',
-        },
-      ],
+      description:
+        'Waits for a CHECK events and runs checks until all possible checks have been run (one per enabled rule).',
+      always: {
+        guard: {type: 'shouldHalt'},
+        target: 'done',
+      },
       on: {
         'xstate.done.actor.check.*': {
           actions: [
@@ -344,12 +343,10 @@ export const RuleMachine = setup({
           ],
         },
         CHECK: {
-          actions: [
-            {
-              type: 'check',
-              params: ({event}) => event,
-            },
-          ],
+          actions: {
+            type: 'check',
+            params: ({event}) => event,
+          },
         },
       },
     },

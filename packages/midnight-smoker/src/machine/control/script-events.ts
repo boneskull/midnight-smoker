@@ -84,12 +84,16 @@ export type CtrlRunScriptSkippedEvent = Simplify<
   >
 >;
 
+export type SomeCtrlRunScriptEndEvent =
+  | CtrlRunScriptFailedEvent
+  | CtrlRunScriptOkEvent
+  | CtrlRunScriptSkippedEvent
+  | CtrlRunScriptErrorEvent;
+
 export type CtrlScriptEvents =
   | CtrlPkgManagerRunScriptsBeginEvent
   | CtrlPkgManagerRunScriptsOkEvent
   | CtrlPkgManagerRunScriptsFailedEvent
   | CtrlRunScriptBeginEvent
-  | CtrlRunScriptOkEvent
-  | CtrlRunScriptFailedEvent
   | CtrlRunScriptEndEvent
-  | CtrlRunScriptSkippedEvent;
+  | SomeCtrlRunScriptEndEvent;

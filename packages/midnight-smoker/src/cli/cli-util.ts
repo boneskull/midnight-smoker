@@ -2,6 +2,7 @@ import {BaseSmokerError} from '#error/base-error';
 import {bold, cyan, yellow} from 'chalk';
 import Table from 'cli-table3';
 import {isError, isFunction, isObject, mergeWith} from 'lodash';
+import path from 'node:path';
 import {type WriteStream} from 'node:tty';
 import stringWidth from 'string-width';
 import type {MergeDeep, Primitive} from 'type-fest';
@@ -139,4 +140,18 @@ export function handleRejection(
 
 export function isWriteStream(value: unknown): value is WriteStream {
   return value === process.stdout || value === process.stderr;
+}
+
+/**
+ * Returns a relative path suitable for display (with leading `.` and
+ * `path.sep`)
+ *
+ * @param value Path
+ * @param cwd Path from which to make the path relative
+ * @returns A relative path, prepended with a `.` and path separator
+ */
+
+export function hrRelativePath(value: string, cwd = process.cwd()) {
+  const relative = path.relative(cwd, value);
+  return relative.startsWith('..') ? relative : `.${path.sep}${relative}`;
 }

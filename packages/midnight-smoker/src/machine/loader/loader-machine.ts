@@ -1,15 +1,16 @@
 import {ERROR, FINAL, OK, PARALLEL, RuleSeverities} from '#constants';
 import {fromUnknownError} from '#error/from-unknown-error';
+import {MachineError} from '#error/machine-error';
 import {type ActorOutputError, type ActorOutputOk} from '#machine/util';
 import {type SmokerOptions} from '#options/options';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
 import {type PluginRegistry} from '#plugin/plugin-registry';
 import type {WorkspaceInfo} from '#schema/workspaces';
+import {isFunction} from 'lodash';
 import {type PackageJson} from 'type-fest';
-import {assign, log, not, setup} from 'xstate';
+import {assign, enqueueActions, log, not, setup} from 'xstate';
 import {
   loadPkgManagers,
-  loadReporters,
   type LoadPkgManagersInput,
 } from './loader-machine-actors';
 import {
@@ -41,7 +42,7 @@ export type LoaderMachineContext = LoaderMachineInput & {
   pkgManagerInitPayloads: PkgManagerInitPayload[];
   reporterInitPayloads: ReporterInitPayload[];
   ruleInitPayloads: RuleInitPayload[];
-  error?: Error;
+  error?: MachineError;
   smokerPkgJson?: PackageJson;
 };
 
@@ -64,34 +65,81 @@ export const LoaderMachine = setup({
     output: {} as LoaderMachineOutput,
   },
   actions: {
-    assignError: assign({
-      error: (_, {error}: {error: unknown}) => fromUnknownError(error),
-    }),
-
-    assignRuleInitPayloads: assign({
-      ruleInitPayloads: ({context}) => {
-        const {plugin, smokerOptions, pluginRegistry} = context;
-        const {ruleDefs} = plugin;
-
-        const enabledRuleDefs = ruleDefs.filter((def) => {
+    /**
+     * Determines which reporters are enabled based on options and reporter
+     * definitions. Assigns result to
+     * {@link LoaderMachineContext.reporterInitPayloads context.reporterInitPayloads}
+     */
+    loadReporters: enqueueActions(
+      ({enqueue, context: {plugin, smokerOptions, pluginRegistry}}) => {
+        const {reporterDefs} = plugin;
+        const desiredReporters = new Set(smokerOptions.reporter);
+        const enabledReporterDefs = reporterDefs.filter((def) => {
           const id = pluginRegistry.getComponentId(def);
-          return smokerOptions.rules[id]?.severity !== RuleSeverities.Off;
+          if (desiredReporters.has(id)) {
+            return true;
+          }
+          if (isFunction(def.when)) {
+            try {
+              return def.when(smokerOptions);
+            } catch (error) {
+              // TODO: maybe we should create a custom error for this
+              // @ts-expect-error xstate/TS bug
+              enqueue({type: 'assignError', params: {error}});
+            }
+          }
+          return false;
         });
-
-        return enabledRuleDefs.map((def) => ({
+        const reporterInitPayloads = enabledReporterDefs.map((def) => ({
           def,
           plugin,
           id: pluginRegistry.getComponentId(def),
         }));
+        enqueue.assign({reporterInitPayloads});
+      },
+    ),
+
+    assignError: assign({
+      error: ({self, context}, {error}: {error: unknown}) => {
+        const err = fromUnknownError(error);
+        if (context.error) {
+          return context.error.cloneWith(err);
+        }
+
+        return new MachineError(
+          `Package manager encountered an error`,
+          err,
+          self.id,
+        );
       },
     }),
 
-    assignReporterInitPayloads: assign({
-      reporterInitPayloads: (_, payloads: ReporterInitPayload[]) => {
-        return payloads;
-      },
+    /**
+     * Determines which rules are enabled based on options and rule definitions.
+     * Assigns result to
+     * {@link LoaderMachineContext.ruleInitPayloads context.ruleInitPayloads}
+     */
+    loadRules: assign({
+      ruleInitPayloads: ({
+        context: {
+          plugin,
+          smokerOptions: {rules: rulesConfig},
+          pluginRegistry,
+        },
+      }) =>
+        plugin.ruleDefs.reduce<RuleInitPayload[]>((acc, def) => {
+          const id = pluginRegistry.getComponentId(def);
+          if (rulesConfig[id]?.severity !== RuleSeverities.Off) {
+            acc = [...acc, {def, plugin, id}];
+          }
+          return acc;
+        }, []),
     }),
 
+    /**
+     * Assigns result of {@link loadPkgManagers} to
+     * {@link LoaderMachineContext.pkgManagerInitPayloads context.pkgManagerInitPayloads}
+     */
     assignPkgManagerInitPayloads: assign({
       pkgManagerInitPayloads: (_, payloads: PkgManagerInitPayload[]) =>
         payloads,
@@ -99,7 +147,6 @@ export const LoaderMachine = setup({
   },
   actors: {
     loadPkgManagers,
-    loadReporters,
   },
   guards: {
     shouldProcessPkgManagers: ({context: {component}}) =>
@@ -114,7 +161,7 @@ export const LoaderMachine = setup({
   },
 }).createMachine({
   description:
-    'Loads components. Pulls package managers, reporters and rules out of plugins and readies them for use; any combination of components may be requested',
+    'Pulls enabled package managers, reporters and rules out of plugins and readies them for use; any combination of components may be requested',
   entry: [
     log(
       ({context: {component}}) => `Loader loading component(s): ${component}`,
@@ -122,15 +169,13 @@ export const LoaderMachine = setup({
   ],
   context: ({
     input: {component = LoadableComponents.All, ...input},
-  }): LoaderMachineContext => {
-    return {
-      pkgManagerInitPayloads: [],
-      reporterInitPayloads: [],
-      ruleInitPayloads: [],
-      component,
-      ...input,
-    };
-  },
+  }): LoaderMachineContext => ({
+    pkgManagerInitPayloads: [],
+    reporterInitPayloads: [],
+    ruleInitPayloads: [],
+    component,
+    ...input,
+  }),
   initial: 'selecting',
   states: {
     selecting: {
@@ -160,20 +205,19 @@ export const LoaderMachine = setup({
                 'Invokes the loadPkgManagers actor; selecting package managers is more in-depth than reporters or rules, which are only based on user options',
               invoke: {
                 src: 'loadPkgManagers',
-                input: ({context}): LoadPkgManagersInput => {
-                  const {
+                input: ({
+                  context: {
                     plugin,
-                    smokerOptions: smokerOpts,
+                    smokerOptions,
                     pluginRegistry,
                     workspaceInfo,
-                  } = context;
-                  return {
-                    workspaceInfo,
-                    plugin,
-                    pluginRegistry,
-                    smokerOpts,
-                  };
-                },
+                  },
+                }): LoadPkgManagersInput => ({
+                  workspaceInfo,
+                  plugin,
+                  pluginRegistry,
+                  smokerOptions,
+                }),
                 onDone: {
                   actions: [
                     {
@@ -223,37 +267,11 @@ export const LoaderMachine = setup({
               ],
             },
             loadingReporters: {
-              invoke: {
-                src: 'loadReporters',
-                input: ({
-                  context: {plugin, pluginRegistry, smokerOptions},
-                }) => ({plugin, pluginRegistry, smokerOptions}),
-                onDone: {
-                  actions: [
-                    {
-                      type: 'assignReporterInitPayloads',
-                      params: ({event: {output}}) => output,
-                    },
-                  ],
-                  target: 'done',
-                },
-                onError: {
-                  actions: [
-                    {
-                      type: 'assignError',
-                      params: ({event: {error}}) => ({error}),
-                    },
-                  ],
-                  target: '#LoaderMachine.errored',
-                },
-              },
+              entry: [{type: 'loadReporters'}, log('done loading reporters')],
+              type: FINAL,
             },
             skipped: {
               entry: log('skipped reporter loading'),
-              type: FINAL,
-            },
-            done: {
-              entry: log('done loading reporters'),
               type: FINAL,
             },
           },
@@ -276,10 +294,7 @@ export const LoaderMachine = setup({
               ],
             },
             loadingRules: {
-              entry: [
-                {type: 'assignRuleInitPayloads'},
-                log('done loading rules'),
-              ],
+              entry: [{type: 'loadRules'}, log('done loading rules')],
               type: FINAL,
             },
             skipped: {

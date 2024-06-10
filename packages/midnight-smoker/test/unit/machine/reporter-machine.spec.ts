@@ -164,6 +164,45 @@ describe('midnight-smoker', function () {
             );
           });
         });
+
+        describe('when both hooks reject', function () {
+          it('should exit with ERROR output, aggregating the errors', async function () {
+            setup.rejects(new Error('setup error'));
+            teardown.rejects(new Error('teardown error'));
+            const actor = startMachine({
+              def,
+              plugin,
+              smokerPkgJson,
+              smokerOptions,
+            });
+            await expect(
+              toPromise(actor),
+              'to be fulfilled with value satisfying',
+              {
+                type: ERROR,
+                error: {
+                  code: ErrorCodes.MachineError,
+                  errors: [
+                    {
+                      code: ErrorCodes.LifecycleError,
+                      context: {
+                        stage: 'setup',
+                        kind: 'reporter',
+                      },
+                    },
+                    {
+                      code: ErrorCodes.LifecycleError,
+                      context: {
+                        stage: 'teardown',
+                        kind: 'reporter',
+                      },
+                    },
+                  ],
+                },
+              },
+            );
+          });
+        });
       });
 
       describe('event handling', function () {

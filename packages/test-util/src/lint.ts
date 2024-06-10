@@ -9,6 +9,8 @@ import {
   createActor,
   toPromise,
   type CheckOutput,
+  type RuleMachineCheckEvent,
+  type RuleMachineInput,
 } from 'midnight-smoker/machine';
 import {
   PluginMetadata,
@@ -16,14 +18,28 @@ import {
   type PluginFactory,
 } from 'midnight-smoker/plugin';
 import {
+  BaseRuleConfigSchema,
   DEFAULT_RULE_SEVERITY,
   getDefaultRuleOptions,
-  type RuleDefSchemaValue,
+  type RuleConfig,
   type RuleOptions,
+  type SomeRuleConfig,
   type SomeRuleDef,
   type SomeRuleOptions,
+  type StaticRuleContext,
 } from 'midnight-smoker/rule';
-import {type LintManifest} from '../../midnight-smoker/src/schema/lint-manifest';
+import {type LintManifest} from 'midnight-smoker/schema';
+
+const DEFAULT_PKG_MANAGER_SPEC = `${DEFAULT_PKG_MANAGER_BIN}@${DEFAULT_PKG_MANAGER_VERSION}`;
+
+/**
+ * Extra knobs to fiddle for {@link RuleRunner running a rule}.
+ */
+export type RuleRunnerOptions = {
+  ruleContext?: Partial<StaticRuleContext>;
+  lintManifest?: Partial<LintManifest>;
+  signal?: AbortSignal;
+};
 
 /**
  * A rule runner function which can only run a single rule.
@@ -32,7 +48,8 @@ import {type LintManifest} from '../../midnight-smoker/src/schema/lint-manifest'
  */
 export type NamedRuleRunner = (
   installPath: string,
-  opts?: SomeRuleOptions,
+  ruleOptions?: SomeRuleOptions | SomeRuleConfig,
+  ruleRunnerOptions?: RuleRunnerOptions,
 ) => Promise<CheckOutput>;
 
 /**
@@ -43,7 +60,8 @@ export type NamedRuleRunner = (
 export type RuleRunner = (
   name: string,
   installPath: string,
-  opts?: SomeRuleOptions,
+  ruleOptions?: SomeRuleOptions | SomeRuleConfig,
+  ruleRunnerOptions?: RuleRunnerOptions,
 ) => Promise<CheckOutput>;
 
 /**
@@ -115,12 +133,17 @@ export async function createRuleRunner(factory: PluginFactory, name?: string) {
       runRule(def, installPath, opts);
   }
 
-  return async (name: string, installPath: string, opts?: SomeRuleOptions) => {
+  return async (
+    name: string,
+    installPath: string,
+    ruleOptions?: SomeRuleOptions,
+    ruleRunnerOptions?: RuleRunnerOptions,
+  ) => {
     const def = ruleDefs.get(name);
     if (!def) {
       throw new ReferenceError(`RuleDef "${name}" not found`);
     }
-    return runRule(def, installPath, opts);
+    return runRule(def, installPath, ruleOptions, ruleRunnerOptions);
   };
 }
 
@@ -129,49 +152,86 @@ export async function createRuleRunner(factory: PluginFactory, name?: string) {
  * specified options (if given).
  *
  * @param def Rule definition
- * @param installPath Path to package dir to test
- * @param opts Rule-specific options
- * @returns A `CheckOutput` object
+ * @param cwd Path to package dir to test
+ * @param ruleOptions Rule-specific options
+ * @param ruleRunnerOptions More knobs to twiddle
+ * @returns A {@link CheckOutput} object
  */
 export async function runRule<T extends SomeRuleDef>(
   def: T,
-  installPath: string,
-  opts?: RuleOptions<T['schema']>,
+  cwd: string,
+  ruleOptions?:
+    | Partial<RuleOptions<T['schema']>>
+    | Partial<RuleConfig<T['schema']>>,
+  {
+    ruleContext,
+    lintManifest,
+    signal = new AbortSignal(),
+  }: RuleRunnerOptions = {},
 ): Promise<CheckOutput> {
-  const plan = 1;
-  const defaultOpts = getDefaultRuleOptions(def.schema as RuleDefSchemaValue);
-  const someConfig = {
-    opts: {...defaultOpts, ...opts},
-    severity: DEFAULT_RULE_SEVERITY,
+  /**
+   * This tells the rule machine to run only one check then exit.
+   */
+  const plan: RuleMachineInput['plan'] = 1;
+  const {schema} = def;
+
+  const defaultRuleOptions: RuleOptions<typeof schema> = schema
+    ? getDefaultRuleOptions(schema)
+    : {};
+
+  const isConfig = (
+    value?: unknown,
+  ): value is Partial<RuleConfig<typeof schema>> =>
+    BaseRuleConfigSchema.partial().safeParse(ruleOptions).success;
+
+  const config = isConfig(ruleOptions)
+    ? {
+        opts: {...defaultRuleOptions, ...ruleOptions.opts},
+        severity: ruleOptions.severity ?? DEFAULT_RULE_SEVERITY,
+      }
+    : {
+        opts: {...defaultRuleOptions, ...ruleOptions},
+        severity: DEFAULT_RULE_SEVERITY,
+      };
+
+  const ruleId: StaticRuleContext['ruleId'] = ruleContext?.ruleId ?? def.name;
+
+  const ctx: StaticRuleContext = {
+    installPath: cwd,
+    localPath: '',
+    pkgName: '',
+    severity: config.severity,
+    pkgJson: {},
+    pkgJsonPath: '',
+    pkgManager: DEFAULT_PKG_MANAGER_SPEC,
+    ...ruleContext,
+    ruleId,
   };
-  const ruleMachine = createActor(RuleMachine, {
-    input: {
-      def,
-      ruleId: def.name,
-      config: someConfig,
-      plan,
-      signal: new AbortSignal(),
-    },
-  });
-  ruleMachine.send({
-    type: 'CHECK',
-    ctx: {
-      installPath,
-      localPath: '',
-      pkgName: '',
-      ruleId: def.name,
-      severity: someConfig.severity,
-      pkgJson: {},
-      pkgJsonPath: '',
-      pkgManager: `${DEFAULT_PKG_MANAGER_BIN}@${DEFAULT_PKG_MANAGER_VERSION}`,
-    },
-    manifest: {
-      installPath,
-      pkgJsonPath: '',
-      pkgJson: {},
-      localPath: '',
-      pkgName: '',
-    } as LintManifest,
-  });
-  return toPromise(ruleMachine);
+
+  const manifest: LintManifest = {
+    installPath: cwd,
+    pkgJsonPath: '',
+    pkgJson: {},
+    localPath: '',
+    pkgName: '',
+    ...lintManifest,
+  };
+
+  const input: RuleMachineInput = {
+    def,
+    ruleId,
+    config,
+    plan,
+    signal,
+  };
+
+  const checkEvent: RuleMachineCheckEvent = {type: 'CHECK', ctx, manifest};
+
+  const ruleMachine = createActor(RuleMachine, {input});
+
+  const machinePromise = toPromise(ruleMachine);
+
+  ruleMachine.start().send(checkEvent);
+
+  return machinePromise;
 }
