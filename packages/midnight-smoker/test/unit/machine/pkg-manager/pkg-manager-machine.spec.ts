@@ -6,34 +6,38 @@ import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
 import {createEmptyActor, type AnyActorRef} from 'xstate';
-import {ERROR, FAILED, OK, SKIPPED} from '../../../src/constants';
-import {ErrorCodes, ScriptFailedError} from '../../../src/error';
-import {type RuleInitPayload} from '../../../src/machine/loader/loader-machine-types';
+import {ERROR, FAILED, OK, SKIPPED} from '../../../../src/constants';
+import {ErrorCodes, ScriptFailedError} from '../../../../src/error';
+import {type RuleInitPayload} from '../../../../src/machine/loader/loader-machine-types';
 import {
   PkgManagerMachine,
   type PkgManagerMachineInput,
-} from '../../../src/machine/pkg-manager';
-import {OptionParser, type SmokerOptions} from '../../../src/options';
+} from '../../../../src/machine/pkg-manager';
+import {OptionParser, type SmokerOptions} from '../../../../src/options';
 import {
   PkgManagerSpec,
   type PkgManagerDef,
   type RunScriptManifest,
   type RunScriptResultFailed,
   type WorkspaceInfo,
-} from '../../../src/pkg-manager';
-import {type PluginMetadata} from '../../../src/plugin';
-import {PluginRegistry} from '../../../src/plugin/plugin-registry';
-import {FileManager} from '../../../src/util/filemanager';
-import {serialize} from '../../../src/util/serialize';
-import {nullExecutor, nullPkgManagerDef, nullRule} from '../mocks/component';
-import {createMachineRunner} from './machine-helpers';
-const debug = Debug('midnight-smoker:test:machine');
+} from '../../../../src/pkg-manager';
+import {type PluginMetadata} from '../../../../src/plugin';
+import {PluginRegistry} from '../../../../src/plugin/plugin-registry';
+import {FileManager} from '../../../../src/util/filemanager';
+import {serialize} from '../../../../src/util/serialize';
+import {nullExecutor, nullPkgManagerDef, nullRule} from '../../mocks/component';
+import {createActorRunner} from '../actor-helpers';
+const debug = Debug('midnight-smoker:test:pkg-manager-machine');
 const expect = unexpected.clone().use(unexpectedSinon);
 
-const {runUntilSnapshot, runUntilTransition, runMachine, runUntilEvent} =
-  createMachineRunner(PkgManagerMachine, {
-    logger: debug,
-  });
+const {
+  runUntilSnapshot,
+  runUntilTransition,
+  run: runMachine,
+  runUntilEvent,
+} = createActorRunner(PkgManagerMachine, {
+  logger: debug,
+});
 
 describe('midnight-smoker', function () {
   describe('machine', function () {
@@ -445,23 +449,60 @@ describe('midnight-smoker', function () {
             });
 
             describe('when "shouldLint" flag is set and rules are enabled', function () {
-              it('should lint', async function () {
+              beforeEach(function () {
+                input = {
+                  ...input,
+                  shouldLint: true,
+                  ruleInitPayloads,
+                  workspaceInfo: [workspaceInfo],
+                };
+              });
+
+              it('should send lint events in order', async function () {
                 await expect(
-                  runUntilEvent('LINT.PKG_MANAGER_LINT_OK', {
-                    ...input,
-                    shouldLint: true,
-                    ruleInitPayloads,
-                    workspaceInfo: [workspaceInfo],
-                  }),
+                  runUntilEvent(
+                    [
+                      'LINT.PKG_MANAGER_LINT_BEGIN',
+                      'LINT.RULE_BEGIN',
+                      'LINT.RULE_OK',
+                      'LINT.PKG_MANAGER_LINT_OK',
+                    ],
+                    input,
+                  ),
                   'to be fulfilled',
                 );
+              });
+
+              describe('when a rule fails', function () {
+                beforeEach(function () {
+                  for (const {def} of ruleInitPayloads) {
+                    sandbox.stub(def, 'check').callsFake(async (ctx) => {
+                      ctx.addIssue('PROBLEM');
+                    });
+                  }
+                });
+
+                it('should send lint events in order', async function () {
+                  await expect(
+                    runUntilEvent(
+                      [
+                        'LINT.PKG_MANAGER_LINT_BEGIN',
+                        'LINT.RULE_BEGIN',
+                        'LINT.RULE_FAILED',
+                        'LINT.PKG_MANAGER_LINT_FAILED',
+                      ],
+                      input,
+                    ),
+                    'to be fulfilled',
+                  );
+                });
               });
             });
 
             describe('when "shouldLint" flag is set and rules are disabled', function () {
               it('should not lint', async function () {
                 await expect(
-                  runUntilEvent('LINT.PKG_MANAGER_LINT_OK', {
+                  runUntilEvent(['LINT.PKG_MANAGER_LINT_OK'], {
                     ...input,
                     shouldLint: true,
                     workspaceInfo: [workspaceInfo],
@@ -471,6 +512,7 @@ describe('midnight-smoker', function () {
               });
             });
           });
+
           describe('runningScripts', function () {
             describe('when no scripts were provided in SmokerOptions', function () {
               it('should not run scripts', async function () {
@@ -533,7 +575,7 @@ describe('midnight-smoker', function () {
 
                 it('should send the correct event', async function () {
                   await expect(
-                    runUntilEvent('SCRIPT.RUN_SCRIPT_SKIPPED', {
+                    runUntilEvent(['SCRIPT.RUN_SCRIPT_SKIPPED'], {
                       ...input,
                       scripts: ['test'],
                       workspaceInfo: [workspaceInfo],
@@ -569,7 +611,7 @@ describe('midnight-smoker', function () {
 
                 it('should send the correct event', async function () {
                   await expect(
-                    runUntilEvent('SCRIPT.RUN_SCRIPT_FAILED', {
+                    runUntilEvent(['SCRIPT.RUN_SCRIPT_FAILED'], {
                       ...input,
                       scripts: ['test'],
                       workspaceInfo: [workspaceInfo],
@@ -582,7 +624,7 @@ describe('midnight-smoker', function () {
               describe('when a script succeeds', function () {
                 it('should send the correct event', async function () {
                   await expect(
-                    runUntilEvent('SCRIPT.RUN_SCRIPT_OK', {
+                    runUntilEvent(['SCRIPT.RUN_SCRIPT_OK'], {
                       ...input,
                       scripts: ['test'],
                       workspaceInfo: [workspaceInfo],
@@ -601,7 +643,7 @@ describe('midnight-smoker', function () {
 
                 it('should send the correct event', async function () {
                   await expect(
-                    runUntilEvent('SCRIPT.RUN_SCRIPT_ERROR', {
+                    runUntilEvent(['SCRIPT.RUN_SCRIPT_ERROR'], {
                       ...input,
                       scripts: ['test'],
                       workspaceInfo: [workspaceInfo],

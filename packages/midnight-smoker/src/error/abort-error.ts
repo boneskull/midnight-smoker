@@ -4,10 +4,13 @@ import {isError} from 'lodash';
 
 const debug = Debug('midnight-smoker:error:abort');
 
-export class AbortError extends BaseSmokerError<{reason?: unknown}> {
+export class AbortError extends BaseSmokerError<{
+  reason?: unknown;
+  id?: string;
+}> {
   public readonly id = 'AbortError';
 
-  constructor(reason?: unknown) {
+  constructor(reason?: unknown, id?: string) {
     let msg = 'Aborted via signal';
     if (reason) {
       msg +=
@@ -15,7 +18,7 @@ export class AbortError extends BaseSmokerError<{reason?: unknown}> {
           ? `: ${reason.message}`
           : `: ${String(reason)}`;
     }
-    super(msg, {reason});
+    super(msg, {reason, id});
     debug(msg);
   }
 }

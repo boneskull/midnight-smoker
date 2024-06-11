@@ -28,11 +28,11 @@ import {type ReporterDef} from '../../../src/reporter';
 import {FileManager} from '../../../src/util/filemanager';
 import {serialize} from '../../../src/util/serialize';
 import {nullReporter} from '../mocks/component';
-import {createMachineRunner} from './machine-helpers';
+import {createActorRunner} from './actor-helpers';
 
 const expect = unexpected.clone().use(unexpectedSinon);
 
-const {startMachine} = createMachineRunner(ReporterMachine);
+const {start: startMachine} = createActorRunner(ReporterMachine);
 
 describe('midnight-smoker', function () {
   describe('machine', function () {
@@ -339,7 +339,7 @@ describe('midnight-smoker', function () {
                 queue,
               };
               await expect(
-                createMachineRunner(drainQueue).runMachine(input),
+                createActorRunner(drainQueue).run(input),
                 'to be rejected with error satisfying',
                 {code: ErrorCodes.ReporterListenerError},
               );
@@ -361,7 +361,7 @@ describe('midnight-smoker', function () {
                 },
                 queue,
               };
-              await createMachineRunner(drainQueue).runMachine(input);
+              await createActorRunner(drainQueue).run(input);
               expect(def.onBeforeExit, 'was called once');
             });
           });
@@ -379,7 +379,7 @@ describe('midnight-smoker', function () {
                 },
                 queue,
               };
-              await createMachineRunner(drainQueue).runMachine(input);
+              await createActorRunner(drainQueue).run(input);
               expect(queue.shift, 'was not called');
             });
           });
@@ -395,7 +395,7 @@ describe('midnight-smoker', function () {
                 plugin: staticPlugin,
               },
             };
-            await createMachineRunner(setupReporter).runMachine(input);
+            await createActorRunner(setupReporter).run(input);
             expect(setup, 'was called once');
           });
         });
@@ -410,7 +410,7 @@ describe('midnight-smoker', function () {
                 plugin: staticPlugin,
               },
             };
-            await createMachineRunner(teardownReporter).runMachine(input);
+            await createActorRunner(teardownReporter).run(input);
             expect(teardown, 'was called once');
           });
         });

@@ -4,6 +4,7 @@ import {
   type PackParseError,
   type ScriptError,
 } from '#error/pkg-manager';
+import {type RuleError} from '#error/rule-error';
 import {type CheckFailed, type CheckOk} from '#schema/check-result';
 import {type InstallManifest} from '#schema/install-manifest';
 import {type LintManifest} from '#schema/lint-manifest';
@@ -28,6 +29,7 @@ export type PkgManagerMachineEvents =
   | PkgManagerMachineCheckResultEvent
   | PkgManagerMachineRunScriptErrorEvent
   | PkgManagerMachineRuleEndEvent
+  | PkgManagerMachineCheckErrorEvent
   | AbortEvent;
 
 export interface CheckInput {
@@ -67,6 +69,11 @@ export interface PkgManagerMachineCheckResultEvent {
   output: CheckOutput;
   config: SomeRuleConfig;
   type: 'CHECK_RESULT';
+}
+
+export interface PkgManagerMachineCheckErrorEvent {
+  error: RuleError;
+  type: 'CHECK_ERROR';
 }
 
 export interface PkgManagerMachineHaltEvent {

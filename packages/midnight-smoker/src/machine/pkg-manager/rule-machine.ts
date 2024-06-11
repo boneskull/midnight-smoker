@@ -1,13 +1,18 @@
 import {FAILED, FINAL, OK} from '#constants';
 import {AbortError} from '#error/abort-error';
+import {fromUnknownError} from '#error/from-unknown-error';
+import {MachineError} from '#error/machine-error';
+import {RuleError} from '#error/rule-error';
 import {RuleContext} from '#rule/rule-context';
 import {type LintManifest} from '#schema/lint-manifest';
 import {type SomeRuleConfig} from '#schema/rule-options';
 import {type StaticRuleContext} from '#schema/rule-static';
 import {type SomeRuleDef} from '#schema/some-rule-def';
+import {isSmokerError} from '#util/error-util';
 import {uniqueId} from '#util/unique-id';
 import {asResult} from '#util/util';
-import {isEmpty, isNumber} from 'lodash';
+import {isNumber} from 'lodash';
+import assert from 'node:assert';
 import {
   assign,
   enqueueActions,
@@ -23,6 +28,7 @@ import {
   type CheckOutput,
   type CheckOutputFailed,
   type CheckOutputOk,
+  type PkgManagerMachineCheckErrorEvent,
   type PkgManagerMachineCheckResultEvent,
 } from './pkg-manager-machine-events';
 
@@ -48,7 +54,10 @@ export interface RuleMachineInput {
   /**
    * The parent machine reference
    */
-  parentRef?: ActorRef<Snapshot<unknown>, PkgManagerMachineCheckResultEvent>;
+  parentRef?: ActorRef<
+    Snapshot<unknown>,
+    PkgManagerMachineCheckResultEvent | PkgManagerMachineCheckErrorEvent
+  >;
 
   /**
    * The count of calls to {@link RuleMachineInput.def.check} expected to be run.
@@ -70,6 +79,8 @@ export interface RuleMachineInput {
 export interface RuleMachineContext extends RuleMachineInput {
   results: CheckOutput[];
   checkRefs?: Record<string, ActorRefFrom<typeof check>>;
+  aborted?: boolean;
+  error?: MachineError;
 }
 
 /**
@@ -106,6 +117,11 @@ export interface RuleMachineCheckActorDoneEvent {
   output: CheckOutput;
 }
 
+export interface RuleMachineCheckActorErrorEvent {
+  type: 'xstate.error.actor.check.*';
+  error: Error;
+}
+
 /**
  * Event emitted when a check is complete.
  *
@@ -119,16 +135,25 @@ export interface RuleMachineCheckResultEvent {
   type: 'CHECK_RESULT';
 }
 
+export interface RuleMachineCheckErrorEvent {
+  error: RuleError;
+  type: 'CHECK_ERROR';
+}
+
 /**
  * Union of events emitted by {@link RuleMachine}
  */
-export type RuleMachineEmitted = RuleMachineCheckResultEvent;
+export type RuleMachineEmitted =
+  | RuleMachineCheckResultEvent
+  | RuleMachineCheckErrorEvent;
 
 /**
  * Union of events listened to by {@link RuleMachine}
  */
 export type RuleMachineEvent =
   | RuleMachineCheckEvent
+  | RuleMachineCheckErrorEvent
+  | RuleMachineCheckActorErrorEvent
   | RuleMachineCheckActorDoneEvent;
 
 /**
@@ -139,7 +164,7 @@ export const check = fromPromise<CheckOutput, CheckInput>(
   async ({self, input}) => {
     const {ctx: staticCtx, opts, def, ruleId, signal} = input;
     if (signal.aborted) {
-      throw new AbortError(signal.reason);
+      throw new AbortError(signal.reason, self.id);
     }
 
     const ctx = RuleContext.create(def, staticCtx, ruleId);
@@ -147,7 +172,12 @@ export const check = fromPromise<CheckOutput, CheckInput>(
     try {
       await def.check(ctx, opts);
     } catch (err) {
-      ctx.addIssueFromError(err);
+      throw new RuleError(
+        `Rule "${ruleId}" threw an exception`,
+        ctx,
+        ruleId,
+        fromUnknownError(err),
+      );
     }
     const result = ctx.finalize();
     const manifest = asResult(serialize(input.manifest));
@@ -185,7 +215,10 @@ export const check = fromPromise<CheckOutput, CheckInput>(
 /**
  * Output of {@link RuleMachine}
  */
-export type RuleMachineOutput = CheckOutput[];
+export interface RuleMachineOutput {
+  results: CheckOutput[];
+  aborted?: boolean;
+}
 
 /**
  * A machine which is bound to a {@link RuleDef} and executes its `check` method
@@ -201,31 +234,37 @@ export const RuleMachine = setup({
   },
   guards: {
     /**
-     * Returns `true` if a {@link check} actor exists in
-     * {@link RuleMachineContext.checkRefs}.
-     *
-     * @remarks
-     * This doesn't necessarily mean the `check` actor is _alive_; see the
-     * `stopCheckActor` action.
-     */
-    isChecking: ({context: {checkRefs}}) => !isEmpty(checkRefs),
-
-    /**
      * Returns `true` if all possible checks have been run.
      */
-    shouldHalt: ({context: {results = [], plan}}) => {
+    shouldHalt: ({context: {results = [], plan, error}}) => {
       if (!isNumber(plan)) {
         return false;
       }
-      if (results.length > plan) {
-        throw new Error(
-          `Expected exactly ${plan} result(s); got ${results.length}`,
-        );
-      }
-      return results.length === plan;
+
+      // TODO: I hate this; we probably want to keep an array of "error result"
+      // objects instead of digging into the MachineError. it's unlikely that
+      // there would be more than 1 error per spawn of the check actor, which
+      // makes this "work" for now.
+      // ALSO: the LHS here "should never" be greater than plan, but...
+      return results.length + (error?.errors.length ?? 0) >= plan;
     },
   },
   actions: {
+    assignError: assign({
+      error: ({self, context}, {error}: {error: unknown}) => {
+        const err = fromUnknownError(error);
+        if (context.error) {
+          return context.error.cloneWith(err);
+        }
+
+        return new MachineError(
+          `Rule ${context.ruleId} encountered an error`,
+          err,
+          self.id,
+        );
+      },
+    }),
+
     /**
      * Creates a new {@link check} actor
      */
@@ -264,18 +303,42 @@ export const RuleMachine = setup({
      * @remarks
      * The two events are structurally identical
      */
-    report: enqueueActions(({enqueue, context}, output: CheckOutput) => {
-      const {parentRef, config} = context;
-      const evt: PkgManagerMachineCheckResultEvent = {
-        type: 'CHECK_RESULT',
-        output,
-        config,
-      };
-      if (parentRef) {
-        enqueue.sendTo(parentRef, evt);
-      }
-      enqueue.emit(evt as RuleMachineCheckResultEvent);
-    }),
+    sendCheckResult: enqueueActions(
+      ({enqueue, context}, output: CheckOutput) => {
+        const {parentRef, config} = context;
+        const evt: PkgManagerMachineCheckResultEvent = {
+          type: 'CHECK_RESULT',
+          output,
+          config,
+        };
+        if (parentRef) {
+          enqueue.sendTo(parentRef, evt);
+        }
+        enqueue.emit(evt as RuleMachineCheckResultEvent);
+      },
+    ),
+
+    /**
+     * Emits a {@link RuleMachineCheckErrorEvent}.
+     *
+     * If a {@link RuleMachineContext.parentRef} is present, a
+     * {@link PkgManagerMachineCheckErrorEvent} is sent to it.
+     *
+     * @remarks
+     * The two events are structurally identical
+     */
+    sendCheckError: enqueueActions(
+      ({enqueue, context: {parentRef}}, error: RuleError) => {
+        const evt: PkgManagerMachineCheckErrorEvent = {
+          type: 'CHECK_ERROR',
+          error,
+        };
+        if (parentRef) {
+          enqueue.sendTo(parentRef, evt);
+        }
+        enqueue.emit(evt as RuleMachineCheckErrorEvent);
+      },
+    ),
 
     /**
      * Stops a {@link check} actor and removes it from
@@ -321,11 +384,12 @@ export const RuleMachine = setup({
         guard: {type: 'shouldHalt'},
         target: 'done',
       },
+      exit: [assign({checkRefs: undefined})],
       on: {
         'xstate.done.actor.check.*': {
           actions: [
             {
-              type: 'report',
+              type: 'sendCheckResult',
               params: ({event: {output}}) => output,
             },
             {
@@ -342,6 +406,40 @@ export const RuleMachine = setup({
             },
           ],
         },
+        'xstate.error.actor.check.*': [
+          {
+            guard: ({event: {error}}) => isSmokerError(AbortError, error),
+            actions: [
+              {
+                type: 'stopCheckActor',
+                params: ({event: {type}}) => {
+                  // TODO: is there a better way to get the actor ID?
+                  return type.split('.')[3];
+                },
+              },
+            ],
+            target: 'aborted',
+          },
+          {
+            actions: [
+              {
+                type: 'sendCheckError',
+                params: ({event: {error}}) => {
+                  assert.ok(isSmokerError(RuleError, error));
+                  return error;
+                },
+              },
+              {type: 'assignError', params: ({event: {error}}) => ({error})},
+              {
+                type: 'stopCheckActor',
+                params: ({event: {type}}) => {
+                  // TODO: is there a better way to get the actor ID?
+                  return type.split('.')[3];
+                },
+              },
+            ],
+          },
+        ],
         CHECK: {
           actions: {
             type: 'check',
@@ -351,6 +449,8 @@ export const RuleMachine = setup({
       },
     },
     done: {type: FINAL},
+    errored: {type: FINAL},
+    aborted: {entry: [assign({aborted: true})], type: FINAL},
   },
-  output: ({context: {results}}) => results,
+  output: ({context: {results, aborted, error}}) => ({results, aborted, error}),
 });

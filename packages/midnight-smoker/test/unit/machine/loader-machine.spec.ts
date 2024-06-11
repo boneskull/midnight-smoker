@@ -11,11 +11,11 @@ import {PluginRegistry} from '../../../src/plugin/plugin-registry';
 import {type WorkspaceInfo} from '../../../src/schema/workspaces';
 import {FileManager} from '../../../src/util/filemanager';
 import {nullPkgManagerDef, nullReporter, nullRule} from '../mocks/component';
-import {createMachineRunner} from './machine-helpers';
+import {createActorRunner} from './actor-helpers';
 
 const expect = unexpected.clone();
 
-const {runMachine} = createMachineRunner(LoaderMachine);
+const {run: runMachine} = createActorRunner(LoaderMachine);
 
 describe('midnight-smoker', function () {
   describe('machine', function () {
