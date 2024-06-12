@@ -1,5 +1,4 @@
 import {FAILED, FINAL} from '#constants';
-import {fromUnknownError} from '#error/from-unknown-error';
 import {SmokerEvent} from '#event/event-constants';
 import {type DataForEvent} from '#event/events';
 import {type LintEventData} from '#event/lint-events';
@@ -9,6 +8,7 @@ import {type LintResult, type LintResultOk} from '#schema/lint-result';
 import {type SomeRuleDef} from '#schema/some-rule-def';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {type WorkspaceInfo} from '#schema/workspaces';
+import {fromUnknownError} from '#util/error-util';
 import {asResult} from '#util/util';
 import {
   assign,

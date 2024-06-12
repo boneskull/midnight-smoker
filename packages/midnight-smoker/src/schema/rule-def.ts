@@ -1,6 +1,7 @@
 import {type RuleContext} from '#rule/rule-context';
 import {type RuleDefSchemaValue} from '#schema/rule-def-schema-value';
 import {StaticRuleDefSchema, type StaticRuleDef} from '#schema/rule-static';
+import {AbortSignalSchema} from '#util/schema-util';
 import {z} from 'zod';
 import {type RuleOptions} from './rule-options';
 
@@ -35,6 +36,7 @@ export interface RuleDef<Schema extends RuleDefSchemaValue | void = void>
 export type RuleCheckFn<Schema extends RuleDefSchemaValue | void = void> = (
   ctx: Readonly<RuleContext>,
   opts: RuleOptions<Schema>,
+  signal?: AbortSignal,
 ) => void | Promise<void>;
 
 export const RuleDefSchemaValueSchema = z.custom<RuleDefSchemaValue | void>(
@@ -45,10 +47,15 @@ export const RuleDefSchemaValueSchema = z.custom<RuleDefSchemaValue | void>(
  * XXX: Unclear how to check the return type, since it can be async; Zod throws
  * an exception and I'm unsure why.
  */
-export const RuleCheckFnSchema = z
-  .function()
-  .args(z.any(), z.any())
-  .returns(z.any());
+export const RuleCheckFnSchema = z.union([
+  z.function().args(z.any(), z.any()).returns(z.void()),
+  z.function().args(z.any(), z.any(), AbortSignalSchema).returns(z.void()),
+  z.function().args(z.any(), z.any()).returns(z.promise(z.void())),
+  z
+    .function()
+    .args(z.any(), z.any(), AbortSignalSchema)
+    .returns(z.promise(z.void())),
+]);
 
 export const RuleDefSchema = StaticRuleDefSchema.extend({
   schema: RuleDefSchemaValueSchema.optional(),

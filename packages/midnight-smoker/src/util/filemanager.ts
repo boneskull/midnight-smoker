@@ -13,7 +13,6 @@
 import {hrRelativePath} from '#cli/cli-util';
 import {MIDNIGHT_SMOKER, PACKAGE_JSON, UNKNOWN_TMPDIR_PREFIX} from '#constants';
 import {AbortError} from '#error/abort-error';
-import {fromUnknownError} from '#error/from-unknown-error';
 import {MissingPackageJsonError} from '#error/missing-pkg-json-error';
 import {UnreadablePackageJsonError} from '#error/unreadable-pkg-json-error';
 import {isSmokerError} from '#util/error-util';
@@ -31,6 +30,7 @@ import {memoize} from '#util/util';
 import Debug from 'debug';
 import {
   glob,
+  globIterate,
   type GlobOptions,
   type GlobOptionsWithFileTypesFalse,
   type GlobOptionsWithFileTypesTrue,
@@ -41,6 +41,7 @@ import type os from 'node:os';
 import path from 'node:path';
 import normalizePkgData from 'normalize-package-data';
 import {type PackageJson} from 'type-fest';
+import {fromUnknownError} from './error-util';
 
 export interface FindUpOptions {
   followSymlinks?: boolean;
@@ -82,7 +83,11 @@ export class FileManager {
    */
   public async createTempDir(
     prefix: string = UNKNOWN_TMPDIR_PREFIX,
+    signal?: AbortSignal,
   ): Promise<string> {
+    if (signal?.aborted) {
+      throw new AbortError(signal.reason);
+    }
     const fullPrefix = path.join(
       this.getTempDirRoot.call(null),
       MIDNIGHT_SMOKER,
@@ -93,6 +98,9 @@ export class FileManager {
       // this is only required if we're using an in-memory filesystem
       await this.fs.promises.mkdir(fullPrefix, {recursive: true});
     } catch {}
+    if (signal?.aborted) {
+      throw new AbortError(signal.reason);
+    }
     const tempDir = await this.fs.promises.mkdtemp(fullPrefix);
     this.tempDirs.add(tempDir);
     return tempDir;
@@ -183,6 +191,33 @@ export class FileManager {
     } while (true);
   }
 
+  public globIterate(
+    pattern: string | string[],
+    options?: GlobOptionsWithFileTypesUnset | undefined,
+  ): AsyncGenerator<string, void, void>;
+  public globIterate(
+    pattern: string | string[],
+    options: GlobOptionsWithFileTypesTrue,
+  ): AsyncGenerator<Path, void, void>;
+  public globIterate(
+    pattern: string | string[],
+    options: GlobOptionsWithFileTypesFalse,
+  ): AsyncGenerator<string, void, void>;
+  public globIterate(
+    pattern: string | string[],
+    options: GlobOptions,
+  ): AsyncGenerator<Path, void, void> | AsyncGenerator<string, void, void>;
+  public globIterate(
+    pattern: string | string[],
+    options:
+      | GlobOptionsWithFileTypesFalse
+      | GlobOptionsWithFileTypesTrue
+      | GlobOptionsWithFileTypesUnset
+      | GlobOptions = {},
+  ): AsyncGenerator<string | Path, void, void> {
+    return globIterate(pattern, {...options, fs: this.fs});
+  }
+
   public async glob(
     patterns: string | string[],
     opts?: GlobOptionsWithFileTypesUnset,
@@ -218,13 +253,13 @@ export class FileManager {
         });
   }
 
-  public async pruneTempDir(dir: string): Promise<void> {
+  public async pruneTempDir(dir: string, signal?: AbortSignal): Promise<void> {
     if (!this.tempDirs.has(dir)) {
       debug('Refusing to prune unknown dir %s', dir);
       return;
     }
     try {
-      await this.rimraf(dir);
+      await this.rimraf(dir, signal);
       this.tempDirs.delete(dir);
     } catch (err) {
       debug('Failed to prune temp dir %s: %s', dir, err);
@@ -296,7 +331,10 @@ export class FileManager {
     return result.packageJson;
   }
 
-  public async rimraf(dir: string): Promise<void> {
+  public async rimraf(dir: string, signal?: AbortSignal): Promise<void> {
+    if (signal?.aborted) {
+      throw new AbortError(signal.reason);
+    }
     await this.fs.promises.rm(dir, {recursive: true, force: true});
   }
 }

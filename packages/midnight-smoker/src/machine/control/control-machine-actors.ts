@@ -1,5 +1,4 @@
 import {PACKAGE_JSON} from '#constants';
-import {AbortError} from '#error/abort-error';
 import {WorkspacesConfigSchema, type WorkspaceInfo} from '#schema/workspaces';
 import {type FileManager} from '#util/filemanager';
 import assert from 'assert';
@@ -14,22 +13,17 @@ export interface QueryWorkspacesInput {
   cwd: string;
   fileManager: FileManager;
   workspace: string[];
-  signal: AbortSignal;
 }
 
 export interface ReadSmokerPkgJsonInput {
   fileManager: FileManager;
-  signal: AbortSignal;
 }
 
 export const readSmokerPkgJson = fromPromise<
   PackageJson,
   ReadSmokerPkgJsonInput
->(async ({input: {fileManager, signal}}) => {
-  if (signal.aborted) {
-    throw new AbortError(signal.reason);
-  }
-  return fileManager.readSmokerPkgJson();
+>(async ({input: {fileManager}, signal}) => {
+  return fileManager.readSmokerPkgJson({signal});
 });
 
 export const queryWorkspaces = fromPromise<
@@ -37,77 +31,69 @@ export const queryWorkspaces = fromPromise<
   QueryWorkspacesInput
 >(
   async ({
-    input: {
-      cwd,
-      fileManager,
-      all: allWorkspaces,
-      workspace: onlyWorkspaces,
-      signal,
-    },
+    input: {cwd, fileManager, all: allWorkspaces, workspace: onlyWorkspaces},
+    signal,
   }): Promise<WorkspaceInfo[]> => {
-    if (signal.aborted) {
-      throw new AbortError(signal.reason);
-    }
-
     const {packageJson: rootPkgJson, path: rootPkgJsonPath} =
       await fileManager.findPkgUp(cwd, {
         strict: true,
+        signal,
       });
-
-    if (signal.aborted) {
-      throw new AbortError(signal.reason);
-    }
 
     const getWorkspaceInfo = async (
       patterns: string[],
       pickPkgNames: string[] = [],
     ): Promise<WorkspaceInfo[]> => {
-      const workspacePaths = await fileManager.glob(patterns, {
+      const workspaces: WorkspaceInfo[] = [];
+
+      const isPickedPkg = isEmpty(pickPkgNames)
+        ? () => true
+        : (pkgName: string) => pickPkgNames.includes(pkgName);
+
+      for await (const workspacePath of fileManager.globIterate(patterns, {
         cwd,
         withFileTypes: true,
         signal,
-      });
-      let workspaces = await Promise.all(
-        workspacePaths
-          .filter((workspace) => workspace.isDirectory())
-          .map(async (workspace) => {
-            const fullpath = workspace.fullpath();
-            const pkgJsonPath = path.join(fullpath, PACKAGE_JSON);
-            const workspacePkgJson = await fileManager.readPkgJson(
-              pkgJsonPath,
-              {signal},
-            );
-            assert.ok(
-              workspacePkgJson.name,
-              `no package name in workspace ${PACKAGE_JSON}: ${pkgJsonPath}`,
-            );
-            return {
-              pkgName: workspacePkgJson.name,
-              localPath: fullpath,
-              pkgJson: workspacePkgJson,
-              pkgJsonPath,
-            } as WorkspaceInfo;
-          }),
-      );
-      // TODO maybe make this an option; ignore private workspaces
-      workspaces = workspaces.filter(({pkgJson}) => pkgJson.private !== true);
-      if (!isEmpty(pickPkgNames)) {
-        workspaces = workspaces.filter(({pkgName}) =>
-          pickPkgNames.includes(pkgName),
+      })) {
+        if (!workspacePath.isDirectory()) {
+          continue;
+        }
+        const fullpath = workspacePath.fullpath();
+        const pkgJsonPath = path.join(fullpath, PACKAGE_JSON);
+        const workspacePkgJson = await fileManager.readPkgJson(pkgJsonPath, {
+          signal,
+        });
+
+        // TODO maybe make this an option; "ignore private workspaces"
+        if (workspacePkgJson.private === true) {
+          continue;
+        }
+        assert.ok(
+          workspacePkgJson.name,
+          `no package name in workspace ${PACKAGE_JSON}: ${pkgJsonPath}`,
         );
+        if (!isPickedPkg(workspacePkgJson.name)) {
+          continue;
+        }
+        workspaces.push({
+          pkgName: workspacePkgJson.name,
+          localPath: fullpath,
+          pkgJson: workspacePkgJson,
+          pkgJsonPath,
+        });
       }
+
       return workspaces;
     };
 
     const result = WorkspacesConfigSchema.safeParse(rootPkgJson.workspaces);
 
-    let patterns: string[] = [];
-    if (result.success) {
-      patterns = result.data;
+    let workspaceInfo: WorkspaceInfo[] = [];
+    if (result.success && result.data.length) {
+      const patterns = result.data;
       if (allWorkspaces) {
-        return getWorkspaceInfo(patterns);
-      }
-      if (!isEmpty(onlyWorkspaces)) {
+        workspaceInfo = await getWorkspaceInfo(patterns);
+      } else if (!isEmpty(onlyWorkspaces)) {
         // a workspace, per npm's CLI, can be a package name _or_ a path.
         // we can detect a path by checking if any of the workspace patterns
         // in the root package.json match the workspace.
@@ -117,30 +103,28 @@ export const queryWorkspaces = fromPromise<
           ),
           (onlyWs) => patterns.some((ws) => minimatch(onlyWs, ws)),
         );
-
-        if (isEmpty(pickPaths)) {
-          if (isEmpty(pickPkgNames)) {
-            // TODO this might be an error; SOMETHING should match
-          }
-          return getWorkspaceInfo(patterns, pickPkgNames);
-        }
-        return getWorkspaceInfo(pickPaths, pickPkgNames);
+        workspaceInfo = await getWorkspaceInfo(
+          [...pickPaths, ...patterns],
+          pickPkgNames,
+        );
       }
-      // if we get here, then `workspaces` in the root package.json is just empty
     }
 
-    assert.ok(
-      rootPkgJson.name,
-      `no package name in root ${PACKAGE_JSON}: ${rootPkgJsonPath}`,
-    );
+    if (isEmpty(workspaceInfo)) {
+      assert.ok(
+        rootPkgJson.name,
+        `no package name in root ${PACKAGE_JSON}: ${rootPkgJsonPath}`,
+      );
+      workspaceInfo = [
+        {
+          pkgName: rootPkgJson.name,
+          pkgJson: rootPkgJson,
+          pkgJsonPath: rootPkgJsonPath,
+          localPath: cwd,
+        },
+      ];
+    }
 
-    return [
-      {
-        pkgName: rootPkgJson.name,
-        pkgJson: rootPkgJson,
-        pkgJsonPath: rootPkgJsonPath,
-        localPath: cwd,
-      } as WorkspaceInfo,
-    ];
+    return workspaceInfo;
   },
 );

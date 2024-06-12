@@ -1,4 +1,3 @@
-import {fromUnknownError} from '#error/from-unknown-error';
 import {LifecycleError} from '#error/lifecycle-error';
 import {ReporterError} from '#error/reporter-error';
 import {ReporterListenerError} from '#error/reporter-listener-error';
@@ -13,8 +12,10 @@ import {
   type ReporterListener,
   type ReporterListeners,
 } from '#schema/reporter-def';
+import {fromUnknownError} from '#util/error-util';
 import {isFunction} from 'lodash';
 import {fromPromise} from 'xstate';
+import {type PartialReporterContext} from '.';
 
 /**
  * Input object for {@link drainQueue}
@@ -33,7 +34,7 @@ export interface DrainQueueInput {
   /**
    * The reporter context belonging to {@link DrainQueueInput.def}
    */
-  ctx: ReporterContext;
+  ctx: PartialReporterContext;
 }
 
 /**
@@ -62,7 +63,7 @@ async function invokeListener<T extends EventName>(
  * Drains the queue of events and invokes the listener for each event.
  */
 export const drainQueue = fromPromise<void, DrainQueueInput>(
-  async ({input: {def, queue, ctx}}): Promise<void> => {
+  async ({input: {def, queue, ctx}, signal}): Promise<void> => {
     while (queue.length) {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       const event = queue.shift()!;
@@ -70,7 +71,7 @@ export const drainQueue = fromPromise<void, DrainQueueInput>(
 
       if (isFunction(def[listenerName])) {
         try {
-          await invokeListener(def, ctx, event);
+          await invokeListener(def, {...ctx, signal}, event);
         } catch (err) {
           throw new ReporterListenerError(
             fromUnknownError(err),
@@ -90,7 +91,7 @@ export const drainQueue = fromPromise<void, DrainQueueInput>(
  */
 export interface ReporterLifecycleHookInput {
   def: ReporterDef;
-  ctx: ReporterContext;
+  ctx: PartialReporterContext;
 }
 
 /**
@@ -98,11 +99,11 @@ export interface ReporterLifecycleHookInput {
  * {@link ReporterDef.setup} function (if present).
  */
 export const setupReporter = fromPromise<void, ReporterLifecycleHookInput>(
-  async ({input: {def, ctx}}) => {
+  async ({input: {def, ctx}, signal}) => {
     const {setup} = def;
     if (isFunction(setup)) {
       try {
-        await setup(ctx);
+        await setup({...ctx, signal});
       } catch (err) {
         throw new LifecycleError(
           fromUnknownError(err),
@@ -121,11 +122,11 @@ export const setupReporter = fromPromise<void, ReporterLifecycleHookInput>(
  * {@link ReporterDef.teardown} function (if present).
  */
 export const teardownReporter = fromPromise<void, ReporterLifecycleHookInput>(
-  async ({input: {def, ctx}}) => {
+  async ({input: {def, ctx}, signal}) => {
     const {teardown} = def;
     if (isFunction(teardown)) {
       try {
-        await teardown(ctx);
+        await teardown({...ctx, signal});
       } catch (err) {
         throw new LifecycleError(
           fromUnknownError(err),

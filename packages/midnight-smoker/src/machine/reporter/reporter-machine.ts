@@ -1,11 +1,11 @@
 import {ERROR, FINAL, OK} from '#constants';
-import {fromUnknownError} from '#error/from-unknown-error';
 import {MachineError} from '#error/machine-error';
 import {type SomeDataForEvent} from '#event/events';
 import {type ActorOutput} from '#machine/util';
 import {type SmokerOptions} from '#options/options';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
-import {type ReporterContext, type ReporterDef} from '#schema/reporter-def';
+import {type ReporterDef} from '#schema/reporter-def';
+import {fromUnknownError} from '#util/error-util';
 import {serialize} from '#util/serialize';
 import {isEmpty} from 'lodash';
 import {type PackageJson} from 'type-fest';
@@ -15,7 +15,10 @@ import {
   setupReporter,
   teardownReporter,
 } from './reporter-machine-actors';
-import {type ReporterMachineEvents} from './reporter-machine-events';
+import {
+  type PartialReporterContext,
+  type ReporterMachineEvents,
+} from './reporter-machine-events';
 
 /**
  * Output for {@link ReporterMachine}
@@ -54,7 +57,7 @@ export interface ReporterMachineContext
   /**
    * The object passed to all of the `ReporterDef`'s listener methods.
    */
-  ctx: ReporterContext;
+  ctx: PartialReporterContext;
 }
 
 /**

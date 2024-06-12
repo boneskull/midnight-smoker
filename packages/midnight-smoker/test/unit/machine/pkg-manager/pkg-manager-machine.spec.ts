@@ -55,8 +55,6 @@ describe('midnight-smoker', function () {
       let teardown: sinon.SinonStub;
       let ruleInitPayloads: RuleInitPayload[];
       let staticPlugin: StaticPluginMetadata;
-      let ac: AbortController;
-      let signal: AbortSignal;
 
       beforeEach(async function () {
         ({vol} = memfs());
@@ -85,8 +83,6 @@ describe('midnight-smoker', function () {
           plugin,
         }));
         staticPlugin = serialize(plugin);
-        ac = new AbortController();
-        ({signal} = ac);
       });
 
       afterEach(function () {
@@ -107,7 +103,6 @@ describe('midnight-smoker', function () {
             useWorkspaces: false,
             workspaceInfo: [],
             shouldShutdown: true,
-            signal,
           };
         });
 
@@ -182,7 +177,6 @@ describe('midnight-smoker', function () {
           let input: PkgManagerMachineInput;
           beforeEach(async function () {
             input = {
-              signal,
               def,
               executor: nullExecutor,
               plugin: staticPlugin,
@@ -278,7 +272,6 @@ describe('midnight-smoker', function () {
 
           beforeEach(async function () {
             input = {
-              signal,
               def,
               executor: nullExecutor,
               plugin: staticPlugin,

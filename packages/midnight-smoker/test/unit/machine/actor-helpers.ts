@@ -8,8 +8,10 @@ import {scheduler} from 'node:timers/promises';
 import {
   Actor,
   createActor,
+  toObserver,
   toPromise,
   waitFor,
+  type ActorRefFrom,
   type AnyActorLogic,
   type EmittedFrom as EmittedFromLogic,
   type EventFromLogic,
@@ -51,6 +53,7 @@ export type ActorRunner<T extends AnyActorLogic> = {
   runUntilEvent: RunUntilEventFn<T>;
   runUntilSnapshot: RunUntilSnapshotFn<T>;
   runUntilTransition: RunUntilTransitionFn<T>;
+  waitForActor: WaitForActorFn<T>;
 };
 
 /**
@@ -147,6 +150,14 @@ export type StartFn<T extends AnyActorLogic> = (
   input: InputFrom<T>,
   opts?: Omit<ActorRunnerOptions, 'timeout'>,
 ) => Actor<T>;
+
+export type WaitForActorFn<T extends AnyActorLogic> = <
+  U extends AnyActorLogic = AnyActorLogic,
+>(
+  actorId: string | RegExp,
+  input: InputFrom<T> | Actor<T>,
+  opts?: Omit<ActorRunnerOptions, 'inspect'>,
+) => ActorPromise<T, ActorRefFrom<U>>;
 
 /**
  * Options for methods in {@link ActorRunner}
@@ -419,12 +430,56 @@ export function createActorRunner<T extends AnyActorLogic>(
     );
   };
 
+  const waitForActor: WaitForActorFn<T> = <
+    U extends AnyActorLogic = AnyActorLogic,
+  >(
+    actorId: string | RegExp,
+    input: InputFrom<T> | Actor<T>,
+    {
+      logger = defaultLogger,
+      timeout = defaultTimeout,
+    }: Omit<ActorRunnerOptions, 'inspect'> = {},
+  ): ActorPromise<T, ActorRefFrom<U>> => {
+    const actor =
+      input instanceof Actor
+        ? input
+        : start(input, {
+            logger,
+          });
+
+    const predicate =
+      typeof actorId === 'string'
+        ? (id: string) => id === actorId
+        : (id: string) => actorId.test(id);
+
+    return Object.assign(
+      Promise.race([
+        new Promise<ActorRefFrom<U>>((resolve) => {
+          actor.system.inspect(
+            toObserver((evt) => {
+              if (evt.type === '@xstate.actor' && predicate(evt.actorRef.id)) {
+                resolve(evt.actorRef as ActorRefFrom<U>);
+              }
+            }),
+          );
+        }),
+        scheduler.wait(timeout).then(() => {
+          throw new Error(
+            `Failed to detect an spawned actor matching ${actorId} in ${timeout}ms`,
+          );
+        }),
+      ]),
+      actor,
+    );
+  };
+
   return {
     run,
     start,
     runUntilEvent,
     runUntilSnapshot,
     runUntilTransition,
+    waitForActor,
   };
 }
 

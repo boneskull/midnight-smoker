@@ -16,8 +16,6 @@ export * from './duplicate-plugin-error';
 
 export * from './exec-error';
 
-export * from './from-unknown-error';
-
 export * from './install-error';
 
 export * from './invalid-arg-error';
@@ -73,6 +71,8 @@ export * from './unknown-script-error';
 export * from './unknown-version-error';
 
 export * from './unknown-version-range-error';
+
+export * from './unknown-workspace-error';
 
 export * from './unreadable-pkg-json-error';
 

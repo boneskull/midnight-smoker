@@ -7,7 +7,6 @@ import {
   PARALLEL,
   SYSTEM_EXECUTOR_ID,
 } from '#constants';
-import {fromUnknownError} from '#error/from-unknown-error';
 import {MachineError} from '#error/machine-error';
 import {SmokeError} from '#error/smoke-error';
 import {SmokerEvent} from '#event/event-constants';
@@ -35,7 +34,7 @@ import {
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {type StaticPluginMetadata} from '#schema/static-plugin-metadata';
 import {type Result, type WorkspaceInfo} from '#schema/workspaces';
-import {isSmokerError} from '#util/error-util';
+import {fromUnknownError, isSmokerError} from '#util/error-util';
 import {FileManager} from '#util/filemanager';
 import {uniqueId} from '#util/unique-id';
 import {delta} from '#util/util';
@@ -59,8 +58,11 @@ import {
   type ReporterInitPayload,
   type RuleInitPayload,
 } from '../loader/loader-machine-types';
-import {abortListener} from '../util/abort-listener';
-import {queryWorkspaces, readSmokerPkgJson} from './control-machine-actors';
+import {
+  queryWorkspaces,
+  readSmokerPkgJson,
+  type QueryWorkspacesInput,
+} from './control-machine-actors';
 import type * as Event from './control-machine-events';
 import {
   InstallBusMachine,
@@ -104,11 +106,6 @@ interface BaseCtrlMachineOutput {
 }
 
 export interface CtrlMachineContext extends CtrlMachineInput {
-  /**
-   * The "root" `AbortController`
-   */
-  abortController: AbortController;
-  abortListenerRef?: ActorRefFrom<typeof abortListener>;
   defaultExecutor: Executor;
   error?: SmokeError;
   fileManager: FileManager;
@@ -150,7 +147,6 @@ export interface CtrlMachineInput {
    * If `true`, the machine should shutdown after completing its work
    */
   shouldShutdown?: boolean;
-  signal?: AbortSignal;
   smokerOptions: SmokerOptions;
   systemExecutor?: Executor;
 }
@@ -220,7 +216,6 @@ export const ControlMachine = setup({
     output: {} as CtrlMachineOutput,
   },
   actors: {
-    abortListener,
     ScriptBusMachine,
     PackBusMachine,
     InstallBusMachine,
@@ -351,12 +346,7 @@ export const ControlMachine = setup({
      */
     spawnLoaders: assign({
       loaderMachineRefs: ({
-        context: {
-          pluginRegistry,
-          smokerOptions,
-          workspaceInfo,
-          abortController: {signal},
-        },
+        context: {pluginRegistry, smokerOptions, workspaceInfo},
         spawn,
       }) =>
         Object.fromEntries(
@@ -370,7 +360,6 @@ export const ControlMachine = setup({
                 workspaceInfo,
                 smokerOptions,
                 component: LoadableComponents.All,
-                signal,
               },
             });
 
@@ -558,7 +547,6 @@ export const ControlMachine = setup({
             add: additionalDeps,
             lint: shouldLint,
           },
-          abortController: {signal},
           pkgManagerInitPayloads,
           ruleInitPayloads,
           shouldShutdown,
@@ -576,7 +564,6 @@ export const ControlMachine = setup({
             const actorRef = spawn('PkgManagerMachine', {
               id,
               input: {
-                signal,
                 spec,
                 def,
                 workspaceInfo,
@@ -600,34 +587,6 @@ export const ControlMachine = setup({
         return {...pkgManagerMachineRefs, ...newRefs};
       },
     }),
-
-    abort: ({context: {abortController}}) => {
-      abortController.abort();
-    },
-
-    spawnAbortListener: assign({
-      abortListenerRef: ({spawn, context: {abortController, signal}}) => {
-        const input = signal
-          ? AbortSignal.any([signal, abortController.signal])
-          : abortController.signal;
-        return spawn('abortListener', {
-          id: 'abortListener',
-          input,
-          systemId: 'abortListener',
-        });
-      },
-    }),
-
-    stopAbortListener: enqueueActions(
-      ({enqueue, context: {abortListenerRef}}) => {
-        if (abortListenerRef) {
-          enqueue.sendTo(abortListenerRef, {
-            type: 'STOP',
-          });
-          enqueue.assign({abortListenerRef: undefined});
-        }
-      },
-    ),
 
     /**
      * Stops a {@link PkgManagerMachine}.
@@ -781,7 +740,6 @@ export const ControlMachine = setup({
       systemExecutor,
       smokerOptions,
       shouldShutdown = false,
-      signal,
       ...rest
     },
   }): CtrlMachineContext => {
@@ -792,8 +750,6 @@ export const ControlMachine = setup({
 
     return {
       ...rest,
-      signal,
-      abortController: new AbortController(),
       defaultExecutor,
       systemExecutor,
       fileManager,
@@ -810,8 +766,8 @@ export const ControlMachine = setup({
     };
   },
   initial: 'loading',
-  entry: [log('starting control machine'), {type: 'spawnAbortListener'}],
-  exit: [log('stopped'), {type: 'abort'}, {type: 'stopAbortListener'}],
+  entry: [log('starting control machine')],
+  exit: [log('stopped')],
   always: {
     guard: 'hasError',
     actions: [log(({context: {error}}) => `ERROR: ${error?.message}`)],
@@ -911,14 +867,12 @@ export const ControlMachine = setup({
                       context: {
                         smokerOptions: {cwd, all, workspace},
                         fileManager,
-                        abortController: {signal},
                       },
-                    }) => ({
+                    }): QueryWorkspacesInput => ({
                       all,
                       workspace,
                       fileManager,
                       cwd,
-                      signal,
                     }),
                     onDone: {
                       actions: [
@@ -967,12 +921,7 @@ export const ControlMachine = setup({
                     'Reads our own package.json file (for use by reporters)',
                   invoke: {
                     src: 'readSmokerPkgJson',
-                    input: ({
-                      context: {
-                        fileManager,
-                        abortController: {signal},
-                      },
-                    }) => ({fileManager, signal}),
+                    input: ({context: {fileManager}}) => ({fileManager}),
                     onDone: {
                       actions: [
                         {

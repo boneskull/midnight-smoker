@@ -10,9 +10,9 @@
  */
 export const ErrorCodes = {
   AbortError: 'ESMOKER_ABORT',
+  AggregateUnsupportedPkgManagerError: 'ESMOKER_UNSUPPORTEDPACKAGEMANAGERS',
   CleanupError: 'ESMOKER_CLEANUP',
   ComponentCollisionError: 'ESMOKER_COMPONENTIDCOLLISION',
-  TempDirError: 'ESMOKER_DIRCREATION',
   DisallowedPluginError: 'ESMOKER_DISALLOWEDPLUGIN',
   DuplicatePluginError: 'ESMOKER_DUPLICATEPLUGIN',
   ExecError: 'ESMOKER_EXEC',
@@ -39,14 +39,15 @@ export const ErrorCodes = {
   ScriptFailedError: 'ESMOKER_SCRIPTFAILED',
   SmokeError: 'ESMOKER_SMOKE',
   SmokerReferenceError: 'ESMOKER_REFERENCE',
+  TempDirError: 'ESMOKER_DIRCREATION',
   UnknownDistTagError: 'ESMOKER_UNKNOWNDISTTAG',
   UnknownScriptError: 'ESMOKER_UNKNOWNSCRIPT',
   UnknownVersionError: 'ESMOKER_UNKNOWNVERSION',
   UnknownVersionRangeError: 'ESMOKER_UNKNOWNVERSIONRANGE',
+  UnknownWorkspaceError: 'ESMOKER_UNKNOWNWORKSPACE',
   UnreadablePackageJsonError: 'ESMOKER_UNREADABLEPACKAGEJSON',
   UnresolvablePluginError: 'ESMOKER_PLUGINNOTFOUND',
   UnsupportedPackageManagerError: 'ESMOKER_UNSUPPORTEDPACKAGEMANAGER',
-  AggregateUnsupportedPkgManagerError: 'ESMOKER_UNSUPPORTEDPACKAGEMANAGERS',
   ZodValidationError: 'ESMOKER_VALIDATIONERROR',
 } as const;
 

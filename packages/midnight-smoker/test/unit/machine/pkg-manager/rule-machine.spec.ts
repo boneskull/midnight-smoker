@@ -6,6 +6,7 @@ import {type StaticRuleContext} from '#schema/rule-static';
 import Debug from 'debug';
 import {memfs} from 'memfs';
 import {type Volume} from 'memfs/lib/volume';
+import {scheduler} from 'node:timers/promises';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import {
@@ -31,12 +32,10 @@ import {createActorRunner} from '../actor-helpers';
 const debug = Debug('midnight-smoker:test:loader-machine');
 const expect = unexpected.clone();
 
-const {start, run, runUntilSnapshot, runUntilEvent} = createActorRunner(
-  RuleMachine,
-  {
+const {start, waitForActor, run, runUntilSnapshot, runUntilEvent} =
+  createActorRunner(RuleMachine, {
     logger: debug,
-  },
-);
+  });
 
 describe('midnight-smoker', function () {
   describe('machine', function () {
@@ -51,10 +50,8 @@ describe('midnight-smoker', function () {
         Snapshot<unknown>,
         PkgManagerMachineCheckResultEvent | PkgManagerMachineCheckErrorEvent
       >;
-      let signal: AbortSignal;
       const plan = 1;
       let input: RuleMachineInput;
-      let ac: AbortController;
       beforeEach(async function () {
         sandbox = createSandbox();
         ({vol} = memfs());
@@ -79,14 +76,11 @@ describe('midnight-smoker', function () {
             },
           }).createMachine({}),
         );
-        ac = new AbortController();
-        signal = ac.signal;
         input = {
           def: nullRule,
           ruleId,
           config,
           parentRef,
-          signal,
           plan,
         };
       });
@@ -139,17 +133,22 @@ describe('midnight-smoker', function () {
           ]);
         });
 
-        describe('when the signal is aborted', function () {
-          it('should abort', async function () {
+        describe('when it receives an ABORT event', function () {
+          it('should abort running check actors', async function () {
+            sandbox.stub(nullRule, 'check').callsFake(async (_, __, signal) => {
+              await scheduler.wait(500, {signal});
+            });
             const actor = start(input);
 
-            ac.abort();
+            const p = waitForActor(/^check\./, actor);
             actor.send({
               type: 'CHECK',
               ctx: {} as StaticRuleContext,
               manifest: {} as LintManifest,
             });
-
+            const actorRef = await p;
+            actor.send({type: 'ABORT'});
+            expect(actorRef.getSnapshot().status, 'to be', 'stopped');
             await expect(
               toPromise(actor),
               'to be fulfilled with value satisfying',

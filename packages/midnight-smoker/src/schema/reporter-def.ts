@@ -40,6 +40,7 @@ export type ReporterContext<Ctx = unknown> = {
   opts: SmokerOptions;
   pkgJson: PackageJson;
   plugin: StaticPluginMetadata;
+  signal: AbortSignal;
 } & Ctx;
 
 export type ReporterListener<Evt extends EventName, Ctx = unknown> = (

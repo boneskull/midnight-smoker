@@ -1,5 +1,4 @@
 import {FINAL} from '#constants';
-import {fromUnknownError} from '#error/from-unknown-error';
 import {type PackError, type PackParseError} from '#error/pack-error';
 import {SmokerEvent} from '#event/event-constants';
 import {type DataForEvent} from '#event/events';
@@ -8,6 +7,7 @@ import {type ReporterMachine} from '#machine/reporter';
 import {type SmokerOptions} from '#options/options';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {type WorkspaceInfo} from '#schema/workspaces';
+import {fromUnknownError} from '#util/error-util';
 import {asResult} from '#util/util';
 import {
   assign,

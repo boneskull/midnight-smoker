@@ -1,5 +1,4 @@
 import {ERROR, FAILED, FINAL, OK, PARALLEL, SKIPPED} from '#constants';
-import {fromUnknownError} from '#error/from-unknown-error';
 import {type InstallError} from '#error/install-error';
 import {LifecycleError} from '#error/lifecycle-error';
 import {MachineError} from '#error/machine-error';
@@ -32,6 +31,7 @@ import {type RunScriptResult} from '#schema/run-script-result';
 import {type SomeRuleDef} from '#schema/some-rule-def';
 import {type StaticPluginMetadata} from '#schema/static-plugin-metadata';
 import {type Result, type WorkspaceInfo} from '#schema/workspaces';
+import {fromUnknownError} from '#util/error-util';
 import {type FileManager} from '#util/filemanager';
 import {serialize} from '#util/serialize';
 import {uniqueId} from '#util/unique-id';
@@ -48,6 +48,7 @@ import {
   setup,
   type ActorRef,
   type ActorRefFrom,
+  type AnyActorRef,
   type Snapshot,
 } from 'xstate';
 import {type StaticPkgManagerSpec} from '../../pkg-manager';
@@ -76,7 +77,6 @@ export type PkgManagerMachineOutput = ActorOutput;
 export type InstallJob = InstallManifest;
 
 export interface PkgManagerMachineContext extends PkgManagerMachineInput {
-  abortController: AbortController;
   additionalDeps: string[];
   ctx?: PkgManagerContext;
 
@@ -106,6 +106,8 @@ export interface PkgManagerMachineContext extends PkgManagerMachineInput {
   shouldShutdown: boolean;
   tmpdir?: string;
   workspaceInfoResult: Result<WorkspaceInfo>[];
+
+  actorRefs: Record<string, AnyActorRef>;
 }
 
 export interface PkgManagerMachineInput {
@@ -180,11 +182,6 @@ export interface PkgManagerMachineInput {
   scripts?: string[];
   shouldLint?: boolean;
   shouldShutdown?: boolean;
-
-  /**
-   * Abort signal to cancel everything immediately, clean up & shut down
-   */
-  signal: AbortSignal;
   spec: PkgManagerSpec;
   useWorkspaces: boolean;
   workspaceInfo: WorkspaceInfo[];
@@ -483,19 +480,48 @@ export const PkgManagerMachine = setup({
         enqueue.sendTo(parentRef, evtEnd);
       },
     ),
-    runScript: enqueueActions(
-      ({
-        enqueue,
-        self: {id: sender},
+    spawnRunScript: assign({
+      actorRefs: ({
+        spawn,
         context: {
-          abortController: {signal},
+          def,
+          ctx,
+          actorRefs,
           runScriptQueue = [],
           pkgManager,
           scripts,
-          ctx,
-          parentRef,
-          def,
         },
+      }) => {
+        assert.ok(!isEmpty(runScriptQueue));
+        assert.ok(!isEmpty(scripts));
+        assert.ok(ctx);
+
+        const queue = [...runScriptQueue];
+        const manifest = queue.shift();
+        assert.ok(manifest);
+        const id = uniqueId({
+          prefix: 'runScript',
+          postfix: manifest.pkgName,
+        });
+        const ref = spawn('runScript', {
+          id,
+          input: {
+            def,
+            ctx: {
+              manifest,
+              ...ctx,
+            },
+            spec: pkgManager,
+          },
+        });
+        return {...actorRefs, [id]: ref};
+      },
+    }),
+    sendRunScriptBegin: enqueueActions(
+      ({
+        enqueue,
+        self: {id: sender},
+        context: {runScriptQueue = [], pkgManager, scripts, ctx, parentRef},
       }) => {
         assert.ok(!isEmpty(runScriptQueue));
         assert.ok(!isEmpty(scripts));
@@ -511,23 +537,6 @@ export const PkgManagerMachine = setup({
           sender,
         };
         enqueue.sendTo(parentRef, evt);
-        const id = uniqueId({
-          prefix: 'runScript',
-          postfix: manifest.pkgName,
-        });
-        enqueue.spawnChild('runScript', {
-          id,
-          input: {
-            def,
-            ctx: {
-              manifest,
-              signal,
-              ...ctx,
-            },
-            signal,
-            spec: pkgManager,
-          },
-        });
         enqueue.assign({
           runScriptQueue: queue,
         });
@@ -537,14 +546,7 @@ export const PkgManagerMachine = setup({
       ({
         self: {id: sender},
         enqueue,
-        context: {
-          abortController: {signal},
-          def,
-          ctx,
-          pkgManager,
-          packQueue,
-          parentRef,
-        },
+        context: {def, ctx, pkgManager, packQueue, parentRef},
       }) => {
         assert.ok(ctx);
         const queue = [...packQueue];
@@ -564,9 +566,7 @@ export const PkgManagerMachine = setup({
             ctx: {
               ...ctx,
               ...workspace,
-              signal,
             },
-            signal,
             spec: pkgManager,
           },
         });
@@ -977,11 +977,7 @@ export const PkgManagerMachine = setup({
       ruleMachineRefs: ({
         self,
         spawn,
-        context: {
-          ruleInitPayloads,
-          ruleConfigs,
-          abortController: {signal},
-        },
+        context: {ruleInitPayloads, ruleConfigs},
       }) => {
         return Object.fromEntries(
           ruleInitPayloads.map(({def, id: ruleId}) => {
@@ -994,7 +990,6 @@ export const PkgManagerMachine = setup({
                 ruleId,
                 config: ruleConfigs[ruleId],
                 parentRef: self,
-                signal,
               },
             });
             // INDEXED BY RULE ID
@@ -1094,8 +1089,6 @@ export const PkgManagerMachine = setup({
       ...input
     },
   }) => {
-    const abortController: PkgManagerMachineContext['abortController'] =
-      new AbortController();
     const workspaceInfoResult: PkgManagerMachineContext['workspaceInfoResult'] =
       workspaceInfo.map(asResult);
     const pkgManager: PkgManagerMachineContext['pkgManager'] = serialize(spec);
@@ -1107,12 +1100,13 @@ export const PkgManagerMachine = setup({
     const installQueue: PkgManagerMachineContext['installQueue'] = [];
     const runScriptQueue: PkgManagerMachineContext['runScriptQueue'] = [];
     const lintQueue: PkgManagerMachineContext['lintQueue'] = [];
+    const actorRefs: Record<string, AnyActorRef> = {};
     return {
       ...input,
+      actorRefs,
       spec,
       workspaceInfoResult,
       pkgManager,
-      abortController,
       workspaceInfo,
       ruleInitPayloads,
       ruleDefs,
@@ -1127,21 +1121,15 @@ export const PkgManagerMachine = setup({
       ruleResultMap,
     };
   },
-  on: {
-    ABORT: {
-      actions: [
-        ({context: {abortController}}) => {
-          abortController.abort();
-        },
-      ],
-    },
-  },
   always: [
     {
       guard: 'hasError',
       actions: [log(({context: {error}}) => `ERROR: ${error?.message}`)],
     },
   ],
+  on: {
+    ABORT: {},
+  },
   states: {
     startup: {
       initial: 'readyingFilesystem',
@@ -1150,10 +1138,9 @@ export const PkgManagerMachine = setup({
           entry: [log('creating temp dir')],
           invoke: {
             src: 'createTempDir',
-            input: ({context: {abortController, fileManager, spec}}) => ({
+            input: ({context: {fileManager, spec}}) => ({
               spec,
               fileManager,
-              signal: abortController.signal,
             }),
             onDone: {
               actions: [
@@ -1190,18 +1177,11 @@ export const PkgManagerMachine = setup({
           entry: [log('running setup lifecycle hook')],
           invoke: {
             src: 'setupPkgManager',
-            input: ({
-              context: {
-                def,
-                ctx,
-                abortController: {signal},
-              },
-            }) => {
+            input: ({context: {def, ctx}}) => {
               assert.ok(ctx);
               return {
                 def,
                 ctx,
-                signal,
               };
             },
             onDone: {
@@ -1329,10 +1309,6 @@ export const PkgManagerMachine = setup({
               entry: [log('packing complete')],
               type: FINAL,
             },
-            aborted: {
-              entry: log('packing aborted'),
-              type: FINAL,
-            },
           },
         },
         installing: {
@@ -1373,24 +1349,16 @@ export const PkgManagerMachine = setup({
                   invoke: {
                     src: 'install',
                     input: ({
-                      context: {
-                        def,
-                        ctx,
-                        abortController: {signal},
-                        currentInstallJob,
-                        pkgManager,
-                      },
+                      context: {def, ctx, currentInstallJob, pkgManager},
                     }): InstallInput => {
                       assert.ok(currentInstallJob);
                       assert.ok(ctx);
 
                       return {
                         def,
-                        signal,
                         ctx: {
                           ...ctx,
                           installManifest: currentInstallJob,
-                          signal,
                         },
                         spec: pkgManager,
                       };
@@ -1463,10 +1431,6 @@ export const PkgManagerMachine = setup({
               entry: [log('installation errored')],
               type: FINAL,
             },
-            aborted: {
-              entry: log('installation aborted'),
-              type: FINAL,
-            },
           },
         },
         runningScripts: {
@@ -1507,7 +1471,8 @@ export const PkgManagerMachine = setup({
                         job ?? {};
                       return `running script ${script} in ${pkgName}`;
                     }),
-                    {type: 'runScript'},
+                    {type: 'spawnRunScript'},
+                    {type: 'sendRunScriptBegin'},
                   ],
                   target: 'running',
                 },
@@ -1580,10 +1545,6 @@ export const PkgManagerMachine = setup({
                   target: 'errored',
                 },
               },
-            },
-            aborted: {
-              entry: log('script run aborted'),
-              type: FINAL,
             },
             errored: {
               entry: log('script run errored'),
@@ -1675,10 +1636,6 @@ export const PkgManagerMachine = setup({
             },
             errored: {
               entry: log('linting errored'),
-              type: FINAL,
-            },
-            aborted: {
-              entry: log('linting aborted'),
               type: FINAL,
             },
           },

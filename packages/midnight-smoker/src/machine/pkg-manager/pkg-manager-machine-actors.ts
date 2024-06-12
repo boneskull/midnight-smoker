@@ -1,6 +1,5 @@
 import {ERROR, FAILED} from '#constants';
-import {AbortError} from '#error/abort-error';
-import {fromUnknownError} from '#error/from-unknown-error';
+import {AbortError, isAbortError} from '#error/abort-error';
 import {InstallError} from '#error/install-error';
 import {PackError, PackParseError} from '#error/pack-error';
 import {RunScriptError} from '#error/run-script-error';
@@ -23,7 +22,7 @@ import {
 } from '#schema/run-script-result';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {type WorkspaceInfo} from '#schema/workspaces';
-import {isExecaError, isSmokerError} from '#util/error-util';
+import {fromUnknownError, isExecaError, isSmokerError} from '#util/error-util';
 import {type FileManager} from '#util/filemanager';
 import {isFunction} from 'lodash';
 import {fromPromise} from 'xstate';
@@ -50,7 +49,6 @@ export type RunScriptInput = OperationInput<PkgManagerRunScriptContext>;
 export interface CreateTempDirInput {
   fileManager: FileManager;
   spec: PkgManagerSpec;
-  signal: AbortSignal;
 }
 
 /**
@@ -65,10 +63,9 @@ export interface LifecycleInput {
  * Common input for various actors
  */
 export interface OperationInput<Ctx extends PkgManagerContext> {
-  ctx: Ctx;
+  ctx: Omit<Ctx, 'signal'>;
   def: PkgManagerDef;
   spec: StaticPkgManagerSpec;
-  signal: AbortSignal;
 }
 
 /**
@@ -77,7 +74,6 @@ export interface OperationInput<Ctx extends PkgManagerContext> {
 export interface PrepareLintItemInput {
   fileManager: FileManager;
   lintItem: Omit<LintManifest, 'pkgJson' | 'pkgJsonPath'>;
-  signal: AbortSignal;
 }
 
 /**
@@ -94,11 +90,8 @@ export interface PruneTempDirInput {
  * Happens prior to the "setup" lifecycle hook
  */
 export const createTempDir = fromPromise<string, CreateTempDirInput>(
-  async ({input: {spec, fileManager, signal}}) => {
-    if (signal.aborted) {
-      throw new AbortError(signal.reason);
-    }
-    return fileManager.createTempDir(`${spec.bin}-${spec.version}`);
+  async ({input: {spec, fileManager}, signal}) => {
+    return fileManager.createTempDir(`${spec.bin}-${spec.version}`, signal);
   },
 );
 
@@ -120,8 +113,8 @@ export const setupPkgManager = fromPromise<void, LifecycleInput>(
  * This happens after the teardown lifecycle hook
  */
 export const pruneTempDir = fromPromise<void, PruneTempDirInput>(
-  async ({input: {tmpdir, fileManager}}) => {
-    await fileManager.pruneTempDir(tmpdir);
+  async ({input: {tmpdir, fileManager}, signal}) => {
+    await fileManager.pruneTempDir(tmpdir, signal);
   },
 );
 
@@ -141,13 +134,13 @@ export const teardownPkgManager = fromPromise<void, LifecycleInput>(
  * Packs a package into a tarball
  */
 export const pack = fromPromise<InstallManifest, PackInput>(
-  async ({input: {def, ctx, spec, signal}}) => {
-    await Promise.resolve();
+  async ({input: {def, ctx, spec}, signal}) => {
     if (signal.aborted) {
       throw new AbortError(signal.reason);
     }
+    await Promise.resolve();
     try {
-      const manifest = await def.pack(ctx);
+      const manifest = await def.pack({...ctx, signal});
       return {localPath: ctx.localPath, ...manifest};
     } catch (err) {
       if (isSmokerError(PackError, err) || isSmokerError(PackParseError, err)) {
@@ -173,13 +166,13 @@ export const pack = fromPromise<InstallManifest, PackInput>(
  * Installs a package
  */
 export const install = fromPromise<InstallResult, InstallInput>(
-  async ({input: {def, ctx, spec, signal}}) => {
-    await Promise.resolve();
+  async ({input: {def, ctx, spec}, signal}) => {
     if (signal.aborted) {
       throw new AbortError(signal.reason);
     }
+    await Promise.resolve();
     try {
-      const rawResult = await def.install(ctx);
+      const rawResult = await def.install({...ctx, signal});
       if (!isExecaError(rawResult) && rawResult.failed) {
         throw new InstallError(
           'Install failed',
@@ -219,16 +212,22 @@ export const install = fromPromise<InstallResult, InstallInput>(
  * thrown--if the `runScript` method is doing what it's supposed to be doing.
  */
 export const runScript = fromPromise<RunScriptOutput, RunScriptInput>(
-  async ({input: {def, ctx, signal}}) => {
-    await Promise.resolve();
+  async ({input: {def, ctx}, signal, self}) => {
     if (signal.aborted) {
-      throw new AbortError(signal.reason);
+      throw new AbortError(signal.reason, self.id);
     }
+    await Promise.resolve();
     const {manifest} = ctx;
     try {
-      const result = await def.runScript(ctx);
+      const result = await def.runScript({...ctx, signal});
       return {result, manifest};
     } catch (err) {
+      if (isAbortError(err)) {
+        if (isSmokerError(AbortError, err)) {
+          throw err;
+        }
+        throw new AbortError(err.message || signal.reason, self.id);
+      }
       let result: RunScriptResultError | RunScriptResultFailed;
       if (
         isSmokerError(RunScriptError, err) ||
@@ -258,14 +257,11 @@ export const runScript = fromPromise<RunScriptOutput, RunScriptInput>(
  * Assigns package.json information to a {@link LintManifest}
  */
 export const prepareLintItem = fromPromise<LintManifest, PrepareLintItemInput>(
-  async ({input: {lintItem, fileManager, signal}}) => {
-    await Promise.resolve();
-    if (signal.aborted) {
-      throw new AbortError(signal.reason);
-    }
+  async ({input: {lintItem, fileManager}, signal}) => {
     const {packageJson: pkgJson, path: pkgJsonPath} =
       await fileManager.findPkgUp(lintItem.installPath, {
         strict: true,
+        signal,
       });
     return {...lintItem, pkgJson, pkgJsonPath};
   },

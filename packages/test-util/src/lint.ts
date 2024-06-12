@@ -3,7 +3,7 @@ import {
   DEFAULT_PKG_MANAGER_BIN,
   DEFAULT_PKG_MANAGER_VERSION,
 } from 'midnight-smoker/constants';
-import {PluginInitError, fromUnknownError} from 'midnight-smoker/error';
+import {PluginInitError} from 'midnight-smoker/error';
 import {
   RuleMachine,
   createActor,
@@ -29,6 +29,7 @@ import {
   type StaticRuleContext,
 } from 'midnight-smoker/rule';
 import {type LintManifest} from 'midnight-smoker/schema';
+import {fromUnknownError} from 'midnight-smoker/util';
 
 const DEFAULT_PKG_MANAGER_SPEC = `${DEFAULT_PKG_MANAGER_BIN}@${DEFAULT_PKG_MANAGER_VERSION}`;
 
@@ -163,11 +164,7 @@ export async function runRule<T extends SomeRuleDef>(
   ruleOptions?:
     | Partial<RuleOptions<T['schema']>>
     | Partial<RuleConfig<T['schema']>>,
-  {
-    ruleContext,
-    lintManifest,
-    signal = new AbortSignal(),
-  }: RuleRunnerOptions = {},
+  {ruleContext, lintManifest}: RuleRunnerOptions = {},
 ): Promise<CheckOutput> {
   /**
    * This tells the rule machine to run only one check then exit.
@@ -222,7 +219,6 @@ export async function runRule<T extends SomeRuleDef>(
     ruleId,
     config,
     plan,
-    signal,
   };
 
   const checkEvent: RuleMachineCheckEvent = {type: 'CHECK', ctx, manifest};

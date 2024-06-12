@@ -1,11 +1,10 @@
 import {ExecError} from '#error/exec-error';
 import {isExecResult, type ExecResult} from '#schema/exec-result';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
-import {isExecaError, isSmokerError} from '#util/error-util';
+import {fromUnknownError, isExecaError, isSmokerError} from '#util/error-util';
 import {red} from 'chalk';
 import {isString} from 'lodash';
 import {BaseSmokerError} from './base-error';
-import {fromUnknownError} from './from-unknown-error';
 
 /**
  * @group Errors

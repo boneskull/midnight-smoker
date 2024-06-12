@@ -1,4 +1,3 @@
-import {fromUnknownError} from '#error/from-unknown-error';
 import {RuleError} from '#error/rule-error';
 import {type CheckFailed, type CheckOk} from '#schema/check-result';
 import {
@@ -6,6 +5,7 @@ import {
   type StaticRuleContext,
   type StaticRuleDef,
 } from '#schema/rule-static';
+import {fromUnknownError} from '#util/error-util';
 import {serialize} from '#util/serialize';
 import {asResult} from '#util/util';
 import {type PackageJson} from 'type-fest';

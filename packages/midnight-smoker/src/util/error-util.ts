@@ -1,9 +1,12 @@
 import {type SmokerError} from '#error/base-error';
 import {ExecaErrorSchema} from '#schema/execa-error';
+import Debug from 'debug';
 import {type ExecaError} from 'execa';
 import {isError} from 'lodash';
 import {type Class} from 'type-fest';
 import type {ZodError} from 'zod-validation-error';
+
+const debug = Debug('midnight-smoker:util:error-util');
 
 /**
  * Type guard for {@link NodeJS.ErrnoException}
@@ -45,4 +48,19 @@ export function isExecaError(error: unknown): error is ExecaError {
  */
 export function isZodError(value: unknown): value is ZodError {
   return isError(value) && value.name === 'ZodError';
+}
+
+/**
+ * Converts something that was thrown to an `Error` instance, if not already.
+ *
+ * @param err - A thrown thing
+ * @returns The original thing (if an `Error`) otherwise a new `Error`
+ */
+
+export function fromUnknownError(err?: unknown): Error {
+  if (isError(err)) {
+    return err;
+  }
+  debug('Handling unknown error: %o', err);
+  return new Error(`Unknown error: ${err}`);
 }

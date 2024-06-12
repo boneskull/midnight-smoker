@@ -14,7 +14,7 @@ import {type RunScriptManifest} from '#schema/run-script-manifest';
 import {type RunScriptResult} from '#schema/run-script-result';
 import {type SomeRuleDef} from '#schema/some-rule-def';
 import {type Result} from '#schema/workspaces';
-import {type AbortEvent} from '../util/abort-listener';
+import {type AbortEvent} from '../util/abort-event';
 
 export type CheckOutput = CheckOutputOk | CheckOutputFailed;
 
@@ -42,8 +42,6 @@ export interface CheckInput {
    * This is for round-tripping
    */
   manifest: LintManifest;
-
-  signal: AbortSignal;
 }
 
 export interface BaseCheckOutput {

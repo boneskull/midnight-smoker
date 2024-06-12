@@ -1,9 +1,9 @@
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {type WorkspaceInfo} from '#schema/workspaces';
+import {fromUnknownError} from '#util/error-util';
 import {red} from 'chalk';
 import {isString} from 'lodash';
 import {BaseSmokerError} from './base-error';
-import {fromUnknownError} from './from-unknown-error';
 
 /**
  * @group Errors

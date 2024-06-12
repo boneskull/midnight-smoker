@@ -1,11 +1,11 @@
 import {ERROR, FINAL, OK, PARALLEL, RuleSeverities} from '#constants';
-import {fromUnknownError} from '#error/from-unknown-error';
 import {MachineError} from '#error/machine-error';
 import {type ActorOutputError, type ActorOutputOk} from '#machine/util';
 import {type SmokerOptions} from '#options/options';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
 import {type PluginRegistry} from '#plugin/plugin-registry';
 import type {WorkspaceInfo} from '#schema/workspaces';
+import {fromUnknownError} from '#util/error-util';
 import {isFunction} from 'lodash';
 import {type PackageJson} from 'type-fest';
 import {assign, enqueueActions, log, not, setup} from 'xstate';
@@ -30,7 +30,6 @@ export type LoadableComponent =
   (typeof LoadableComponents)[keyof typeof LoadableComponents];
 
 export interface LoaderMachineInput {
-  signal: AbortSignal;
   plugin: Readonly<PluginMetadata>;
   pluginRegistry: PluginRegistry;
   smokerOptions: SmokerOptions;

@@ -62,6 +62,7 @@ describe('midnight-smoker', function () {
         });
 
         describe('pruneTempDir()', function () {
+          const {signal} = new AbortController();
           it('should not prune a dir it did not create', async function () {
             const dir = '/some/dir';
             sandbox.stub(fm, 'rimraf');
@@ -70,18 +71,18 @@ describe('midnight-smoker', function () {
           });
 
           it('should prune a dir it created', async function () {
-            const dir = await fm.createTempDir();
+            const dir = await fm.createTempDir('', signal);
             sandbox.stub(fm, 'rimraf');
-            await fm.pruneTempDir(dir);
-            expect(fm.rimraf, 'to have a call satisfying', [dir]);
+            await fm.pruneTempDir(dir, signal);
+            expect(fm.rimraf, 'to have a call satisfying', [dir, signal]);
           });
 
           describe('when rimraf rejects', function () {
             it('should eat the error', async function () {
-              const dir = await fm.createTempDir();
+              const dir = await fm.createTempDir('', signal);
               sandbox.stub(fm, 'rimraf').rejects(new Error('foo'));
-              await expect(fm.pruneTempDir(dir), 'to be fulfilled');
-              expect(fm.rimraf, 'to have a call satisfying', [dir]);
+              await expect(fm.pruneTempDir(dir, signal), 'to be fulfilled');
+              expect(fm.rimraf, 'to have a call satisfying', [dir, signal]);
             });
           });
         });

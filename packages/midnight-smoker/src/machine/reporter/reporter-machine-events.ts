@@ -1,4 +1,6 @@
 import {type SomeDataForEvent} from '#event/events';
+import {type ReporterContext} from '#schema/reporter-def';
+import {type Except} from 'type-fest';
 
 export type ReporterMachineEvents =
   | ReporterMachineCtrlEvent
@@ -17,3 +19,5 @@ export interface ReporterMachineHaltEvent {
 export interface ReporterMachineAbortEvent {
   type: 'ABORT';
 }
+
+export type PartialReporterContext = Except<ReporterContext, 'signal'>;

@@ -1,6 +1,5 @@
 import {FAILED, FINAL, OK} from '#constants';
-import {AbortError} from '#error/abort-error';
-import {fromUnknownError} from '#error/from-unknown-error';
+import {AbortError, isAbortError} from '#error/abort-error';
 import {MachineError} from '#error/machine-error';
 import {RuleError} from '#error/rule-error';
 import {RuleContext} from '#rule/rule-context';
@@ -8,7 +7,7 @@ import {type LintManifest} from '#schema/lint-manifest';
 import {type SomeRuleConfig} from '#schema/rule-options';
 import {type StaticRuleContext} from '#schema/rule-static';
 import {type SomeRuleDef} from '#schema/some-rule-def';
-import {isSmokerError} from '#util/error-util';
+import {fromUnknownError, isSmokerError} from '#util/error-util';
 import {uniqueId} from '#util/unique-id';
 import {asResult} from '#util/util';
 import {isNumber} from 'lodash';
@@ -23,6 +22,7 @@ import {
   type Snapshot,
 } from 'xstate';
 import {serialize} from '../../util/serialize';
+import {type AbortEvent} from '../util/abort-event';
 import {
   type CheckInput,
   type CheckOutput,
@@ -66,11 +66,6 @@ export interface RuleMachineInput {
    * Used by test code
    */
   plan?: number;
-
-  /**
-   * The signal to abort the operation
-   */
-  signal: AbortSignal;
 }
 
 /**
@@ -154,6 +149,7 @@ export type RuleMachineEvent =
   | RuleMachineCheckEvent
   | RuleMachineCheckErrorEvent
   | RuleMachineCheckActorErrorEvent
+  | AbortEvent
   | RuleMachineCheckActorDoneEvent;
 
 /**
@@ -161,8 +157,8 @@ export type RuleMachineEvent =
  * user-provided configuration
  */
 export const check = fromPromise<CheckOutput, CheckInput>(
-  async ({self, input}) => {
-    const {ctx: staticCtx, opts, def, ruleId, signal} = input;
+  async ({self, input, signal}) => {
+    const {ctx: staticCtx, opts, def, ruleId} = input;
     if (signal.aborted) {
       throw new AbortError(signal.reason, self.id);
     }
@@ -170,8 +166,14 @@ export const check = fromPromise<CheckOutput, CheckInput>(
     const ctx = RuleContext.create(def, staticCtx, ruleId);
 
     try {
-      await def.check(ctx, opts);
+      await def.check(ctx, opts, signal);
     } catch (err) {
+      if (isAbortError(err)) {
+        if (isSmokerError(AbortError, err)) {
+          throw err;
+        }
+        throw new AbortError(err.message || signal.reason, self.id);
+      }
       throw new RuleError(
         `Rule "${ruleId}" threw an exception`,
         ctx,
@@ -179,6 +181,7 @@ export const check = fromPromise<CheckOutput, CheckInput>(
         fromUnknownError(err),
       );
     }
+
     const result = ctx.finalize();
     const manifest = asResult(serialize(input.manifest));
     switch (result.type) {
@@ -277,7 +280,6 @@ export const RuleMachine = setup({
             config: {opts},
             checkRefs = {},
             ruleId,
-            signal,
           },
         },
         {ctx, manifest}: {ctx: StaticRuleContext; manifest: LintManifest},
@@ -285,7 +287,7 @@ export const RuleMachine = setup({
         const id = uniqueId({prefix: 'check', postfix: ruleId});
         const actor = spawn('check', {
           id,
-          input: {def, ruleId, opts, ctx, manifest, signal},
+          input: {def, ruleId, opts, ctx, manifest},
         });
         return {
           ...checkRefs,
@@ -357,6 +359,16 @@ export const RuleMachine = setup({
       },
     ),
 
+    stopAllCheckActors: enqueueActions(
+      ({enqueue, context: {checkRefs = {}}}) => {
+        for (const actor of Object.values(checkRefs)) {
+          enqueue.stopChild(actor);
+        }
+
+        enqueue.assign({checkRefs: undefined});
+      },
+    ),
+
     /**
      * Appends the result of a {@link check} actor to
      * {@link RuleMachineContext.results}
@@ -386,6 +398,10 @@ export const RuleMachine = setup({
       },
       exit: [assign({checkRefs: undefined})],
       on: {
+        ABORT: {
+          actions: [{type: 'stopAllCheckActors'}],
+          target: 'aborted',
+        },
         'xstate.done.actor.check.*': {
           actions: [
             {
@@ -406,40 +422,25 @@ export const RuleMachine = setup({
             },
           ],
         },
-        'xstate.error.actor.check.*': [
-          {
-            guard: ({event: {error}}) => isSmokerError(AbortError, error),
-            actions: [
-              {
-                type: 'stopCheckActor',
-                params: ({event: {type}}) => {
-                  // TODO: is there a better way to get the actor ID?
-                  return type.split('.')[3];
-                },
+        'xstate.error.actor.check.*': {
+          actions: [
+            {
+              type: 'sendCheckError',
+              params: ({event: {error}}) => {
+                assert.ok(isSmokerError(RuleError, error));
+                return error;
               },
-            ],
-            target: 'aborted',
-          },
-          {
-            actions: [
-              {
-                type: 'sendCheckError',
-                params: ({event: {error}}) => {
-                  assert.ok(isSmokerError(RuleError, error));
-                  return error;
-                },
+            },
+            {type: 'assignError', params: ({event: {error}}) => ({error})},
+            {
+              type: 'stopCheckActor',
+              params: ({event: {type}}) => {
+                // TODO: is there a better way to get the actor ID?
+                return type.split('.')[3];
               },
-              {type: 'assignError', params: ({event: {error}}) => ({error})},
-              {
-                type: 'stopCheckActor',
-                params: ({event: {type}}) => {
-                  // TODO: is there a better way to get the actor ID?
-                  return type.split('.')[3];
-                },
-              },
-            ],
-          },
-        ],
+            },
+          ],
+        },
         CHECK: {
           actions: {
             type: 'check',

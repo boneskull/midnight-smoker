@@ -1,5 +1,4 @@
 import {FAILED, FINAL, OK, SKIPPED} from '#constants';
-import {fromUnknownError} from '#error/from-unknown-error';
 import {SmokerEvent} from '#event/event-constants';
 import {type DataForEvent} from '#event/events';
 import {type ScriptEventData} from '#event/script-events';
@@ -8,6 +7,7 @@ import {type SmokerOptions} from '#options/options';
 import {type RunScriptResult} from '#schema/run-script-result';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {type WorkspaceInfo} from '#schema/workspaces';
+import {fromUnknownError} from '#util/error-util';
 import {asResult} from '#util/util';
 import {partition} from 'lodash';
 import assert from 'node:assert';

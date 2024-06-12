@@ -1,7 +1,6 @@
 import Debug from 'debug';
 import {isError, pickBy} from 'lodash';
 import {ERROR, FAILED, OK, SKIPPED} from 'midnight-smoker/constants';
-import {fromUnknownError} from 'midnight-smoker/error';
 import {
   ExecError,
   InstallError,
@@ -19,7 +18,7 @@ import {
   type RunScriptResult,
   type WorkspaceInfo,
 } from 'midnight-smoker/pkg-manager';
-import {isSmokerError} from 'midnight-smoker/util';
+import {fromUnknownError, isSmokerError} from 'midnight-smoker/util';
 import path from 'node:path';
 
 /**
