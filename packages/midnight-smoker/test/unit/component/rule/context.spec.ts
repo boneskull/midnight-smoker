@@ -1,10 +1,10 @@
 import {OK} from '#constants';
+import {RuleContext} from '#rule/rule-context';
+import {type StaticRuleContext} from '#schema/rule-static';
+import {type SomeRuleDef} from '#schema/some-rule-def';
 import {omit} from 'lodash';
 import unexpected from 'unexpected';
 import {fileURLToPath} from 'url';
-import {RuleContext} from '../../../../src/rule/rule-context';
-import {type StaticRuleContext} from '../../../../src/schema/rule-static';
-import {type SomeRuleDef} from '../../../../src/schema/some-rule-def';
 
 const expect = unexpected.clone();
 

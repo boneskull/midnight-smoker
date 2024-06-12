@@ -1,3 +1,7 @@
+import {DEFAULT_PKG_MANAGER_BIN, DEFAULT_PKG_MANAGER_VERSION} from '#constants';
+import type * as PMO from '#pkg-manager/pkg-manager-spec';
+import {type WorkspaceInfo} from '#schema/workspaces';
+import {FileManager} from '#util/filemanager';
 import {type Volume} from 'memfs/lib/volume';
 import path from 'node:path';
 import util from 'node:util';
@@ -5,13 +9,6 @@ import rewiremock from 'rewiremock/node';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
-import {
-  DEFAULT_PKG_MANAGER_BIN,
-  DEFAULT_PKG_MANAGER_VERSION,
-} from '../../../../src/constants';
-import type * as PMO from '../../../../src/pkg-manager/pkg-manager-spec';
-import {type WorkspaceInfo} from '../../../../src/schema/workspaces';
-import {FileManager} from '../../../../src/util';
 import {nullPkgManagerDef} from '../../mocks';
 import {createFsMocks} from '../../mocks/fs';
 
@@ -44,7 +41,7 @@ describe('midnight-smoker', function () {
             .resolves(SYSTEM_PKG_MANAGER_VERSION);
 
           ({PkgManagerOracle} = rewiremock.proxy(
-            () => require('../../../../src/pkg-manager/pkg-manager-spec'),
+            () => require('#pkg-manager/pkg-manager-spec'),
             {
               'node:child_process': {
                 execFile: Object.assign(sandbox.stub(), {

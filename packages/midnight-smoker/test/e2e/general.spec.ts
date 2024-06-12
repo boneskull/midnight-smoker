@@ -1,11 +1,11 @@
+import {DEFAULT_PKG_MANAGER_BIN} from '#constants';
+import type {ExecResult} from '#schema/exec-result';
+import {FileManager} from '#util/filemanager';
+import {resolveFrom} from '#util/loader-util';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import snapshot from 'snap-shot-it';
 import unexpected from 'unexpected';
-import {DEFAULT_PKG_MANAGER_BIN} from '../../src/constants';
-import type {ExecResult} from '../../src/schema/exec-result';
-import {FileManager} from '../../src/util/filemanager';
-import {resolveFrom} from '../../src/util/loader-util';
 import assertions from '../assertions';
 import {execSmoker, fixupOutput} from './cli-helpers';
 

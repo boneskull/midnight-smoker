@@ -1,7 +1,7 @@
+import {ExecError} from '#error/exec-error';
 import {type ExecaError} from 'execa';
 import {pick} from 'lodash';
 import unexpected from 'unexpected';
-import {ExecError} from '../../../../src/error/exec-error';
 
 const expect = unexpected.clone();
 

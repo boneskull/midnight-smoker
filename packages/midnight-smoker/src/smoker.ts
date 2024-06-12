@@ -23,6 +23,8 @@ import {type PkgManagerDef} from './pkg-manager';
 import {BLESSED_PLUGINS, PluginRegistry, isBlessedPlugin} from './plugin';
 import {type ReporterDef} from './reporter';
 
+export type {SmokeResults};
+
 /**
  * Currently, capabilities are for testing purposes because it's a huge pain to
  * make them do much more than that.

@@ -1,7 +1,7 @@
+import type {ExecResult} from '#schema/exec-result';
 import path from 'node:path';
 import snapshot from 'snap-shot-it';
 import unexpected from 'unexpected';
-import type {ExecResult} from '../../src/schema/exec-result';
 import assertions from '../assertions';
 import {execSmoker, fixupOutput} from './cli-helpers';
 

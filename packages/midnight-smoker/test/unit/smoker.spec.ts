@@ -1,24 +1,19 @@
+import {DEFAULT_COMPONENT_ID, FINAL, SYSTEM_EXECUTOR_ID} from '#constants';
+import {type ExecResult} from '#executor';
+import {type CtrlMachineOutput} from '#machine/control';
+import {type RawSmokerOptions} from '#options/options';
+import {OptionParser} from '#options/parser';
+import {PluginRegistry} from '#plugin/plugin-registry';
+import {type Result, type WorkspaceInfo} from '#schema/workspaces';
+import {Smoker, type SmokeResults} from '#smoker';
+import {FileManager} from '#util/filemanager';
+import {serialize} from '#util/serialize';
 import {memfs} from 'memfs';
 import {type Volume} from 'memfs/lib/volume';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
 import {setup, type AnyStateMachine} from 'xstate';
-import {
-  DEFAULT_COMPONENT_ID,
-  FINAL,
-  SYSTEM_EXECUTOR_ID,
-} from '../../src/constants';
-import {type SmokeResults} from '../../src/event';
-import {type ExecResult} from '../../src/executor';
-import {type CtrlMachineOutput} from '../../src/machine/control';
-import {type RawSmokerOptions} from '../../src/options/options';
-import {OptionParser} from '../../src/options/parser';
-import {PluginRegistry} from '../../src/plugin/plugin-registry';
-import {type Result, type WorkspaceInfo} from '../../src/schema/workspaces';
-import {Smoker} from '../../src/smoker';
-import {FileManager} from '../../src/util/filemanager';
-import {serialize} from '../../src/util/serialize';
 
 const expect = unexpected.clone().use(unexpectedSinon);
 

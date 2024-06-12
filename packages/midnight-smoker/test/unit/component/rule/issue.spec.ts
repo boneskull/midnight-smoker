@@ -1,14 +1,11 @@
+import {RuleSeverities} from '#constants';
+import {RuleError} from '#error/rule-error';
+import {RuleIssue, type RuleIssueParams} from '#rule/rule-issue';
+import {type CheckFailed} from '#schema/check-result';
+import type {StaticRuleContext, StaticRuleDef} from '#schema/rule-static';
+import {asResult} from '#util/util';
 import {omit} from 'lodash';
 import unexpected from 'unexpected';
-import {RuleSeverities} from '../../../../src/constants';
-import {RuleError} from '../../../../src/error/rule-error';
-import {RuleIssue, type RuleIssueParams} from '../../../../src/rule/rule-issue';
-import {type CheckFailed} from '../../../../src/schema/check-result';
-import type {
-  StaticRuleContext,
-  StaticRuleDef,
-} from '../../../../src/schema/rule-static';
-import {asResult} from '../../../../src/util/util';
 
 const expect = unexpected.clone();
 

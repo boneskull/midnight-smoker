@@ -1,8 +1,16 @@
 import {OK, RuleSeverities} from '#constants';
 import {ErrorCodes} from '#error/codes';
+import {
+  RuleMachine,
+  type PkgManagerMachineCheckErrorEvent,
+  type PkgManagerMachineCheckResultEvent,
+  type RuleMachineInput,
+} from '#machine/pkg-manager';
+import {PluginRegistry} from '#plugin/plugin-registry';
 import {type LintManifest} from '#schema/lint-manifest';
 import {type SomeRuleConfig} from '#schema/rule-options';
 import {type StaticRuleContext} from '#schema/rule-static';
+import {FileManager} from '#util/filemanager';
 import Debug from 'debug';
 import {memfs} from 'memfs';
 import {type Volume} from 'memfs/lib/volume';
@@ -16,16 +24,6 @@ import {
   type ActorRef,
   type Snapshot,
 } from 'xstate';
-import {
-  type PkgManagerMachineCheckErrorEvent,
-  type PkgManagerMachineCheckResultEvent,
-} from '../../../../src/machine/pkg-manager/pkg-manager-machine-events';
-import {
-  RuleMachine,
-  type RuleMachineInput,
-} from '../../../../src/machine/pkg-manager/rule-machine';
-import {PluginRegistry} from '../../../../src/plugin/plugin-registry';
-import {FileManager} from '../../../../src/util/filemanager';
 import {nullRule} from '../../mocks/component';
 import {createActorRunner} from '../actor-helpers';
 

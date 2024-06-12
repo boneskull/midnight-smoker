@@ -1,14 +1,12 @@
+import {OK} from '#constants';
+import {type ExecResult, type Executor} from '#executor';
+import {PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
+import {type InstallManifest} from '#schema/install-manifest';
+import {type PkgManagerDef} from '#schema/pkg-manager-def';
+import {type ReporterDef} from '#schema/reporter-def';
+import {type RuleDef} from '#schema/rule-def';
+import {type RunScriptResult} from '#schema/run-script-result';
 import path from 'node:path';
-import {OK} from '../../../src/constants';
-import {type ExecResult, type Executor} from '../../../src/executor';
-import {
-  PkgManagerSpec,
-  type InstallManifest,
-  type RunScriptResult,
-} from '../../../src/pkg-manager';
-import {type ReporterDef} from '../../../src/reporter';
-import {type PkgManagerDef} from '../../../src/schema/pkg-manager-def';
-import {type RuleDef} from '../../../src/schema/rule-def';
 
 export const nullPkgManagerDef: PkgManagerDef = {
   name: 'null',

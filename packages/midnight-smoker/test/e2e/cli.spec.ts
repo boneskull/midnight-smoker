@@ -1,8 +1,8 @@
+import {type ExecError} from '#error/exec-error';
+import {FileManager} from '#util/filemanager';
 import path from 'node:path';
 import snapshot from 'snap-shot-it';
 import unexpected from 'unexpected';
-import {type ExecError} from '../../src/error';
-import {FileManager} from '../../src/util/filemanager';
 import assertions from '../assertions';
 import {execSmoker, fixupOutput} from './cli-helpers';
 

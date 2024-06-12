@@ -1,11 +1,11 @@
+import {TRANSIENT} from '#constants';
+import {ErrorCodes} from '#error/codes';
+import type * as PM from '#plugin/plugin-metadata';
 import path from 'node:path';
 import rewiremock from 'rewiremock/node';
 import {createSandbox} from 'sinon';
 import type {PackageJson} from 'type-fest';
 import unexpected from 'unexpected';
-import {TRANSIENT} from '../../../src/constants';
-import {ErrorCodes} from '../../../src/error/codes';
-import type * as PM from '../../../src/plugin/plugin-metadata';
 import {createFsMocks} from '../mocks/fs';
 
 const expect = unexpected.clone();
@@ -28,7 +28,7 @@ describe('midnight-smoker', function () {
         const {mocks} = createFsMocks();
         sandbox = createSandbox();
         ({PluginMetadata} = rewiremock.proxy(
-          () => require('../../../src/plugin/plugin-metadata'),
+          () => require('#plugin/plugin-metadata'),
           mocks,
         ));
       });

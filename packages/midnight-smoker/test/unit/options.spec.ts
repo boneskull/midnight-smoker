@@ -1,13 +1,13 @@
+import {RuleSeverities} from '#constants';
+import type * as OP from '#options/parser';
+import type * as PR from '#plugin/plugin-registry';
+import {type SomeRuleDef} from '#schema/some-rule-def';
 import {memoize} from 'lodash';
 import rewiremock from 'rewiremock/node';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import {z} from 'zod';
 import {isValidationError} from 'zod-validation-error';
-import {RuleSeverities} from '../../src/constants';
-import type * as OP from '../../src/options/parser';
-import type * as PR from '../../src/plugin/plugin-registry';
-import {type SomeRuleDef} from '../../src/schema/some-rule-def';
 import {createFsMocks} from './mocks/fs';
 
 const expect = unexpected.clone();
@@ -30,14 +30,14 @@ describe('midnight-smoker', function () {
 
         // TODO: replace with FileManager
         const PMM = rewiremock.proxy(
-          () => require('../../src/plugin/plugin-metadata'),
+          () => require('#plugin/plugin-metadata'),
           mocks,
         );
         const Registry = rewiremock.proxy(
-          () => require('../../src/plugin/plugin-registry'),
+          () => require('#plugin/plugin-registry'),
           {
             ...mocks,
-            '../../src/util/loader-util': {
+            '#util/loader-util': {
               /**
                * This thing loads and evals files via the in-memory filesystem.
                *
@@ -54,17 +54,14 @@ describe('midnight-smoker', function () {
             },
             // this is horrid, but otherwise the PluginRegistry won't have the same
             // PluginMetadata class as we use here in the test file
-            '../../src/plugin/plugin-metadata': PMM,
+            '#plugin/plugin-metadata': PMM,
           },
         );
 
-        ({OptionParser} = rewiremock.proxy(
-          () => require('../../src/options/parser'),
-          {
-            ...mocks,
-            '../../src/plugin/plugin-registry': Registry,
-          },
-        ));
+        ({OptionParser} = rewiremock.proxy(() => require('#options/parser'), {
+          ...mocks,
+          '#plugin/plugin-registry': Registry,
+        }));
 
         ({PluginRegistry} = Registry);
 

@@ -1,4 +1,23 @@
+import {ERROR, FAILED, OK, SKIPPED} from '#constants';
+import {ErrorCodes} from '#error/codes';
+import {ScriptFailedError} from '#error/script-failed-error';
+import {type RuleInitPayload} from '#machine/loader';
+import {
+  PkgManagerMachine,
+  type PkgManagerMachineInput,
+} from '#machine/pkg-manager';
+import {type SmokerOptions} from '#options/options';
+import {OptionParser} from '#options/parser';
+import {PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
+import {type PluginMetadata} from '#plugin/plugin-metadata';
+import {PluginRegistry} from '#plugin/plugin-registry';
+import {type PkgManagerDef} from '#schema/pkg-manager-def';
+import {type RunScriptManifest} from '#schema/run-script-manifest';
+import {type RunScriptResultFailed} from '#schema/run-script-result';
 import {type StaticPluginMetadata} from '#schema/static-plugin-metadata';
+import {type WorkspaceInfo} from '#schema/workspaces';
+import {FileManager} from '#util/filemanager';
+import {serialize} from '#util/serialize';
 import Debug from 'debug';
 import {memfs} from 'memfs';
 import {type Volume} from 'memfs/lib/volume';
@@ -6,25 +25,6 @@ import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
 import {createEmptyActor, type AnyActorRef} from 'xstate';
-import {ERROR, FAILED, OK, SKIPPED} from '../../../../src/constants';
-import {ErrorCodes, ScriptFailedError} from '../../../../src/error';
-import {type RuleInitPayload} from '../../../../src/machine/loader/loader-machine-types';
-import {
-  PkgManagerMachine,
-  type PkgManagerMachineInput,
-} from '../../../../src/machine/pkg-manager';
-import {OptionParser, type SmokerOptions} from '../../../../src/options';
-import {
-  PkgManagerSpec,
-  type PkgManagerDef,
-  type RunScriptManifest,
-  type RunScriptResultFailed,
-  type WorkspaceInfo,
-} from '../../../../src/pkg-manager';
-import {type PluginMetadata} from '../../../../src/plugin';
-import {PluginRegistry} from '../../../../src/plugin/plugin-registry';
-import {FileManager} from '../../../../src/util/filemanager';
-import {serialize} from '../../../../src/util/serialize';
 import {nullExecutor, nullPkgManagerDef, nullRule} from '../../mocks/component';
 import {createActorRunner} from '../actor-helpers';
 const debug = Debug('midnight-smoker:test:pkg-manager-machine');

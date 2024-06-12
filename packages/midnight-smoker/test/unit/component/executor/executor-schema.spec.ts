@@ -1,9 +1,6 @@
+import {ExecError} from '#error/exec-error';
+import {ExecErrorSchema, ExecResultSchema} from '#schema/exec-result';
 import unexpected from 'unexpected';
-import {ExecError} from '../../../../src/error/exec-error';
-import {
-  ExecErrorSchema,
-  ExecResultSchema,
-} from '../../../../src/schema/exec-result';
 
 const expect = unexpected.clone();
 

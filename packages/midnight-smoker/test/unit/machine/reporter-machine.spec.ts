@@ -1,18 +1,7 @@
+import {ERROR} from '#constants';
 import {ErrorCodes} from '#error/codes';
-import {type StaticPluginMetadata} from '#schema/static-plugin-metadata';
-import {memfs} from 'memfs';
-import {type Volume} from 'memfs/lib/volume';
-import {createSandbox} from 'sinon';
-import {type PackageJson} from 'type-fest';
-import unexpected from 'unexpected';
-import unexpectedSinon from 'unexpected-sinon';
-import {toPromise, type Actor} from 'xstate';
-import {ERROR} from '../../../src/constants';
-import {
-  SmokerEvent,
-  type DataForEvent,
-  type EventData,
-} from '../../../src/event';
+import {SmokerEvent} from '#event/event-constants';
+import {type DataForEvent, type EventData} from '#event/events';
 import {
   ReporterMachine,
   drainQueue,
@@ -20,13 +9,22 @@ import {
   teardownReporter,
   type DrainQueueInput,
   type ReporterLifecycleHookInput,
-} from '../../../src/machine/reporter';
-import {OptionParser, type SmokerOptions} from '../../../src/options';
-import {type PluginMetadata} from '../../../src/plugin';
-import {PluginRegistry} from '../../../src/plugin/plugin-registry';
-import {type ReporterDef} from '../../../src/reporter';
-import {FileManager} from '../../../src/util/filemanager';
-import {serialize} from '../../../src/util/serialize';
+} from '#machine/reporter';
+import {OptionParser} from '#options/parser';
+import {type PluginMetadata} from '#plugin/plugin-metadata';
+import {PluginRegistry} from '#plugin/plugin-registry';
+import {type ReporterDef} from '#schema/reporter-def';
+import {type StaticPluginMetadata} from '#schema/static-plugin-metadata';
+import {FileManager} from '#util/filemanager';
+import {serialize} from '#util/serialize';
+import {memfs} from 'memfs';
+import {type Volume} from 'memfs/lib/volume';
+import {createSandbox} from 'sinon';
+import {type PackageJson} from 'type-fest';
+import unexpected from 'unexpected';
+import unexpectedSinon from 'unexpected-sinon';
+import {toPromise, type Actor} from 'xstate';
+import {type SmokerOptions} from '../../../src';
 import {nullReporter} from '../mocks/component';
 import {createActorRunner} from './actor-helpers';
 

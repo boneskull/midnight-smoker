@@ -1,7 +1,7 @@
+import * as loaderUtil from '#util/loader-util';
 import {Module} from 'node:module';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
-import * as loaderUtil from '../../../src/util/loader-util';
 
 const expect = unexpected.clone();
 

@@ -1,15 +1,16 @@
+import {ERROR} from '#constants';
 import {ErrorCodes} from '#error/codes';
+import {LoadableComponents, LoaderMachine} from '#machine/loader';
+import {type SmokerOptions} from '#options/options';
+import {OptionParser} from '#options/parser';
+import {type PluginMetadata} from '#plugin/plugin-metadata';
+import {PluginRegistry} from '#plugin/plugin-registry';
+import {type WorkspaceInfo} from '#schema/workspaces';
+import {FileManager} from '#util/filemanager';
 import {memfs} from 'memfs';
 import {type Volume} from 'memfs/lib/volume';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
-import {ERROR} from '../../../src/constants';
-import {LoadableComponents, LoaderMachine} from '../../../src/machine/loader';
-import {OptionParser, type SmokerOptions} from '../../../src/options';
-import {type PluginMetadata} from '../../../src/plugin';
-import {PluginRegistry} from '../../../src/plugin/plugin-registry';
-import {type WorkspaceInfo} from '../../../src/schema/workspaces';
-import {FileManager} from '../../../src/util/filemanager';
 import {nullPkgManagerDef, nullReporter, nullRule} from '../mocks/component';
 import {createActorRunner} from './actor-helpers';
 

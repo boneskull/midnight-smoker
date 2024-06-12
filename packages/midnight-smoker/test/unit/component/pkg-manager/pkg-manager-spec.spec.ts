@@ -1,13 +1,10 @@
+import {DEFAULT_PKG_MANAGER_BIN, DEFAULT_PKG_MANAGER_VERSION} from '#constants';
+import type * as PMS from '#pkg-manager/pkg-manager-spec';
 import rewiremock from 'rewiremock/node';
 import {SemVer} from 'semver';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
-import {
-  DEFAULT_PKG_MANAGER_BIN,
-  DEFAULT_PKG_MANAGER_VERSION,
-} from '../../../../src/constants';
-import type * as PMS from '../../../../src/pkg-manager/pkg-manager-spec';
 import {createFsMocks} from '../../mocks/fs';
 
 const expect = unexpected.clone().use(unexpectedSinon);
@@ -26,7 +23,7 @@ describe('midnight-smoker', function () {
           sandbox = createSandbox();
           const {mocks} = createFsMocks();
           ({PkgManagerSpec, PkgManagerOracle} = rewiremock.proxy(
-            () => require('../../../../src/pkg-manager/pkg-manager-spec'),
+            () => require('#pkg-manager/pkg-manager-spec'),
             {
               ...mocks,
             },

@@ -1,15 +1,12 @@
+import {DEFAULT_PKG_MANAGER_BIN, DEFAULT_PKG_MANAGER_VERSION} from '#constants';
+import {ErrorCodes} from '#error/codes';
+import type * as PMLoader from '#pkg-manager/pkg-manager-loader';
+import {type PkgManagerDef} from '#schema/pkg-manager-def';
+import {type WorkspaceInfo} from '#schema/workspaces';
 import rewiremock from 'rewiremock/node';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
-import {
-  DEFAULT_PKG_MANAGER_BIN,
-  DEFAULT_PKG_MANAGER_VERSION,
-} from '../../../../src/constants';
-import {ErrorCodes} from '../../../../src/error';
-import type * as PMLoader from '../../../../src/pkg-manager/pkg-manager-loader';
-import {type PkgManagerDef} from '../../../../src/schema/pkg-manager-def';
-import {type WorkspaceInfo} from '../../../../src/schema/workspaces';
 import {
   nullPkgManagerDef as _nullPkgManagerDef,
   nullPkgManagerSpec,
@@ -32,7 +29,7 @@ describe('midnight-smoker', function () {
           nullPkgManagerDef = {..._nullPkgManagerDef};
 
           ({loadPackageManagers} = rewiremock.proxy(
-            () => require('../../../../src/pkg-manager/pkg-manager-loader'),
+            () => require('#pkg-manager/pkg-manager-loader'),
             mocks,
           ));
         });

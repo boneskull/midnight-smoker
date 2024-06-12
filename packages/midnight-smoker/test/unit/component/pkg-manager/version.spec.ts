@@ -1,7 +1,7 @@
+import {normalizeVersion} from '#pkg-manager/pkg-manager-version';
 import {npmVersionData} from '@midnight-smoker/plugin-default/data';
 import {parse} from 'semver';
 import unexpected from 'unexpected';
-import {normalizeVersion} from '../../../../src/pkg-manager/pkg-manager-version';
 const expect = unexpected.clone();
 const npmDistTags = npmVersionData.tags;
 

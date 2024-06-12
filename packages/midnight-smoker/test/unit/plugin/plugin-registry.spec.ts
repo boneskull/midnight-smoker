@@ -1,14 +1,14 @@
+import {DEFAULT_COMPONENT_ID} from '#constants';
+import {ErrorCodes} from '#error/codes';
+import {PLUGIN_DEFAULT_ID} from '#plugin/blessed';
+import {PluginMetadata} from '#plugin/plugin-metadata';
+import type * as Reg from '#plugin/plugin-registry';
 import {memoize} from 'lodash';
 import {type IFs} from 'memfs';
 import rewiremock from 'rewiremock/node';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import {ValidationError} from 'zod-validation-error';
-import {DEFAULT_COMPONENT_ID} from '../../../src/constants';
-import {ErrorCodes} from '../../../src/error/codes';
-import {PLUGIN_DEFAULT_ID} from '../../../src/plugin/blessed';
-import {PluginMetadata} from '../../../src/plugin/plugin-metadata';
-import type * as Reg from '../../../src/plugin/plugin-registry';
 import {createFsMocks, type FsMocks} from '../mocks';
 
 const DEFAULT_TEST_PLUGIN_NAME = 'test-plugin';
@@ -37,10 +37,10 @@ describe('midnight-smoker', function () {
 
         // TODO: replace with FileManager
         ({PluginRegistry} = rewiremock.proxy(
-          () => require('../../../src/plugin/plugin-registry'),
+          () => require('#plugin/plugin-registry'),
           {
             ...mocks,
-            '../../../src/util/loader-util': {
+            '#util/loader-util': {
               /**
                * This thing loads and evals files via the in-memory filesystem.
                *

@@ -1,13 +1,13 @@
+import {type ExecResult} from '#schema/exec-result';
+import {isExecaError} from '#util/error-util';
 import Debug from 'debug';
 import execa, {type NodeOptions} from 'execa';
 import stripAnsi from 'strip-ansi';
 import {type Merge} from 'type-fest';
-import {type ExecResult} from '../../src/schema/exec-result';
-import {isExecaError} from '../../src/util/error-util';
 
 const debug = Debug('midnight-smoker:test:cli-helpers');
 
-export const CLI_PATH = require.resolve('../../bin/smoker.js');
+export const CLI_PATH = require.resolve('#smoker');
 
 /**
  * Options for {@link execSmoker}

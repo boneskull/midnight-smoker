@@ -1,14 +1,14 @@
-import {AssertionError} from 'node:assert';
-import unexpected from 'unexpected';
-import unexpectedSinon from 'unexpected-sinon';
-import {ERROR, OK} from '../../../src/constants';
+import {ERROR, OK} from '#constants';
 import {
   assertActorOutputNotOk,
   assertActorOutputOk,
   isActorOutputNotOk,
   isActorOutputOk,
   monkeypatchActorLogger,
-} from '../../../src/machine/util';
+} from '#machine/util';
+import {AssertionError} from 'node:assert';
+import unexpected from 'unexpected';
+import unexpectedSinon from 'unexpected-sinon';
 const expect = unexpected.clone().use(unexpectedSinon);
 
 describe('midnight-smoker', function () {
