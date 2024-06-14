@@ -110,41 +110,6 @@ describe('midnight-smoker', function () {
             });
           });
 
-          describe('addIssueFromError()', function () {
-            let error: Error;
-
-            beforeEach(function () {
-              error = new Error('Test error');
-            });
-
-            it('should add a RuleIssue to the issues array', function () {
-              context.addIssueFromError(error);
-              // "to equal" would be used here if we wanted to instantiate a RuleIssue.
-              expect(context.issues, 'to satisfy', [
-                {
-                  message: 'Rule "example-rule" threw an exception',
-                  error: {cause: error},
-                  rule: ruleDef,
-                  ctx: omit(staticCtx, 'pkgJson'),
-                },
-              ]);
-            });
-
-            it('should be bound to the RuleContext', function () {
-              const addIssueFromError = context.addIssueFromError;
-              addIssueFromError(error);
-              // "to equal" would be used here if we wanted to instantiate a RuleIssue.
-              expect(context.issues, 'to satisfy', [
-                {
-                  message: 'Rule "example-rule" threw an exception',
-                  error: {cause: error},
-                  rule: ruleDef,
-                  ctx: omit(staticCtx, 'pkgJson'),
-                },
-              ]).and('to have length', 1);
-            });
-          });
-
           describe('toJSON()', function () {
             it('should return a mutable copy of the StaticRuleContext', function () {
               expect(context.toJSON(), 'to equal', staticCtx)

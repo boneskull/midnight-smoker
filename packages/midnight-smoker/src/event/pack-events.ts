@@ -1,8 +1,10 @@
-import {type PackError, type PackParseError} from '#error/pack-error';
+import {type PackError} from '#error/pack-error';
+import {type SomePackError} from '#error/some-pack-error';
 import {type InstallManifest} from '#schema/install-manifest';
 import {type PackOptions} from '#schema/pack-options';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {type Result, type WorkspaceInfo} from '#schema/workspaces';
+import {type PackParseError} from '../error/pack-parse-error';
 import type {PackEvent} from './event-constants';
 import type {PkgManagerEventBase} from './pkg-manager-events';
 
@@ -70,7 +72,7 @@ export interface PkgManagerPackBeginEventData
 
 export interface PkgManagerPackFailedEventData
   extends PkgManagerPackEventDataBase {
-  error: PackError | PackParseError;
+  error: SomePackError;
 }
 
 export interface PkgManagerPackOkEventData extends PkgManagerPackEventDataBase {
@@ -88,5 +90,5 @@ export interface PackBeginEventData extends PackEventDataBase {}
 export interface PackOkEventData extends PackEventDataBase {}
 
 export interface PackFailedEventData extends PackEventDataBase {
-  error: PackError | PackParseError;
+  error: SomePackError;
 }

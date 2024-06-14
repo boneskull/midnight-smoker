@@ -30,14 +30,10 @@ import {createActorRunner} from '../actor-helpers';
 const debug = Debug('midnight-smoker:test:pkg-manager-machine');
 const expect = unexpected.clone().use(unexpectedSinon);
 
-const {
-  runUntilSnapshot,
-  runUntilTransition,
-  run: runMachine,
-  runUntilEvent,
-} = createActorRunner(PkgManagerMachine, {
-  logger: debug,
-});
+const {runUntilSnapshot, runUntilTransition, run, runUntilEvent} =
+  createActorRunner(PkgManagerMachine, {
+    logger: debug,
+  });
 
 describe('midnight-smoker', function () {
   describe('machine', function () {
@@ -107,7 +103,7 @@ describe('midnight-smoker', function () {
         });
 
         it('should call the "setup" lifecycle hook', async function () {
-          await runMachine(input);
+          await run(input);
           expect(def.setup, 'was called once');
         });
 
@@ -117,32 +113,29 @@ describe('midnight-smoker', function () {
           });
 
           it('should call the "teardown" lifecycle hook', async function () {
-            await runMachine(input);
+            await run(input);
             expect(def.teardown, 'was called once');
           });
 
-          it('should output with a MachineError', async function () {
-            await expect(
-              runMachine(input),
-              'to be fulfilled with value satisfying',
-              {
-                type: ERROR,
-                error: {
-                  code: ErrorCodes.MachineError,
-                  errors: [
-                    {
-                      code: ErrorCodes.LifecycleError,
-                      context: {stage: 'setup'},
-                    },
-                  ],
-                },
+          it('should output with a MachineError and aborted flag', async function () {
+            await expect(run(input), 'to be fulfilled with value satisfying', {
+              type: ERROR,
+              error: {
+                code: ErrorCodes.MachineError,
+                errors: [
+                  {
+                    code: ErrorCodes.LifecycleError,
+                    context: {stage: 'setup'},
+                  },
+                ],
               },
-            );
+              aborted: true,
+            });
           });
         });
 
         it('should call the "teardown" lifecycle hook', async function () {
-          await runMachine(input);
+          await run(input);
           expect(def.teardown, 'was called once');
         });
 
@@ -152,28 +145,24 @@ describe('midnight-smoker', function () {
           });
 
           it('should output with a MachineError', async function () {
-            await expect(
-              runMachine(input),
-              'to be fulfilled with value satisfying',
-              {
-                type: ERROR,
-                error: {
-                  code: ErrorCodes.MachineError,
-                  errors: [
-                    {
-                      code: ErrorCodes.LifecycleError,
-                      context: {stage: 'teardown'},
-                    },
-                  ],
-                },
+            await expect(run(input), 'to be fulfilled with value satisfying', {
+              type: ERROR,
+              error: {
+                code: ErrorCodes.MachineError,
+                errors: [
+                  {
+                    code: ErrorCodes.LifecycleError,
+                    context: {stage: 'teardown'},
+                  },
+                ],
               },
-            );
+            });
           });
         });
       });
 
       describe('state', function () {
-        describe('readyingFilesystem', function () {
+        describe('init', function () {
           let input: PkgManagerMachineInput;
           beforeEach(async function () {
             input = {
@@ -203,7 +192,7 @@ describe('midnight-smoker', function () {
 
             it('should exit without error', async function () {
               await expect(
-                runMachine(input),
+                run(input),
                 'to be fulfilled with value satisfying',
                 {
                   type: OK,
@@ -242,7 +231,7 @@ describe('midnight-smoker', function () {
 
             it('should exit with an error', async function () {
               await expect(
-                runMachine(input),
+                run(input),
                 'to be fulfilled with value satisfying',
                 {
                   type: ERROR,
@@ -370,6 +359,26 @@ describe('midnight-smoker', function () {
                     'to be fulfilled',
                   );
                 });
+
+                it('should output with a MachineError and aborted flag', async function () {
+                  await expect(
+                    run({...input, workspaceInfo: [workspaceInfo]}),
+                    'to be fulfilled with value satisfying',
+                    {
+                      type: ERROR,
+                      error: {
+                        code: ErrorCodes.MachineError,
+                        errors: [
+                          {
+                            code: ErrorCodes.PackError,
+                            cause: {message: 'packing BAD'},
+                          },
+                        ],
+                      },
+                      aborted: true,
+                    },
+                  );
+                });
               });
             });
           });
@@ -419,6 +428,26 @@ describe('midnight-smoker', function () {
                       'to be fulfilled',
                     );
                   });
+
+                  it('should output with a MachineError and aborted flag', async function () {
+                    await expect(
+                      run({...input, workspaceInfo: [workspaceInfo]}),
+                      'to be fulfilled with value satisfying',
+                      {
+                        type: ERROR,
+                        error: {
+                          code: ErrorCodes.MachineError,
+                          errors: [
+                            {
+                              code: ErrorCodes.InstallError,
+                              cause: {message: 'install BAD'},
+                            },
+                          ],
+                        },
+                        aborted: true,
+                      },
+                    );
+                  });
                 });
               });
             });
@@ -458,6 +487,7 @@ describe('midnight-smoker', function () {
                       'LINT.PKG_MANAGER_LINT_BEGIN',
                       'LINT.RULE_BEGIN',
                       'LINT.RULE_OK',
+                      'LINT.RULE_END',
                       'LINT.PKG_MANAGER_LINT_OK',
                     ],
                     input,
@@ -482,6 +512,31 @@ describe('midnight-smoker', function () {
                         'LINT.PKG_MANAGER_LINT_BEGIN',
                         'LINT.RULE_BEGIN',
                         'LINT.RULE_FAILED',
+                        'LINT.RULE_END',
+                        'LINT.PKG_MANAGER_LINT_FAILED',
+                      ],
+                      input,
+                    ),
+                    'to be fulfilled',
+                  );
+                });
+              });
+
+              describe('when a rule throws an exception', function () {
+                beforeEach(function () {
+                  for (const {def} of ruleInitPayloads) {
+                    sandbox.stub(def, 'check').throws(new Error('test error'));
+                  }
+                });
+
+                it('should send lint events in order', async function () {
+                  await expect(
+                    runUntilEvent(
+                      [
+                        'LINT.PKG_MANAGER_LINT_BEGIN',
+                        'LINT.RULE_BEGIN',
+                        'LINT.RULE_ERROR',
+                        'LINT.RULE_END',
                         'LINT.PKG_MANAGER_LINT_FAILED',
                       ],
                       input,
@@ -492,11 +547,13 @@ describe('midnight-smoker', function () {
               });
             });
 
-            describe('when "shouldLint" flag is set and rules are disabled', function () {
+            describe('when "shouldLint" flag is set but all rules are disabled', function () {
+              // NOTE: LoaderMachine would normally filter the rules based on their severity, and only enabled rule defs would be provided. thus, PkgManagerMachine does not check the rule config; it only checks if it has any rule defs.
               it('should not lint', async function () {
                 await expect(
-                  runUntilEvent(['LINT.PKG_MANAGER_LINT_OK'], {
+                  runUntilEvent(['LINT.PKG_MANAGER_LINT_BEGIN'], {
                     ...input,
+                    ruleInitPayloads: [],
                     shouldLint: true,
                     workspaceInfo: [workspaceInfo],
                   }),
@@ -508,7 +565,7 @@ describe('midnight-smoker', function () {
 
           describe('runningScripts', function () {
             describe('when no scripts were provided in SmokerOptions', function () {
-              it('should not run scripts', async function () {
+              it('should not enter state working.runningScripts.running', async function () {
                 await expect(
                   runUntilSnapshot(
                     (snapshot) =>
@@ -524,30 +581,11 @@ describe('midnight-smoker', function () {
             });
 
             describe('when scripts were provided in SmokerOptions', function () {
-              it('should run scripts', async function () {
+              it('should enter state working.runningScripts.running', async function () {
                 await expect(
                   runUntilSnapshot(
                     (snapshot) =>
                       snapshot.matches({working: {runningScripts: 'running'}}),
-                    {
-                      ...input,
-                      scripts: ['test'],
-                      workspaceInfo: [workspaceInfo],
-                    },
-                  ),
-                  'to be fulfilled',
-                );
-              });
-
-              it('should send script events in order', async function () {
-                await expect(
-                  runUntilEvent(
-                    [
-                      'SCRIPT.PKG_MANAGER_RUN_SCRIPTS_BEGIN',
-                      'SCRIPT.RUN_SCRIPT_BEGIN',
-                      'SCRIPT.RUN_SCRIPT_OK',
-                      'SCRIPT.PKG_MANAGER_RUN_SCRIPTS_OK',
-                    ],
                     {
                       ...input,
                       scripts: ['test'],
@@ -566,13 +604,22 @@ describe('midnight-smoker', function () {
                   });
                 });
 
-                it('should send the correct event', async function () {
+                it('should send the correct events', async function () {
                   await expect(
-                    runUntilEvent(['SCRIPT.RUN_SCRIPT_SKIPPED'], {
-                      ...input,
-                      scripts: ['test'],
-                      workspaceInfo: [workspaceInfo],
-                    }),
+                    runUntilEvent(
+                      [
+                        'SCRIPT.PKG_MANAGER_RUN_SCRIPTS_BEGIN',
+                        'SCRIPT.RUN_SCRIPT_BEGIN',
+                        'SCRIPT.RUN_SCRIPT_SKIPPED',
+                        'SCRIPT.RUN_SCRIPT_END',
+                        'SCRIPT.PKG_MANAGER_RUN_SCRIPTS_OK',
+                      ],
+                      {
+                        ...input,
+                        scripts: ['test'],
+                        workspaceInfo: [workspaceInfo],
+                      },
+                    ),
                     'to be fulfilled',
                   );
                 });
@@ -602,26 +649,44 @@ describe('midnight-smoker', function () {
                   sandbox.stub(def, 'runScript').resolves(result);
                 });
 
-                it('should send the correct event', async function () {
+                it('should send the correct events', async function () {
                   await expect(
-                    runUntilEvent(['SCRIPT.RUN_SCRIPT_FAILED'], {
-                      ...input,
-                      scripts: ['test'],
-                      workspaceInfo: [workspaceInfo],
-                    }),
+                    runUntilEvent(
+                      [
+                        'SCRIPT.PKG_MANAGER_RUN_SCRIPTS_BEGIN',
+                        'SCRIPT.RUN_SCRIPT_BEGIN',
+                        'SCRIPT.RUN_SCRIPT_FAILED',
+                        'SCRIPT.RUN_SCRIPT_END',
+                        'SCRIPT.PKG_MANAGER_RUN_SCRIPTS_FAILED',
+                      ],
+                      {
+                        ...input,
+                        scripts: ['test'],
+                        workspaceInfo: [workspaceInfo],
+                      },
+                    ),
                     'to be fulfilled',
                   );
                 });
               });
 
               describe('when a script succeeds', function () {
-                it('should send the correct event', async function () {
+                it('should send the correct events', async function () {
                   await expect(
-                    runUntilEvent(['SCRIPT.RUN_SCRIPT_OK'], {
-                      ...input,
-                      scripts: ['test'],
-                      workspaceInfo: [workspaceInfo],
-                    }),
+                    runUntilEvent(
+                      [
+                        'SCRIPT.PKG_MANAGER_RUN_SCRIPTS_BEGIN',
+                        'SCRIPT.RUN_SCRIPT_BEGIN',
+                        'SCRIPT.RUN_SCRIPT_OK',
+                        'SCRIPT.RUN_SCRIPT_END',
+                        'SCRIPT.PKG_MANAGER_RUN_SCRIPTS_OK',
+                      ],
+                      {
+                        ...input,
+                        scripts: ['test'],
+                        workspaceInfo: [workspaceInfo],
+                      },
+                    ),
                     'to be fulfilled',
                   );
                 });
@@ -634,13 +699,22 @@ describe('midnight-smoker', function () {
                     .rejects(new Error('dook dook dook'));
                 });
 
-                it('should send the correct event', async function () {
+                it('should send the correct events', async function () {
                   await expect(
-                    runUntilEvent(['SCRIPT.RUN_SCRIPT_ERROR'], {
-                      ...input,
-                      scripts: ['test'],
-                      workspaceInfo: [workspaceInfo],
-                    }),
+                    runUntilEvent(
+                      [
+                        'SCRIPT.PKG_MANAGER_RUN_SCRIPTS_BEGIN',
+                        'SCRIPT.RUN_SCRIPT_BEGIN',
+                        'SCRIPT.RUN_SCRIPT_ERROR',
+                        'SCRIPT.RUN_SCRIPT_END',
+                        'SCRIPT.PKG_MANAGER_RUN_SCRIPTS_FAILED',
+                      ],
+                      {
+                        ...input,
+                        scripts: ['test'],
+                        workspaceInfo: [workspaceInfo],
+                      },
+                    ),
                     'to be fulfilled',
                   );
                 });
@@ -660,6 +734,70 @@ describe('midnight-smoker', function () {
                   );
                 });
               });
+            });
+          });
+        });
+
+        describe('shutdown', function () {
+          const workspaceInfo = {
+            pkgName: 'bar',
+            pkgJson: {name: 'bar', version: '1.0.0'},
+            pkgJsonPath: '/package.json',
+            localPath: '/',
+          } as WorkspaceInfo;
+          let input: PkgManagerMachineInput;
+
+          beforeEach(function () {
+            input = {
+              def,
+              executor: nullExecutor,
+              plugin: staticPlugin,
+              fileManager,
+              parentRef,
+              ruleConfigs: smokerOptions.rules,
+              spec,
+              useWorkspaces: false,
+              workspaceInfo: [],
+              shouldShutdown: true,
+            };
+          });
+
+          describe('when pruning the temp dir fails', function () {
+            beforeEach(function () {
+              sandbox
+                .stub(fileManager, 'pruneTempDir')
+                .rejects(new Error('prune failed'));
+            });
+
+            it('should output with a MachineError', async function () {
+              await expect(
+                run(input),
+                'to be fulfilled with value satisfying',
+                {
+                  type: ERROR,
+                  error: {
+                    code: ErrorCodes.MachineError,
+                    errors: [
+                      {
+                        code: ErrorCodes.CleanupError,
+                      },
+                    ],
+                  },
+                },
+              );
+            });
+          });
+
+          describe('when the "linger" flag was provided', function () {
+            beforeEach(function () {
+              input = {...input, linger: true, workspaceInfo: [workspaceInfo]};
+            });
+
+            it('should send the LINGERED event', async function () {
+              await expect(
+                runUntilEvent(['LINGERED'], input),
+                'to be fulfilled',
+              );
             });
           });
         });

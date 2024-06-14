@@ -135,6 +135,14 @@ module.exports = {
 
         '@typescript-eslint/switch-exhaustiveness-check': 'error',
 
+        '@typescript-eslint/no-unused-vars': [
+          'error',
+          {
+            argsIgnorePattern: '^_',
+            varsIgnorePattern: '^_',
+          },
+        ],
+
         '@stylistic/ts/lines-around-comment': [
           'warn',
           {

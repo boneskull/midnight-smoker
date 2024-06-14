@@ -1,11 +1,9 @@
-import {RuleError} from '#error/rule-error';
 import {type CheckFailed, type CheckOk} from '#schema/check-result';
 import {
   StaticRuleDefSchema,
   type StaticRuleContext,
   type StaticRuleDef,
 } from '#schema/rule-static';
-import {fromUnknownError} from '#util/error-util';
 import {serialize} from '#util/serialize';
 import {asResult} from '#util/util';
 import {type PackageJson} from 'type-fest';
@@ -53,8 +51,8 @@ export class RuleContext implements StaticRuleContext {
   ) {
     this.staticRuleDef = staticRuleDef;
     this.staticCtx = Object.freeze(serialize(staticCtx));
+    // TODO: decorator
     this.addIssue = this.addIssue.bind(this);
-    this.addIssueFromError = this.addIssueFromError.bind(this);
   }
 
   public get ruleName(): string {
@@ -125,34 +123,6 @@ export class RuleContext implements StaticRuleContext {
     id: string,
   ): Readonly<RuleContext> {
     return Object.freeze(new RuleContext(id, staticRuleDef, staticCtx));
-  }
-
-  /**
-   * This should be used when a {@link RuleCheckFn} throws or rejects.
-   *
-   * Under normal operation, this shouldn't happen.
-   *
-   * @param err - Error to add as an issue
-   */
-  public addIssueFromError(err: unknown): void {
-    const error = new RuleError(
-      `Rule "${this.ruleId}" threw an exception`,
-      this.toJSON(),
-      this.ruleId,
-      fromUnknownError(err),
-    );
-
-    const {message} = error;
-    const ctx = serialize(this);
-
-    this.#addIssue(
-      RuleIssue.create({
-        message,
-        error,
-        rule: this.staticRuleDef,
-        ctx,
-      }),
-    );
   }
 
   /**

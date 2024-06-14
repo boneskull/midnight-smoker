@@ -1,5 +1,5 @@
 import pluralize from 'pluralize';
-import {AggregateSmokerError} from './base-error';
+import {AggregateSmokerError} from './aggregate-smoker-error';
 import {type UnsupportedPackageManagerError} from './unsupported-pkg-manager-error';
 
 /**

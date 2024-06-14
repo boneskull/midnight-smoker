@@ -1,10 +1,7 @@
-import {isZodError} from '#util/error-util';
-import {castArray} from '#util/util';
 import {italic, white, whiteBright, yellow} from 'chalk';
 import Debug from 'debug';
 import {format, formatWithOptions} from 'node:util';
 import stringify from 'stringify-object';
-import {fromZodError} from 'zod-validation-error';
 import type {SmokerErrorCode, SmokerErrorId} from './codes';
 import {ErrorCodes} from './codes';
 
@@ -23,7 +20,7 @@ export const debug = Debug('midnight-smoker:error');
  *   Note that this will throw _during_ the instantiation of an `Error` about to
  *   be thrown.
  */
-function getErrorCode(err: SmokerError<any, any>): SmokerErrorCode {
+export function getErrorCode(err: SmokerError<any, any>): SmokerErrorCode {
   const {name} = err.constructor;
   if (!(name in ErrorCodes)) {
     throw new ReferenceError(`${name} missing an error code`);
@@ -89,62 +86,6 @@ export abstract class BaseSmokerError<
       stack: this.stack,
       cause: this.cause,
       code: this.code,
-    };
-  }
-}
-
-/**
- * Base class for all aggregate exceptions thrown by `midnight-smoker`.
- *
- * This should only be used if _multiple_ errors are being collected--not just
- * catching some `Error` then throwing our own; use {@link BaseSmokerError} for
- * that.
- *
- * @template Context - Arbitrary per-exception-class data to attach to the
- *   error.
- * @group Errors
- */
-
-export abstract class AggregateSmokerError<Context extends object | void = void>
-  extends AggregateError
-  implements SmokerError<Context>
-{
-  public override readonly cause?: void;
-
-  public readonly context?: Context;
-
-  public readonly code: SmokerErrorCode;
-
-  public abstract readonly id: SmokerErrorId;
-
-  /**
-   * @privateRemarks
-   * Why doesn't the {@link AggregateError} constructor set this value?
-   */
-  public override errors: Error[];
-
-  constructor(message: string, errors?: Error[] | Error, context?: Context) {
-    const errs = castArray(errors).map((err) =>
-      isZodError(err) ? fromZodError(err) : err,
-    );
-    super(errs, message);
-    this.context = context ?? undefined;
-    this.errors = errs;
-    this.code = getErrorCode(this);
-  }
-
-  public format(verbose = false) {
-    return BaseSmokerError.prototype.format.call(this, verbose);
-  }
-
-  public toJSON() {
-    return {
-      message: this.message,
-      id: this.id,
-      stack: this.stack,
-      context: this.context,
-      code: this.code,
-      errors: this.errors,
     };
   }
 }

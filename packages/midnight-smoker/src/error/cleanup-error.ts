@@ -10,11 +10,11 @@ export class CleanupError extends BaseSmokerError<
   {
     dir: string;
   },
-  NodeJS.ErrnoException
+  Error
 > {
   public readonly id = 'CleanupError';
 
-  constructor(message: string, dir: string, error: NodeJS.ErrnoException) {
+  constructor(message: string, dir: string, error: Error) {
     super(message, {dir}, error);
   }
 }

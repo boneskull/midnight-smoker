@@ -1,9 +1,10 @@
-import {type SmokerError} from '#error/base-error';
+import {type SmokerError, type SomeSmokerError} from '#error/base-error';
 import {ExecaErrorSchema} from '#schema/execa-error';
 import Debug from 'debug';
 import {type ExecaError} from 'execa';
 import {isError} from 'lodash';
-import {type Class} from 'type-fest';
+import assert from 'node:assert';
+import {type Class, type TupleToUnion} from 'type-fest';
 import type {ZodError} from 'zod-validation-error';
 
 const debug = Debug('midnight-smoker:util:error-util');
@@ -20,11 +21,40 @@ export function isErrnoException(
   return isError(value) && 'code' in value;
 }
 
-export function isSmokerError<T extends Class<SmokerError<any, any>>>(
+export function isSmokerError<
+  T extends [Class<SomeSmokerError>, ...Class<SomeSmokerError>[]],
+>(ctors: T, error: unknown): error is InstanceType<TupleToUnion<T>>;
+
+export function isSmokerError<T extends Class<SomeSmokerError>>(
   ctor: T,
   error: unknown,
-): error is InstanceType<T> {
-  return isError(error) && (error as SmokerError).id === ctor.name;
+): error is InstanceType<T>;
+
+export function isSmokerError<
+  T extends
+    | Class<SomeSmokerError>
+    | [Class<SomeSmokerError>, ...Class<SomeSmokerError>[]],
+>(ctorOrCtors: T, error: unknown) {
+  if (Array.isArray(ctorOrCtors)) {
+    return ctorOrCtors.some((ctor) => isSmokerError(ctor, error));
+  }
+  return isError(error) && (error as SmokerError).id === ctorOrCtors.name;
+}
+
+export function assertSmokerError<T extends Class<SomeSmokerError>>(
+  ctor: T,
+  error: unknown,
+): asserts error is InstanceType<T>;
+
+export function assertSmokerError<
+  T extends [Class<SomeSmokerError>, ...Class<SomeSmokerError>[]],
+>(ctor: T, error: unknown): asserts error is InstanceType<TupleToUnion<T>>;
+
+export function assertSmokerError<T extends Class<SomeSmokerError>>(
+  ctorOrCtors: T,
+  error: unknown,
+) {
+  assert.ok(isSmokerError(ctorOrCtors, error));
 }
 
 /**

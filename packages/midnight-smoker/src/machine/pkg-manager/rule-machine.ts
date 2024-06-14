@@ -7,7 +7,11 @@ import {type LintManifest} from '#schema/lint-manifest';
 import {type SomeRuleConfig} from '#schema/rule-options';
 import {type StaticRuleContext} from '#schema/rule-static';
 import {type SomeRuleDef} from '#schema/some-rule-def';
-import {fromUnknownError, isSmokerError} from '#util/error-util';
+import {
+  assertSmokerError,
+  fromUnknownError,
+  isSmokerError,
+} from '#util/error-util';
 import {uniqueId} from '#util/unique-id';
 import {asResult} from '#util/util';
 import {isNumber} from 'lodash';
@@ -21,6 +25,7 @@ import {
   type ActorRefFrom,
   type Snapshot,
 } from 'xstate';
+import {idFromEventType} from '..';
 import {serialize} from '../../util/serialize';
 import {type AbortEvent} from '../util/abort-event';
 import {
@@ -120,20 +125,11 @@ export interface RuleMachineCheckActorErrorEvent {
 /**
  * Event emitted when a check is complete.
  *
- * @remarks
- * This may only be consumed by test code.
  * @event
  */
-export interface RuleMachineCheckResultEvent {
-  output: CheckOutput;
-  config: SomeRuleConfig;
-  type: 'CHECK_RESULT';
-}
+export type RuleMachineCheckResultEvent = PkgManagerMachineCheckResultEvent;
 
-export interface RuleMachineCheckErrorEvent {
-  error: RuleError;
-  type: 'CHECK_ERROR';
-}
+export type RuleMachineCheckErrorEvent = PkgManagerMachineCheckErrorEvent;
 
 /**
  * Union of events emitted by {@link RuleMachine}
@@ -158,11 +154,11 @@ export type RuleMachineEvent =
  */
 export const check = fromPromise<CheckOutput, CheckInput>(
   async ({self, input, signal}) => {
-    const {ctx: staticCtx, opts, def, ruleId} = input;
+    const {ctx: staticCtx, config, def, ruleId} = input;
     if (signal.aborted) {
       throw new AbortError(signal.reason, self.id);
     }
-
+    const {opts} = config;
     const ctx = RuleContext.create(def, staticCtx, ruleId);
 
     try {
@@ -176,14 +172,14 @@ export const check = fromPromise<CheckOutput, CheckInput>(
       }
       throw new RuleError(
         `Rule "${ruleId}" threw an exception`,
-        ctx,
-        ruleId,
+        {...asResult(staticCtx), ruleId, config},
         fromUnknownError(err),
       );
     }
 
     const result = ctx.finalize();
     const manifest = asResult(serialize(input.manifest));
+
     switch (result.type) {
       case 'OK': {
         const output: CheckOutputOk = {
@@ -273,21 +269,13 @@ export const RuleMachine = setup({
      */
     check: assign({
       checkRefs: (
-        {
-          spawn,
-          context: {
-            def,
-            config: {opts},
-            checkRefs = {},
-            ruleId,
-          },
-        },
+        {spawn, context: {def, config, checkRefs = {}, ruleId}},
         {ctx, manifest}: {ctx: StaticRuleContext; manifest: LintManifest},
       ) => {
         const id = uniqueId({prefix: 'check', postfix: ruleId});
         const actor = spawn('check', {
           id,
-          input: {def, ruleId, opts, ctx, manifest},
+          input: {def, ruleId, config, ctx, manifest},
         });
         return {
           ...checkRefs,
@@ -316,7 +304,7 @@ export const RuleMachine = setup({
         if (parentRef) {
           enqueue.sendTo(parentRef, evt);
         }
-        enqueue.emit(evt as RuleMachineCheckResultEvent);
+        enqueue.emit(evt);
       },
     ),
 
@@ -331,14 +319,26 @@ export const RuleMachine = setup({
      */
     sendCheckError: enqueueActions(
       ({enqueue, context: {parentRef}}, error: RuleError) => {
+        const {installPath, config, ruleId, ...manifest} = error.context;
         const evt: PkgManagerMachineCheckErrorEvent = {
           type: 'CHECK_ERROR',
+          output: {
+            type: 'ERROR',
+            installPath,
+            opts: config.opts,
+            ruleId,
+            manifest: {
+              ...manifest,
+              installPath,
+            },
+          },
+          config,
           error,
         };
         if (parentRef) {
           enqueue.sendTo(parentRef, evt);
         }
-        enqueue.emit(evt as RuleMachineCheckErrorEvent);
+        enqueue.emit(evt);
       },
     ),
 
@@ -353,7 +353,6 @@ export const RuleMachine = setup({
           enqueue.stopChild(actor);
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const {[actorId]: _, ...rest} = checkRefs;
         enqueue.assign({checkRefs: rest});
       },
@@ -379,6 +378,8 @@ export const RuleMachine = setup({
         output,
       ],
     }),
+
+    aborted: assign({aborted: true}),
   },
   actors: {
     check,
@@ -396,7 +397,7 @@ export const RuleMachine = setup({
         guard: {type: 'shouldHalt'},
         target: 'done',
       },
-      exit: [assign({checkRefs: undefined})],
+      exit: [{type: 'stopAllCheckActors'}],
       on: {
         ABORT: {
           actions: [{type: 'stopAllCheckActors'}],
@@ -405,11 +406,11 @@ export const RuleMachine = setup({
         'xstate.done.actor.check.*': {
           actions: [
             {
-              type: 'sendCheckResult',
+              type: 'appendCheckResult',
               params: ({event: {output}}) => output,
             },
             {
-              type: 'appendCheckResult',
+              type: 'sendCheckResult',
               params: ({event: {output}}) => output,
             },
             {
@@ -427,16 +428,17 @@ export const RuleMachine = setup({
             {
               type: 'sendCheckError',
               params: ({event: {error}}) => {
-                assert.ok(isSmokerError(RuleError, error));
+                assertSmokerError(RuleError, error);
                 return error;
               },
             },
             {type: 'assignError', params: ({event: {error}}) => ({error})},
             {
               type: 'stopCheckActor',
-              params: ({event: {type}}) => {
-                // TODO: is there a better way to get the actor ID?
-                return type.split('.')[3];
+              params: ({event}) => {
+                const id = idFromEventType(event);
+                assert.ok(id);
+                return id;
               },
             },
           ],
@@ -451,7 +453,7 @@ export const RuleMachine = setup({
     },
     done: {type: FINAL},
     errored: {type: FINAL},
-    aborted: {entry: [assign({aborted: true})], type: FINAL},
+    aborted: {entry: [{type: 'aborted'}], type: FINAL},
   },
   output: ({context: {results, aborted, error}}) => ({results, aborted, error}),
 });

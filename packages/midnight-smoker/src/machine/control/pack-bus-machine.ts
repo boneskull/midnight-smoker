@@ -1,5 +1,6 @@
 import {FINAL} from '#constants';
-import {type PackError, type PackParseError} from '#error/pack-error';
+import {PackError} from '#error/pack-error';
+import {PackParseError} from '#error/pack-parse-error';
 import {SmokerEvent} from '#event/event-constants';
 import {type DataForEvent} from '#event/events';
 import {type PackEventData} from '#event/pack-events';
@@ -7,7 +8,7 @@ import {type ReporterMachine} from '#machine/reporter';
 import {type SmokerOptions} from '#options/options';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {type WorkspaceInfo} from '#schema/workspaces';
-import {fromUnknownError} from '#util/error-util';
+import {assertSmokerError, fromUnknownError} from '#util/error-util';
 import {asResult} from '#util/util';
 import {
   assign,
@@ -294,9 +295,12 @@ export const PackBusMachine = setup({
           }):
             | DataForEvent<typeof SmokerEvent.PackFailed>
             | DataForEvent<typeof SmokerEvent.PackOk> => {
+            if (error) {
+              assertSmokerError([PackError, PackParseError], error);
+            }
             return error
               ? {
-                  error: error as PackError | PackParseError,
+                  error,
                   type: SmokerEvent.PackFailed,
                   packOptions: {
                     cwd,

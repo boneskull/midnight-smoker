@@ -10,6 +10,7 @@
  */
 export const ErrorCodes = {
   AbortError: 'ESMOKER_ABORT',
+  AggregatePackError: 'ESMOKER_AGGREGATEPACKERROR',
   AggregateUnsupportedPkgManagerError: 'ESMOKER_UNSUPPORTEDPACKAGEMANAGERS',
   CleanupError: 'ESMOKER_CLEANUP',
   ComponentCollisionError: 'ESMOKER_COMPONENTIDCOLLISION',

@@ -1,4 +1,4 @@
-import {type FAILED, type OK} from '#constants';
+import {type ERROR, type FAILED, type OK} from '#constants';
 import {
   type PackError,
   type PackParseError,
@@ -35,7 +35,7 @@ export type PkgManagerMachineEvents =
 export interface CheckInput {
   ctx: StaticRuleContext;
   def: SomeRuleDef;
-  opts: SomeRuleOptions;
+  config: SomeRuleConfig;
   ruleId: string;
 
   /**
@@ -63,6 +63,10 @@ export interface CheckOutputOk extends BaseCheckOutput {
   type: typeof OK;
 }
 
+export interface CheckOutputError extends BaseCheckOutput {
+  type: typeof ERROR;
+}
+
 export interface PkgManagerMachineCheckResultEvent {
   output: CheckOutput;
   config: SomeRuleConfig;
@@ -70,7 +74,10 @@ export interface PkgManagerMachineCheckResultEvent {
 }
 
 export interface PkgManagerMachineCheckErrorEvent {
+  output: CheckOutputError;
   error: RuleError;
+
+  config: SomeRuleConfig;
   type: 'CHECK_ERROR';
 }
 

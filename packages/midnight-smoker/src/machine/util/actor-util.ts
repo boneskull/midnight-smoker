@@ -1,7 +1,7 @@
 import {ERROR, MIDNIGHT_SMOKER, OK} from '#constants';
 import Debug from 'debug';
 import {AssertionError} from 'node:assert';
-import {type AnyActorRef} from 'xstate';
+import {type AnyActorRef, type EventObject} from 'xstate';
 
 /**
  * `ActorOutput` is a convention for an actor output.
@@ -140,4 +140,23 @@ export function monkeypatchActorLogger<T extends AnyActorRef>(
     `${MIDNIGHT_SMOKER}:${namespace}`,
   );
   return actor;
+}
+
+const XSTATE_EVENT_TYPE_REGEX = /^xstate\.(?:error|done)\.actor\.([\s\S]+)$/;
+
+/**
+ * Attempts to determine the event ID from the type of an `xstate`-sent event
+ * object.
+ *
+ * @param event Some xstate-sent event
+ * @returns The actor ID (hopefully)
+ */
+export function idFromEventType<
+  const T extends `xstate.${'error' | 'done'}.actor.${U}`,
+  const U extends string,
+>(event: EventObject & {type: T}): U | undefined {
+  const matches = event.type.match(XSTATE_EVENT_TYPE_REGEX);
+  if (matches) {
+    return matches[1] as U;
+  }
 }

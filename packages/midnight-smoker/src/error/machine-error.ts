@@ -1,5 +1,5 @@
 import {castArray} from 'lodash';
-import {AggregateSmokerError} from './base-error';
+import {AggregateSmokerError} from './aggregate-smoker-error';
 
 /**
  * Generic aggregate error for machines

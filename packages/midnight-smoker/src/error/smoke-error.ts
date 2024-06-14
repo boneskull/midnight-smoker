@@ -7,7 +7,7 @@
 import {type LintResult} from '#schema/lint-result';
 import {type RunScriptResult} from '#schema/run-script-result';
 import {castArray} from '#util/util';
-import {AggregateSmokerError} from './base-error';
+import {AggregateSmokerError} from './aggregate-smoker-error';
 
 /**
  * Thrown when _anything_ in `Smoker.smoke()` fails.

@@ -2,6 +2,8 @@ export * from './abort-error';
 
 export * from './aggregate-pkg-manager-error';
 
+export * from './aggregate-smoker-error';
+
 export * from './base-error';
 
 export * from './cleanup-error';
@@ -34,6 +36,8 @@ export * from './not-implemented-error';
 
 export * from './pack-error';
 
+export * from './pack-parse-error';
+
 export * from './pkg-manager-error';
 
 export * from './pkg-manager';
@@ -61,6 +65,8 @@ export * from './script-failed-error';
 export * from './smoke-error';
 
 export * from './smoker-reference-error';
+
+export * from './some-pack-error';
 
 export * from './temp-dir-error';
 

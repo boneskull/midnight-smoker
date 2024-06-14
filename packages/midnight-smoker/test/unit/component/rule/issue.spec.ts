@@ -18,7 +18,7 @@ describe('midnight-smoker', function () {
         const exampleStaticRule: StaticRuleDef = {
           name: 'example-rule',
           description: 'This is an example rule',
-          defaultSeverity: 'error',
+          defaultSeverity: RuleSeverities.Error,
           url: 'https://example.com/rules/example-rule',
         };
         const exampleStaticRuleContext: StaticRuleContext = {
@@ -30,7 +30,7 @@ describe('midnight-smoker', function () {
           pkgJsonPath: '/path/to/example-package/package.json',
           installPath: '/path/to/example-package',
           localPath: '/path/to/example-package',
-          severity: 'error',
+          severity: RuleSeverities.Error,
           pkgManager: 'bebebebebee',
           ruleId,
         };
@@ -44,8 +44,10 @@ describe('midnight-smoker', function () {
             data: {foo: 'bar'},
             error: new RuleError(
               'Test error',
-              exampleStaticRuleContext,
-              'example-rule',
+              {
+                ...asResult(exampleStaticRuleContext),
+                config: {opts: {}, severity: exampleStaticRuleContext.severity},
+              },
               new Error('Test error'),
             ),
           };
@@ -76,8 +78,13 @@ describe('midnight-smoker', function () {
                   data: {foo: 'bar'},
                   error: new RuleError(
                     'Test error',
-                    exampleStaticRuleContext,
-                    'example-rule',
+                    {
+                      ...asResult(exampleStaticRuleContext),
+                      config: {
+                        opts: {},
+                        severity: exampleStaticRuleContext.severity,
+                      },
+                    },
                     new Error('Test error'),
                   ),
                 };
@@ -100,8 +107,13 @@ describe('midnight-smoker', function () {
                   data: {foo: 'bar'},
                   error: new RuleError(
                     'Test error',
-                    exampleStaticRuleContext,
-                    'example-rule',
+                    {
+                      ...asResult(exampleStaticRuleContext),
+                      config: {
+                        opts: {},
+                        severity: exampleStaticRuleContext.severity,
+                      },
+                    },
                     new Error('Test error'),
                   ),
                 };

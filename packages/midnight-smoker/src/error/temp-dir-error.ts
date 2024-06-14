@@ -6,16 +6,13 @@ import {BaseSmokerError} from './base-error';
  * @group Errors
  */
 
-export class TempDirError extends BaseSmokerError<
-  {spec: string},
-  NodeJS.ErrnoException
-> {
+export class TempDirError extends BaseSmokerError<{spec: string}, Error> {
   public readonly id = 'TempDirError';
 
   constructor(
     message: string,
     spec: string | StaticPkgManagerSpec,
-    error: NodeJS.ErrnoException,
+    error: Error,
   ) {
     super(message, {spec: isString(spec) ? spec : spec.spec}, error);
   }
