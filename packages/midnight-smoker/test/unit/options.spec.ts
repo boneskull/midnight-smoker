@@ -1,5 +1,5 @@
 import {RuleSeverities} from '#constants';
-import type * as OP from '#options/parser';
+import type * as OP from '#options/options-parser';
 import type * as PR from '#plugin/plugin-registry';
 import {type SomeRuleDef} from '#schema/some-rule-def';
 import {memoize} from 'lodash';
@@ -17,10 +17,10 @@ const DEFAULT_TEST_RULE_NAME = 'test-rule';
 const RULE_ID = `${DEFAULT_TEST_PLUGIN_NAME}/${DEFAULT_TEST_RULE_NAME}`;
 
 describe('midnight-smoker', function () {
-  describe('OptionParser', function () {
+  describe('OptionsParser', function () {
     describe('method', function () {
-      let parser: OP.OptionParser;
-      let OptionParser: typeof OP.OptionParser;
+      let parser: OP.OptionsParser;
+      let OptionsParser: typeof OP.OptionsParser;
       let PluginRegistry: typeof PR.PluginRegistry;
       let sandbox: sinon.SinonSandbox;
 
@@ -58,14 +58,17 @@ describe('midnight-smoker', function () {
           },
         );
 
-        ({OptionParser} = rewiremock.proxy(() => require('#options/parser'), {
-          ...mocks,
-          '#plugin/plugin-registry': Registry,
-        }));
+        ({OptionsParser} = rewiremock.proxy(
+          () => require('#options/options-parser'),
+          {
+            ...mocks,
+            '#plugin/plugin-registry': Registry,
+          },
+        ));
 
         ({PluginRegistry} = Registry);
 
-        parser = OptionParser.create(PluginRegistry.create());
+        parser = OptionsParser.create(PluginRegistry.create());
       });
 
       afterEach(function () {
@@ -128,7 +131,7 @@ describe('midnight-smoker', function () {
         describe('when called after plugin registration', function () {
           describe('when rules provide no options', function () {
             let registry: PR.PluginRegistry;
-            let parser: OP.OptionParser;
+            let parser: OP.OptionsParser;
 
             before(async function () {
               registry = PluginRegistry.create();
@@ -142,7 +145,7 @@ describe('midnight-smoker', function () {
                   });
                 },
               });
-              parser = OptionParser.create(registry);
+              parser = OptionsParser.create(registry);
             });
 
             after(function () {
@@ -163,7 +166,7 @@ describe('midnight-smoker', function () {
 
           describe('"rules" property', function () {
             let registry: PR.PluginRegistry;
-            let parser: OP.OptionParser;
+            let parser: OP.OptionsParser;
             let rule: SomeRuleDef;
 
             before(async function () {
@@ -184,7 +187,7 @@ describe('midnight-smoker', function () {
               });
               rule = plugin.ruleDefs[0]!;
 
-              parser = OptionParser.create(registry);
+              parser = OptionsParser.create(registry);
             });
 
             after(function () {

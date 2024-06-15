@@ -7,7 +7,8 @@ import {
 } from '#schema/run-script-result';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {type StaticPluginMetadata} from '#schema/static-plugin-metadata';
-import {type Result, type WorkspaceInfo} from '#schema/workspaces';
+import {type WorkspaceInfo} from '#schema/workspace-info';
+import {type Result} from '#util/result';
 import type {SmokerEvent} from './event-constants';
 
 /**

@@ -2,10 +2,11 @@ import {ERROR} from '#constants';
 import {ErrorCodes} from '#error/codes';
 import {LoadableComponents, LoaderMachine} from '#machine/loader';
 import {type SmokerOptions} from '#options/options';
-import {OptionParser} from '#options/parser';
+import {OptionsParser} from '#options/options-parser';
+import {PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
 import {PluginRegistry} from '#plugin/plugin-registry';
-import {type WorkspaceInfo} from '#schema/workspaces';
+import {type WorkspaceInfo} from '#schema/workspace-info';
 import {FileManager} from '#util/filemanager';
 import {memfs} from 'memfs';
 import {type Volume} from 'memfs/lib/volume';
@@ -58,7 +59,7 @@ describe('midnight-smoker', function () {
                 .defineRule(nullRule);
             },
           });
-          smokerOptions = OptionParser.buildSmokerOptionsSchema(
+          smokerOptions = OptionsParser.buildSmokerOptionsSchema(
             pluginRegistry,
           ).parse({
             pkgManager: 'nullpm',
@@ -167,7 +168,7 @@ describe('midnight-smoker', function () {
                 .defineReporter({...nullReporter, name: 'test-reporter-2'});
             },
           });
-          smokerOptions = OptionParser.buildSmokerOptionsSchema(
+          smokerOptions = OptionsParser.buildSmokerOptionsSchema(
             pluginRegistry,
           ).parse({
             pkgManager: 'nullpm',
@@ -204,7 +205,7 @@ describe('midnight-smoker', function () {
               api.defineReporter(nullReporter).defineReporter(nullReporter2);
             },
           });
-          smokerOptions = OptionParser.buildSmokerOptionsSchema(
+          smokerOptions = OptionsParser.buildSmokerOptionsSchema(
             pluginRegistry,
           ).parse({
             pkgManager: 'nullpm',
@@ -246,7 +247,7 @@ describe('midnight-smoker', function () {
                 });
               },
             });
-            smokerOptions = OptionParser.buildSmokerOptionsSchema(
+            smokerOptions = OptionsParser.buildSmokerOptionsSchema(
               pluginRegistry,
             ).parse({
               pkgManager: 'nullpm',
@@ -282,15 +283,14 @@ describe('midnight-smoker', function () {
                 api.definePackageManager(nullPkgManagerDef);
               },
             });
-            smokerOptions = OptionParser.buildSmokerOptionsSchema(
+            smokerOptions = OptionsParser.buildSmokerOptionsSchema(
               pluginRegistry,
             ).parse({
               pkgManager: 'nullpm',
             });
 
-            // this will cause plugin.loadPkgManagers to throw, because
-            // it expects pkgManagerDefMap to be non-empty
-            plugin.pkgManagerDefMap.clear();
+            // @ts-expect-error non-empty array enforced by type
+            sandbox.stub(PkgManagerSpec, 'fromPkgManagerDefs').resolves([]);
 
             await expect(
               runMachine({

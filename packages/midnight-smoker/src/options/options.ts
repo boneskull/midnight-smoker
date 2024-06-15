@@ -120,18 +120,18 @@ const smokerOptionsShape = {
 /**
  * Schema representing all options for `midnight-smoker`, either passed thru the
  * CLI, config file, or API.
+ *
+ * Does not include custom rule options.
  */
-
 export const BaseSmokerOptionsSchema = z
   .object(smokerOptionsShape)
   .extend({
-    // 'include-root': smokerOptionsShape.includeRoot,
     'pkg-manager': smokerOptionsShape.pkgManager,
   })
   .describe('midnight-smoker options schema');
 
 /**
- * Options for `Smoker` as provided by a user
+ * Options for `Smoker` as provided by a user.
  */
 export type RawSmokerOptions = z.input<typeof BaseSmokerOptionsSchema>;
 

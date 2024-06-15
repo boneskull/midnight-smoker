@@ -10,7 +10,7 @@ import {InvalidArgError} from '#error/invalid-arg-error';
 import {ControlMachine, type CtrlMachineOutput} from '#machine/control';
 import {isActorOutputOk} from '#machine/util';
 import type {RawSmokerOptions, SmokerOptions} from '#options/options';
-import {OptionParser} from '#options/parser';
+import {OptionsParser} from '#options/options-parser';
 import {type Component, type ComponentObject} from '#plugin/component';
 import {type SomeRuleDef} from '#schema/some-rule-def';
 import {type StaticPluginMetadata} from '#schema/static-plugin-metadata';
@@ -203,8 +203,8 @@ export class Smoker {
 
     if (isActorOutputOk(output)) {
       const results: SmokeResults = {
-        scripts: output.runScriptResults,
-        lint: output.lintResults,
+        scripts: output.scripts,
+        lint: output.lint,
         plugins: pluginRegistry.plugins,
         opts: smokerOptions,
       };
@@ -227,7 +227,7 @@ export class Smoker {
    * 2. Assuming we have no prebuilt registry, external plugins then must be
    *    loaded.
    * 3. The registry must refuse further registrations.
-   * 4. {@link OptionParser.parse Parse} the options.
+   * 4. {@link OptionsParser.parse Parse} the options.
    *
    * @param opts - The options for the smoker.
    * @param caps - Capabilities
@@ -266,7 +266,7 @@ export class Smoker {
     return {
       fileManager,
       pluginRegistry,
-      options: OptionParser.create(pluginRegistry).parse(opts),
+      options: OptionsParser.create(pluginRegistry).parse(opts),
     };
   }
 

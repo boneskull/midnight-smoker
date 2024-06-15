@@ -1,5 +1,5 @@
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
-import {type WorkspaceInfo} from '#schema/workspaces';
+import {type WorkspaceInfo} from '#schema/workspace-info';
 import {isString} from 'lodash';
 import {BaseSmokerError} from './base-error';
 

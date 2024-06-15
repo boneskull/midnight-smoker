@@ -3,7 +3,7 @@ import {ExecutorSchema} from '#schema/executor';
 import {InstallManifestSchema} from '#schema/install-manifest';
 import {RunScriptManifestSchema} from '#schema/run-script-manifest';
 import {RunScriptResultSchema} from '#schema/run-script-result';
-import {WorkspaceInfoSchema} from '#schema/workspaces';
+import {WorkspaceInfoSchema} from '#schema/workspace-info';
 import {
   AbortSignalSchema,
   NonEmptyStringSchema,

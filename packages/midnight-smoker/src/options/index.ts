@@ -6,4 +6,4 @@
 
 export * from './options';
 
-export * from './parser';
+export * from './options-parser';

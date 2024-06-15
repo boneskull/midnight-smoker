@@ -7,7 +7,7 @@ import {
   type RunScriptResultSkipped,
 } from '#schema/run-script-result';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
-import {type WorkspaceInfo} from '#schema/workspaces';
+import {type WorkspaceInfo} from '#schema/workspace-info';
 import {type Simplify} from 'type-fest';
 import {type ScriptEvent} from './event-constants';
 import {type PkgManagerEventBase} from './pkg-manager-events';

@@ -11,7 +11,7 @@ import {
   compact,
   flow,
 } from 'lodash';
-import {type Result, type WorkspaceInfo} from '../pkg-manager';
+import path from 'node:path';
 
 export function once<This, Args extends any[], TReturn>(
   target: (this: This, ...args: Args) => TReturn,
@@ -96,20 +96,6 @@ export function randomItem<T>(items: [T, ...T[]] | readonly [T, ...T[]]): T {
 }
 
 /**
- * Converts an object extending {@link WorkspaceInfo} to a {@link Result},
- * suitable for serialization
- *
- * @param obj Any object extending {@link WorkspaceInfo}
- * @returns A {@link Result} object
- */
-export function asResult<T extends WorkspaceInfo>(obj: T): Result<T> {
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-  const result: Result<T> = {...obj} as any;
-  delete result.pkgJson;
-  return result;
-}
-
-/**
  * Returns string representing difference between `startTime` and now _in
  * seconds_.
  *
@@ -118,4 +104,29 @@ export function asResult<T extends WorkspaceInfo>(obj: T): Result<T> {
  */
 export function delta(startTime: number): string {
   return ((performance.now() - startTime) / 1000).toFixed(2);
+}
+
+/**
+ * Returns a relative path suitable for display (with leading `.` and
+ * `path.sep`)
+ *
+ * @param value Path
+ * @param cwd Path from which to make the path relative
+ * @returns A relative path, prepended with a `.` and path separator
+ */
+
+export function hrRelativePath(value: string, cwd = process.cwd()): string {
+  const relative = path.relative(cwd, value);
+  return relative.startsWith('..') ? relative : `.${path.sep}${relative}`;
+}
+
+/**
+ * Creates an enum-like, frozen "constant" object.
+ *
+ * @param obj Some enum/record-like object
+ * @returns Readonly object
+ */
+
+export function constant<const T>(obj: T): Readonly<T> {
+  return Object.freeze(obj);
 }

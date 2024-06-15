@@ -3,7 +3,6 @@ import {
   NonEmptyStringSchema,
   PackageJsonSchema,
 } from '#util/schema-util';
-import {type Except} from 'type-fest';
 import {z} from 'zod';
 
 export const WorkspacesSchema = NonEmptyStringArraySchema;
@@ -26,14 +25,4 @@ export const WorkspaceInfoSchema = z.strictObject({
 
 export type WorkspaceInfo = z.infer<typeof WorkspaceInfoSchema>;
 
-export function asResultSchema<T extends typeof WorkspaceInfoSchema>(
-  schema: T,
-) {
-  return schema.omit({pkgJson: true}).strict();
-}
-
-export type Result<T extends Partial<WorkspaceInfo>> = Except<
-  T,
-  'pkgJson',
-  {requireExactProps: true}
->;
+export type WorkspaceInfoLike = Partial<WorkspaceInfo>;

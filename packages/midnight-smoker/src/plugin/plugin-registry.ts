@@ -44,7 +44,7 @@ import {
   type SomeComponentObject,
 } from './component';
 
-const debug = Debug('midnight-smoker:plugin-registry');
+const debug = Debug('midnight-smoker:plugin:registry');
 
 /**
  * Static metadata about a {@link PluginRegistry}

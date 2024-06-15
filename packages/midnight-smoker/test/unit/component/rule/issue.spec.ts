@@ -3,7 +3,7 @@ import {RuleError} from '#error/rule-error';
 import {RuleIssue, type RuleIssueParams} from '#rule/rule-issue';
 import {type CheckFailed} from '#schema/check-result';
 import type {StaticRuleContext, StaticRuleDef} from '#schema/rule-static';
-import {asResult} from '#util/util';
+import {asResult} from '#util/result';
 import {omit} from 'lodash';
 import unexpected from 'unexpected';
 

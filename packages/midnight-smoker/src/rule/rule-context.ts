@@ -4,8 +4,8 @@ import {
   type StaticRuleContext,
   type StaticRuleDef,
 } from '#schema/rule-static';
+import {asResult} from '#util/result';
 import {serialize} from '#util/serialize';
-import {asResult} from '#util/util';
 import {type PackageJson} from 'type-fest';
 import {RuleIssue} from './rule-issue';
 

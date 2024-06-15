@@ -2,6 +2,7 @@ import {ERROR, OK} from '#constants';
 import {
   assertActorOutputNotOk,
   assertActorOutputOk,
+  idFromEventType,
   isActorOutputNotOk,
   isActorOutputOk,
   monkeypatchActorLogger,
@@ -101,6 +102,23 @@ describe('midnight-smoker', function () {
           expect(monkeypatchActorLogger(actor, namespace), 'to satisfy', {
             logger: expect.it('to be a function'),
             _actorScope: {logger: expect.it('to be a function')},
+          });
+        });
+      });
+
+      describe('idFromEventType()', function () {
+        describe('when the event type is as expected', function () {
+          it('should return the actor ID', function () {
+            const event = {type: 'xstate.done.actor.test'} as const;
+            expect(idFromEventType(event), 'to equal', 'test');
+          });
+        });
+
+        describe('when the event type is not as expected', function () {
+          it('should return undefined', function () {
+            const event = {type: 'xstate.actor.test'} as const;
+            // @ts-expect-error bad type
+            expect(idFromEventType(event), 'to be undefined');
           });
         });
       });

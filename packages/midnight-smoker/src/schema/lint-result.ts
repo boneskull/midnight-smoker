@@ -1,6 +1,6 @@
+import {type Result} from '#util/result';
 import {type CheckOk, type CheckResult} from './check-result';
 import type {LintManifest} from './lint-manifest';
-import {type Result} from './workspaces';
 
 export interface LintResultFailed extends Result<LintManifest> {
   type: 'FAILED';

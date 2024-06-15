@@ -1,6 +1,6 @@
 import {DEFAULT_PKG_MANAGER_BIN, DEFAULT_PKG_MANAGER_VERSION} from '#constants';
 import type * as PMO from '#pkg-manager/pkg-manager-spec';
-import {type WorkspaceInfo} from '#schema/workspaces';
+import {type WorkspaceInfo} from '#schema/workspace-info';
 import {FileManager} from '#util/filemanager';
 import {type Volume} from 'memfs/lib/volume';
 import path from 'node:path';

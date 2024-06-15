@@ -3,23 +3,25 @@ import {type DataForEvent} from '#event/events';
 import {type LoaderMachineOutput} from '#machine/loader';
 import {type PkgManagerMachineOutput} from '#machine/pkg-manager';
 import {type ReporterMachineOutput} from '#machine/reporter';
-import {type CtrlInstallEvents} from './install-events';
-import {type CtrlLintEvents} from './lint-events';
+import {type AbortEvent} from '../util/abort-event';
+import {type CtrlInstallEvent} from './install-events';
+import {type CtrlLintEvent} from './lint-events';
 import {type CtrlPackEvents} from './pack-events';
 import {type CtrlScriptEvents} from './script-events';
 import {type CtrlSmokerEvents} from './smoker-events';
 
-export type CtrlEvents =
-  | CtrlInstallEvents
+export type CtrlEvent =
+  | CtrlInstallEvent
   | CtrlHaltEvent
   | CtrlSmokerEvents
-  | CtrlLintEvents
+  | CtrlLintEvent
   | CtrlLoaderMachineDoneEvent
   | CtrlPackEvents
   | CtrlPkgManagerMachineDoneEvent
   | CtrlReporterMachineDoneEvent
   | CtrlScriptEvents
-  | VerbatimEvents;
+  | VerbatimEvents
+  | AbortEvent;
 
 export type CtrlMachineEmitted = DataForEvent<
   | typeof SmokerEvent.Lingered

@@ -1,6 +1,6 @@
 import {type LintManifest} from '#schema/lint-manifest';
 import {type SomeRuleConfig} from '#schema/rule-options';
-import {type Result} from '#schema/workspaces';
+import {type Result} from '#util/result';
 import {type Simplify} from 'type-fest';
 import {BaseSmokerError} from './base-error';
 

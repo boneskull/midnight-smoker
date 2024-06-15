@@ -7,7 +7,8 @@ import {
   type SomeRuleConfig,
 } from '#schema/rule-options';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
-import {type Result, type WorkspaceInfo} from '#schema/workspaces';
+import {type WorkspaceInfo} from '#schema/workspace-info';
+import {type Result} from '#util/result';
 import {type LintEvent} from './event-constants';
 import {type PkgManagerEventBase} from './pkg-manager-events';
 

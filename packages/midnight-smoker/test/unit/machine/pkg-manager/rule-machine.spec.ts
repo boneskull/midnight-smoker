@@ -121,7 +121,7 @@ describe('midnight-smoker', function () {
             {
               type: 'CHECK_RESULT',
               output: {
-                opts: {},
+                config: {},
                 manifest: {},
                 ruleId,
                 actorId: expect.it('to be a string'),
@@ -172,8 +172,10 @@ describe('midnight-smoker', function () {
             await expect(actor, 'to be fulfilled with value satisfying', [
               {
                 type: 'CHECK_ERROR',
-                error: {
-                  code: ErrorCodes.RuleError,
+                output: {
+                  error: {
+                    code: ErrorCodes.RuleError,
+                  },
                 },
               },
             ]);
@@ -206,7 +208,7 @@ describe('midnight-smoker', function () {
           await expect(actor, 'to be fulfilled with value satisfying', {
             results: [
               {
-                opts: {},
+                config: {},
                 manifest: {},
                 ruleId,
                 actorId: expect.it('to be a string'),

@@ -1,7 +1,7 @@
 import {RuleSeveritySchema} from '#schema/rule-severity';
 import {NonEmptyStringSchema} from '#util/schema-util';
 import {z} from 'zod';
-import {WorkspaceInfoSchema} from './workspaces';
+import {WorkspaceInfoSchema} from './workspace-info';
 
 export const StaticRuleContextSchema = WorkspaceInfoSchema.extend({
   installPath: NonEmptyStringSchema,

@@ -1,8 +1,7 @@
 import {DEFAULT_PKG_MANAGER_BIN, DEFAULT_PKG_MANAGER_VERSION} from '#constants';
-import {ErrorCodes} from '#error/codes';
 import type * as PMLoader from '#pkg-manager/pkg-manager-loader';
 import {type PkgManagerDef} from '#schema/pkg-manager-def';
-import {type WorkspaceInfo} from '#schema/workspaces';
+import {type WorkspaceInfo} from '#schema/workspace-info';
 import rewiremock from 'rewiremock/node';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
@@ -51,14 +50,14 @@ describe('midnight-smoker', function () {
             ];
           });
           describe('when provided an unknown package manager', function () {
-            it('should reject', function () {
+            it('should fulfill with an empty array', function () {
               expect(
                 () =>
                   loadPackageManagers([nullPkgManagerDef], workspaceInfo, {
                     desiredPkgManagers: ['pnpm'],
                   }),
-                'to be rejected with error satisfying',
-                {code: ErrorCodes.AggregateUnsupportedPkgManagerError},
+                'to be fulfilled with value satisfying',
+                expect.it('to be empty').and('to be an array'),
               );
             });
           });
@@ -106,7 +105,10 @@ describe('midnight-smoker', function () {
               ).then((map) => [...map.values()]);
               await expect(res, 'to satisfy', [
                 {
-                  spec: nullPkgManagerSpec.toJSON(),
+                  spec: {
+                    ...nullPkgManagerSpec.toJSON(),
+                    requestedAs: 'nullpm@1',
+                  },
                   def: expect.it('to be', nullPkgManagerDef),
                 },
               ]);
@@ -118,13 +120,13 @@ describe('midnight-smoker', function () {
               sandbox.stub(nullPkgManagerDef, 'accepts').returns(undefined);
             });
 
-            it('should reject', async function () {
+            it('should return an empty array', async function () {
               await expect(
                 loadPackageManagers([nullPkgManagerDef], workspaceInfo, {
                   desiredPkgManagers: ['nullpm@3'],
                 }),
-                'to be rejected with error satisfying',
-                {code: ErrorCodes.AggregateUnsupportedPkgManagerError},
+                'to be fulfilled with value satisfying',
+                expect.it('to be empty').and('to be an array'),
               );
             });
           });

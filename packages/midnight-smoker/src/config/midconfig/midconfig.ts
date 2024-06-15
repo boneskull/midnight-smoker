@@ -3,11 +3,13 @@
  *
  * 1. All sync methods removed
  * 2. No custom loaders
- * 3. I/O is routed through a {@link FileManager}
+ * 3. I/O is routed through a {@link FileManager} for ease of testing
  * 4. It's a class now; not a factory function
  * 5. TS support
+ * 6. Moved loose util functions into the class as static methods
+ * 7. It's smaller than `lilconfig`, but it's also mid.
  *
- * If you want to see the actual call into {@link Midconfig}, see `config-reader`
+ * If you want to see the actual call into {@link Midconfig}, see `ConfigReader`
  *
  * @packageDocumentation
  * @see {@link https://npm.im/lilconfig}
@@ -23,8 +25,26 @@ import {
   type Loaders,
   type MidconfigOptions,
   type MidconfigResult,
-} from './config-types';
+} from './midconfig-types';
 
+/**
+ * String representing a file without an extension, which is used to map to a
+ * {@link Loader}
+ */
+const NOEXT = 'noExt';
+
+/**
+ * Abstracts setting something in a cache. Returns the value set
+ *
+ * @param c The cache
+ * @param filepath The filepath
+ * @param res The result
+ */
+type EmplaceFn = <T>(c: Map<string, T>, filepath: string, res: T) => T;
+
+/**
+ * Responsible for loading and searching configuration files.
+ */
 export class Midconfig implements AsyncSearcher {
   private cache: boolean;
 
@@ -48,7 +68,7 @@ export class Midconfig implements AsyncSearcher {
 
   constructor(
     name: string,
-    private readonly filemanager: FileManager,
+    private readonly fileManager: FileManager,
     options?: MidconfigOptions,
   ) {
     const {
@@ -58,14 +78,15 @@ export class Midconfig implements AsyncSearcher {
       stopDir,
       transform,
       cache,
-    } = this.getOptions(name, options ?? {});
-    this.emplace = makeEmplace(cache);
+    } = this.getOptions(name, options);
+    this.emplace = Midconfig.makeEmplace(cache);
     this.ignoreEmptySearchPlaces = ignoreEmptySearchPlaces;
 
     const jsLoader: Loader = async (_, filename) => justImport(filename);
     const tsLoader: Loader = async (_, filename) => importTs(filename);
     const jsonLoader: Loader = async (_, content) =>
       JSON.parse(content) as unknown;
+
     this.loaders = Object.freeze({
       '.mjs': jsLoader,
       '.js': jsLoader,
@@ -99,18 +120,18 @@ export class Midconfig implements AsyncSearcher {
   }
 
   public async load(filepath: string) {
-    validateFilePath(filepath);
+    Midconfig.validateFilePath(filepath);
     const absPath = path.resolve(process.cwd(), filepath);
     if (this.cache && this.loadCache.has(absPath)) {
       return this.loadCache.get(absPath)!;
     }
     const {base, ext} = path.parse(absPath);
-    const loaderKey = ext || 'noExt';
+    const loaderKey = ext || NOEXT;
     const loader = this.loaders[loaderKey];
-    validateLoader(loader, loaderKey);
+    Midconfig.validateLoader(loader, loaderKey);
 
     // TODO this could go thru FileManager.readPkgJson
-    const content = await this.filemanager.readFile(absPath);
+    const content = await this.fileManager.readFile(absPath);
 
     if (base === 'package.json') {
       const pkg = (await loader(absPath, content)) as PackageJson;
@@ -118,7 +139,7 @@ export class Midconfig implements AsyncSearcher {
         this.loadCache,
         absPath,
         this.transform({
-          config: getPackageProp(this.packageProp, pkg),
+          config: Midconfig.getPackageProp(this.packageProp, pkg),
           filepath: absPath,
         }),
       );
@@ -175,17 +196,17 @@ export class Midconfig implements AsyncSearcher {
         const filepath = path.join(dir, searchPlace);
         let content: string;
         try {
-          content = await this.filemanager.readFile(filepath);
+          content = await this.fileManager.readFile(filepath);
         } catch {
           continue;
         }
-        const loaderKey = path.extname(searchPlace) || 'noExt';
+        const loaderKey = path.extname(searchPlace) || NOEXT;
         const loader = this.loaders[loaderKey];
 
         // handle package.json
         if (searchPlace === PACKAGE_JSON) {
           const pkg = (await loader(filepath, content)) as PackageJson;
-          const maybeConfig = getPackageProp(this.packageProp, pkg);
+          const maybeConfig = Midconfig.getPackageProp(this.packageProp, pkg);
           if (maybeConfig != null) {
             result.config = maybeConfig;
             result.filepath = filepath;
@@ -203,14 +224,15 @@ export class Midconfig implements AsyncSearcher {
           result.isEmpty = true;
           result.config = undefined;
         } else {
-          validateLoader(loader, loaderKey);
+          Midconfig.validateLoader(loader, loaderKey);
           result.config = await loader(filepath, content);
         }
         result.filepath = filepath;
         break dirLoop;
       }
-      if (dir === this.stopDir || dir === parentDir(dir)) break dirLoop;
-      dir = parentDir(dir);
+      if (dir === this.stopDir || dir === Midconfig.parentDir(dir))
+        break dirLoop;
+      dir = Midconfig.parentDir(dir);
     }
 
     const transformed =
@@ -226,13 +248,21 @@ export class Midconfig implements AsyncSearcher {
     return transformed;
   }
 
+  /**
+   * Returns a full options object by merging user-provided options with
+   * defaults
+   *
+   * @param name Script name
+   * @param options User-provided options
+   * @returns Full config
+   */
   private getOptions(
     name: string,
-    options: MidconfigOptions,
+    options?: MidconfigOptions,
   ): Required<MidconfigOptions> {
     return {
-      stopDir: this.filemanager.getHomeDir(),
-      searchPlaces: getDefaultSearchPlaces(name),
+      stopDir: this.fileManager.getHomeDir(),
+      searchPlaces: Midconfig.getDefaultSearchPlaces(name),
       ignoreEmptySearchPlaces: true,
       cache: true,
       transform: async (x) => x,
@@ -240,60 +270,85 @@ export class Midconfig implements AsyncSearcher {
       ...options,
     };
   }
-}
 
-function getDefaultSearchPlaces(name: string): string[] {
-  return [
-    'package.json',
-    `.${name}rc.json`,
-    `.${name}rc.js`,
-    `.${name}rc.cjs`,
-    `.${name}rc.mjs`,
-    `.config/${name}rc`,
-    `.config/${name}rc.json`,
-    `.config/${name}rc.js`,
-    `.config/${name}rc.cjs`,
-    `.config/${name}rc.mjs`,
-    `${name}.config.js`,
-    `${name}.config.cjs`,
-    `${name}.config.mjs`,
-  ];
-}
+  protected static getDefaultSearchPlaces(name: string): string[] {
+    return [
+      'package.json',
+      `.${name}rc.json`,
+      `.${name}rc.js`,
+      `.${name}rc.cjs`,
+      `.${name}rc.mjs`,
+      `.config/${name}rc`,
+      `.config/${name}rc.json`,
+      `.config/${name}rc.js`,
+      `.config/${name}rc.cjs`,
+      `.config/${name}rc.mjs`,
+      `${name}.config.js`,
+      `${name}.config.cjs`,
+      `${name}.config.mjs`,
+    ];
+  }
 
-function getPackageProp(props: string | string[], obj: PackageJson): unknown {
-  if (typeof props === 'string' && props in obj) return obj[props];
-  return (
-    (Array.isArray(props) ? props : props.split('.')).reduce(
-      // @ts-expect-error pretty loose!
-      (acc, prop) => (acc === undefined ? acc : acc[prop]),
-      obj,
-    ) || null
-  );
-}
+  protected static getPackageProp(
+    props: string | string[],
+    obj: PackageJson,
+  ): unknown {
+    if (typeof props === 'string' && props in obj) return obj[props];
+    return (
+      (Array.isArray(props) ? props : props.split('.')).reduce(
+        // @ts-expect-error pretty loose!
+        (acc, prop) => (acc === undefined ? acc : acc[prop]),
+        obj,
+      ) || null
+    );
+  }
 
-function makeEmplace(
-  enableCache: boolean,
-): <T>(c: Map<string, T>, filepath: string, res: T) => T {
-  return <T>(c: Map<string, T>, filepath: string, res: T) => {
-    if (enableCache) c.set(filepath, res);
-    return res;
-  };
-}
+  /**
+   * Returns a function which abstracts setting something in a cache.
+   *
+   * @param enableCache Whether or not to actually enable caching
+   * @returns
+   */
+  protected static makeEmplace(enableCache: boolean): EmplaceFn {
+    return <T>(c: Map<string, T>, filepath: string, res: T): T => {
+      if (enableCache) c.set(filepath, res);
+      return res;
+    };
+  }
 
-/**
- * See #17 On *nix, if cwd is not under homedir, the last path will be '',
- * ('/build' -> '') but it should be '/' actually. And on Windows, this will
- * never happen. ('C:\build' -> 'C:')
- */
-function parentDir(p: string): string {
-  return path.dirname(p) || path.sep;
-}
+  /**
+   * Get the proper parent directory of a path
+   *
+   * On *nix, if cwd is not under the user's home dir, the last path will be
+   * `''`, (e.g., `/build` to `''`), but it should be `/` actually. And on
+   * Windows, this will never happen. (`C:\build` to `C:`)
+   *
+   * @see {@link https://github.com/antonk52/lilconfig/issues/17}
+   */
+  protected static parentDir(p: string): string {
+    return path.dirname(p) || path.sep;
+  }
 
-function validateFilePath(filepath: string) {
-  if (!filepath) throw new Error('load must pass a non-empty string');
-}
+  /**
+   * Asserts `filepath` is non-empty
+   *
+   * @param filepath Some filepath
+   * @todo Custom exception
+   */
+  protected static validateFilePath(filepath: string) {
+    if (!filepath) throw new Error('load must pass a non-empty string');
+  }
 
-function validateLoader(loader: Loader, ext: string): void {
-  if (!loader) throw new Error(`No loader specified for extension "${ext}"`);
-  if (typeof loader !== 'function') throw new Error('loader is not a function');
+  /**
+   * Asserts `loader` is a function
+   *
+   * @param loader A config loader
+   * @param ext File extension
+   * @todo Custom exception
+   */
+  protected static validateLoader(loader: Loader, ext: string): void {
+    if (!loader) throw new Error(`No loader specified for extension "${ext}"`);
+    if (typeof loader !== 'function')
+      throw new Error('loader is not a function');
+  }
 }

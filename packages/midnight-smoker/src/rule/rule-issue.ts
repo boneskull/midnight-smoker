@@ -11,9 +11,8 @@ import {
   type StaticRuleContext,
   type StaticRuleDef,
 } from '#schema/rule-static';
-import {type Result} from '#schema/workspaces';
+import {asResult, type Result} from '#util/result';
 import {uniqueId, type UniqueId} from '#util/unique-id';
-import {asResult} from '#util/util';
 import path from 'node:path';
 import {fileURLToPath} from 'url';
 import {serialize} from '../util/serialize';

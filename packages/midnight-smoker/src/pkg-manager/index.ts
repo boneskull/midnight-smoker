@@ -28,4 +28,6 @@ export * from './pkg-manager-spec';
 
 export * from './pkg-manager-version';
 
-export * from '#schema/workspaces';
+export * from '#schema/workspace-info';
+
+export * from '#util/result';

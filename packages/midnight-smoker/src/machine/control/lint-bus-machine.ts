@@ -7,9 +7,9 @@ import {type SmokerOptions} from '#options/options';
 import {type LintResult, type LintResultOk} from '#schema/lint-result';
 import {type SomeRuleDef} from '#schema/some-rule-def';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
-import {type WorkspaceInfo} from '#schema/workspaces';
+import {type WorkspaceInfo} from '#schema/workspace-info';
 import {fromUnknownError} from '#util/error-util';
-import {asResult} from '#util/util';
+import {asResult} from '#util/result';
 import {
   assign,
   enqueueActions,
@@ -18,7 +18,7 @@ import {
   type AnyActorRef,
 } from 'xstate';
 import {type ListenEvent} from './control-machine-events';
-import {type CtrlLintEvents} from './lint-events';
+import {type CtrlLintEvent} from './lint-events';
 
 export interface LintBusMachineInput {
   workspaceInfo: WorkspaceInfo[];
@@ -35,7 +35,7 @@ export interface LintBusMachineContext extends LintBusMachineInput {
   lintResults?: LintResult[];
 }
 
-export type LintBusMachineEvents = ListenEvent | CtrlLintEvents;
+export type LintBusMachineEvents = ListenEvent | CtrlLintEvent;
 
 export type ReportableLintEventData = DataForEvent<keyof LintEventData>;
 

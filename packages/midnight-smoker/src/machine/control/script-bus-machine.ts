@@ -6,9 +6,9 @@ import {type ReporterMachine} from '#machine/reporter';
 import {type SmokerOptions} from '#options/options';
 import {type RunScriptResult} from '#schema/run-script-result';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
-import {type WorkspaceInfo} from '#schema/workspaces';
+import {type WorkspaceInfo} from '#schema/workspace-info';
 import {fromUnknownError} from '#util/error-util';
-import {asResult} from '#util/util';
+import {asResult} from '#util/result';
 import {partition} from 'lodash';
 import assert from 'node:assert';
 import {

@@ -20,7 +20,7 @@ import {
   type RunScriptResultFailed,
 } from '#schema/run-script-result';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
-import {type WorkspaceInfo} from '#schema/workspaces';
+import {type WorkspaceInfo} from '#schema/workspace-info';
 import {fromUnknownError, isExecaError, isSmokerError} from '#util/error-util';
 import {type FileManager} from '#util/filemanager';
 import {isFunction} from 'lodash';

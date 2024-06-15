@@ -3,12 +3,11 @@
  *
  * @packageDocumentation
  */
+import {type WorkspaceInfoSchema} from '#schema/workspace-info';
 import {camelCase, isObject, kebabCase, mapKeys} from 'lodash';
-import type {EventEmitter} from 'node:events';
 import {Range, SemVer} from 'semver';
 import type {CamelCase, Class, KebabCase, PackageJson} from 'type-fest';
 import {z} from 'zod';
-import {isSerializable} from './serialize';
 import {castArray} from './util';
 
 /**
@@ -50,8 +49,8 @@ export const NonEmptyNonEmptyStringArraySchema =
   NonEmptyStringArraySchema.min(1);
 
 /**
- * Schema representing a non-empty string or array of non-empty strings, which
- * is then cast to an array
+ * Schema representing a non-empty _string or array_ of non-empty strings, which
+ * is then cast to an array. Yep
  */
 export const NonEmptyStringToArraySchema = z
   .union([NonEmptyStringSchema, NonEmptyStringArraySchema])
@@ -100,25 +99,6 @@ export function instanceofSchema<E extends Class<any>>(ctor: E) {
 }
 
 /**
- * Returns a schema which transforms a schema such that if a schema's output is
- * an object, and that object has a `toJSON` method, call it.
- *
- * `midnight-smoker` has a convention where many classes implement a "static"
- * interface, and the `toJSON` method returns such a type. This type is used for
- * passing thru the module edge; e.g., via an `EventEmitter`.
- *
- * @param schema - The schema to use for serialization.
- * @returns The serialized object.
- */
-export function serializeObject<T extends z.ZodTypeAny>(schema: T) {
-  return schema
-    .transform((val: unknown) =>
-      isSerializable(val) ? (val.toJSON() as z.infer<T>) : val,
-    )
-    .pipe(schema);
-}
-
-/**
  * Wraps a Zod schema in type `T` and validates the schema against it.
  *
  * Caveats:
@@ -140,17 +120,8 @@ export function customSchema<T>(schema?: z.ZodTypeAny) {
 /**
  * Schema for a {@link AbortSignal}
  */
-export const AbortSignalSchema = instanceofSchema(AbortSignal);
-
-/**
- * Rough schema for a {@link EventEmitter}-like object.
- *
- * This is not an `instanceof` check against Node.js' `EventEmitter` because
- * alternative implementations may be used.
- */
-export const EventEmitterSchema = customSchema<EventEmitter>(
-  z.object({on: z.function(), once: z.function(), emit: z.function()}),
-);
+export const AbortSignalSchema =
+  instanceofSchema(AbortSignal).describe('An AbortSignal');
 
 /**
  * An object with keys transformed to camelCase.
@@ -202,11 +173,28 @@ export function dualCasedObjectSchema<T extends z.AnyZodObject>(schema: T) {
   return schema.extend(toDualCasedObject(schema.shape));
 }
 
-export const SemVerSchema = instanceofSchema(SemVer);
+/**
+ * Schema for a {@link SemVer} object
+ */
+export const SemVerSchema =
+  instanceofSchema(SemVer).describe('SemVer instance');
 
-export const SemVerRangeSchema = instanceofSchema(Range);
+/**
+ * Schema for a {@link Range SemVer Range} object
+ */
+export const SemVerRangeSchema = instanceofSchema(Range).describe(
+  'SemVer Range instance',
+);
 
-export const VoidOrPromiseVoidSchema = z.void().or(z.promise(z.void()));
+/**
+ * Schema for `void | Promise<void>`.
+ *
+ * Useful for function schemas.
+ */
+export const VoidOrPromiseVoidSchema = z
+  .void()
+  .or(z.promise(z.void()))
+  .describe('void or Promise<void>');
 
 /**
  * Creates a schema which accepts "fancy" objects (e.g., class instances) and
@@ -222,4 +210,17 @@ export function fancyObjectSchema<T extends z.AnyZodObject>(schema: T) {
     (value) => (isObject(value) ? {...value} : value),
     schema,
   );
+}
+
+/**
+ * Creates a strict schema from one extending {@link WorkspaceInfoSchema} which
+ * omits the `pkgJson` field.
+ *
+ * @param schema - A schema extending {@link WorkspaceInfoSchema}
+ * @returns A new schema
+ */
+export function asResultSchema<T extends typeof WorkspaceInfoSchema>(
+  schema: T,
+) {
+  return schema.omit({pkgJson: true}).strict();
 }

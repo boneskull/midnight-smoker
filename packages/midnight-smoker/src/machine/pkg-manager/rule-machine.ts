@@ -12,8 +12,8 @@ import {
   fromUnknownError,
   isSmokerError,
 } from '#util/error-util';
+import {asResult} from '#util/result';
 import {uniqueId} from '#util/unique-id';
-import {asResult} from '#util/util';
 import {isNumber} from 'lodash';
 import assert from 'node:assert';
 import {
@@ -183,7 +183,7 @@ export const check = fromPromise<CheckOutput, CheckInput>(
     switch (result.type) {
       case 'OK': {
         const output: CheckOutputOk = {
-          opts,
+          config,
           manifest,
           ruleId,
           result,
@@ -196,7 +196,7 @@ export const check = fromPromise<CheckOutput, CheckInput>(
       case 'FAILED': {
         const output: CheckOutputFailed = {
           installPath: ctx.installPath,
-          opts,
+          config,
           manifest,
           ruleId,
           // TODO fix this readonly disagreement.  it _should_ be read-only, but that breaks somewhere down the line
@@ -294,12 +294,10 @@ export const RuleMachine = setup({
      * The two events are structurally identical
      */
     sendCheckResult: enqueueActions(
-      ({enqueue, context}, output: CheckOutput) => {
-        const {parentRef, config} = context;
+      ({enqueue, context: {parentRef}}, output: CheckOutput) => {
         const evt: PkgManagerMachineCheckResultEvent = {
           type: 'CHECK_RESULT',
           output,
-          config,
         };
         if (parentRef) {
           enqueue.sendTo(parentRef, evt);
@@ -325,15 +323,14 @@ export const RuleMachine = setup({
           output: {
             type: 'ERROR',
             installPath,
-            opts: config.opts,
+            config,
             ruleId,
             manifest: {
               ...manifest,
               installPath,
             },
+            error,
           },
-          config,
-          error,
         };
         if (parentRef) {
           enqueue.sendTo(parentRef, evt);

@@ -1,12 +1,13 @@
 import {DEFAULT_COMPONENT_ID, FINAL, SYSTEM_EXECUTOR_ID} from '#constants';
 import {type ExecResult} from '#executor';
 import {type CtrlMachineOutput} from '#machine/control';
-import {type RawSmokerOptions} from '#options/options';
-import {OptionParser} from '#options/parser';
+import {type RawSmokerOptions, type SmokerOptions} from '#options/options';
+import {OptionsParser} from '#options/options-parser';
 import {PluginRegistry} from '#plugin/plugin-registry';
-import {type Result, type WorkspaceInfo} from '#schema/workspaces';
+import {type WorkspaceInfo} from '#schema/workspace-info';
 import {Smoker, type SmokeResults} from '#smoker';
 import {FileManager} from '#util/filemanager';
+import {type Result} from '#util/result';
 import {serialize} from '#util/serialize';
 import {memfs} from 'memfs';
 import {type Volume} from 'memfs/lib/volume';
@@ -33,8 +34,9 @@ describe('midnight-smoker', function () {
     fileManager = FileManager.create({fs: fs as any});
     pluginRegistry = PluginRegistry.create({fileManager});
     controlOutput = {
-      runScriptResults: [],
-      lintResults: [],
+      scripts: [],
+      lint: [],
+      opts: {} as SmokerOptions,
       type: 'OK',
       id: 'test',
       workspaceInfo: [] as Result<WorkspaceInfo>[],
@@ -108,7 +110,7 @@ describe('midnight-smoker', function () {
               scripts: [],
               lint: [],
               plugins: pluginRegistry.plugins,
-              opts: OptionParser.create(pluginRegistry).parse(opts),
+              opts: OptionsParser.create(pluginRegistry).parse(opts),
             });
           });
         });

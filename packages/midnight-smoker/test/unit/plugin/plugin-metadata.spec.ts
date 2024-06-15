@@ -57,7 +57,11 @@ describe('midnight-smoker', function () {
         describe('toString()', function () {
           describe('when the "pkgJson" prop has a "version" prop', function () {
             it('should return a description of the plugin containing the version', function () {
-              expect(metadata.toString(), 'to match', /snuckles@1\.0\.0 (.+)/);
+              expect(
+                metadata.toString(),
+                'to match',
+                /\[Plugin snuckles@1\.0\.0\]/,
+              );
             });
           });
 
@@ -67,7 +71,7 @@ describe('midnight-smoker', function () {
                 entryPoint: TEST_ENTRYPOINT,
                 pkgJson: {name: 'snuckles'},
               });
-              expect(metadata.toString(), 'to match', /snuckles (.+)/);
+              expect(metadata.toString(), 'to match', /\[Plugin snuckles\]/);
             });
           });
         });

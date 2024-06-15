@@ -5,23 +5,33 @@
  */
 
 import {SCRIPT_NAME} from '#constants';
+import type {RawSmokerOptions} from '#options/options';
+import {FileManager} from '#util/filemanager';
+import {toDualCasedObject} from '#util/schema-util';
+import {constant} from '#util/util';
 import Debug from 'debug';
-import type {RawSmokerOptions} from '../options/options';
-import {FileManager} from '../util/filemanager';
-import {toDualCasedObject} from '../util/schema-util';
-import {type MidconfigOptions} from './config-types';
-import {Midconfig} from './midconfig';
+import {Midconfig, type MidconfigOptions} from './midconfig';
 
 const debug = Debug('midnight-smoker:config:reader');
 
-const BASE_CFG_FILENAMES = [
+/**
+ * List of possible config filenames _without extension_.
+ *
+ * These are expanded to then include all allowed extensions.
+ *
+ * @see {@link DEFAULT_MIDCONFIG_OPTS}
+ */
+const BASE_CFG_FILENAMES = constant([
   '.smokerrc',
   'smoker.config',
   '.config/smokerrc',
   '.config/smoker.config',
-] as const;
+]);
 
-const MIDCONFIG_OPTS = {
+/**
+ * Default options for {@link Midconfig}
+ */
+const DEFAULT_MIDCONFIG_OPTS = constant({
   searchPlaces: [
     'package.json',
     ...BASE_CFG_FILENAMES.flatMap((name) => [
@@ -34,27 +44,55 @@ const MIDCONFIG_OPTS = {
       `${name}.cts`,
     ]),
   ],
-} as const satisfies MidconfigOptions;
+}) satisfies MidconfigOptions;
 
+/**
+ * A class that instantiates a {@link MidConfig} instance and uses it to load a
+ * config file (if possible).
+ *
+ * Instantiate via {@link ConfigReader.create}; constructor is private
+ */
 export class ConfigReader {
-  private readonly midconfig: Midconfig;
+  readonly #midconfig: Midconfig;
 
-  private constructor(filemanager: FileManager = FileManager.create()) {
-    this.midconfig = new Midconfig(SCRIPT_NAME, filemanager, MIDCONFIG_OPTS);
+  private constructor(fileManager: FileManager) {
+    this.#midconfig = new Midconfig(
+      SCRIPT_NAME,
+      fileManager,
+      DEFAULT_MIDCONFIG_OPTS,
+    );
   }
 
-  public static create(filemanager: FileManager = FileManager.create()) {
-    return new ConfigReader(filemanager);
+  public static create(fileManager = FileManager.create()): ConfigReader {
+    return new ConfigReader(fileManager);
   }
 
-  public static read(configFile?: string) {
+  /**
+   * {@inheritDoc ConfigReader#read}
+   */
+  public static read(
+    configFile?: string,
+  ): Promise<RawSmokerOptions | undefined> {
     return ConfigReader.create().read(configFile);
   }
 
-  public async read(configFile?: string) {
+  /**
+   * Reads a config file.
+   *
+   * Returns an object having both camelCase and kebab-case keys, for matching
+   * the arguments parsed by yargs.
+   *
+   * @param configFile If provided, reads the specified file. Otherwise,
+   *   searches for a config file.
+   * @returns Raw configuration object (if found)
+   * @todo Support URL?
+   */
+  public async read(
+    configFile?: string,
+  ): Promise<RawSmokerOptions | undefined> {
     const result = await (configFile
-      ? this.midconfig.load(configFile)
-      : this.midconfig.search());
+      ? this.#midconfig.load(configFile)
+      : this.#midconfig.search());
 
     let opts: RawSmokerOptions = {};
     if (result?.config && !result.isEmpty) {

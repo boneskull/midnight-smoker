@@ -10,7 +10,8 @@ import {
   type DrainQueueInput,
   type ReporterLifecycleHookInput,
 } from '#machine/reporter';
-import {OptionParser} from '#options/parser';
+import {type SmokerOptions} from '#options/options';
+import {OptionsParser} from '#options/options-parser';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
 import {PluginRegistry} from '#plugin/plugin-registry';
 import {type ReporterDef} from '#schema/reporter-def';
@@ -24,7 +25,6 @@ import {type PackageJson} from 'type-fest';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
 import {toPromise, type Actor} from 'xstate';
-import {type SmokerOptions} from '../../../src';
 import {nullReporter} from '../mocks/component';
 import {createActorRunner} from './actor-helpers';
 
@@ -62,7 +62,7 @@ describe('midnight-smoker', function () {
           },
         });
         staticPlugin = serialize(plugin);
-        smokerOptions = OptionParser.buildSmokerOptionsSchema(
+        smokerOptions = OptionsParser.buildSmokerOptionsSchema(
           pluginRegistry,
         ).parse({
           reporter: 'test-plugin/test-reporter',

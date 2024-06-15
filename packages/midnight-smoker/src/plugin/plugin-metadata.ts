@@ -19,11 +19,10 @@ import {type RuleDef} from '#schema/rule-def';
 import {type RuleDefSchemaValue} from '#schema/rule-def-schema-value';
 import {type SomeRuleDef} from '#schema/some-rule-def';
 import {type StaticPluginMetadata} from '#schema/static-plugin-metadata';
-import {type WorkspaceInfo} from '#schema/workspaces';
+import {type WorkspaceInfo} from '#schema/workspace-info';
 import {type FileManager} from '#util/filemanager';
-import {assertNonEmptyArray, type NonEmptyArray} from '#util/util';
 import Debug from 'debug';
-import {isPlainObject, isString} from 'lodash';
+import {isEmpty, isPlainObject, isString} from 'lodash';
 import path from 'node:path';
 import type {LiteralUnion, PackageJson, SetRequired} from 'type-fest';
 
@@ -298,36 +297,74 @@ export class PluginMetadata implements StaticPluginMetadata {
 
   public addExecutor(name: string, value: Executor): void {
     this.executorMap.set(name, value);
+    debug('%s added Executor: %s', this, name);
   }
 
   /**
-   * Should only be called within a `DefinePkgManagerFn`
+   * Adds a {@link PkgManagerDef} to the plugin's component map.
    *
+   * Should only be called within a `DefinePkgManagerFn` post-validation and
+   * registration.
+   *
+   * @param value Package manager definition
    * @internal
    */
   public addPkgManagerDef(value: PkgManagerDef): void {
     this.pkgManagerDefMap.set(value.name, value);
-    debug('Plugin %s added pkg manager "%s"', this, value.name);
+    debug('%s added PkgManagerDef: %s', this, value.name);
   }
 
+  /**
+   * Adds a {@link ReporterDef} to the plugin's component map.
+   *
+   * Should only be called within a `DefineReporterFn` post-validation and
+   * registration.
+   *
+   * @param value Reporter definition
+   * @internal
+   */
   public addReporterDef(value: ReporterDef): void {
     this.reporterDefMap.set(value.name, value);
-    debug('Plugin %s added reporter "%s"', this, value.name);
+    debug('%s added ReporterDef: %s', this, value.name);
   }
 
+  /**
+   * Adds a {@link RuleDef} to the plugin's component map.
+   *
+   * Should only be called within a `DefineRuleFn` post-validation and
+   * registration.
+   *
+   * @param value Rule definition
+   * @internal
+   */
   public addRuleDef<Schema extends RuleDefSchemaValue | void = void>(
     def: RuleDef<Schema>,
   ): void {
     const {name} = def;
     this.ruleDefMap.set(name, def);
+    debug('%s added RuleDef: %s', this, name);
   }
 
+  /**
+   * Loads package managers from this plugin, choosing only those that match the
+   * desired package managers.
+   *
+   * This method should not be called if the plugin does not provide any package
+   * managers.
+   *
+   * @param workspaceInfo
+   * @param opts
+   * @returns
+   * @internal
+   */
   public async loadPkgManagers(
     workspaceInfo: WorkspaceInfo[],
     opts: LoadPackageManagersOpts,
-  ): Promise<NonEmptyArray<PkgManagerDefSpec>> {
+  ): Promise<PkgManagerDefSpec[]> {
     const defs = [...this.pkgManagerDefMap.values()];
-    assertNonEmptyArray(defs);
+    if (isEmpty(defs)) {
+      return [];
+    }
     return loadPackageManagers(defs, workspaceInfo, opts);
   }
 
@@ -350,9 +387,7 @@ export class PluginMetadata implements StaticPluginMetadata {
    * Returns a string representation of this metadata
    */
   public toString(): string {
-    return `[Plugin] ${this.id}${this.version ? `@${this.version}` : ''} (${
-      this.entryPoint
-    })`;
+    return `[Plugin ${this.id}${this.version ? `@${this.version}` : ''}]`;
   }
 }
 

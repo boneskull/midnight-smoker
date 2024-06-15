@@ -7,8 +7,8 @@
  */
 
 import {type PkgManagerDef} from '#schema/pkg-manager-def';
-import {type WorkspaceInfo} from '#schema/workspaces';
-import {type NonEmptyArray} from '#util/util';
+import {type WorkspaceInfo} from '#schema/workspace-info';
+import {isNonEmptyArray} from '#util/util';
 import {matchPkgManagers} from './pkg-manager-matcher';
 import {PkgManagerSpec, type PkgManagerDefSpec} from './pkg-manager-spec';
 
@@ -44,11 +44,13 @@ export interface LoadPackageManagersOpts {
  * @internal
  */
 export async function loadPackageManagers(
-  defs: NonEmptyArray<PkgManagerDef>,
+  defs: PkgManagerDef[],
   workspaceInfo: WorkspaceInfo[],
-  opts: LoadPackageManagersOpts = {},
-): Promise<NonEmptyArray<PkgManagerDefSpec>> {
-  const {cwd, desiredPkgManagers = []} = opts;
+  {cwd, desiredPkgManagers = []}: LoadPackageManagersOpts = {},
+): Promise<PkgManagerDefSpec[]> {
+  if (!isNonEmptyArray(defs)) {
+    return [];
+  }
   const specs = await PkgManagerSpec.fromPkgManagerDefs(defs, {
     desiredPkgManagers,
     cwd,

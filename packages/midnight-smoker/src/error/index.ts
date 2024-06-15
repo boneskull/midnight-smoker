@@ -1,7 +1,5 @@
 export * from './abort-error';
 
-export * from './aggregate-pkg-manager-error';
-
 export * from './aggregate-smoker-error';
 
 export * from './base-error';

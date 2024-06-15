@@ -1,5 +1,3 @@
-import {AggregateUnsupportedPkgManagerError} from '#error/aggregate-pkg-manager-error';
-import {UnsupportedPackageManagerError} from '#error/unsupported-pkg-manager-error';
 import {type PkgManagerDef} from '#schema/pkg-manager-def';
 import {assertNonEmptyArray, type NonEmptyArray} from '#util/util';
 import {curry} from 'lodash';
@@ -15,19 +13,19 @@ import {type PkgManagerDefSpec, type PkgManagerSpec} from './pkg-manager-spec';
  * @returns A {@link PkgManagerDefSpec} object
  */
 function _matchPkgManager(
-  spec: PkgManagerSpec,
+  spec: Readonly<PkgManagerSpec>,
   def: PkgManagerDef,
-): PkgManagerDefSpec | undefined {
+): Readonly<PkgManagerSpec> | undefined {
   let version: SemVer | string | undefined;
   if (def.bin === spec.bin && (version = def.accepts(spec.version))) {
-    return {spec: spec.clone({version}), def};
+    return spec.clone({version});
   }
 }
 
 /**
  * {@inheritDoc _matchPkgManager}
  */
-const matchPkgManager = curry(_matchPkgManager);
+const matchPkgManager = curry(_matchPkgManager, 2);
 
 /**
  * Finds package managers based on the provided package manager modules and
@@ -35,50 +33,25 @@ const matchPkgManager = curry(_matchPkgManager);
  *
  * @param pkgManagerDefs - An array of package manager modules.
  * @param pkgManagerSpecs - An array of package manager specifications.
- * @returns A map of package manager specs to their corresponding package
- *   manager modules.
- * @throws `UnsupportedPackageManagerError` if no package manager is found that
- *   can handle the specified name and version.
- * @todo I forget why I made this a separate function. Clue to self: I thought I
- *   wanted it in the tests for some reason.
+ * @returns Array of package manager definitions and specifications
+ * @internal
  */
-
 export const matchPkgManagers = (
   pkgManagerDefs: NonEmptyArray<PkgManagerDef>,
   pkgManagerSpecs: NonEmptyArray<Readonly<PkgManagerSpec>>,
-) => {
-  const errors: UnsupportedPackageManagerError[] = [];
-  const defSpecs: PkgManagerDefSpec[] = [];
-
-  for (const spec of pkgManagerSpecs) {
+): PkgManagerDefSpec[] => {
+  assertNonEmptyArray(pkgManagerDefs);
+  assertNonEmptyArray(pkgManagerSpecs);
+  return pkgManagerSpecs.reduce<PkgManagerDefSpec[]>((defSpecs, spec) => {
     const matchSpec = matchPkgManager(spec);
-    let defSpec: PkgManagerDefSpec | undefined;
-
-    // this is too clever but I'm leaving it
-    if (
-      pkgManagerDefs.some((def) => {
-        defSpec = matchSpec(def);
-        return defSpec;
-      })
-    ) {
-      defSpecs.push(defSpec!);
-    } else {
-      errors.push(
-        new UnsupportedPackageManagerError(
-          `No package manager implementation found that can handle "${spec}"`,
-          spec.bin,
-          spec.version,
-        ),
-      );
+    for (const def of pkgManagerDefs) {
+      // this is a NEW spec with a potentially resolved/normalized version
+      const spec = matchSpec(def);
+      if (spec) {
+        return [...defSpecs, {def, spec}];
+      }
     }
-  }
 
-  if (errors.length) {
-    throw new AggregateUnsupportedPkgManagerError(errors);
-  }
-
-  // this shouldn't actually be needed due to the logic above, but here we are
-  assertNonEmptyArray(defSpecs);
-
-  return defSpecs;
+    return defSpecs;
+  }, []);
 };

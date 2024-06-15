@@ -7,9 +7,9 @@ import {type PackEventData} from '#event/pack-events';
 import {type ReporterMachine} from '#machine/reporter';
 import {type SmokerOptions} from '#options/options';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
-import {type WorkspaceInfo} from '#schema/workspaces';
+import {type WorkspaceInfo} from '#schema/workspace-info';
 import {assertSmokerError, fromUnknownError} from '#util/error-util';
-import {asResult} from '#util/util';
+import {asResult} from '#util/result';
 import {
   assign,
   enqueueActions,

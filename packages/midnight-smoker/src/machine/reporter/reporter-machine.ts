@@ -175,10 +175,10 @@ export const ReporterMachine = setup({
   entry: [
     log(
       ({context: {def, plugin}}) =>
-        `Starting ReporterMachine for reporter: ${def.name} from ${plugin.id}`,
+        `Starting reporter for ${plugin.id}/${def.name}`,
     ),
   ],
-  exit: [log('stopping reporter')],
+  exit: [log('Stopped')],
   on: {
     HALT: {
       description: 'Mark the machine for halting after draining the queue',

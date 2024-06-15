@@ -1,4 +1,4 @@
-import {WorkspaceInfoSchema} from '#schema/workspaces';
+import {WorkspaceInfoSchema} from '#schema/workspace-info';
 import {NonEmptyStringSchema} from '#util/schema-util';
 import {type z} from 'zod';
 

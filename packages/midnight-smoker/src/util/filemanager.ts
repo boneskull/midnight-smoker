@@ -10,7 +10,6 @@
 
 /* eslint-disable @typescript-eslint/no-var-requires */
 
-import {hrRelativePath} from '#cli/cli-util';
 import {MIDNIGHT_SMOKER, PACKAGE_JSON, UNKNOWN_TMPDIR_PREFIX} from '#constants';
 import {AbortError} from '#error/abort-error';
 import {MissingPackageJsonError} from '#error/missing-pkg-json-error';
@@ -133,6 +132,7 @@ export class FileManager {
     const filepath = await this.findUp(PACKAGE_JSON, cwd, {signal});
     if (!filepath) {
       if (strict) {
+        debug('Could not find %s from %s', PACKAGE_JSON, cwd);
         throw new MissingPackageJsonError(
           `Could not find ${PACKAGE_JSON} from ${cwd}`,
           cwd,
@@ -302,14 +302,13 @@ export class FileManager {
         encoding: 'utf8',
         signal,
       });
-      const relativePath = hrRelativePath(filepath);
       const packageJson = JSON.parse(file) as PackageJson;
       if (normalize) {
         normalizePkgData(packageJson);
-        debug('Normalized JSON at %s', relativePath);
+        debug('Read & normalized JSON at %s', filepath);
         return packageJson as NormalizedPackageJson;
       }
-      debug('Read JSON at %s', relativePath);
+      debug('Read JSON at %s', filepath);
       return packageJson;
     } catch (err) {
       if (isSmokerError(AbortError, err)) {

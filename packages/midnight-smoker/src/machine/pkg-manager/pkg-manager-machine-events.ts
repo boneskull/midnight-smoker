@@ -8,12 +8,12 @@ import {type RuleError} from '#error/rule-error';
 import {type CheckFailed, type CheckOk} from '#schema/check-result';
 import {type InstallManifest} from '#schema/install-manifest';
 import {type LintManifest} from '#schema/lint-manifest';
-import {type SomeRuleConfig, type SomeRuleOptions} from '#schema/rule-options';
+import {type SomeRuleConfig} from '#schema/rule-options';
 import {type StaticRuleContext} from '#schema/rule-static';
 import {type RunScriptManifest} from '#schema/run-script-manifest';
 import {type RunScriptResult} from '#schema/run-script-result';
 import {type SomeRuleDef} from '#schema/some-rule-def';
-import {type Result} from '#schema/workspaces';
+import {type Result} from '#util/result';
 import {type AbortEvent} from '../util/abort-event';
 
 export type CheckOutput = CheckOutputOk | CheckOutputFailed;
@@ -46,7 +46,7 @@ export interface CheckInput {
 
 export interface BaseCheckOutput {
   installPath: string;
-  opts: SomeRuleOptions;
+  config: SomeRuleConfig;
   ruleId: string;
   manifest: Result<LintManifest>;
 }
@@ -65,19 +65,16 @@ export interface CheckOutputOk extends BaseCheckOutput {
 
 export interface CheckOutputError extends BaseCheckOutput {
   type: typeof ERROR;
+  error: RuleError;
 }
 
 export interface PkgManagerMachineCheckResultEvent {
   output: CheckOutput;
-  config: SomeRuleConfig;
   type: 'CHECK_RESULT';
 }
 
 export interface PkgManagerMachineCheckErrorEvent {
   output: CheckOutputError;
-  error: RuleError;
-
-  config: SomeRuleConfig;
   type: 'CHECK_ERROR';
 }
 

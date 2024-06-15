@@ -1,6 +1,7 @@
 import {ERROR, MIDNIGHT_SMOKER, OK} from '#constants';
 import Debug from 'debug';
 import {AssertionError} from 'node:assert';
+import {type Simplify} from 'type-fest';
 import {type AnyActorRef, type EventObject} from 'xstate';
 
 /**
@@ -41,10 +42,12 @@ export type ActorOutputOk<Ctx extends object = object> = {
   id: string;
 } & Ctx;
 
-export type MachineEvent<Name extends string, T extends object> = T & {
-  type: Name;
-  sender: string;
-};
+export type MachineEvent<Name extends string, T extends object> = Simplify<
+  T & {
+    type: Name;
+    sender: string;
+  }
+>;
 
 /**
  * Asserts that the actor output is not ok and throws an error if it is.
@@ -137,19 +140,25 @@ export function monkeypatchActorLogger<T extends AnyActorRef>(
   // @ts-expect-error private
   // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
   actor.logger = actor._actorScope.logger = Debug(
-    `${MIDNIGHT_SMOKER}:${namespace}`,
+    `${MIDNIGHT_SMOKER}:actor:${namespace}`,
   );
   return actor;
 }
 
+/**
+ * A regular expression for extracting the actor ID from an xstate-generated
+ * event.
+ */
 const XSTATE_EVENT_TYPE_REGEX = /^xstate\.(?:error|done)\.actor\.([\s\S]+)$/;
 
 /**
- * Attempts to determine the event ID from the type of an `xstate`-sent event
+ * Attempts to determine the actor ID from the type of an `xstate`-sent event
  * object.
  *
  * @param event Some xstate-sent event
  * @returns The actor ID (hopefully)
+ * @todo Might want to throw if the event type doesn't match the expected
+ *   pattern.
  */
 export function idFromEventType<
   const T extends `xstate.${'error' | 'done'}.actor.${U}`,

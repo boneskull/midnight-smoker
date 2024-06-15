@@ -1,5 +1,5 @@
-import {isWriteStream} from '#cli/cli-util';
+// TODO something here.
 
-export const Helpers = {isWriteStream} as const;
+export const Helpers = {} as const;
 
 export type PluginHelpers = typeof Helpers;

@@ -2,7 +2,7 @@ import {type InstallError} from '#error/install-error';
 import {type ExecResult} from '#schema/exec-result';
 import {type InstallManifest} from '#schema/install-manifest';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
-import {type WorkspaceInfo} from '#schema/workspaces';
+import {type WorkspaceInfo} from '#schema/workspace-info';
 import {type InstallEvent} from './event-constants';
 import {type PkgManagerEventBase} from './pkg-manager-events';
 

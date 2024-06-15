@@ -2,12 +2,11 @@ import {ERROR, FAILED, OK, SKIPPED} from '#constants';
 import {RunScriptError} from '#error/run-script-error';
 import {ScriptFailedError} from '#error/script-failed-error';
 import {UnknownScriptError} from '#error/unknown-script-error';
-import {instanceofSchema} from '#util/schema-util';
+import {asResultSchema, instanceofSchema} from '#util/schema-util';
 import {z} from 'zod';
 import {ExecResultSchema} from './exec-result';
 import {RunScriptManifestSchema} from './run-script-manifest';
 import {ScriptErrorSchema} from './script-error';
-import {asResultSchema} from './workspaces';
 
 export type RunScriptResultError = z.infer<typeof RunScriptErrorResultSchema>;
 

@@ -7,9 +7,13 @@
 import {DEFAULT_PKG_MANAGER_BIN, DEFAULT_PKG_MANAGER_VERSION} from '#constants';
 import {type PkgManagerDef} from '#schema/pkg-manager-def';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
-import {type WorkspaceInfo} from '#schema/workspaces';
+import {type WorkspaceInfo} from '#schema/workspace-info';
 import {FileManager} from '#util/filemanager';
-import type {NonEmptyArray} from '#util/util';
+import {
+  assertNonEmptyArray,
+  isNonEmptyArray,
+  type NonEmptyArray,
+} from '#util/util';
 import Debug from 'debug';
 import {globIterate} from 'glob';
 import {isString, memoize} from 'lodash';
@@ -63,6 +67,11 @@ export interface PkgManagerSpecOpts {
    * @defaultValue `latest`
    */
   version?: string | SemVer;
+
+  /**
+   * The "desired package manager spec" string
+   */
+  requestedAs?: string;
 }
 
 export interface GuessPkgManagerOptions {
@@ -240,6 +249,11 @@ export class PkgManagerSpec implements StaticPkgManagerSpec {
   public readonly version: string;
 
   /**
+   * The "desired package manager spec" string
+   */
+  public readonly requestedAs?: string;
+
+  /**
    * Creates a {@link SemVer} from the version, if possible.
    *
    * @param opts - Options for the package manager specification
@@ -248,17 +262,20 @@ export class PkgManagerSpec implements StaticPkgManagerSpec {
     bin = DEFAULT_PKG_MANAGER_BIN,
     version = DEFAULT_PKG_MANAGER_VERSION,
     isSystem = false,
+    requestedAs,
   }: PkgManagerSpecOpts = {}) {
-    const semver = isString(version) ? parse(version) || undefined : version;
+    const semver = isString(version) ? parse(version) : version;
+
     if (semver) {
       semvers.set(this, semver);
       this.version = semver.format();
     } else {
-      this.version = version as string;
+      this.version = String(version);
     }
 
     this.bin = bin;
     this.isSystem = Boolean(isSystem);
+    this.requestedAs = requestedAs ? `${requestedAs}` : undefined;
   }
 
   /**
@@ -287,15 +304,13 @@ export class PkgManagerSpec implements StaticPkgManagerSpec {
    * @returns A new read-only {@link PkgManagerSpec}
    */
   public static create({
-    bin: pkgManager = DEFAULT_PKG_MANAGER_BIN,
+    bin = DEFAULT_PKG_MANAGER_BIN,
     version = DEFAULT_PKG_MANAGER_VERSION,
     isSystem = false,
+    requestedAs,
   }: PkgManagerSpecOpts = {}): Readonly<PkgManagerSpec> {
-    if (!isString(version)) {
-      version = version.format();
-    }
     return Object.freeze(
-      new PkgManagerSpec({bin: pkgManager, version, isSystem}),
+      new PkgManagerSpec({bin, version, isSystem, requestedAs}),
     );
   }
 
@@ -327,6 +342,7 @@ export class PkgManagerSpec implements StaticPkgManagerSpec {
     this: void,
     opts?: PkgManagerSpecOpts,
   ): Promise<Readonly<PkgManagerSpec>>;
+
   public static async from(
     this: void,
     specOrOpts: Readonly<PkgManagerSpec> | PkgManagerSpecOpts | string = {},
@@ -342,6 +358,7 @@ export class PkgManagerSpec implements StaticPkgManagerSpec {
           bin: pkgManager,
           version,
           isSystem: specIsSystem,
+          requestedAs: specOrOpts,
         });
       }
       specOrOpts = {bin: pkgManager};
@@ -364,7 +381,7 @@ export class PkgManagerSpec implements StaticPkgManagerSpec {
   }
 
   public static async fromMany(
-    specs: Iterable<PkgManagerSpec | string>,
+    specs: NonEmptyArray<Readonly<PkgManagerSpec | string>>,
   ): Promise<Readonly<PkgManagerSpec>[]> {
     return Promise.all([...specs].map((spec) => PkgManagerSpec.from(spec)));
   }
@@ -385,11 +402,10 @@ export class PkgManagerSpec implements StaticPkgManagerSpec {
     defs: NonEmptyArray<PkgManagerDef>,
     {desiredPkgManagers = [], cwd, workspaceInfo}: FromPkgManagerDefsOpts = {},
   ): Promise<NonEmptyArray<Readonly<PkgManagerSpec>>> {
-    if (desiredPkgManagers.length) {
-      const specs = (await PkgManagerSpec.fromMany(
-        desiredPkgManagers,
-      )) as NonEmptyArray<Readonly<PkgManagerSpec>>;
-      if (specs.length) {
+    assertNonEmptyArray(defs);
+    if (isNonEmptyArray(desiredPkgManagers)) {
+      const specs = await PkgManagerSpec.fromMany(desiredPkgManagers);
+      if (isNonEmptyArray(specs)) {
         return specs;
       }
     }

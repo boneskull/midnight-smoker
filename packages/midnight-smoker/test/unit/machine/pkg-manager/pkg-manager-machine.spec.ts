@@ -7,7 +7,7 @@ import {
   type PkgManagerMachineInput,
 } from '#machine/pkg-manager';
 import {type SmokerOptions} from '#options/options';
-import {OptionParser} from '#options/parser';
+import {OptionsParser} from '#options/options-parser';
 import {PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
 import {PluginRegistry} from '#plugin/plugin-registry';
@@ -15,7 +15,7 @@ import {type PkgManagerDef} from '#schema/pkg-manager-def';
 import {type RunScriptManifest} from '#schema/run-script-manifest';
 import {type RunScriptResultFailed} from '#schema/run-script-result';
 import {type StaticPluginMetadata} from '#schema/static-plugin-metadata';
-import {type WorkspaceInfo} from '#schema/workspaces';
+import {type WorkspaceInfo} from '#schema/workspace-info';
 import {FileManager} from '#util/filemanager';
 import {serialize} from '#util/serialize';
 import Debug from 'debug';
@@ -64,7 +64,7 @@ describe('midnight-smoker', function () {
           },
         });
         def = {...nullPkgManagerDef};
-        smokerOptions = OptionParser.buildSmokerOptionsSchema(
+        smokerOptions = OptionsParser.buildSmokerOptionsSchema(
           pluginRegistry,
         ).parse({
           reporter: 'test-plugin/test-reporter',
@@ -156,6 +156,36 @@ describe('midnight-smoker', function () {
                   },
                 ],
               },
+            });
+          });
+
+          describe('when the pruneTempDir actor also rejects', function () {
+            beforeEach(function () {
+              sandbox
+                .stub(fileManager, 'pruneTempDir')
+                .rejects(new Error('prune failed'));
+            });
+
+            it('should output with a MachineError containing both errors', async function () {
+              await expect(
+                run(input),
+                'to be fulfilled with value satisfying',
+                {
+                  type: ERROR,
+                  error: {
+                    code: ErrorCodes.MachineError,
+                    errors: [
+                      {
+                        code: ErrorCodes.CleanupError,
+                      },
+                      {
+                        code: ErrorCodes.LifecycleError,
+                        context: {stage: 'teardown'},
+                      },
+                    ],
+                  },
+                },
+              );
             });
           });
         });
@@ -518,6 +548,16 @@ describe('midnight-smoker', function () {
                       input,
                     ),
                     'to be fulfilled',
+                  );
+                });
+
+                it('should output with type OK', async function () {
+                  await expect(
+                    run(input),
+                    'to be fulfilled with value satisfying',
+                    {
+                      type: OK,
+                    },
                   );
                 });
               });

@@ -4,7 +4,7 @@ import {type ActorOutputError, type ActorOutputOk} from '#machine/util';
 import {type SmokerOptions} from '#options/options';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
 import {type PluginRegistry} from '#plugin/plugin-registry';
-import type {WorkspaceInfo} from '#schema/workspaces';
+import type {WorkspaceInfo} from '#schema/workspace-info';
 import {fromUnknownError} from '#util/error-util';
 import {isFunction} from 'lodash';
 import {type PackageJson} from 'type-fest';
@@ -190,12 +190,11 @@ export const LoaderMachine = setup({
                 {
                   guard: 'shouldProcessPkgManagers',
                   target: 'loadingPkgManagers',
-                  actions: [log('loading pkg managers...')],
+                  actions: [log('Loading package managers')],
                 },
                 {
                   guard: not('shouldProcessPkgManagers'),
                   target: 'skipped',
-                  actions: [log('skipping pkg manager loading')],
                 },
               ],
             },
@@ -238,11 +237,11 @@ export const LoaderMachine = setup({
               },
             },
             skipped: {
-              entry: log('skipped pkg manager loading'),
+              entry: log('Skipped loading package managers'),
               type: FINAL,
             },
             done: {
-              entry: log('done loading pkg managers'),
+              entry: log('Loading package managers complete'),
               type: FINAL,
             },
           },
@@ -256,21 +255,23 @@ export const LoaderMachine = setup({
                 {
                   guard: 'shouldProcessReporters',
                   target: 'loadingReporters',
-                  actions: [log('loading reporters...')],
+                  actions: [log('Loading reporters...')],
                 },
                 {
                   guard: not('shouldProcessReporters'),
                   target: 'skipped',
-                  actions: [log('skipping reporter loading')],
                 },
               ],
             },
             loadingReporters: {
-              entry: [{type: 'loadReporters'}, log('done loading reporters')],
+              entry: [
+                {type: 'loadReporters'},
+                log('Loading reporters complete'),
+              ],
               type: FINAL,
             },
             skipped: {
-              entry: log('skipped reporter loading'),
+              entry: log('Skipped loading reporter'),
               type: FINAL,
             },
           },
@@ -283,21 +284,20 @@ export const LoaderMachine = setup({
                 {
                   guard: 'shouldProcessRules',
                   target: 'loadingRules',
-                  actions: [log('loading rules...')],
+                  actions: [log('Loading rules...')],
                 },
                 {
                   guard: not('shouldProcessRules'),
                   target: 'skipped',
-                  actions: log('skipping rules'),
                 },
               ],
             },
             loadingRules: {
-              entry: [{type: 'loadRules'}, log('done loading rules')],
+              entry: [{type: 'loadRules'}, log('Loading rules complete')],
               type: FINAL,
             },
             skipped: {
-              entry: log('skipped rule creation'),
+              entry: log('Skipped loading rules'),
               type: FINAL,
             },
           },
@@ -305,7 +305,6 @@ export const LoaderMachine = setup({
       },
       onDone: {
         target: 'done',
-        actions: [log('selecting complete')],
       },
     },
 
@@ -318,14 +317,14 @@ export const LoaderMachine = setup({
             reporterInitPayloads,
           },
         }) =>
-          `pkgManagers: ${pkgManagerInitPayloads.length}, rules: ${ruleInitPayloads.length} reporters: ${reporterInitPayloads.length}`,
+          `Loaded ${pkgManagerInitPayloads.length} package manager(s), ${ruleInitPayloads.length} rule(s), and ${reporterInitPayloads.length} reporters`,
       ),
       type: FINAL,
     },
 
     errored: {
       entry: log(
-        ({context: {error}}) => `error when loading components: ${error}`,
+        ({context: {error}}) => `Error when loading components: ${error}`,
       ),
       type: FINAL,
     },

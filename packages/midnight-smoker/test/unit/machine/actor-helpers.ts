@@ -67,12 +67,12 @@ export type EventFromEventType<
 /**
  * Runs an actor to completion (or timeout) and fulfills with its output.
  *
- * @param input Actor input
+ * @param input Actor input or an {@link Actor}
  * @param options Options
  * @returns `Promise` fulfilling with the actor output
  */
 export type RunFn<T extends AnyActorLogic> = (
-  input: InputFrom<T>,
+  input: InputFrom<T> | Actor<T>,
   opts?: ActorRunnerOptions,
 ) => ActorPromise<T, OutputFrom<T>>;
 
@@ -163,6 +163,10 @@ export type WaitForActorFn<T extends AnyActorLogic> = <
  * Options for methods in {@link ActorRunner}
  */
 export interface ActorRunnerOptions {
+  /**
+   * Default actor ID to use
+   */
+  id?: string;
   inspect?: (evt: InspectionEvent) => void;
   logger?: (...args: any[]) => void;
   timeout?: number;
@@ -183,6 +187,7 @@ export function createActorRunner<T extends AnyActorLogic>(
     logger: defaultLogger = noop,
     inspect: defaultInspector = noop,
     timeout: defaultTimeout = DEFAULT_TIMEOUT,
+    id: defaultId,
   }: ActorRunnerOptions = {},
 ): ActorRunner<T> {
   /**
@@ -196,18 +201,23 @@ export function createActorRunner<T extends AnyActorLogic>(
    * @returns {@link ActorPromise} Which fulfills with the actor output
    */
   const run: RunFn<T> = (
-    input: InputFrom<T>,
+    input: InputFrom<T> | Actor<T>,
     {
       logger = defaultLogger,
       inspect = defaultInspector,
       timeout = defaultTimeout,
+      id = defaultId,
     }: ActorRunnerOptions = {},
   ): ActorPromise<T, OutputFrom<T>> => {
-    const actor = createActor(actorLogic, {
-      input,
-      logger,
-      inspect,
-    });
+    const actor =
+      input instanceof Actor
+        ? input
+        : createActor(actorLogic, {
+            id,
+            input,
+            logger,
+            inspect,
+          });
     // order is important: create promise, then start.
     const actorPromise = toPromise(actor);
     actor.start();
@@ -234,9 +244,11 @@ export function createActorRunner<T extends AnyActorLogic>(
     {
       logger = defaultLogger,
       inspect = defaultInspector,
+      id = defaultId,
     }: Omit<ActorRunnerOptions, 'timeout'> = {},
   ): Actor<T> => {
     const actor = createActor(actorLogic, {
+      id,
       input,
       logger,
       inspect,
@@ -267,6 +279,7 @@ export function createActorRunner<T extends AnyActorLogic>(
     {
       logger = defaultLogger,
       timeout = defaultTimeout,
+      id = defaultId,
     }: Omit<ActorRunnerOptions, 'inspect'> = {},
   ): ActorPromise<
     T,
@@ -280,6 +293,7 @@ export function createActorRunner<T extends AnyActorLogic>(
       [K in keyof EventTypes]: EventFromEventType<T, EventTypes[K]>;
     } = [] as any;
     const actor = start(input, {
+      id,
       logger,
       inspect: (evt) => {
         if (
@@ -345,6 +359,7 @@ export function createActorRunner<T extends AnyActorLogic>(
       logger = defaultLogger,
       inspect = defaultInspector,
       timeout = defaultTimeout,
+      id = defaultId,
     }: ActorRunnerOptions = {},
   ): ActorPromise<T, SnapshotFrom<T>> => {
     const actor =
@@ -353,6 +368,7 @@ export function createActorRunner<T extends AnyActorLogic>(
         : start(input, {
             logger,
             inspect,
+            id,
           });
 
     return Object.assign(
@@ -395,9 +411,11 @@ export function createActorRunner<T extends AnyActorLogic>(
     {
       logger = defaultLogger,
       timeout = defaultTimeout,
+      id = defaultId,
     }: Omit<ActorRunnerOptions, 'inspect'> = {},
   ): ActorPromise<T> => {
     const actor = start(input, {
+      id,
       logger,
       inspect: (evt) => {
         if (
@@ -438,13 +456,17 @@ export function createActorRunner<T extends AnyActorLogic>(
     {
       logger = defaultLogger,
       timeout = defaultTimeout,
-    }: Omit<ActorRunnerOptions, 'inspect'> = {},
+      inspect = defaultInspector,
+      id = defaultId,
+    }: ActorRunnerOptions = {},
   ): ActorPromise<T, ActorRefFrom<U>> => {
     const actor =
       input instanceof Actor
         ? input
         : start(input, {
+            id,
             logger,
+            inspect,
           });
 
     const predicate =

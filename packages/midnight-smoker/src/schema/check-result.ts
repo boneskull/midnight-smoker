@@ -1,5 +1,5 @@
 import {type StaticRuleContext, type StaticRuleDef} from '#schema/rule-static';
-import {type Result} from './workspaces';
+import {type Result} from '#util/result';
 
 export interface BaseCheckResult {
   rule: StaticRuleDef;

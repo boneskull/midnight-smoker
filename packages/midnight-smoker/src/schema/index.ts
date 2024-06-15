@@ -46,4 +46,4 @@ export * from './static-pkg-manager-spec';
 
 export * from './static-plugin-metadata';
 
-export * from './workspaces';
+export * from './workspace-info';

@@ -1,6 +1,6 @@
 import {NonEmptyStringSchema} from '#util/schema-util';
 import {z} from 'zod';
-import {WorkspaceInfoSchema} from './workspaces';
+import {WorkspaceInfoSchema} from './workspace-info';
 
 export const InstallManifestSchema = WorkspaceInfoSchema.partial()
   .extend({

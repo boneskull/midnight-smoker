@@ -6,7 +6,7 @@ import {type InstallEventData} from '#event/install-events';
 import {type ReporterMachine} from '#machine/reporter';
 import {type SmokerOptions} from '#options/options';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
-import {type WorkspaceInfo} from '#schema/workspaces';
+import {type WorkspaceInfo} from '#schema/workspace-info';
 import {fromUnknownError} from '#util/error-util';
 import {
   assign,
@@ -16,7 +16,7 @@ import {
   type AnyActorRef,
 } from 'xstate';
 import {type ListenEvent} from '.';
-import {type CtrlInstallEvents} from './install-events';
+import {type CtrlInstallEvent} from './install-events';
 
 export interface InstallBusMachineInput {
   workspaceInfo: WorkspaceInfo[];
@@ -32,7 +32,7 @@ export interface InstallBusMachineContext extends InstallBusMachineInput {
   error?: Error;
 }
 
-export type InstallBusMachineEvents = ListenEvent | CtrlInstallEvents;
+export type InstallBusMachineEvents = ListenEvent | CtrlInstallEvent;
 
 export type ReportableInstallEventData = DataForEvent<keyof InstallEventData>;
 
