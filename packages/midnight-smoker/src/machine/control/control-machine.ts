@@ -28,6 +28,7 @@ import {
   type ReporterMachineOutput,
 } from '#machine/reporter';
 import * as MachineUtil from '#machine/util';
+import {PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
 import {type LintResult, type LintResultFailed} from '#schema/lint-result';
 import {
   type RunScriptResult,
@@ -36,10 +37,11 @@ import {
 import {type WorkspaceInfo} from '#schema/workspace-info';
 import {fromUnknownError, isSmokerError} from '#util/error-util';
 import {FileManager} from '#util/filemanager';
+import {normalizeInstallables} from '#util/normalize-installables';
 import {asResult} from '#util/result';
 import {serialize} from '#util/serialize';
 import {delta} from '#util/util';
-import {differenceWith, isEmpty} from 'lodash';
+import {isEmpty} from 'lodash';
 import assert from 'node:assert';
 import {type PackageJson, type ValueOf} from 'type-fest';
 import {
@@ -625,76 +627,8 @@ export const ControlMachine = setup({
           workspaceInfo,
         },
       }) => {
-        /**
-         * Fields in `package.json` that might have a dependency we want to
-         * install as an isolated package to help run smoke tests.
-         *
-         * @remarks
-         * Order is important; changing this should be a breaking change
-         */
-        const DEP_FIELDS = [
-          'devDependencies',
-          'dependencies',
-          'optionalDependencies',
-          'peerDependencies',
-        ] as const;
-
-        /**
-         * Regex string to match a package name.
-         *
-         * Used by {@link PKG_NAME_REGEX} and {@link PKG_NAME_WITH_SPEC_REGEX}.
-         */
-        const PKG_NAME_REGEX_STR =
-          '^(@[a-z0-9-~][a-z0-9-._~]*/)?[a-z0-9-~][a-z0-9-._~]*';
-
-        /**
-         * Regex to match a package name without a spec
-         */
-        const PKG_NAME_REGEX = new RegExp(`${PKG_NAME_REGEX_STR}$`);
-
-        /**
-         * Regex to match a package name with a spec.
-         *
-         * @remarks
-         * This does not attempt to validate a semver string, though it could.
-         * If it did, it'd also need to allow any valid package tag. I'm not
-         * sure what the latter is, but the former can be found on
-         * {@link https://stackoverflow.com/a/72900791|StackOverflow}.
-         */
-        const PKG_NAME_WITH_SPEC_REGEX = new RegExp(
-          `${PKG_NAME_REGEX_STR}@.+$`,
-        );
-
-        const additionalDeps = add.map((installable) => {
-          if (PKG_NAME_WITH_SPEC_REGEX.test(installable)) {
-            // we were given a package name with a version spec. just use it
-            return installable;
-          }
-
-          if (PKG_NAME_REGEX.test(installable)) {
-            // we were given a package name, no version.
-            // try to see if it's in the package.json
-            const pkgName = installable;
-
-            for (const {pkgJson} of workspaceInfo) {
-              for (const field of DEP_FIELDS) {
-                const deps = pkgJson[field];
-                if (deps?.[pkgName]) {
-                  // it's in the package.json somewhere, so we can
-                  // build the spec from the version listed in one of
-                  // DEP_FIELDS
-                  return `${pkgName}@${deps[pkgName]}`;
-                }
-              }
-            }
-
-            // can't find it; just use latest version
-            return `${pkgName}@latest`;
-          }
-          return installable;
-        });
-
-        return {...smokerOptions, add: additionalDeps};
+        const normalizedAdds = normalizeInstallables(add, workspaceInfo);
+        return {...smokerOptions, add: normalizedAdds};
       },
     }),
     stopAllChildren: enqueueActions(({enqueue, self}) => {
@@ -1115,21 +1049,23 @@ export const ControlMachine = setup({
                   pkgManagerInitPayloads,
                 },
               }) => {
-                const missing = differenceWith(
-                  desiredPkgManagers,
-                  pkgManagerInitPayloads,
-                  (desired, {spec: {requestedAs}}) => desired === requestedAs,
+                const unsupportedPkgManagers = PkgManagerSpec.filterUnsupported(
+                  pkgManagerInitPayloads.map(
+                    ({spec}) => spec,
+                    desiredPkgManagers,
+                  ),
                 );
-                for (const desiredPkgManager of missing) {
+
+                for (const unsupported of unsupportedPkgManagers) {
                   enqueue({
                     type: 'assignError',
                     params: new UnsupportedPackageManagerError(
-                      `No package manager implementation found that can handle "${desiredPkgManager}"`,
-                      desiredPkgManager,
+                      `No package manager implementation found that can handle "${unsupported}"`,
+                      unsupported,
                     ),
                   });
                 }
-                if (!isEmpty(missing)) {
+                if (!isEmpty(unsupportedPkgManagers)) {
                   enqueue('abort');
                 }
               },

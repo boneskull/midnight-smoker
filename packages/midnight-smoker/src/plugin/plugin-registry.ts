@@ -1,6 +1,7 @@
 import {
   ComponentKinds,
   DEFAULT_COMPONENT_ID,
+  RuleSeverities,
   type ComponentKind,
 } from '#constants';
 import {DisallowedPluginError} from '#error/disallowed-plugin-error';
@@ -19,7 +20,10 @@ import {type Executor} from '#schema/executor';
 import {type PkgManagerDef} from '#schema/pkg-manager-def';
 import {PluginSchema, type Plugin} from '#schema/plugin';
 import {type ReporterDef} from '#schema/reporter-def';
-import {RawRuleOptionsSchema} from '#schema/rule-options';
+import {
+  RawRuleOptionsSchema,
+  type BaseRuleConfigRecord,
+} from '#schema/rule-options';
 import {type SomeRuleDef} from '#schema/some-rule-def';
 import {type StaticPluginMetadata} from '#schema/static-plugin-metadata';
 import {isErrnoException} from '#util/error-util';
@@ -161,6 +165,34 @@ export class PluginRegistry {
       throw fromZodError(result.error);
     }
     return result.data;
+  }
+
+  /**
+   * Returns entry-style tuple of {@link SomeRuleDef.id} and {@link SomeRuleDef}
+   * for enabled rules only.
+   *
+   * @param configs Rule configuration (`SmokerOptions.rules`)
+   * @param plugin Optional plugin to filter on
+   * @returns All enabled rules or all enabled rules from a specific plugin
+   */
+  public enabledRuleDefs(
+    configs: BaseRuleConfigRecord,
+    plugin?: Readonly<PluginMetadata>,
+  ): [id: string, ruleDef: SomeRuleDef][] {
+    const allRuleDefs = plugin
+      ? plugin.ruleDefs
+      : [...this.#defsByKind[ComponentKinds.RuleDef].values()];
+
+    return allRuleDefs.reduce<[id: string, ruleDef: SomeRuleDef][]>(
+      (acc, def) => {
+        const id = this.getComponentId(def);
+        if (configs[id]?.severity !== RuleSeverities.Off) {
+          acc = [...acc, [id, def]];
+        }
+        return acc;
+      },
+      [],
+    );
   }
 
   /**

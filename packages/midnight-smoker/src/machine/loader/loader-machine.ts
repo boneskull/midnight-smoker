@@ -1,4 +1,4 @@
-import {ERROR, FINAL, OK, PARALLEL, RuleSeverities} from '#constants';
+import {ERROR, FINAL, OK, PARALLEL} from '#constants';
 import {MachineError} from '#error/machine-error';
 import {type ActorOutputError, type ActorOutputOk} from '#machine/util';
 import {type SmokerOptions} from '#options/options';
@@ -130,17 +130,13 @@ export const LoaderMachine = setup({
       ruleInitPayloads: ({
         context: {
           plugin,
-          smokerOptions: {rules: rulesConfig},
+          smokerOptions: {rules},
           pluginRegistry,
         },
       }) =>
-        plugin.ruleDefs.reduce<RuleInitPayload[]>((acc, def) => {
-          const id = pluginRegistry.getComponentId(def);
-          if (rulesConfig[id]?.severity !== RuleSeverities.Off) {
-            acc = [...acc, {def, plugin, id}];
-          }
-          return acc;
-        }, []),
+        pluginRegistry
+          .enabledRuleDefs(rules, plugin)
+          .map(([id, def]) => ({id, def, plugin})),
     }),
 
     /**

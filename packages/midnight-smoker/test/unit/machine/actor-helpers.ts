@@ -4,34 +4,15 @@
  * @license Apache-2.0 https://apache.org/licenses/LICENSE-2.0
  * @author <boneskull@boneskull.com>
  */
-import {bind} from '#util/util';
 import {scheduler} from 'node:timers/promises';
-import {
-  Actor,
-  StateMachine,
-  createActor,
-  toObserver,
-  toPromise,
-  waitFor,
-  type ActorRefFrom,
-  type AnyActorLogic,
-  type AnyStateMachine,
-  type EmittedFrom as EmittedFromLogic,
-  type EventFromLogic,
-  type ExtractEvent,
-  type InputFrom,
-  type InspectionEvent,
-  type OutputFrom,
-  type SnapshotFrom,
-  type Subscription,
-} from 'xstate';
+import * as xs from 'xstate';
 
 /**
  * Any event or emitted-event from an actor
  */
-export type ActorEvent<T extends AnyActorLogic> =
-  | EventFromLogic<T>
-  | EmittedFromLogic<T>;
+export type ActorEvent<T extends xs.AnyActorLogic> =
+  | xs.EventFromLogic<T>
+  | xs.EmittedFrom<T>;
 
 /**
  * A tuple of events emitted by an actor, based on a {@link ActorEventTypeTuple}
@@ -39,47 +20,74 @@ export type ActorEvent<T extends AnyActorLogic> =
  * @see {@link AnyActorRunner.runUntilEvent}
  */
 export type ActorEventTuple<
-  T extends AnyActorLogic,
+  T extends xs.AnyActorLogic,
   EventTypes extends ActorEventTypeTuple<T>,
 > = {[K in keyof EventTypes]: EventFromEventType<T, EventTypes[K]>};
 
 /**
  * The `type` prop of any event or emitted event from an actor
  */
-export type ActorEventType<T extends AnyActorLogic> = ActorEvent<T>['type'];
+export type ActorEventType<T extends xs.AnyActorLogic> = ActorEvent<T>['type'];
 
 /**
  * A tuple of event types (event names) emitted by an actor
  *
  * @see {@link AnyActorRunner.runUntilEvent}
  */
-export type ActorEventTypeTuple<T extends AnyActorLogic> = [
+export type ActorEventTypeTuple<T extends xs.AnyActorLogic> = [
   ActorEventType<T>,
   ...ActorEventType<T>,
 ];
 
 /**
- * Frankenpromise that is both a `Promise` and an {@link Actor}.
+ * Frankenpromise that is both a `Promise` and an {@link xs.Actor}.
  *
  * Returned by some methods in {@link AnyActorRunner}
  */
-export type ActorPromise<T extends AnyActorLogic, Out = void> = Promise<Out> &
-  Actor<T>;
+export type ActorPromise<
+  T extends xs.AnyActorLogic,
+  Out = void,
+> = Promise<Out> & xs.Actor<T>;
+
+export type ActorRunnerOptionsWithActor = Omit<ActorRunnerOptions, 'id'>;
 
 /**
  * Lookup for event/emitted-event based on type
  */
 export type EventFromEventType<
-  T extends AnyActorLogic,
+  T extends xs.AnyActorLogic,
   K extends ActorEventType<T>,
-> = ExtractEvent<ActorEvent<T>, K>;
-
-export type ActorRunnerOptionsWithActor = Omit<ActorRunnerOptions, 'id'>;
+> = xs.ExtractEvent<ActorEvent<T>, K>;
 
 export type OptionsWithoutInspect<T extends ActorRunnerOptions> = Omit<
   T,
   'inspect'
 >;
+
+export interface ActorRunner<T extends xs.AnyActorLogic> {
+  defaultActorLogic: T;
+  defaultId?: string;
+  defaultInspector: (evt: xs.InspectionEvent) => void;
+  defaultLogger: (...args: any[]) => void;
+  defaultTimeout: number;
+
+  runUntilDone(
+    input: xs.InputFrom<T> | xs.Actor<T>,
+  ): ActorPromise<T, xs.OutputFrom<T>>;
+  runUntilEvent<const EventTypes extends ActorEventTypeTuple<T>>(
+    events: EventTypes,
+    input: xs.InputFrom<T> | xs.Actor<T>,
+  ): ActorPromise<T, ActorEventTuple<T, EventTypes>>;
+  runUntilSnapshot(
+    predicate: (snapshot: xs.SnapshotFrom<T>) => boolean,
+    input: xs.InputFrom<T> | xs.Actor<T>,
+  ): ActorPromise<T, xs.SnapshotFrom<T>>;
+  start(input: xs.InputFrom<T> | xs.Actor<T>): xs.Actor<T>;
+  waitForActor<SpawnedActor extends xs.AnyActorLogic = xs.AnyActorLogic>(
+    actorId: string | RegExp,
+    input: xs.InputFrom<T> | xs.Actor<T>,
+  ): ActorPromise<T, xs.ActorRefFrom<SpawnedActor>>;
+}
 
 /**
  * Options for methods in {@link AnyActorRunner}
@@ -89,176 +97,23 @@ export interface ActorRunnerOptions {
    * Default actor ID to use
    */
   id?: string;
-  inspect?: (evt: InspectionEvent) => void;
+  inspect?: (evt: xs.InspectionEvent) => void;
   logger?: (...args: any[]) => void;
   timeout?: number;
 }
 
-/**
- * Helpers for testing state machine behavior
- *
- * @remarks
- * Just a wrapper around {@link AnyActorRunner}
- * @template T `StateMachine` actor logic
- */
-export class StateMachineRunner<T extends AnyStateMachine>
+export class AnyActorRunner<T extends xs.AnyActorLogic>
   implements ActorRunner<T>
 {
-  constructor(public readonly runner: AnyActorRunner<T>) {}
-
-  get defaultActorLogic() {
-    return this.runner.defaultActorLogic;
-  }
-
-  get defaultTimeout() {
-    return this.runner.defaultTimeout;
-  }
-
-  get defaultLogger() {
-    return this.runner.defaultLogger;
-  }
-
-  get defaultInspector() {
-    return this.runner.defaultInspector;
-  }
-
-  get defaultId() {
-    return this.runner.defaultId;
-  }
-
-  get start() {
-    return this.runner.start;
-  }
-
-  get runUntilDone() {
-    return this.runner.runUntilDone;
-  }
-
-  get runUntilEvent() {
-    return this.runner.runUntilEvent;
-  }
-
-  get runUntilSnapshot() {
-    return this.runner.runUntilSnapshot;
-  }
-
-  get waitForActor() {
-    return this.runner.waitForActor;
-  }
-
-  /**
-   * Runs the machine until a transition from the `source` state to the `target`
-   * state occurs.
-   *
-   * Immediately stops the machine thereafter. Returns a combination of a
-   * `Promise` and an {@link Actor} so that events may be sent to the actor.
-   *
-   * @param source Source state ID
-   * @param target Target state ID
-   * @param input Machine input
-   * @param opts Options
-   * @returns An {@link ActorPromise} that resolves when the specified transition
-   *   occurs
-   * @todo Type narrowing for `source` and `target` once xstate supports it
-   */
-  @bind()
-  runUntilTransition(
-    source: string,
-    target: string,
-    input: InputFrom<T> | Actor<T>,
-    options: OptionsWithoutInspect<
-      ActorRunnerOptions | ActorRunnerOptionsWithActor
-    > = {},
-  ): ActorPromise<T> {
-    let actor: Actor<T>;
-
-    const {timeout = this.defaultTimeout} = options;
-    let sawTransition = false;
-    const transitionInspector = (evt: InspectionEvent) => {
-      if (actor) {
-        if (evt.type === '@xstate.microstep') {
-          if (evt.actorRef.id === actor.id) {
-            if (
-              evt._transitions.some(
-                (tDef) =>
-                  tDef.source.id === source &&
-                  tDef.target?.some((t) => t.id === target),
-              )
-            ) {
-              sawTransition = true;
-              actor.stop();
-            }
-          }
-        }
-      }
-    };
-
-    if (input instanceof StateMachine) {
-      actor = input;
-      const {logger = this.defaultLogger} =
-        options as ActorRunnerOptionsWithActor;
-      if (logger !== this.defaultLogger) {
-        // @ts-expect-error private
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        actor.logger = actor._actorScope.logger = logger;
-      }
-      actor.system.inspect(toObserver(transitionInspector));
-    } else {
-      const {logger = this.defaultLogger, id = this.defaultId} =
-        options as ActorRunnerOptions;
-      actor = createActor(this.defaultActorLogic, {
-        input: input as InputFrom<T>,
-        logger,
-        inspect: transitionInspector,
-        id,
-      });
-    }
-
-    // @ts-expect-error internal
-    const {idMap} = this.runner.defaultActorLogic;
-    if (!idMap.has(source)) {
-      throw new Error(`Unknown state ID (source): ${source}`);
-    }
-    if (!idMap.has(target)) {
-      throw new Error(`Unknown state ID (target): ${target}`);
-    }
-
-    const p = toPromise(actor);
-    actor.start();
-    return Object.assign(
-      Promise.race([
-        p.then(noop, noop),
-        scheduler.wait(timeout).then(() => {
-          throw new Error(
-            `Failed to detect a transition from ${source} to ${target} in ${timeout}ms`,
-          );
-        }),
-      ])
-        .then(() => {
-          if (!sawTransition) {
-            throw new Error(
-              `Transition from ${source} to ${target} not detected`,
-            );
-          }
-        })
-        .finally(() => {
-          actor.stop();
-        }),
-      actor,
-    );
-  }
-}
-
-export class AnyActorRunner<T extends AnyActorLogic> implements ActorRunner<T> {
   public defaultActorLogic: T;
+
+  public defaultId?: string;
+
+  public defaultInspector: (evt: xs.InspectionEvent) => void;
 
   public defaultLogger: (...args: any[]) => void;
 
-  public defaultInspector: (evt: InspectionEvent) => void;
-
   public defaultTimeout: number;
-
-  public defaultId?: string;
 
   constructor(actorLogic: T, options: ActorRunnerOptions = {}) {
     this.defaultActorLogic = actorLogic;
@@ -268,7 +123,7 @@ export class AnyActorRunner<T extends AnyActorLogic> implements ActorRunner<T> {
     this.defaultId = options.id;
   }
 
-  public static create<T extends AnyActorLogic>(
+  public static create<T extends xs.AnyActorLogic>(
     actorLogic: T,
     options?: ActorRunnerOptions,
   ): AnyActorRunner<T> {
@@ -283,9 +138,9 @@ export class AnyActorRunner<T extends AnyActorLogic> implements ActorRunner<T> {
    * @returns `Promise` fulfilling with the actor output
    */
   public runUntilDone(
-    input: InputFrom<T> | Actor<T>,
+    input: xs.InputFrom<T> | xs.Actor<T>,
     options?: ActorRunnerOptions,
-  ): ActorPromise<T, OutputFrom<T>>;
+  ): ActorPromise<T, xs.OutputFrom<T>>;
 
   /**
    * Runs an actor to completion (or timeout) and fulfills with its output.
@@ -294,27 +149,25 @@ export class AnyActorRunner<T extends AnyActorLogic> implements ActorRunner<T> {
    * @param options Options
    * @returns `Promise` fulfilling with the actor output
    */
-
   public runUntilDone(
-    actor: Actor<T>,
+    actor: xs.Actor<T>,
     options?: ActorRunnerOptionsWithActor,
-  ): ActorPromise<T, OutputFrom<T>>;
-
+  ): ActorPromise<T, xs.OutputFrom<T>>;
   @bind()
   public runUntilDone(
-    input: InputFrom<T> | Actor<T>,
+    input: xs.InputFrom<T> | xs.Actor<T>,
     options: ActorRunnerOptions = {},
-  ): ActorPromise<T, OutputFrom<T>> {
-    let actor: Actor<T>;
+  ): ActorPromise<T, xs.OutputFrom<T>> {
+    let actor: xs.Actor<T>;
 
     const {timeout = this.defaultTimeout} = options;
 
-    if (input instanceof Actor) {
+    if (input instanceof xs.Actor) {
       const {logger = this.defaultLogger, inspect = this.defaultInspector} =
         options as ActorRunnerOptionsWithActor;
       actor = input;
       if (inspect !== this.defaultInspector) {
-        actor.system.inspect(toObserver(inspect));
+        actor.system.inspect(xs.toObserver(inspect));
       }
       if (logger !== this.defaultLogger) {
         // @ts-expect-error private
@@ -327,7 +180,7 @@ export class AnyActorRunner<T extends AnyActorLogic> implements ActorRunner<T> {
         inspect = this.defaultInspector,
         id = this.defaultId,
       } = options;
-      actor = createActor(this.defaultActorLogic, {
+      actor = xs.createActor(this.defaultActorLogic, {
         id,
         input,
         logger,
@@ -336,7 +189,7 @@ export class AnyActorRunner<T extends AnyActorLogic> implements ActorRunner<T> {
     }
 
     // order is important: create promise, then start.
-    const actorPromise = toPromise(actor);
+    const actorPromise = xs.toPromise(actor);
     actor.start();
     return Object.assign(
       Promise.race([
@@ -350,62 +203,10 @@ export class AnyActorRunner<T extends AnyActorLogic> implements ActorRunner<T> {
   }
 
   /**
-   * Starts the actor and returns the {@link Actor} object.
-   *
-   * @param input Actor input
-   * @param options Options
-   * @returns The {@link Actor} itself
-   */
-  public start(
-    input: InputFrom<T>,
-    options?: Omit<ActorRunnerOptions, 'timeout'>,
-  ): Actor<T>;
-  public start(
-    actor: Actor<T>,
-    options?: Omit<ActorRunnerOptionsWithActor, 'timeout'>,
-  ): Actor<T>;
-  @bind()
-  public start(
-    input: InputFrom<T> | Actor<T>,
-    options: Omit<
-      ActorRunnerOptions | ActorRunnerOptionsWithActor,
-      'timeout'
-    > = {},
-  ): Actor<T> {
-    let actor: Actor<T>;
-    if (input instanceof Actor) {
-      const {logger = this.defaultLogger, inspect = this.defaultInspector} =
-        options as ActorRunnerOptionsWithActor;
-      actor = input;
-      if (inspect !== this.defaultInspector) {
-        actor.system.inspect(toObserver(inspect));
-      }
-      if (logger !== this.defaultLogger) {
-        // @ts-expect-error private
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        actor.logger = actor._actorScope.logger = logger;
-      }
-    } else {
-      const {
-        logger = this.defaultLogger,
-        inspect = this.defaultInspector,
-        id = this.defaultId,
-      } = options as ActorRunnerOptions;
-      actor = createActor(this.defaultActorLogic, {
-        id,
-        input,
-        logger,
-        inspect,
-      });
-    }
-    return actor.start();
-  }
-
-  /**
    * Runs an actor until it emits or sends one or more events (in order).
    *
-   * Returns a combination of a `Promise` and an {@link Actor} so that events may
-   * be sent to the actor.
+   * Returns a combination of a `Promise` and an {@link xs.Actor} so that events
+   * may be sent to the actor.
    *
    * Immediately stops the machine thereafter.
    *
@@ -418,15 +219,15 @@ export class AnyActorRunner<T extends AnyActorLogic> implements ActorRunner<T> {
    */
   public runUntilEvent<const EventTypes extends ActorEventTypeTuple<T>>(
     events: EventTypes,
-    input: InputFrom<T>,
+    input: xs.InputFrom<T>,
     options?: OptionsWithoutInspect<ActorRunnerOptions>,
   ): ActorPromise<T, ActorEventTuple<T, EventTypes>>;
 
   /**
    * Runs an actor until it emits or sends one or more events (in order).
    *
-   * Returns a combination of a `Promise` and an {@link Actor} so that events may
-   * be sent to the actor.
+   * Returns a combination of a `Promise` and an {@link xs.Actor} so that events
+   * may be sent to the actor.
    *
    * Immediately stops the machine thereafter.
    *
@@ -442,14 +243,13 @@ export class AnyActorRunner<T extends AnyActorLogic> implements ActorRunner<T> {
    */
   public runUntilEvent<const EventTypes extends ActorEventTypeTuple<T>>(
     events: EventTypes,
-    actor: Actor<T>,
+    actor: xs.Actor<T>,
     options?: OptionsWithoutInspect<ActorRunnerOptionsWithActor>,
   ): ActorPromise<T, ActorEventTuple<T, EventTypes>>;
-
   @bind()
   public runUntilEvent<const EventTypes extends ActorEventTypeTuple<T>>(
     events: EventTypes,
-    input: InputFrom<T> | Actor<T>,
+    input: xs.InputFrom<T> | xs.Actor<T>,
     options: OptionsWithoutInspect<
       ActorRunnerOptions | ActorRunnerOptionsWithActor
     > = {},
@@ -461,7 +261,7 @@ export class AnyActorRunner<T extends AnyActorLogic> implements ActorRunner<T> {
     }
 
     // inspector fields events sent to another actor
-    const runUntilEventInspector = (evt: InspectionEvent) => {
+    const runUntilEventInspector = (evt: xs.InspectionEvent) => {
       const type = expectedEventQueue[0];
       if (evt.type === '@xstate.event' && type === evt.event.type) {
         if (evt.sourceRef === actor) {
@@ -474,8 +274,8 @@ export class AnyActorRunner<T extends AnyActorLogic> implements ActorRunner<T> {
         }
       }
     };
-    let actor: Actor<T>;
-    if (input instanceof Actor) {
+    let actor: xs.Actor<T>;
+    if (input instanceof xs.Actor) {
       actor = input;
       const {logger = this.defaultLogger} =
         options as OptionsWithoutInspect<ActorRunnerOptionsWithActor>;
@@ -484,11 +284,11 @@ export class AnyActorRunner<T extends AnyActorLogic> implements ActorRunner<T> {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         actor.logger = actor._actorScope.logger = logger;
       }
-      actor.system.inspect(toObserver(runUntilEventInspector));
+      actor.system.inspect(xs.toObserver(runUntilEventInspector));
     } else {
       const {id = this.defaultId, logger = this.defaultLogger} =
         options as OptionsWithoutInspect<ActorRunnerOptions>;
-      actor = createActor(this.defaultActorLogic, {
+      actor = xs.createActor(this.defaultActorLogic, {
         input,
         id,
         logger,
@@ -500,7 +300,7 @@ export class AnyActorRunner<T extends AnyActorLogic> implements ActorRunner<T> {
 
     const {timeout = this.defaultTimeout} = options;
 
-    let subscription: Subscription | undefined;
+    let subscription: xs.Subscription | undefined;
 
     // subscription fields emitted events
     const subscribe = (type: EventTypes[number]) => {
@@ -519,7 +319,7 @@ export class AnyActorRunner<T extends AnyActorLogic> implements ActorRunner<T> {
 
     subscription = subscribe(expectedEventQueue[0]);
 
-    const p = toPromise(actor);
+    const p = xs.toPromise(actor);
     actor.start();
     return Object.assign(
       Promise.race([
@@ -560,52 +360,51 @@ export class AnyActorRunner<T extends AnyActorLogic> implements ActorRunner<T> {
    *
    * Immediately stops the machine thereafter.
    *
-   * Returns a combination of a `Promise` and an {@link Actor} so that events may
-   * be sent to the actor.
+   * Returns a combination of a `Promise` and an {@link xs.Actor} so that events
+   * may be sent to the actor.
    *
-   * @param predicate Snapshot predicate; see {@link waitFor}
+   * @param predicate Snapshot predicate; see {@link xs.waitFor}
    * @param input Actor input
    * @param options Options
    * @returns {@link ActorPromise} Fulfilling with the snapshot that matches the
    *   predicate
    */
   public runUntilSnapshot(
-    predicate: (snapshot: SnapshotFrom<T>) => boolean,
-    input: InputFrom<T>,
+    predicate: (snapshot: xs.SnapshotFrom<T>) => boolean,
+    input: xs.InputFrom<T>,
     options?: ActorRunnerOptions,
-  ): ActorPromise<T, SnapshotFrom<T>>;
+  ): ActorPromise<T, xs.SnapshotFrom<T>>;
 
   /**
    * Runs a machine until the snapshot predicate returns `true`.
    *
    * Immediately stops the machine thereafter.
    *
-   * Returns a combination of a `Promise` and an {@link Actor} so that events may
-   * be sent to the actor.
+   * Returns a combination of a `Promise` and an {@link xs.Actor} so that events
+   * may be sent to the actor.
    *
-   * @param predicate Snapshot predicate; see {@link waitFor}
+   * @param predicate Snapshot predicate; see {@link xs.waitFor}
    * @param input Actor
    * @param options Options
    * @returns {@link ActorPromise} Fulfilling with the snapshot that matches the
    *   predicate
    */
   public runUntilSnapshot(
-    predicate: (snapshot: SnapshotFrom<T>) => boolean,
-    actor: Actor<T>,
+    predicate: (snapshot: xs.SnapshotFrom<T>) => boolean,
+    actor: xs.Actor<T>,
     options?: ActorRunnerOptionsWithActor,
-  ): ActorPromise<T, SnapshotFrom<T>>;
-
+  ): ActorPromise<T, xs.SnapshotFrom<T>>;
   @bind()
   public runUntilSnapshot(
-    predicate: (snapshot: SnapshotFrom<T>) => boolean,
-    input: InputFrom<T> | Actor<T>,
+    predicate: (snapshot: xs.SnapshotFrom<T>) => boolean,
+    input: xs.InputFrom<T> | xs.Actor<T>,
     options: ActorRunnerOptions | ActorRunnerOptionsWithActor = {},
-  ): ActorPromise<T, SnapshotFrom<T>> {
-    let actor: Actor<T>;
+  ): ActorPromise<T, xs.SnapshotFrom<T>> {
+    let actor: xs.Actor<T>;
 
     const {timeout = this.defaultTimeout} = options;
 
-    if (input instanceof Actor) {
+    if (input instanceof xs.Actor) {
       actor = input;
       const {logger = this.defaultLogger, inspect = this.defaultInspector} =
         options as ActorRunnerOptionsWithActor;
@@ -615,7 +414,7 @@ export class AnyActorRunner<T extends AnyActorLogic> implements ActorRunner<T> {
         actor.logger = actor._actorScope.logger = logger;
       }
       if (inspect !== this.defaultInspector) {
-        actor.system.inspect(toObserver(inspect));
+        actor.system.inspect(xs.toObserver(inspect));
       }
     } else {
       const {
@@ -627,7 +426,8 @@ export class AnyActorRunner<T extends AnyActorLogic> implements ActorRunner<T> {
     }
 
     return Object.assign(
-      waitFor(actor, predicate, {timeout})
+      xs
+        .waitFor(actor, predicate, {timeout})
         .catch((err) => {
           // TODO suggest error codes or Error subclasses or smth for xstate
           if ((err as Error)?.message.startsWith('Timeout of')) {
@@ -645,29 +445,81 @@ export class AnyActorRunner<T extends AnyActorLogic> implements ActorRunner<T> {
   }
 
   /**
+   * Starts the actor and returns the {@link xs.Actor} object.
+   *
+   * @param input Actor input
+   * @param options Options
+   * @returns The {@link xs.Actor} itself
+   */
+  public start(
+    input: xs.InputFrom<T>,
+    options?: Omit<ActorRunnerOptions, 'timeout'>,
+  ): xs.Actor<T>;
+  public start(
+    actor: xs.Actor<T>,
+    options?: Omit<ActorRunnerOptionsWithActor, 'timeout'>,
+  ): xs.Actor<T>;
+  @bind()
+  public start(
+    input: xs.InputFrom<T> | xs.Actor<T>,
+    options: Omit<
+      ActorRunnerOptions | ActorRunnerOptionsWithActor,
+      'timeout'
+    > = {},
+  ): xs.Actor<T> {
+    let actor: xs.Actor<T>;
+    if (input instanceof xs.Actor) {
+      const {logger = this.defaultLogger, inspect = this.defaultInspector} =
+        options as ActorRunnerOptionsWithActor;
+      actor = input;
+      if (inspect !== this.defaultInspector) {
+        actor.system.inspect(xs.toObserver(inspect));
+      }
+      if (logger !== this.defaultLogger) {
+        // @ts-expect-error private
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        actor.logger = actor._actorScope.logger = logger;
+      }
+    } else {
+      const {
+        logger = this.defaultLogger,
+        inspect = this.defaultInspector,
+        id = this.defaultId,
+      } = options as ActorRunnerOptions;
+      actor = xs.createActor(this.defaultActorLogic, {
+        id,
+        input,
+        logger,
+        inspect,
+      });
+    }
+    return actor.start();
+  }
+
+  /**
    * A function that waits for an actor to be spawned.
    *
    * @param actorId A string or RegExp to match against the actor ID
-   * @param input Actor input or an {@link Actor}
+   * @param input Actor input or an {@link xs.Actor}
    * @param options Options
    * @returns The `ActorRef` of the spawned actor
    */
   @bind()
-  waitForActor<SpawnedActor extends AnyActorLogic = AnyActorLogic>(
+  public waitForActor<SpawnedActor extends xs.AnyActorLogic = xs.AnyActorLogic>(
     actorId: string | RegExp,
-    input: InputFrom<T> | Actor<T>,
+    input: xs.InputFrom<T> | xs.Actor<T>,
     options: ActorRunnerOptions | ActorRunnerOptionsWithActor = {},
-  ): ActorPromise<T, ActorRefFrom<SpawnedActor>> {
+  ): ActorPromise<T, xs.ActorRefFrom<SpawnedActor>> {
     const predicate =
       typeof actorId === 'string'
         ? (id: string) => id === actorId
         : (id: string) => actorId.test(id);
 
-    let actor: Actor<T>;
+    let actor: xs.Actor<T>;
 
     const {timeout = this.defaultTimeout} = options;
 
-    if (input instanceof Actor) {
+    if (input instanceof xs.Actor) {
       actor = input;
       const {logger = this.defaultLogger, inspect = this.defaultInspector} =
         options as ActorRunnerOptionsWithActor;
@@ -677,7 +529,7 @@ export class AnyActorRunner<T extends AnyActorLogic> implements ActorRunner<T> {
         actor.logger = actor._actorScope.logger = logger;
       }
       if (inspect !== this.defaultInspector) {
-        actor.system.inspect(toObserver(inspect));
+        actor.system.inspect(xs.toObserver(inspect));
       }
     } else {
       const {
@@ -690,11 +542,11 @@ export class AnyActorRunner<T extends AnyActorLogic> implements ActorRunner<T> {
 
     return Object.assign(
       Promise.race([
-        new Promise<ActorRefFrom<SpawnedActor>>((resolve) => {
+        new Promise<xs.ActorRefFrom<SpawnedActor>>((resolve) => {
           actor.system.inspect(
-            toObserver((evt) => {
+            xs.toObserver((evt) => {
               if (evt.type === '@xstate.actor' && predicate(evt.actorRef.id)) {
-                resolve(evt.actorRef as ActorRefFrom<SpawnedActor>);
+                resolve(evt.actorRef as xs.ActorRefFrom<SpawnedActor>);
               }
             }),
           );
@@ -710,42 +562,201 @@ export class AnyActorRunner<T extends AnyActorLogic> implements ActorRunner<T> {
   }
 }
 
-export interface ActorRunner<T extends AnyActorLogic> {
-  defaultActorLogic: T;
-  defaultLogger: (...args: any[]) => void;
-  defaultInspector: (evt: InspectionEvent) => void;
-  defaultTimeout: number;
-  defaultId?: string;
-  runUntilDone(input: InputFrom<T> | Actor<T>): ActorPromise<T, OutputFrom<T>>;
-  start(input: InputFrom<T> | Actor<T>): Actor<T>;
-  runUntilEvent<const EventTypes extends ActorEventTypeTuple<T>>(
-    events: EventTypes,
-    input: InputFrom<T> | Actor<T>,
-  ): ActorPromise<T, ActorEventTuple<T, EventTypes>>;
-  runUntilSnapshot(
-    predicate: (snapshot: SnapshotFrom<T>) => boolean,
-    input: InputFrom<T> | Actor<T>,
-  ): ActorPromise<T, SnapshotFrom<T>>;
-  waitForActor<SpawnedActor extends AnyActorLogic = AnyActorLogic>(
-    actorId: string | RegExp,
-    input: InputFrom<T> | Actor<T>,
-  ): ActorPromise<T, ActorRefFrom<SpawnedActor>>;
+/**
+ * Helpers for testing state machine behavior
+ *
+ * @remarks
+ * Just a wrapper around {@link AnyActorRunner}
+ * @template T `StateMachine` actor logic
+ */
+export class StateMachineRunner<T extends xs.AnyStateMachine>
+  implements ActorRunner<T>
+{
+  constructor(public readonly runner: AnyActorRunner<T>) {}
+
+  public get defaultActorLogic() {
+    return this.runner.defaultActorLogic;
+  }
+
+  public get defaultId() {
+    return this.runner.defaultId;
+  }
+
+  public get defaultInspector() {
+    return this.runner.defaultInspector;
+  }
+
+  public get defaultLogger() {
+    return this.runner.defaultLogger;
+  }
+
+  public get defaultTimeout() {
+    return this.runner.defaultTimeout;
+  }
+
+  public get runUntilDone() {
+    return this.runner.runUntilDone;
+  }
+
+  public get runUntilEvent() {
+    return this.runner.runUntilEvent;
+  }
+
+  public get runUntilSnapshot() {
+    return this.runner.runUntilSnapshot;
+  }
+
+  public get start() {
+    return this.runner.start;
+  }
+
+  public get waitForActor() {
+    return this.runner.waitForActor;
+  }
+
+  /**
+   * Runs the machine until a transition from the `source` state to the `target`
+   * state occurs.
+   *
+   * Immediately stops the machine thereafter. Returns a combination of a
+   * `Promise` and an {@link xs.Actor} so that events may be sent to the actor.
+   *
+   * @param source Source state ID
+   * @param target Target state ID
+   * @param input Machine input
+   * @param opts Options
+   * @returns An {@link ActorPromise} that resolves when the specified transition
+   *   occurs
+   * @todo Type narrowing for `source` and `target` once xstate supports it
+   */
+  @bind()
+  public runUntilTransition(
+    source: string,
+    target: string,
+    input: xs.InputFrom<T> | xs.Actor<T>,
+    options: OptionsWithoutInspect<
+      ActorRunnerOptions | ActorRunnerOptionsWithActor
+    > = {},
+  ): ActorPromise<T> {
+    let actor: xs.Actor<T>;
+
+    const {timeout = this.defaultTimeout} = options;
+    let sawTransition = false;
+    const transitionInspector = (evt: xs.InspectionEvent) => {
+      if (actor) {
+        if (evt.type === '@xstate.microstep') {
+          if (evt.actorRef.id === actor.id) {
+            if (
+              evt._transitions.some(
+                (tDef) =>
+                  tDef.source.id === source &&
+                  tDef.target?.some((t) => t.id === target),
+              )
+            ) {
+              sawTransition = true;
+              actor.stop();
+            }
+          }
+        }
+      }
+    };
+
+    if (input instanceof xs.StateMachine) {
+      actor = input;
+      const {logger = this.defaultLogger} =
+        options as ActorRunnerOptionsWithActor;
+      if (logger !== this.defaultLogger) {
+        // @ts-expect-error private
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        actor.logger = actor._actorScope.logger = logger;
+      }
+      actor.system.inspect(xs.toObserver(transitionInspector));
+    } else {
+      const {logger = this.defaultLogger, id = this.defaultId} =
+        options as ActorRunnerOptions;
+      actor = xs.createActor(this.defaultActorLogic, {
+        input: input as xs.InputFrom<T>,
+        logger,
+        inspect: transitionInspector,
+        id,
+      });
+    }
+
+    // @ts-expect-error internal
+    const {idMap} = this.runner.defaultActorLogic;
+    if (!idMap.has(source)) {
+      throw new Error(`Unknown state ID (source): ${source}`);
+    }
+    if (!idMap.has(target)) {
+      throw new Error(`Unknown state ID (target): ${target}`);
+    }
+
+    const p = xs.toPromise(actor);
+    actor.start();
+    return Object.assign(
+      Promise.race([
+        p.then(noop, noop),
+        scheduler.wait(timeout).then(() => {
+          throw new Error(
+            `Failed to detect a transition from ${source} to ${target} in ${timeout}ms`,
+          );
+        }),
+      ])
+        .then(() => {
+          if (!sawTransition) {
+            throw new Error(
+              `Transition from ${source} to ${target} not detected`,
+            );
+          }
+        })
+        .finally(() => {
+          actor.stop();
+        }),
+      actor,
+    );
+  }
 }
 
-export function createActorRunner<T extends AnyStateMachine>(
+/**
+ * Decorator to bind a class method to a context (defaulting to `this`)
+ *
+ * @param ctx Alternate context, if needed
+ */
+export function bind<
+  TThis extends object,
+  TArgs extends any[] = unknown[],
+  TReturn = unknown,
+  TContext extends object = TThis,
+>(ctx?: TContext) {
+  return function (
+    target: (this: TThis, ...args: TArgs) => TReturn,
+    context: ClassMethodDecoratorContext<
+      TThis,
+      (this: TThis, ...args: TArgs) => TReturn
+    >,
+  ) {
+    context.addInitializer(function (this: TThis) {
+      const func = context.access.get(this);
+
+      // @ts-expect-error FIXME
+      this[context.name] = func.bind(ctx ?? this);
+    });
+  };
+}
+
+export function createActorRunner<T extends xs.AnyStateMachine>(
   stateMachine: T,
   options?: ActorRunnerOptions,
 ): StateMachineRunner<T>;
 
-export function createActorRunner<T extends AnyActorLogic>(
+export function createActorRunner<T extends xs.AnyActorLogic>(
   actorLogic: T,
   options?: ActorRunnerOptions,
 ): AnyActorRunner<T>;
 
-export function createActorRunner<T extends AnyActorLogic | AnyStateMachine>(
-  actorLogic: T,
-  options?: ActorRunnerOptions,
-) {
+export function createActorRunner<
+  T extends xs.AnyActorLogic | xs.AnyStateMachine,
+>(actorLogic: T, options?: ActorRunnerOptions) {
   if (isStateMachine(actorLogic)) {
     const runner = AnyActorRunner.create(actorLogic, options);
     return new StateMachineRunner(runner);
@@ -759,10 +770,10 @@ export function createActorRunner<T extends AnyActorLogic | AnyStateMachine>(
  * @param actorLogic Any actor logic
  * @returns `true` if `actorLogic` is a state machine
  */
-export function isStateMachine<T extends AnyActorLogic>(
+export function isStateMachine<T extends xs.AnyActorLogic>(
   actorLogic: T,
-): actorLogic is T & AnyStateMachine {
-  return actorLogic instanceof StateMachine;
+): actorLogic is T & xs.AnyStateMachine {
+  return actorLogic instanceof xs.StateMachine;
 }
 
 /**
@@ -773,5 +784,8 @@ const noop = () => {};
 /**
  * Default timeout (in ms) for any of the "run until" methods in
  * {@link AnyActorRunner}
+ *
+ * This must be set to a lower value than the default timeout for the test
+ * runner.
  */
 const DEFAULT_TIMEOUT = 1000;

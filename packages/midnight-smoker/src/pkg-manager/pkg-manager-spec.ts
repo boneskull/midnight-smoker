@@ -16,7 +16,7 @@ import {
 } from '#util/util';
 import Debug from 'debug';
 import {globIterate} from 'glob';
-import {isString, memoize} from 'lodash';
+import {differenceWith, isString, memoize} from 'lodash';
 import {execFile as _execFile} from 'node:child_process';
 import path from 'node:path';
 import {promisify} from 'node:util';
@@ -45,7 +45,7 @@ export interface PkgManagerOracleOpts {
 /**
  * Options for {@link PkgManagerSpec}.
  */
-export interface PkgManagerSpecOpts {
+export interface PkgManagerSpecOptions {
   /**
    * If `true`, the `PkgManagerController` should treat this using the "system"
    * `Executor`
@@ -263,7 +263,7 @@ export class PkgManagerSpec implements StaticPkgManagerSpec {
     version = DEFAULT_PKG_MANAGER_VERSION,
     isSystem = false,
     requestedAs,
-  }: PkgManagerSpecOpts = {}) {
+  }: PkgManagerSpecOptions = {}) {
     const semver = isString(version) ? parse(version) : version;
 
     if (semver) {
@@ -308,9 +308,29 @@ export class PkgManagerSpec implements StaticPkgManagerSpec {
     version = DEFAULT_PKG_MANAGER_VERSION,
     isSystem = false,
     requestedAs,
-  }: PkgManagerSpecOpts = {}): Readonly<PkgManagerSpec> {
+  }: PkgManagerSpecOptions = {}): Readonly<PkgManagerSpec> {
     return Object.freeze(
       new PkgManagerSpec({bin, version, isSystem, requestedAs}),
+    );
+  }
+
+  /**
+   * Given specs and a list of desired package managers, matches each desired
+   * package manager to a spec, and returns the list of those items in
+   * `desiredPkgManagers` not found in a spec.
+   *
+   * @param specs Known package manager specifications
+   * @param desiredPkgManagers List of desired package managers, if any
+   * @returns Desired package managers not found in given specs
+   */
+  public static filterUnsupported(
+    specs: Readonly<PkgManagerSpec>[],
+    desiredPkgManagers: string[] = [],
+  ) {
+    return differenceWith(
+      desiredPkgManagers,
+      specs,
+      (desiredPkgManager, {requestedAs}) => desiredPkgManager === requestedAs,
     );
   }
 
@@ -322,31 +342,30 @@ export class PkgManagerSpec implements StaticPkgManagerSpec {
    * {@link PkgManagerSpec.clone clone}.
    *
    * @param spec - A {@link PkgManagerSpec} or a normalizable spec-style string
-   * @param isSystem - If `true`, set the
-   *   {@link PkgManagerSpec.isSystem isSystem} flag.
+   * @param options - Options
    * @returns A new {@link PkgManagerSpec}
    */
   public static async from(
     this: void,
     spec?: Readonly<PkgManagerSpec> | string,
-    isSystem?: boolean,
+    options?: PkgManagerSpecOptions,
   ): Promise<Readonly<PkgManagerSpec>>;
 
   /**
-   * Given a {@link PkgManagerSpecOpts}, resolves a new {@link PkgManagerSpec}.
+   * Given a {@link PkgManagerSpecOptions}, resolves a new {@link PkgManagerSpec}.
    *
-   * @param opts - Options for the package manager specification
+   * @param options - Options for the package manager specification
    * @returns A new {@link PkgManagerSpec}
    */
   public static async from(
     this: void,
-    opts?: PkgManagerSpecOpts,
+    options?: PkgManagerSpecOptions,
   ): Promise<Readonly<PkgManagerSpec>>;
 
   public static async from(
     this: void,
-    specOrOpts: Readonly<PkgManagerSpec> | PkgManagerSpecOpts | string = {},
-    specIsSystem = false,
+    specOrOpts: Readonly<PkgManagerSpec> | PkgManagerSpecOptions | string = {},
+    opts: PkgManagerSpecOptions = {},
   ): Promise<Readonly<PkgManagerSpec>> {
     if (specOrOpts instanceof PkgManagerSpec) {
       return specOrOpts.clone();
@@ -357,8 +376,8 @@ export class PkgManagerSpec implements StaticPkgManagerSpec {
         return PkgManagerSpec.create({
           bin: pkgManager,
           version,
-          isSystem: specIsSystem,
-          requestedAs: specOrOpts,
+          isSystem: opts.isSystem,
+          requestedAs: opts.requestedAs ?? specOrOpts,
         });
       }
       specOrOpts = {bin: pkgManager};
@@ -368,6 +387,7 @@ export class PkgManagerSpec implements StaticPkgManagerSpec {
       bin: pkgManager = DEFAULT_PKG_MANAGER_BIN,
       version: allegedVersion,
       isSystem = false,
+      requestedAs,
     } = specOrOpts;
 
     // TODO: verify that we need anything other than assignment to the default.
@@ -377,11 +397,16 @@ export class PkgManagerSpec implements StaticPkgManagerSpec {
         ? await PkgManagerOracle.defaultGetSystemPkgManagerVersion(pkgManager)
         : allegedVersion || DEFAULT_PKG_MANAGER_VERSION;
 
-    return PkgManagerSpec.create({bin: pkgManager, version, isSystem});
+    return PkgManagerSpec.create({
+      bin: pkgManager,
+      version,
+      isSystem,
+      requestedAs,
+    });
   }
 
   public static async fromMany(
-    specs: NonEmptyArray<Readonly<PkgManagerSpec | string>>,
+    specs: NonEmptyArray<Readonly<PkgManagerSpec> | string>,
   ): Promise<Readonly<PkgManagerSpec>[]> {
     return Promise.all([...specs].map((spec) => PkgManagerSpec.from(spec)));
   }
@@ -441,7 +466,7 @@ export class PkgManagerSpec implements StaticPkgManagerSpec {
    * @param opts Overrides
    * @returns New `PkgManagerSpec` with overrides applied
    */
-  public clone(opts: PkgManagerSpecOpts = {}) {
+  public clone(opts: PkgManagerSpecOptions = {}) {
     return PkgManagerSpec.create({...this.toJSON(), ...opts});
   }
 

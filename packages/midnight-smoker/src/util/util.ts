@@ -67,28 +67,6 @@ export function memoize<
   };
 }
 
-export function bind<
-  TThis extends object,
-  TArgs extends any[] = unknown[],
-  TReturn = unknown,
-  TReceiver extends object = TThis,
->(receiver?: TReceiver) {
-  return function (
-    target: (this: TThis, ...args: TArgs) => TReturn,
-    context: ClassMethodDecoratorContext<
-      TThis,
-      (this: TThis, ...args: TArgs) => TReturn
-    >,
-  ) {
-    context.addInitializer(function (this: TThis) {
-      const func = context.access.get(this);
-
-      // @ts-expect-error FIXME
-      this[context.name] = func.bind(receiver ?? this);
-    });
-  };
-}
-
 /**
  * Casts a defined value to an array of non-`undefined` values.
  *

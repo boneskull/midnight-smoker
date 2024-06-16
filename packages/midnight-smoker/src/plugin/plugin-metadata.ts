@@ -6,11 +6,6 @@
  */
 import {TRANSIENT} from '#constants';
 import {InvalidArgError} from '#error/invalid-arg-error';
-import {
-  loadPackageManagers,
-  type LoadPackageManagersOpts,
-} from '#pkg-manager/pkg-manager-loader';
-import {type PkgManagerDefSpec} from '#pkg-manager/pkg-manager-spec';
 import {BLESSED_PLUGINS, type BlessedPlugin} from '#plugin/blessed';
 import {type Executor} from '#schema/executor';
 import {type PkgManagerDef} from '#schema/pkg-manager-def';
@@ -19,10 +14,9 @@ import {type RuleDef} from '#schema/rule-def';
 import {type RuleDefSchemaValue} from '#schema/rule-def-schema-value';
 import {type SomeRuleDef} from '#schema/some-rule-def';
 import {type StaticPluginMetadata} from '#schema/static-plugin-metadata';
-import {type WorkspaceInfo} from '#schema/workspace-info';
 import {type FileManager} from '#util/filemanager';
 import Debug from 'debug';
-import {isEmpty, isPlainObject, isString} from 'lodash';
+import {isPlainObject, isString} from 'lodash';
 import path from 'node:path';
 import type {LiteralUnion, PackageJson, SetRequired} from 'type-fest';
 
@@ -343,29 +337,6 @@ export class PluginMetadata implements StaticPluginMetadata {
     const {name} = def;
     this.ruleDefMap.set(name, def);
     debug('%s added RuleDef: %s', this, name);
-  }
-
-  /**
-   * Loads package managers from this plugin, choosing only those that match the
-   * desired package managers.
-   *
-   * This method should not be called if the plugin does not provide any package
-   * managers.
-   *
-   * @param workspaceInfo
-   * @param opts
-   * @returns
-   * @internal
-   */
-  public async loadPkgManagers(
-    workspaceInfo: WorkspaceInfo[],
-    opts: LoadPackageManagersOpts,
-  ): Promise<PkgManagerDefSpec[]> {
-    const defs = [...this.pkgManagerDefMap.values()];
-    if (isEmpty(defs)) {
-      return [];
-    }
-    return loadPackageManagers(defs, workspaceInfo, opts);
   }
 
   /**

@@ -6,6 +6,8 @@ export * from './fs-api';
 
 export * from './loader-util';
 
+export * from './normalize-installables';
+
 export * from './result';
 
 export * from './schema-util';

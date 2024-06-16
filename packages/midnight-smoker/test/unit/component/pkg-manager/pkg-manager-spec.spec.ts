@@ -333,6 +333,60 @@ describe('midnight-smoker', function () {
         });
 
         describe('static method', function () {
+          describe('filterUnsupported()', function () {
+            let specs: Readonly<PMS.PkgManagerSpec>[];
+            let desiredPkgManagers: string[];
+
+            beforeEach(async function () {
+              desiredPkgManagers = ['npm@7', 'yarn@1', 'foo@bar'];
+              specs = [
+                await PkgManagerSpec.from('npm@7.0.0', {requestedAs: 'npm@7'}),
+                await PkgManagerSpec.from('yarn@1.22.10', {
+                  requestedAs: 'yarn@1',
+                }),
+                await PkgManagerSpec.from('foo@bar', {requestedAs: 'foo@bar'}),
+              ];
+            });
+
+            describe('when no desired package managers provided', function () {
+              it('should return an empty array', function () {
+                expect(PkgManagerSpec.filterUnsupported(specs), 'to be empty');
+              });
+            });
+
+            describe('when all desired package managers provided', function () {
+              it('should return an empty array', function () {
+                expect(
+                  PkgManagerSpec.filterUnsupported(specs, desiredPkgManagers),
+                  'to be empty',
+                );
+              });
+            });
+
+            describe('when not all desired package managers provided', function () {
+              it('should return a non-empty array', function () {
+                expect(
+                  PkgManagerSpec.filterUnsupported(specs, [
+                    ...desiredPkgManagers,
+                    'bar@foo',
+                  ]),
+                  'to equal',
+                  ['bar@foo'],
+                );
+              });
+            });
+
+            describe('when no specs provided', function () {
+              it('should return the desired package managers', function () {
+                expect(
+                  PkgManagerSpec.filterUnsupported([], desiredPkgManagers),
+                  'to equal',
+                  desiredPkgManagers,
+                );
+              });
+            });
+          });
+
           describe('create()', function () {
             describe('when no arguments are provided', function () {
               it('should create a PkgManagerSpec with defaults applied', function () {
@@ -428,12 +482,15 @@ describe('midnight-smoker', function () {
                 });
               });
 
-              describe('when the second argument is true', function () {
-                it('should set the isSystem flag to true', async function () {
+              describe('when the second argument is some options', function () {
+                it('should apply the options', async function () {
                   await expect(
-                    PkgManagerSpec.from('npm@7.0.0', true),
+                    PkgManagerSpec.from('npm@7.0.0', {
+                      isSystem: true,
+                      requestedAs: 'npm@7',
+                    }),
                     'to be fulfilled with value satisfying',
-                    {isSystem: true},
+                    {isSystem: true, requestedAs: 'npm@7'},
                   );
                 });
               });
