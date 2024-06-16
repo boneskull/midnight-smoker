@@ -54,7 +54,6 @@ export function memoize<
 >(resolver?: (this: TThis, ...args: TArgs) => any) {
   return function (
     target: (this: TThis, ...args: TArgs) => TReturn,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     context: ClassMethodDecoratorContext<
       TThis,
       (this: TThis, ...args: TArgs) => TReturn
@@ -62,8 +61,30 @@ export function memoize<
   ) {
     context.addInitializer(function (this: TThis) {
       const func = context.access.get(this);
-      // @ts-expect-error blah
+      // @ts-expect-error FIXME
       this[context.name] = _memoize(func, resolver);
+    });
+  };
+}
+
+export function bind<
+  TThis extends object,
+  TArgs extends any[] = unknown[],
+  TReturn = unknown,
+  TReceiver extends object = TThis,
+>(receiver?: TReceiver) {
+  return function (
+    target: (this: TThis, ...args: TArgs) => TReturn,
+    context: ClassMethodDecoratorContext<
+      TThis,
+      (this: TThis, ...args: TArgs) => TReturn
+    >,
+  ) {
+    context.addInitializer(function (this: TThis) {
+      const func = context.access.get(this);
+
+      // @ts-expect-error FIXME
+      this[context.name] = func.bind(receiver ?? this);
     });
   };
 }

@@ -17,7 +17,7 @@ import {createActorRunner} from './actor-helpers';
 
 const expect = unexpected.clone();
 
-const {run: runMachine} = createActorRunner(LoaderMachine);
+const {runUntilDone: runMachine} = createActorRunner(LoaderMachine);
 
 describe('midnight-smoker', function () {
   describe('machine', function () {

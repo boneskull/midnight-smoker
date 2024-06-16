@@ -30,10 +30,15 @@ import {createActorRunner} from '../actor-helpers';
 const debug = Debug('midnight-smoker:test:loader-machine');
 const expect = unexpected.clone();
 
-const {start, waitForActor, run, runUntilSnapshot, runUntilEvent} =
-  createActorRunner(RuleMachine, {
-    logger: debug,
-  });
+const {
+  start,
+  waitForActor,
+  runUntilDone: run,
+  runUntilSnapshot,
+  runUntilEvent,
+} = createActorRunner(RuleMachine, {
+  logger: debug,
+});
 
 describe('midnight-smoker', function () {
   describe('machine', function () {

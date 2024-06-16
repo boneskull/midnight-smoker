@@ -5,6 +5,7 @@ import {
   DefaultTrueSchema,
   NonEmptyStringSchema,
   NonEmptyStringToArraySchema,
+  toDualCasedObject,
 } from '#util/schema-util';
 import {z} from 'zod';
 
@@ -25,6 +26,11 @@ const smokerOptionsShape = {
   all: DefaultFalseSchema.describe(
     'Operate on all workspaces. The root workspace is omitted unless `includeRoot` is `true`',
   ),
+
+  /**
+   * Operate on private workspaces
+   */
+  allowPrivate: DefaultFalseSchema.describe('Operate on private workspaces'),
 
   /**
    * Fail on first script failure
@@ -124,11 +130,8 @@ const smokerOptionsShape = {
  * Does not include custom rule options.
  */
 export const BaseSmokerOptionsSchema = z
-  .object(smokerOptionsShape)
-  .extend({
-    'pkg-manager': smokerOptionsShape.pkgManager,
-  })
-  .describe('midnight-smoker options schema');
+  .object(toDualCasedObject(smokerOptionsShape))
+  .describe('Pre-plugin midnight-smoker options schema');
 
 /**
  * Options for `Smoker` as provided by a user.

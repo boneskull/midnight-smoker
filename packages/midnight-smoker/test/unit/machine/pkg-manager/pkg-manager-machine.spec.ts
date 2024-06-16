@@ -30,10 +30,14 @@ import {createActorRunner} from '../actor-helpers';
 const debug = Debug('midnight-smoker:test:pkg-manager-machine');
 const expect = unexpected.clone().use(unexpectedSinon);
 
-const {runUntilSnapshot, runUntilTransition, run, runUntilEvent} =
-  createActorRunner(PkgManagerMachine, {
-    logger: debug,
-  });
+const {
+  runUntilSnapshot,
+  runUntilTransition,
+  runUntilDone: run,
+  runUntilEvent,
+} = createActorRunner(PkgManagerMachine, {
+  logger: debug,
+});
 
 describe('midnight-smoker', function () {
   describe('machine', function () {

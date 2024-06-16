@@ -98,7 +98,12 @@ export type SmokeResults = Omit<
   'pkgManagers' | 'workspaceInfo'
 >;
 
+export interface AbortedEventData {
+  reason?: unknown;
+}
+
 export interface SmokerEventData {
+  [SmokerEvent.Aborted]: AbortedEventData;
   [SmokerEvent.BeforeExit]: BeforeExitEventData;
   [SmokerEvent.Lingered]: LingeredEventData;
   [SmokerEvent.SmokeBegin]: SmokeBeginEventData;

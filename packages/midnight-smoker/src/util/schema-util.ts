@@ -153,7 +153,7 @@ export type DualCasedObject<T> = CamelCasedObject<T> & KebabCasedObject<T>;
  * @param obj - Any object
  * @returns New object with probably more keys
  */
-export function toDualCasedObject<T extends object>(
+export function toDualCasedObject<const T extends object>(
   obj: T,
 ): DualCasedObject<T> {
   return {

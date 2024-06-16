@@ -67,10 +67,6 @@ export const queryWorkspaces = fromPromise<
           signal,
         });
 
-        // TODO maybe make this an option; "ignore private workspaces"
-        if (workspacePkgJson.private === true) {
-          continue;
-        }
         assert.ok(
           workspacePkgJson.name,
           `no package name in workspace ${PACKAGE_JSON}: ${pkgJsonPath}`,
@@ -83,6 +79,7 @@ export const queryWorkspaces = fromPromise<
           localPath: fullpath,
           pkgJson: workspacePkgJson,
           pkgJsonPath,
+          private: Boolean(workspacePkgJson.private),
         });
       }
 
@@ -118,12 +115,14 @@ export const queryWorkspaces = fromPromise<
         rootPkgJson.name,
         `no package name in root ${PACKAGE_JSON}: ${rootPkgJsonPath}`,
       );
+
       workspaceInfo = [
         {
           pkgName: rootPkgJson.name,
           pkgJson: rootPkgJson,
           pkgJsonPath: rootPkgJsonPath,
           localPath: cwd,
+          private: Boolean(rootPkgJson.private),
         },
       ];
     }

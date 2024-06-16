@@ -48,6 +48,8 @@ export * from './plugin-init-error';
 
 export * from './plugin-resolution-error';
 
+export * from './private-workspace-error';
+
 export * from './reporter-error';
 
 export * from './reporter-listener-error';

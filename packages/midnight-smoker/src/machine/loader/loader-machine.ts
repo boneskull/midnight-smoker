@@ -8,7 +8,8 @@ import type {WorkspaceInfo} from '#schema/workspace-info';
 import {fromUnknownError} from '#util/error-util';
 import {isFunction} from 'lodash';
 import {type PackageJson} from 'type-fest';
-import {assign, enqueueActions, log, not, setup} from 'xstate';
+import {assign, enqueueActions, log, not, raise, setup} from 'xstate';
+import {type AbortEvent} from '../util/abort-event';
 import {
   loadPkgManagers,
   type LoadPkgManagersInput,
@@ -43,6 +44,7 @@ export type LoaderMachineContext = LoaderMachineInput & {
   ruleInitPayloads: RuleInitPayload[];
   error?: MachineError;
   smokerPkgJson?: PackageJson;
+  aborted?: boolean;
 };
 
 export type LoaderMachineOutputOk = ActorOutputOk<{
@@ -51,17 +53,23 @@ export type LoaderMachineOutputOk = ActorOutputOk<{
   ruleInitPayloads: RuleInitPayload[];
 }>;
 
-export type LoaderMachineOutputError = ActorOutputError;
+export type LoaderMachineOutputError = ActorOutputError<
+  MachineError,
+  {aborted?: boolean}
+>;
 
 export type LoaderMachineOutput =
   | LoaderMachineOutputOk
   | LoaderMachineOutputError;
+
+export type LoaderMachineEvent = AbortEvent;
 
 export const LoaderMachine = setup({
   types: {
     input: {} as LoaderMachineInput,
     context: {} as LoaderMachineContext,
     output: {} as LoaderMachineOutput,
+    events: {} as LoaderMachineEvent,
   },
   actions: {
     /**
@@ -143,6 +151,14 @@ export const LoaderMachine = setup({
       pkgManagerInitPayloads: (_, payloads: PkgManagerInitPayload[]) =>
         payloads,
     }),
+    abort: raise({type: 'ABORT'}),
+    aborted: assign({aborted: true}),
+    stopAllChildren: enqueueActions(({enqueue, self}) => {
+      const snapshot = self.getSnapshot();
+      for (const child of Object.keys(snapshot.children)) {
+        enqueue.stopChild(child);
+      }
+    }),
   },
   actors: {
     loadPkgManagers,
@@ -176,6 +192,12 @@ export const LoaderMachine = setup({
     ...input,
   }),
   initial: 'selecting',
+  on: {
+    ABORT: {
+      actions: [log('aborting!'), 'stopAllChildren', 'aborted'],
+      target: '.errored',
+    },
+  },
   states: {
     selecting: {
       type: PARALLEL,
@@ -223,7 +245,7 @@ export const LoaderMachine = setup({
                       params: ({event: {output}}) => output,
                     },
                   ],
-                  target: '#LoaderMachine.selecting.selectPkgManagers.done',
+                  target: 'done',
                 },
                 onError: {
                   actions: [
@@ -232,9 +254,13 @@ export const LoaderMachine = setup({
                       params: ({event: {error}}) => ({error}),
                     },
                   ],
-                  target: '#LoaderMachine.errored',
+                  target: 'errored',
                 },
               },
+            },
+            errored: {
+              type: FINAL,
+              entry: 'abort',
             },
             skipped: {
               entry: log('Skipped loading package managers'),
@@ -336,10 +362,11 @@ export const LoaderMachine = setup({
       reporterInitPayloads,
       ruleInitPayloads,
       error,
+      aborted,
     },
   }) =>
     error
-      ? {error, type: ERROR, id}
+      ? {error, type: ERROR, id, aborted}
       : {
           pkgManagerInitPayloads,
           reporterInitPayloads,

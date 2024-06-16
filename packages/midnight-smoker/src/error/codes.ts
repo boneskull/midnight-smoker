@@ -48,6 +48,7 @@ export const ErrorCodes = {
   UnreadablePackageJsonError: 'ESMOKER_UNREADABLEPACKAGEJSON',
   UnresolvablePluginError: 'ESMOKER_PLUGINNOTFOUND',
   UnsupportedPackageManagerError: 'ESMOKER_UNSUPPORTEDPACKAGEMANAGER',
+  PrivateWorkspaceError: 'ESMOKER_PRIVATEWORKSPACE',
   ZodValidationError: 'ESMOKER_VALIDATIONERROR',
 } as const;
 

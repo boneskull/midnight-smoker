@@ -8,6 +8,7 @@ import {
   SYSTEM_EXECUTOR_ID,
 } from '#constants';
 import {MachineError} from '#error/machine-error';
+import {PrivateWorkspaceError} from '#error/private-workspace-error';
 import {SmokeError} from '#error/smoke-error';
 import {UnsupportedPackageManagerError} from '#error/unsupported-pkg-manager-error';
 import {SmokerEvent} from '#event/event-constants';
@@ -92,7 +93,7 @@ const BusActors = Object.freeze({
 export const ControlMachine = setup({
   types: {
     context: {} as CtrlMachineContext,
-    emitted: {} as Event.CtrlMachineEmitted,
+    emitted: {} as Event.CtrlEventEmitted,
     events: {} as Event.CtrlEvent,
     input: {} as CtrlMachineInput,
     output: {} as CtrlMachineOutput,
@@ -109,6 +110,14 @@ export const ControlMachine = setup({
     LoaderMachine,
   },
   guards: {
+    allPrivateWorkspaces: (
+      {
+        context: {
+          smokerOptions: {allowPrivate},
+        },
+      },
+      workspaceInfo: WorkspaceInfo[],
+    ) => !allowPrivate && workspaceInfo.every(({pkgJson}) => pkgJson.private),
     isAborted: ({context: {aborted}}) => Boolean(aborted),
 
     isNoop: and([not('shouldLint'), not('shouldRunScripts')]),
@@ -320,20 +329,14 @@ export const ControlMachine = setup({
      * be dereferenced.
      */
     assignError: assign({
-      error: ({context}, error: Error | Error[]) => {
+      error: ({self, context}, error: Error | Error[]) => {
         if (isSmokerError(MachineError, error)) {
           error = error.errors;
         }
         if (context.error) {
-          return context.error.clone(error, {
-            lint: context.lintResults,
-            script: context.runScriptResults,
-          });
+          return context.error.cloneWith(error);
         }
-        return new SmokeError(error, {
-          lint: context.lintResults,
-          script: context.runScriptResults,
-        });
+        return new MachineError('Fatal error', error, self.id);
       },
     }),
 
@@ -379,12 +382,12 @@ export const ControlMachine = setup({
     report: enqueueActions(
       (
         {enqueue, context: {reporterMachineRefs}},
-        event: Event.CtrlMachineEmitted,
+        event: Event.CtrlEventEmitted,
       ) => {
+        enqueue.emit(event);
         for (const reporterMachineRef of Object.values(reporterMachineRefs)) {
           enqueue.sendTo(reporterMachineRef, {type: 'EVENT', event});
         }
-        enqueue.emit(event);
       },
     ),
 
@@ -758,6 +761,17 @@ export const ControlMachine = setup({
       description:
         'Immediately stops all children then begins shutdown procedure',
       actions: [
+        {
+          type: 'report',
+          params: ({
+            event: {reason},
+          }): DataForEvent<typeof SmokerEvent.Aborted> => {
+            return {
+              type: SmokerEvent.Aborted,
+              reason,
+            };
+          },
+        },
         log(({event}) => {
           let msg = '🚨 ABORTING!';
           if (event.reason) {
@@ -914,20 +928,53 @@ export const ControlMachine = setup({
                       fileManager,
                       cwd,
                     }),
-                    onDone: {
-                      actions: [
-                        {
-                          type: 'assignWorkspaceInfo',
+                    onDone: [
+                      {
+                        guard: {
+                          type: 'allPrivateWorkspaces',
                           params: ({event: {output}}) => output,
                         },
-                        'narrowAdditionalDeps',
-                        log(
-                          ({event: {output}}) =>
-                            `Found ${output.length} workspace(s)`,
-                        ),
-                      ],
-                      target: 'done',
-                    },
+                        actions: [
+                          log(
+                            ({
+                              context: {
+                                smokerOptions: {cwd},
+                              },
+                            }) =>
+                              `all workspaces found from ${cwd} are private!`,
+                          ),
+                          {
+                            type: 'assignError',
+                            params: ({
+                              context: {
+                                smokerOptions: {cwd},
+                              },
+                              event: {output},
+                            }) =>
+                              new PrivateWorkspaceError(
+                                `All workspaces found from ${cwd} are private`,
+                                cwd,
+                                output,
+                              ),
+                          },
+                          'abort',
+                        ],
+                      },
+                      {
+                        actions: [
+                          {
+                            type: 'assignWorkspaceInfo',
+                            params: ({event: {output}}) => output,
+                          },
+                          'narrowAdditionalDeps',
+                          log(
+                            ({event: {output}}) =>
+                              `Found ${output.length} workspace(s)`,
+                          ),
+                        ],
+                        target: 'done',
+                      },
+                    ],
                     onError: {
                       actions: [
                         {
@@ -944,7 +991,7 @@ export const ControlMachine = setup({
                   type: FINAL,
                 },
                 errored: {
-                  entry: 'abort',
+                  entry: ['abort'],
                   type: FINAL,
                 },
               },
@@ -1523,17 +1570,20 @@ export const ControlMachine = setup({
                       lintResults = [],
                       error,
                       workspaceInfo,
-                      pkgManagers,
+                      pkgManagers = [],
                       staticPlugins,
                     },
                   }): DataForEvent<typeof SmokerEvent.SmokeError> => {
-                    assert.ok(pkgManagers);
                     assert.ok(error);
+                    const smokeError = new SmokeError(error.errors, {
+                      lint: lintResults,
+                      script: runScriptResults,
+                    });
                     return {
                       type: SmokerEvent.SmokeError,
                       lint: lintResults,
                       scripts: runScriptResults,
-                      error,
+                      error: smokeError,
                       plugins: staticPlugins,
                       pkgManagers,
                       workspaceInfo: workspaceInfo.map(asResult),

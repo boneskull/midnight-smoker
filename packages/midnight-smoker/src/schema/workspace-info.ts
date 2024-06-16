@@ -21,6 +21,7 @@ export const WorkspaceInfoSchema = z.strictObject({
   localPath: NonEmptyStringSchema,
   pkgJson: PackageJsonSchema,
   pkgJsonPath: NonEmptyStringSchema,
+  private: z.boolean().optional(),
 });
 
 export type WorkspaceInfo = z.infer<typeof WorkspaceInfoSchema>;

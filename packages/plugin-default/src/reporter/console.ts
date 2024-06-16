@@ -273,4 +273,7 @@ export const ConsoleReporter: ReporterDef<ConsoleReporterContext> = {
       console.error(`${dim(italic('(try using --verbose for more details)'))}`);
     }
   },
+  onAborted() {
+    // pop a spinner
+  },
 };

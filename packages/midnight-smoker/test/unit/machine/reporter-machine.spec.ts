@@ -337,7 +337,7 @@ describe('midnight-smoker', function () {
                 queue,
               };
               await expect(
-                createActorRunner(drainQueue).run(input),
+                createActorRunner(drainQueue).runUntilDone(input),
                 'to be rejected with error satisfying',
                 {code: ErrorCodes.ReporterListenerError},
               );
@@ -359,7 +359,7 @@ describe('midnight-smoker', function () {
                 },
                 queue,
               };
-              await createActorRunner(drainQueue).run(input);
+              await createActorRunner(drainQueue).runUntilDone(input);
               expect(def.onBeforeExit, 'was called once');
             });
           });
@@ -377,7 +377,7 @@ describe('midnight-smoker', function () {
                 },
                 queue,
               };
-              await createActorRunner(drainQueue).run(input);
+              await createActorRunner(drainQueue).runUntilDone(input);
               expect(queue.shift, 'was not called');
             });
           });
@@ -393,7 +393,7 @@ describe('midnight-smoker', function () {
                 plugin: staticPlugin,
               },
             };
-            await createActorRunner(setupReporter).run(input);
+            await createActorRunner(setupReporter).runUntilDone(input);
             expect(setup, 'was called once');
           });
         });
@@ -408,7 +408,7 @@ describe('midnight-smoker', function () {
                 plugin: staticPlugin,
               },
             };
-            await createActorRunner(teardownReporter).run(input);
+            await createActorRunner(teardownReporter).runUntilDone(input);
             expect(teardown, 'was called once');
           });
         });

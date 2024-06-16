@@ -1,4 +1,4 @@
-import {type SmokeError} from '#error/smoke-error';
+import {type MachineError} from '#error/machine-error';
 import {type SmokeOkEventData} from '#event/smoker-events';
 import {type Executor} from '#executor';
 import {type LoaderMachine} from '#machine/loader';
@@ -63,7 +63,7 @@ export interface CtrlMachineContext extends CtrlMachineInput {
    */
   defaultExecutor: Executor;
 
-  error?: SmokeError;
+  error?: MachineError;
   fileManager: FileManager;
   installBusMachineRef?: ActorRefFrom<typeof InstallBusMachine>;
   lingered?: string[];

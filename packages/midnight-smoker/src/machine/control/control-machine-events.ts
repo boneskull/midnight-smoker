@@ -23,13 +23,14 @@ export type CtrlEvent =
   | VerbatimEvents
   | AbortEvent;
 
-export type CtrlMachineEmitted = DataForEvent<
+export type CtrlEventEmitted = DataForEvent<
   | typeof SmokerEvent.Lingered
   | typeof SmokerEvent.BeforeExit
   | typeof SmokerEvent.SmokeBegin
   | typeof SmokerEvent.SmokeOk
   | typeof SmokerEvent.SmokeFailed
   | typeof SmokerEvent.SmokeError
+  | typeof SmokerEvent.Aborted
 >;
 
 export interface ListenEvent {
