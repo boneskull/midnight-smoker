@@ -1,15 +1,15 @@
-/**
- * @module midnight-smoker/machine
- */
+export * from './bus';
 
-export {createActor, toPromise} from 'xstate';
+export * from './control-machine';
 
-export * from './loader';
+export * from './event';
 
-export * from './control';
+export * from './plugin-loader-machine';
 
 export * from './pkg-manager';
 
 export * from './reporter';
 
 export * from './util';
+
+export * as xstate from 'xstate';

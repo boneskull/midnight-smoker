@@ -32,50 +32,50 @@ export type PkgManagerMachineEvents =
   | PkgManagerMachineCheckErrorEvent
   | AbortEvent;
 
+export interface BaseCheckOutput {
+  config: SomeRuleConfig;
+  installPath: string;
+  manifest: Result<LintManifest>;
+  ruleId: string;
+}
+
 export interface CheckInput {
+  config: SomeRuleConfig;
   ctx: StaticRuleContext;
   def: SomeRuleDef;
-  config: SomeRuleConfig;
-  ruleId: string;
 
   /**
    * This is for round-tripping
    */
   manifest: LintManifest;
+  ruleId: string;
 }
 
-export interface BaseCheckOutput {
-  installPath: string;
-  config: SomeRuleConfig;
-  ruleId: string;
-  manifest: Result<LintManifest>;
+export interface CheckOutputError extends BaseCheckOutput {
+  error: RuleError;
+  type: typeof ERROR;
 }
 
 export interface CheckOutputFailed extends BaseCheckOutput {
-  result: CheckFailed[];
   actorId: string;
+  result: CheckFailed[];
   type: typeof FAILED;
 }
 
 export interface CheckOutputOk extends BaseCheckOutput {
-  result: CheckOk;
   actorId: string;
+  result: CheckOk;
   type: typeof OK;
-}
-
-export interface CheckOutputError extends BaseCheckOutput {
-  type: typeof ERROR;
-  error: RuleError;
-}
-
-export interface PkgManagerMachineCheckResultEvent {
-  output: CheckOutput;
-  type: 'CHECK_RESULT';
 }
 
 export interface PkgManagerMachineCheckErrorEvent {
   output: CheckOutputError;
   type: 'CHECK_ERROR';
+}
+
+export interface PkgManagerMachineCheckResultEvent {
+  output: CheckOutput;
+  type: 'CHECK_RESULT';
 }
 
 export interface PkgManagerMachineHaltEvent {
@@ -103,8 +103,8 @@ export interface PkgManagerMachinePackErrorEvent {
 }
 
 export interface PkgManagerMachineRuleEndEvent {
-  output: CheckOutput;
   config: SomeRuleConfig;
+  output: CheckOutput;
   type: 'RULE_END';
 }
 

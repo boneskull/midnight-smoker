@@ -5,10 +5,10 @@
  */
 
 import {SCRIPT_NAME} from '#constants';
-import type {RawSmokerOptions} from '#options/options';
+import type {RawSmokerOptions} from '#schema/smoker-options';
+import {constant} from '#util/constant';
 import {FileManager} from '#util/filemanager';
 import {toDualCasedObject} from '#util/schema-util';
-import {constant} from '#util/util';
 import Debug from 'debug';
 import {Midconfig, type MidconfigOptions} from './midconfig';
 

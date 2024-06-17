@@ -24,8 +24,9 @@
   "imports": {
     "#cli/*": "./dist/cli/*.js",
     "#config/*": "./dist/config/*.js",
-    "#constants": "./dist/constants.js",
-    "#machine/*": "./dist/machine/*/index.js",
+    "#constants": "./dist/constants/index.js",
+    "#constants/*": "./dist/constants/*.js",
+    "#machine/*": "./dist/machine/*.js",
     "#error/*": "./dist/error/*.js",
     "#event/*": "./dist/event/*.js",
     "#executor": "./dist/executor/index.js",
@@ -97,9 +98,9 @@
     },
     "./smoker": "./bin/smoker.js",
     "./constants": {
-      "types": "./dist/constants.d.ts",
-      "typedoc": "./src/constants.ts",
-      "default": "./dist/constants.js"
+      "types": "./dist/constants/index.d.ts",
+      "typedoc": "./src/constants/index.d.ts",
+      "default": "./dist/constants/index.js"
     },
     "./util": {
       "types": "./dist/util/index.d.ts",

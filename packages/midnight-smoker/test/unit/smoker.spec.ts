@@ -1,7 +1,6 @@
 import {DEFAULT_COMPONENT_ID, FINAL, SYSTEM_EXECUTOR_ID} from '#constants';
 import {type ExecResult} from '#executor';
-import {type CtrlMachineOutput} from '#machine/control';
-import {type RawSmokerOptions, type SmokerOptions} from '#options/options';
+import {type CtrlMachineOutput} from '#machine/control-machine';
 import {OptionsParser} from '#options/options-parser';
 import {PluginRegistry} from '#plugin/plugin-registry';
 import {type WorkspaceInfo} from '#schema/workspace-info';
@@ -15,6 +14,10 @@ import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
 import {setup, type AnyStateMachine} from 'xstate';
+import {
+  type RawSmokerOptions,
+  type SmokerOptions,
+} from '../../dist/options/smoker-options';
 
 const expect = unexpected.clone().use(unexpectedSinon);
 

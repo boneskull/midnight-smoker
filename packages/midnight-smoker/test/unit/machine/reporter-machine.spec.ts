@@ -1,20 +1,21 @@
-import {ERROR} from '#constants';
+import {ERROR, SmokerEvent} from '#constants';
 import {ErrorCodes} from '#error/codes';
-import {SmokerEvent} from '#event/event-constants';
 import {type DataForEvent, type EventData} from '#event/events';
 import {
-  ReporterMachine,
   drainQueue,
+  type DrainQueueInput,
+} from '#machine/actor/reporter-event-queue';
+import {
   setupReporter,
   teardownReporter,
-  type DrainQueueInput,
   type ReporterLifecycleHookInput,
-} from '#machine/reporter';
-import {type SmokerOptions} from '#options/options';
+} from '#machine/actor/reporter-lifecycle';
+import {ReporterMachine} from '#machine/reporter';
 import {OptionsParser} from '#options/options-parser';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
 import {PluginRegistry} from '#plugin/plugin-registry';
 import {type ReporterDef} from '#schema/reporter-def';
+import {type SmokerOptions} from '#schema/smoker-options';
 import {type StaticPluginMetadata} from '#schema/static-plugin-metadata';
 import {FileManager} from '#util/filemanager';
 import {serialize} from '#util/serialize';
@@ -32,6 +33,7 @@ const expect = unexpected.clone().use(unexpectedSinon);
 
 const {start: startMachine} = createActorRunner(ReporterMachine);
 
+// TODO: extract actor tests to a separate file
 describe('midnight-smoker', function () {
   describe('machine', function () {
     describe('ReporterMachine', function () {

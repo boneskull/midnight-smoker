@@ -29,7 +29,7 @@ export type DefinePackageManagerFn = (
  */
 export type DefineExecutorFn = (executor: Executor, name?: string) => PluginAPI;
 
-export type DefineReporterFn<Ctx = any> = (
+export type DefineReporterFn<Ctx = unknown> = (
   reporter: ReporterDef<Ctx>,
   name?: string,
 ) => PluginAPI;
@@ -92,7 +92,7 @@ export interface PluginAPI {
   /**
    * Defines a {@link Reporter.ReporterDef} component
    */
-  defineReporter: DefineReporterFn;
+  defineReporter: DefineReporterFn<any>;
 
   /**
    * Metadata gathered about this plugin.

@@ -1,13 +1,10 @@
 import {type PackError} from '#error/pack-error';
 import {type SomePackError} from '#error/some-pack-error';
-import {type InstallManifest} from '#schema/install-manifest';
-import {type PackOptions} from '#schema/pack-options';
-import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
-import {type WorkspaceInfo} from '#schema/workspace-info';
+import type * as Schema from '#schema/meta/for-pack-events';
 import {type Result} from '#util/result';
+import type {PackEvent} from '../constants/event';
 import {type PackParseError} from '../error/pack-parse-error';
-import type {PackEvent} from './event-constants';
-import type {PkgManagerEventBase} from './pkg-manager-events';
+import type {PkgManagerEventBase} from './common';
 
 export interface PackEventData {
   /**
@@ -48,15 +45,15 @@ export interface PackEventData {
 }
 
 export interface PkgPackEventDataBase {
-  workspace: Result<WorkspaceInfo>;
-  pkgManager: StaticPkgManagerSpec;
+  workspace: Result<Schema.WorkspaceInfo>;
+  pkgManager: Schema.StaticPkgManagerSpec;
   totalPkgs: number;
 }
 
 export interface PkgPackBeginEventData extends PkgPackEventDataBase {}
 
 export interface PkgPackOkEventData extends PkgPackEventDataBase {
-  installManifest: Result<InstallManifest>;
+  installManifest: Result<Schema.InstallManifest>;
 }
 
 export interface PkgPackFailedEventData extends PkgPackEventDataBase {
@@ -64,8 +61,8 @@ export interface PkgPackFailedEventData extends PkgPackEventDataBase {
 }
 
 export interface PkgManagerPackEventDataBase extends PkgManagerEventBase {
-  workspaceInfo: Result<WorkspaceInfo>[];
-  packOptions?: PackOptions;
+  workspaceInfo: Result<Schema.WorkspaceInfo>[];
+  packOptions?: Schema.PackOptions;
 }
 
 export interface PkgManagerPackBeginEventData
@@ -77,13 +74,13 @@ export interface PkgManagerPackFailedEventData
 }
 
 export interface PkgManagerPackOkEventData extends PkgManagerPackEventDataBase {
-  manifests: InstallManifest[];
+  manifests: Schema.InstallManifest[];
 }
 
 export interface PackEventDataBase {
-  pkgManagers: StaticPkgManagerSpec[];
-  workspaceInfo: WorkspaceInfo[];
-  packOptions?: PackOptions;
+  pkgManagers: Schema.StaticPkgManagerSpec[];
+  workspaceInfo: Schema.WorkspaceInfo[];
+  packOptions?: Schema.PackOptions;
 }
 
 export interface PackBeginEventData extends PackEventDataBase {}

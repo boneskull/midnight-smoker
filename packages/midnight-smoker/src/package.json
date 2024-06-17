@@ -7,8 +7,9 @@
   "imports": {
     "#cli/*": "./cli/*.ts",
     "#config/*": "./config/*.ts",
-    "#constants": "./constants.ts",
-    "#machine/*": "./machine/*/index.ts",
+    "#constants": "./constants/index.ts",
+    "#constants/*": "./constants/*.ts",
+    "#machine/*": "./machine/*.ts",
     "#error/*": "./error/*.ts",
     "#event/*": "./event/*.ts",
     "#executor": "./executor/index.ts",

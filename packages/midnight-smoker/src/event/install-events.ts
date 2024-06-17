@@ -1,10 +1,7 @@
+import {type InstallEvent} from '#constants';
 import {type InstallError} from '#error/install-error';
-import {type ExecResult} from '#schema/exec-result';
-import {type InstallManifest} from '#schema/install-manifest';
-import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
-import {type WorkspaceInfo} from '#schema/workspace-info';
-import {type InstallEvent} from './event-constants';
-import {type PkgManagerEventBase} from './pkg-manager-events';
+import type * as Schema from '#schema/meta/for-install-events';
+import {type PkgManagerEventBase} from './common';
 
 export interface InstallEventData {
   /**
@@ -70,7 +67,7 @@ export interface InstallEventDataBase {
   /**
    * List of unique package managers
    */
-  pkgManagers: StaticPkgManagerSpec[];
+  pkgManagers: Schema.StaticPkgManagerSpec[];
 
   /**
    * Total number of packages to install
@@ -79,7 +76,7 @@ export interface InstallEventDataBase {
    */
   totalPkgs: number;
 
-  workspaceInfo: WorkspaceInfo[];
+  workspaceInfo: Schema.WorkspaceInfo[];
 }
 
 export interface InstallFailedEventData extends InstallEventDataBase {
@@ -91,8 +88,8 @@ export interface InstallOkEventData extends InstallEventDataBase {}
 export interface PkgInstallBeginEventData extends PkgInstallEventDataBase {}
 
 export interface PkgInstallEventDataBase {
-  installManifest: InstallManifest;
-  pkgManager: StaticPkgManagerSpec;
+  installManifest: Schema.InstallManifest;
+  pkgManager: Schema.StaticPkgManagerSpec;
   totalPkgs: number;
 }
 
@@ -101,14 +98,14 @@ export interface PkgInstallFailedEventData extends PkgInstallEventDataBase {
 }
 
 export interface PkgInstallOkEventData extends PkgInstallEventDataBase {
-  rawResult: ExecResult;
+  rawResult: Schema.ExecResult;
 }
 
 export interface PkgManagerInstallBeginEventData
   extends PkgManagerInstallEventDataBase {}
 
 export interface PkgManagerInstallEventDataBase extends PkgManagerEventBase {
-  manifests: InstallManifest[];
+  manifests: Schema.InstallManifest[];
   totalPkgs: number;
 }
 

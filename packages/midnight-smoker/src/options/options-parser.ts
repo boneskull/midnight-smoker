@@ -7,7 +7,7 @@ import {
   BaseSmokerOptionsSchema,
   type RawSmokerOptions,
   type SmokerOptions,
-} from './options';
+} from '../schema/smoker-options';
 
 export const debug = Debug('midnight-smoker:options:options-parser');
 

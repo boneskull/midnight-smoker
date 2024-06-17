@@ -1,7 +1,9 @@
 import {ERROR} from '#constants';
 import {ErrorCodes} from '#error/codes';
-import {LoadableComponents, LoaderMachine} from '#machine/loader';
-import {type SmokerOptions} from '#options/options';
+import {
+  LoadableComponents,
+  PluginLoaderMachine,
+} from '#machine/plugin-loader-machine';
 import {OptionsParser} from '#options/options-parser';
 import {PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
@@ -12,16 +14,17 @@ import {memfs} from 'memfs';
 import {type Volume} from 'memfs/lib/volume';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
+import {type SmokerOptions} from '../../../dist/options/smoker-options';
 import {nullPkgManagerDef, nullReporter, nullRule} from '../mocks/component';
 import {createActorRunner} from './actor-helpers';
 
 const expect = unexpected.clone();
 
-const {runUntilDone: runMachine} = createActorRunner(LoaderMachine);
+const {runUntilDone: runMachine} = createActorRunner(PluginLoaderMachine);
 
 describe('midnight-smoker', function () {
   describe('machine', function () {
-    describe('LoaderMachine', function () {
+    describe('PluginLoaderMachine', function () {
       let plugin: Readonly<PluginMetadata>;
       let pluginRegistry: PluginRegistry;
       let fileManager: FileManager;

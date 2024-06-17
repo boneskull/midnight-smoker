@@ -4,7 +4,7 @@
  * @module midnight-smoker/event
  */
 
-export * from './event-constants';
+export * from '../constants/event';
 
 export * from './install-events';
 

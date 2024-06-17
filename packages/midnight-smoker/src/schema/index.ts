@@ -22,6 +22,8 @@ export * from './pkg-manager-def';
 
 export * from './plugin';
 
+export * from './reporter-context';
+
 export * from './reporter-def';
 
 export * from './rule-def-schema-value';
@@ -40,10 +42,14 @@ export * from './run-script-result';
 
 export * from './script-error';
 
+export * from './smoker-options';
+
 export * from './some-rule-def';
 
 export * from './static-pkg-manager-spec';
 
 export * from './static-plugin-metadata';
+
+export * from './version';
 
 export * from './workspace-info';

@@ -7,11 +7,11 @@
  */
 import {type ComponentKind} from '#constants';
 import {InvalidArgError} from '#error/invalid-arg-error';
-import {ControlMachine, type CtrlMachineOutput} from '#machine/control';
+import {ControlMachine, type CtrlMachineOutput} from '#machine/control-machine';
 import {isActorOutputOk} from '#machine/util';
-import type {RawSmokerOptions, SmokerOptions} from '#options/options';
 import {OptionsParser} from '#options/options-parser';
 import {type Component, type ComponentObject} from '#plugin/component';
+import type {RawSmokerOptions, SmokerOptions} from '#schema/smoker-options';
 import {type SomeRuleDef} from '#schema/some-rule-def';
 import {type StaticPluginMetadata} from '#schema/static-plugin-metadata';
 import {FileManager} from '#util/filemanager';
@@ -207,6 +207,8 @@ export class Smoker {
         lint: output.lint,
         plugins: pluginRegistry.plugins,
         opts: smokerOptions,
+        pkgManagers: output.pkgManagers,
+        workspaceInfo: output.workspaceInfo,
       };
       debug('completed with results: %o', results);
       return results;

@@ -25,7 +25,6 @@ import {
   type ReadPkgJsonOptions,
   type ReadPkgJsonResult,
 } from '#util/fs-api';
-import {memoize} from '#util/util';
 import Debug from 'debug';
 import {
   glob,
@@ -40,6 +39,7 @@ import type os from 'node:os';
 import path from 'node:path';
 import normalizePkgData from 'normalize-package-data';
 import {type PackageJson} from 'type-fest';
+import {memoize} from './decorator';
 import {fromUnknownError} from './error-util';
 
 export interface FindUpOptions {

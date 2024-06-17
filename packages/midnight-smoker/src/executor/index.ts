@@ -1,5 +1,10 @@
 /**
+ * Stuff necessary for implementing an `Executor`
+ *
+ * @privateRemarks
+ * **NOT FOR INTERNAL CONSUMPTION**
  * @module midnight-smoker/executor
+ * @public
  */
 
 export {ExecError} from '#error/exec-error';

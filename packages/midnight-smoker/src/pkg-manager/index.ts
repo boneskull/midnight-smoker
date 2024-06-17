@@ -1,5 +1,11 @@
 /**
+ * Stuff you might want when creating a `PkgManagerDef`
+ *
+ * @privateRemarks
+ * **NOT FOR INTERNAL CONSUMPTION**
  * @module midnight-smoker/pkg-manager
+ * @public
+ * @todo Audit these exports--what does `plugin-default` actually need?
  */
 
 export * from '#error/pkg-manager';
@@ -29,5 +35,7 @@ export * from './pkg-manager-spec';
 export * from './pkg-manager-version';
 
 export * from '#schema/workspace-info';
+
+export * from '#schema/version';
 
 export * from '#util/result';

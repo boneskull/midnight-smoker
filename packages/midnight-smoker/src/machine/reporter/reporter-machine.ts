@@ -1,24 +1,25 @@
 import {ERROR, FINAL, OK} from '#constants';
 import {MachineError} from '#error/machine-error';
 import {type SomeDataForEvent} from '#event/events';
-import {type ActorOutput} from '#machine/util';
-import {type SmokerOptions} from '#options/options';
+import {
+  drainQueue,
+  type DrainQueueInput,
+} from '#machine/actor/reporter-event-queue';
+import {
+  setupReporter,
+  teardownReporter,
+} from '#machine/actor/reporter-lifecycle';
+import {type ActorOutput, type OmitSignal} from '#machine/util';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
+import {type ReporterContext} from '#schema/reporter-context';
 import {type ReporterDef} from '#schema/reporter-def';
+import {type SmokerOptions} from '#schema/smoker-options';
 import {fromUnknownError} from '#util/error-util';
 import {serialize} from '#util/serialize';
 import {isEmpty} from 'lodash';
 import {type PackageJson} from 'type-fest';
 import {and, assign, log, not, setup} from 'xstate';
-import {
-  drainQueue,
-  setupReporter,
-  teardownReporter,
-} from './reporter-machine-actors';
-import {
-  type PartialReporterContext,
-  type ReporterMachineEvents,
-} from './reporter-machine-events';
+import {type ReporterMachineEvents} from './reporter-machine-events';
 
 /**
  * Output for {@link ReporterMachine}
@@ -55,9 +56,10 @@ export interface ReporterMachineContext
   shouldShutdown: boolean;
 
   /**
-   * The object passed to all of the `ReporterDef`'s listener methods.
+   * The object passed to {@link drainQueue} which `ReporterDef` listeners
+   * receive.
    */
-  ctx: PartialReporterContext;
+  ctx: OmitSignal<ReporterContext>;
 }
 
 /**
@@ -255,7 +257,7 @@ export const ReporterMachine = setup({
       description: 'Drains the event queue by emitting events to the reporter',
       invoke: {
         src: 'drainQueue',
-        input: ({context: {def, ctx, queue}}) => ({
+        input: ({context: {def, ctx, queue}}): DrainQueueInput => ({
           queue,
           def,
           ctx,

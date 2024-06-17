@@ -57,13 +57,14 @@ import {
   type ActorRefFrom,
   type Snapshot,
 } from 'xstate';
-import {type CtrlEvent} from '../control/control-machine-events';
-import type * as InstallEvents from '../control/install-events';
-import type * as LintEvents from '../control/lint-events';
-import type * as PackEvents from '../control/pack-events';
-import type * as ScriptEvents from '../control/script-events';
-import type * as SmokerEvents from '../control/smoker-events';
-import {type RuleInitPayload} from '../loader/loader-machine-types';
+import {type CtrlEvent} from '../event/control';
+import type * as InstallEvents from '../event/install';
+import type * as LintEvents from '../event/lint';
+import type * as PackEvents from '../event/pack';
+import type * as ScriptEvents from '../event/script';
+import type * as SmokerEvents from '../event/smoker';
+import {type RuleInitPayload} from '../payload';
+import {RuleMachine} from '../rule-machine';
 import {
   createTempDir,
   install,
@@ -79,7 +80,6 @@ import {
   type CheckOutput,
   type CheckOutputError,
 } from './pkg-manager-machine-events';
-import {RuleMachine} from './rule-machine';
 
 export type PkgManagerMachineOutput =
   | ActorOutputOk<{aborted: false}>

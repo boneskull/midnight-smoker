@@ -1,7 +1,7 @@
 import {ERROR, MIDNIGHT_SMOKER, OK} from '#constants';
 import Debug from 'debug';
 import {AssertionError} from 'node:assert';
-import {type Simplify} from 'type-fest';
+import {type Except, type Simplify} from 'type-fest';
 import {type AnyActorRef, type EventObject} from 'xstate';
 
 /**
@@ -23,10 +23,7 @@ export type ActorOutput<
  * @template Err The type of the error.
  * @template Ctx The type of the context object.
  */
-export type ActorOutputError<
-  Err extends Error = Error,
-  Ctx extends object = object,
-> = {
+export type ActorOutputError<Err extends Error = Error, Ctx = unknown> = {
   id: string;
   type: typeof ERROR;
   error: Err;
@@ -37,7 +34,7 @@ export type ActorOutputError<
  *
  * @template Ctx - The type of the additional context information.
  */
-export type ActorOutputOk<Ctx extends object = object> = {
+export type ActorOutputOk<Ctx = unknown> = {
   type: typeof OK;
   id: string;
 } & Ctx;
@@ -169,3 +166,9 @@ export function idFromEventType<
     return matches[1] as U;
   }
 }
+
+export type OmitSignal<T extends {signal: any}> = Except<
+  T,
+  'signal',
+  {requireExactProps: true}
+>;

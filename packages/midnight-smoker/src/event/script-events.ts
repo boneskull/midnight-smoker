@@ -1,20 +1,35 @@
-import {type RunScriptManifest} from '#schema/run-script-manifest';
-import {
-  type RunScriptResult,
-  type RunScriptResultError,
-  type RunScriptResultFailed,
-  type RunScriptResultOk,
-  type RunScriptResultSkipped,
-} from '#schema/run-script-result';
-import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
-import {type WorkspaceInfo} from '#schema/workspace-info';
-import {type Simplify} from 'type-fest';
-import {type ScriptEvent} from './event-constants';
-import {type PkgManagerEventBase} from './pkg-manager-events';
+/**
+ * Events related to running custom scripts.
+ *
+ * @packageDocumentation
+ * @public
+ */
 
-export interface ScriptEventData {
+import type * as Schema from '#schema/meta/for-script-events';
+import {type Merge, type Simplify} from 'type-fest';
+import {type ScriptEvent} from '../constants/event';
+import {type PkgManagerEventBase} from './common';
+
+export type ScriptEventData = {
+  /**
+   * Emitted when a package manager begins running custom scripts.
+   *
+   * @event
+   */
   [ScriptEvent.PkgManagerRunScriptsBegin]: PkgManagerRunScriptsBeginEventData;
+
+  /**
+   * Emitted when a package manager has run all custom scripts and at least one
+   * has failed.
+   *
+   * @event
+   */
   [ScriptEvent.PkgManagerRunScriptsFailed]: PkgManagerRunScriptsFailedEventData;
+
+  /**
+   * Emitted when a package manager has run all custom scripts and all were
+   * successful.
+   */
   [ScriptEvent.PkgManagerRunScriptsOk]: PkgManagerRunScriptsOkEventData;
 
   /**
@@ -71,35 +86,53 @@ export interface ScriptEventData {
    */
   [ScriptEvent.RunScriptSkipped]: RunScriptSkippedEventData;
 
+  /**
+   * Emitted whenever running custom script (run as in {@link RunScriptBegin})
+   * throws for reasons unrelated to the script itself
+   *
+   * This _is_ an unrecoverable error, as it is considered to be unexpected
+   * behavior.
+   *
+   * @event
+   */
   [ScriptEvent.RunScriptError]: RunScriptErrorEventData;
 
+  /**
+   * Emitted once after running a custom script completes with any status.
+   *
+   * @event
+   */
+
   [ScriptEvent.RunScriptEnd]: RunScriptEndEventData;
-}
+};
 
 export interface RunScriptsEventDataBase {
   totalScripts: number;
-  workspaceInfo: WorkspaceInfo[];
-  pkgManagers: StaticPkgManagerSpec[];
+  workspaceInfo: Schema.WorkspaceInfo[];
+  pkgManagers: Schema.StaticPkgManagerSpec[];
 }
 
-export interface RunScriptsBeginEventData extends RunScriptsEventDataBase {}
+export type RunScriptsBeginEventData = RunScriptsEventDataBase;
 
-export interface RunScriptsOkEventData extends RunScriptsEventDataBase {
-  results: RunScriptResult[];
-  failed: number;
-  passed: number;
-  skipped: number;
-}
+export type RunScriptsOkEventData = Merge<
+  RunScriptsEventDataBase,
+  {
+    results: Schema.RunScriptResult[];
+    failed: number;
+    passed: number;
+    skipped: number;
+  }
+>;
 
-export interface RunScriptsFailedEventData extends RunScriptsOkEventData {}
+export type RunScriptsFailedEventData = RunScriptsOkEventData;
 
-export interface RunScriptEventDataBase {
-  manifest: RunScriptManifest;
+export type RunScriptEventDataBase = {
+  manifest: Schema.RunScriptManifest;
   totalScripts: number;
-  pkgManager: StaticPkgManagerSpec;
-}
+  pkgManager: Schema.StaticPkgManagerSpec;
+};
 
-export interface RunScriptBeginEventData extends RunScriptEventDataBase {}
+export type RunScriptBeginEventData = RunScriptEventDataBase;
 
 export type RunScriptEndEventData =
   | RunScriptOkEventData
@@ -108,33 +141,32 @@ export type RunScriptEndEventData =
   | RunScriptErrorEventData;
 
 export type RunScriptOkEventData = Simplify<
-  RunScriptEventDataBase & Omit<RunScriptResultOk, 'type'>
+  Merge<RunScriptEventDataBase, Omit<Schema.RunScriptResultOk, 'type'>>
 >;
 
 export type RunScriptFailedEventData = Simplify<
-  RunScriptEventDataBase & Omit<RunScriptResultFailed, 'type'>
+  Merge<RunScriptEventDataBase, Omit<Schema.RunScriptResultFailed, 'type'>>
 >;
 
 export type RunScriptSkippedEventData = Simplify<
-  RunScriptEventDataBase & Omit<RunScriptResultSkipped, 'type'>
+  Merge<RunScriptEventDataBase, Omit<Schema.RunScriptResultSkipped, 'type'>>
 >;
 
 export type RunScriptErrorEventData = Simplify<
-  RunScriptEventDataBase & Omit<RunScriptResultError, 'type'>
+  Merge<RunScriptEventDataBase, Omit<Schema.RunScriptResultError, 'type'>>
 >;
 
 export interface PkgManagerRunScriptsEventDataBase extends PkgManagerEventBase {
-  manifests: RunScriptManifest[];
+  manifests: Schema.RunScriptManifest[];
   totalScripts: number;
 }
 
-export interface PkgManagerRunScriptsBeginEventData
-  extends PkgManagerRunScriptsEventDataBase {}
+export type PkgManagerRunScriptsBeginEventData =
+  Simplify<PkgManagerRunScriptsEventDataBase>;
 
-export interface PkgManagerRunScriptsOkEventData
-  extends PkgManagerRunScriptsEventDataBase {
-  results: RunScriptResult[];
-}
+export type PkgManagerRunScriptsOkEventData = Simplify<
+  Merge<PkgManagerRunScriptsEventDataBase, {results: Schema.RunScriptResult[]}>
+>;
 
-export interface PkgManagerRunScriptsFailedEventData
-  extends PkgManagerRunScriptsOkEventData {}
+export type PkgManagerRunScriptsFailedEventData =
+  Simplify<PkgManagerRunScriptsOkEventData>;

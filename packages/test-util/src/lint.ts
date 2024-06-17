@@ -6,8 +6,7 @@ import {
 import {PluginInitError} from 'midnight-smoker/error';
 import {
   RuleMachine,
-  createActor,
-  toPromise,
+  xstate,
   type CheckOutput,
   type RuleMachineCheckEvent,
   type RuleMachineInput,
@@ -223,9 +222,9 @@ export async function runRule<T extends SomeRuleDef>(
 
   const checkEvent: RuleMachineCheckEvent = {type: 'CHECK', ctx, manifest};
 
-  const ruleMachine = createActor(RuleMachine, {input});
+  const ruleMachine = xstate.createActor(RuleMachine, {input});
 
-  const machinePromise = toPromise(ruleMachine);
+  const machinePromise = xstate.toPromise(ruleMachine);
 
   ruleMachine.start().send(checkEvent);
 

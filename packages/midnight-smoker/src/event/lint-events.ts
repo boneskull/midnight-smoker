@@ -1,16 +1,8 @@
+import {type LintEvent} from '#constants';
 import {type RuleError} from '#error/rule-error';
-import {type CheckFailed, type CheckOk} from '#schema/check-result';
-import {type LintManifest} from '#schema/lint-manifest';
-import {type LintResult, type LintResultOk} from '#schema/lint-result';
-import {
-  type BaseRuleConfigRecord,
-  type SomeRuleConfig,
-} from '#schema/rule-options';
-import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
-import {type WorkspaceInfo} from '#schema/workspace-info';
+import type * as Schema from '#schema/meta/for-lint-events';
 import {type Result} from '#util/result';
-import {type LintEvent} from './event-constants';
-import {type PkgManagerEventBase} from './pkg-manager-events';
+import {type PkgManagerEventBase} from './common';
 
 export interface LintEventData {
   [LintEvent.PkgManagerLintBegin]: PkgManagerLintBeginEventData;
@@ -35,29 +27,29 @@ export interface PkgManagerLintEventDataBase extends PkgManagerEventBase {
 
 export interface PkgManagerLintFailedEventData
   extends PkgManagerLintEventDataBase {
-  results: LintResult[];
+  results: Schema.LintResult[];
 }
 
 export interface PkgManagerLintOkEventData extends PkgManagerLintEventDataBase {
-  results: LintResult[];
+  results: Schema.LintResult[];
 }
 
 export interface RuleEventDataBase {
-  manifest: Result<LintManifest>;
+  manifest: Result<Schema.LintManifest>;
   rule: string;
-  config: SomeRuleConfig;
+  config: Schema.SomeRuleConfig;
   totalRules: number;
-  pkgManager: StaticPkgManagerSpec;
+  pkgManager: Schema.StaticPkgManagerSpec;
 }
 
 export interface RuleBeginEventData extends RuleEventDataBase {}
 
 export interface RuleFailedEventData extends RuleEventDataBase {
-  result: CheckFailed[];
+  result: Schema.CheckFailed[];
 }
 
 export interface RuleEndEventData extends RuleEventDataBase {
-  result?: CheckFailed[] | CheckOk;
+  result?: Schema.CheckFailed[] | Schema.CheckOk;
   error?: RuleError;
 }
 
@@ -66,22 +58,22 @@ export interface RuleErrorEventData extends RuleEventDataBase {
 }
 
 export interface RuleOkEventData extends RuleEventDataBase {
-  result: CheckOk;
+  result: Schema.CheckOk;
 }
 
 export interface LintEventDataBase {
-  config: BaseRuleConfigRecord;
+  config: Schema.BaseRuleConfigRecord;
   totalRules: number;
-  pkgManagers: StaticPkgManagerSpec[];
-  workspaceInfo: Result<WorkspaceInfo>[];
+  pkgManagers: Schema.StaticPkgManagerSpec[];
+  workspaceInfo: Result<Schema.WorkspaceInfo>[];
 }
 
 export interface LintBeginEventData extends LintEventDataBase {}
 
 export interface LintOkEventData extends LintEventDataBase {
-  results: LintResultOk[];
+  results: Schema.LintResultOk[];
 }
 
 export interface LintFailedEventData extends LintEventDataBase {
-  results: LintResult[];
+  results: Schema.LintResult[];
 }

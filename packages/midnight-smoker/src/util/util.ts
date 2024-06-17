@@ -4,28 +4,8 @@
  * @packageDocumentation
  */
 
-import {
-  castArray as _castArray,
-  memoize as _memoize,
-  once as _once,
-  compact,
-  flow,
-} from 'lodash';
+import {castArray as _castArray, compact, flow} from 'lodash';
 import path from 'node:path';
-
-export function once<This, Args extends any[], TReturn>(
-  target: (this: This, ...args: Args) => TReturn,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  context: ClassMethodDecoratorContext<
-    This,
-    (this: This, ...args: Args) => TReturn
-  >,
-) {
-  const onceTarget = _once(target);
-  return function (this: This, ...args: Args): TReturn {
-    return onceTarget.call(this, ...args);
-  };
-}
 
 export type NonEmptyArray<T> = [T, ...T[]];
 
@@ -39,32 +19,6 @@ export function assertNonEmptyArray<T>(
   if (!isNonEmptyArray(value)) {
     throw new Error('Expected a non-empty array');
   }
-}
-
-/**
- * Memoization decorator
- *
- * @param resolver Function to return the cache key
- * @returns The decorator
- */
-export function memoize<
-  TThis extends object,
-  TArgs extends any[] = unknown[],
-  TReturn = unknown,
->(resolver?: (this: TThis, ...args: TArgs) => any) {
-  return function (
-    target: (this: TThis, ...args: TArgs) => TReturn,
-    context: ClassMethodDecoratorContext<
-      TThis,
-      (this: TThis, ...args: TArgs) => TReturn
-    >,
-  ) {
-    context.addInitializer(function (this: TThis) {
-      const func = context.access.get(this);
-      // @ts-expect-error FIXME
-      this[context.name] = _memoize(func, resolver);
-    });
-  };
 }
 
 /**
@@ -117,15 +71,4 @@ export function delta(startTime: number): string {
 export function hrRelativePath(value: string, cwd = process.cwd()): string {
   const relative = path.relative(cwd, value);
   return relative.startsWith('..') ? relative : `.${path.sep}${relative}`;
-}
-
-/**
- * Creates an enum-like, frozen "constant" object.
- *
- * @param obj Some enum/record-like object
- * @returns Readonly object
- */
-
-export function constant<const T>(obj: T): Readonly<T> {
-  return Object.freeze(obj);
 }

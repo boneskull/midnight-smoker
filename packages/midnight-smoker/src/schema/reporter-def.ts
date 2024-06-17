@@ -5,16 +5,15 @@
  * @packageDocumentation
  */
 import {type DataForEvent, type EventData, type EventName} from '#event/events';
-import {BaseSmokerOptionsSchema, type SmokerOptions} from '#options/options';
-import {type StaticPluginMetadata} from '#schema/static-plugin-metadata';
+import {BaseSmokerOptionsSchema} from '#schema/smoker-options';
 import {
   DefaultFalseSchema,
   NonEmptyStringSchema,
   PackageJsonSchema,
   VoidOrPromiseVoidSchema,
 } from '#util/schema-util';
-import {type PackageJson} from 'type-fest';
 import {z} from 'zod';
+import {type ReporterContext} from './reporter-context';
 
 /**
  * Before instantiation of `Smoker`, this callback will be executed with a
@@ -26,22 +25,6 @@ import {z} from 'zod';
  */
 
 export type ReporterWhenCallback = z.infer<typeof ReporterWhenCallbackSchema>;
-
-/**
- * The reporter context is like a `this`, but it's passed as an argument.
- *
- * The context has some base properties that are always available, and the
- * implementor can define extra properties as desired.
- *
- * Functions in a {@link ReporterDef} have no context.
- */
-
-export type ReporterContext<Ctx = unknown> = {
-  opts: SmokerOptions;
-  pkgJson: PackageJson;
-  plugin: StaticPluginMetadata;
-  signal: AbortSignal;
-} & Ctx;
 
 export type ReporterListener<Evt extends EventName, Ctx = unknown> = (
   this: void,

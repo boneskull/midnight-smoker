@@ -3,63 +3,13 @@
  *
  * @packageDocumentation
  * @see {@link normalizeVersion}
- * @todo The information in `Versions` and `DistTags` needs to move into the
- *   `plugin-default` plugin. It may be prudent to allow PM implementations to
- *   provide this information themselves.
  */
 
-import {
-  NonEmptyNonEmptyStringArraySchema,
-  NonEmptyStringSchema,
-  SemVerSchema,
-} from '#util/schema-util';
+import {NonEmptyStringSchema, SemVerSchema} from '#util/schema-util';
 import {curry} from 'lodash';
 import {maxSatisfying, parse, valid, validRange, type SemVer} from 'semver';
 import {z} from 'zod';
-
-/**
- * Schema for a version data object for {@link normalizeVersion}
- */
-export const VersionDataObjectSchema = z.object({
-  /**
-   * Array of known version numbers for a package manager
-   */
-  versions: NonEmptyNonEmptyStringArraySchema.describe(
-    'Array of known version numbers for a package manager',
-  ),
-
-  /**
-   * Object with keys as dist-tags and values as version numbers (for a package
-   * manager)
-   */
-  tags: z
-    .record(z.string())
-    .default({})
-    .describe(
-      'Object with keys as dist-tags and values as version numbers (for a package manager)',
-    ),
-});
-
-/**
- * Schema for an array of versions for {@link normalizeVersion}
- */
-export const VersionDataVersionsSchema =
-  NonEmptyNonEmptyStringArraySchema.transform((value) => ({
-    versions: value,
-  })).pipe(VersionDataObjectSchema);
-
-/**
- * Schema for version data for {@link normalizeVersion}
- */
-export const VersionDataSchema = z.union([
-  VersionDataObjectSchema,
-  VersionDataVersionsSchema,
-]);
-
-/**
- * Data object for {@link normalizeVersion}
- */
-export type VersionData = z.infer<typeof VersionDataSchema>;
+import {VersionDataSchema, type VersionData} from '../schema/version';
 
 /**
  * Schema for {@link _normalizeVersion}

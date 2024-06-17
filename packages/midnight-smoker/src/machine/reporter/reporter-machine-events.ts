@@ -1,5 +1,5 @@
 import {type SomeDataForEvent} from '#event/events';
-import {type ReporterContext} from '#schema/reporter-def';
+import {type ReporterContext} from '#schema/reporter-context';
 import {type Except} from 'type-fest';
 
 export type ReporterMachineEvents =

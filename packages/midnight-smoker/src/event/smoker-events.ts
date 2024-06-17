@@ -1,15 +1,16 @@
 import {type SmokeError} from '#error/smoke-error';
-import type {SmokerOptions} from '#options/options';
 import {type LintResult, type LintResultFailed} from '#schema/lint-result';
 import {
   type RunScriptResult,
   type RunScriptResultFailed,
 } from '#schema/run-script-result';
+import type {SmokerOptions} from '#schema/smoker-options';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {type StaticPluginMetadata} from '#schema/static-plugin-metadata';
 import {type WorkspaceInfo} from '#schema/workspace-info';
 import {type Result} from '#util/result';
-import type {SmokerEvent} from './event-constants';
+import {type Merge} from 'type-fest';
+import type {SmokerEvent} from '../constants/event';
 
 /**
  * Emitted after all other events have been emitted, and just before exit.
@@ -37,46 +38,38 @@ export interface LingeredEventData {
   directories: string[];
 }
 
-/**
- * Emitted just before the initial "pack" phase begins.
- *
- * @event
- */
-
-export interface SmokeBeginEventData {
+export interface SmokeEventBase {
   plugins: StaticPluginMetadata[];
   opts: SmokerOptions;
   workspaceInfo: Result<WorkspaceInfo>[];
   pkgManagers: StaticPkgManagerSpec[];
 }
 
-interface SmokeEndEventData extends SmokeBeginEventData {
-  scripts?: RunScriptResult[];
-  lint?: LintResult[];
-}
+export type SmokeEndEventBase = Merge<
+  SmokeEventBase,
+  {
+    scripts?: RunScriptResult[];
+    lint?: LintResult[];
+  }
+>;
 
-/**
- * Emitted at the end of execution if no script or automated check failed.
- *
- * @event
- */
+export type SmokeOkEventData = SmokeEndEventBase;
 
-export interface SmokeOkEventData extends SmokeEndEventData {}
+export type SmokeFailedEventData = Merge<
+  SmokeEndEventBase,
+  {
+    lintFailed: LintResultFailed[];
 
-/**
- * Emitted at the end of execution if any script or automated check failed.
- *
- * @event
- */
-export interface SmokeFailedEventData extends SmokeEndEventData {
-  lintFailed: LintResultFailed[];
+    scriptFailed: RunScriptResultFailed[];
+  }
+>;
 
-  scriptFailed: RunScriptResultFailed[];
-}
-
-export interface SmokeErrorEventData extends SmokeEndEventData {
-  error: SmokeError;
-}
+export type SmokeErrorEventData = Merge<
+  SmokeEndEventBase,
+  {
+    error: SmokeError;
+  }
+>;
 
 /**
  * Emitted if `smoker.smoke()` rejects, which should not happen under normal
@@ -93,10 +86,7 @@ export interface UnknownErrorEventData {
 /**
  * The final result type of a `midnight-smoker` run
  */
-export type SmokeResults = Omit<
-  SmokeOkEventData,
-  'pkgManagers' | 'workspaceInfo'
->;
+export type SmokeResults = SmokeOkEventData;
 
 export interface AbortedEventData {
   reason?: unknown;
@@ -106,7 +96,7 @@ export interface SmokerEventData {
   [SmokerEvent.Aborted]: AbortedEventData;
   [SmokerEvent.BeforeExit]: BeforeExitEventData;
   [SmokerEvent.Lingered]: LingeredEventData;
-  [SmokerEvent.SmokeBegin]: SmokeBeginEventData;
+  [SmokerEvent.SmokeBegin]: SmokeEventBase;
   [SmokerEvent.SmokeFailed]: SmokeFailedEventData;
   [SmokerEvent.SmokeOk]: SmokeOkEventData;
   [SmokerEvent.SmokeError]: SmokeErrorEventData;

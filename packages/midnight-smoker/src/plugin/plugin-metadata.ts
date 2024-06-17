@@ -7,13 +7,7 @@
 import {TRANSIENT} from '#constants';
 import {InvalidArgError} from '#error/invalid-arg-error';
 import {BLESSED_PLUGINS, type BlessedPlugin} from '#plugin/blessed';
-import {type Executor} from '#schema/executor';
-import {type PkgManagerDef} from '#schema/pkg-manager-def';
-import {type ReporterDef} from '#schema/reporter-def';
-import {type RuleDef} from '#schema/rule-def';
-import {type RuleDefSchemaValue} from '#schema/rule-def-schema-value';
-import {type SomeRuleDef} from '#schema/some-rule-def';
-import {type StaticPluginMetadata} from '#schema/static-plugin-metadata';
+import type * as Schemas from '#schema/meta/for-plugin-metadata';
 import {type FileManager} from '#util/filemanager';
 import Debug from 'debug';
 import {isPlainObject, isString} from 'lodash';
@@ -47,7 +41,7 @@ export interface PluginMetadataOpts {
  *
  * @todo The identifier _should_ be unique. Make sure that's tracked somewhere.
  */
-export class PluginMetadata implements StaticPluginMetadata {
+export class PluginMetadata implements Schemas.StaticPluginMetadata {
   /**
    * @internal
    */
@@ -70,7 +64,7 @@ export class PluginMetadata implements StaticPluginMetadata {
    *
    * @group Component Map
    */
-  public readonly executorMap: Map<string, Executor>;
+  public readonly executorMap: Map<string, Schemas.Executor>;
 
   /**
    * {@inheritDoc StaticPluginMetadata.id}
@@ -88,22 +82,22 @@ export class PluginMetadata implements StaticPluginMetadata {
    *
    * @group Component Map
    */
-  public readonly pkgManagerDefMap: Map<string, PkgManagerDef>;
+  public readonly pkgManagerDefMap: Map<string, Schemas.PkgManagerDef>;
 
   /**
-   * A map of reporter names to {@link ReporterDef} objects contained in the
-   * plugin
+   * A map of reporter names to {@link Schemas.ReporterDef} objects contained in
+   * the plugin
    *
    * @group Component Map
    */
-  public readonly reporterDefMap: Map<string, ReporterDef>;
+  public readonly reporterDefMap: Map<string, Schemas.ReporterDef>;
 
   /**
    * The name of the plugin as requested by the user
    */
   public readonly requestedAs: string;
 
-  public readonly ruleDefMap: Map<string, SomeRuleDef>;
+  public readonly ruleDefMap: Map<string, Schemas.SomeRuleDef>;
 
   /**
    * Version of plugin. May be derived from {@link pkgJson} or provided in
@@ -171,7 +165,7 @@ export class PluginMetadata implements StaticPluginMetadata {
     return BLESSED_PLUGINS.includes(this.id as BlessedPlugin);
   }
 
-  public get pkgManagerDefs(): PkgManagerDef[] {
+  public get pkgManagerDefs(): Schemas.PkgManagerDef[] {
     return [...this.pkgManagerDefMap.values()];
   }
 
@@ -179,7 +173,7 @@ export class PluginMetadata implements StaticPluginMetadata {
     return this.pkgManagerDefs.map(({name}) => name);
   }
 
-  public get reporterDefs(): ReporterDef[] {
+  public get reporterDefs(): Schemas.ReporterDef[] {
     return [...this.reporterDefMap.values()];
   }
 
@@ -187,7 +181,7 @@ export class PluginMetadata implements StaticPluginMetadata {
     return this.reporterDefs.map(({name}) => name);
   }
 
-  public get ruleDefs(): SomeRuleDef[] {
+  public get ruleDefs(): Schemas.SomeRuleDef[] {
     return [...this.ruleDefMap.values()];
   }
 
@@ -289,13 +283,13 @@ export class PluginMetadata implements StaticPluginMetadata {
     });
   }
 
-  public addExecutor(name: string, value: Executor): void {
+  public addExecutor(name: string, value: Schemas.Executor): void {
     this.executorMap.set(name, value);
     debug('%s added Executor: %s', this, name);
   }
 
   /**
-   * Adds a {@link PkgManagerDef} to the plugin's component map.
+   * Adds a {@link Schemas.PkgManagerDef} to the plugin's component map.
    *
    * Should only be called within a `DefinePkgManagerFn` post-validation and
    * registration.
@@ -303,13 +297,13 @@ export class PluginMetadata implements StaticPluginMetadata {
    * @param value Package manager definition
    * @internal
    */
-  public addPkgManagerDef(value: PkgManagerDef): void {
+  public addPkgManagerDef(value: Schemas.PkgManagerDef): void {
     this.pkgManagerDefMap.set(value.name, value);
     debug('%s added PkgManagerDef: %s', this, value.name);
   }
 
   /**
-   * Adds a {@link ReporterDef} to the plugin's component map.
+   * Adds a {@link Schemas.ReporterDef} to the plugin's component map.
    *
    * Should only be called within a `DefineReporterFn` post-validation and
    * registration.
@@ -317,13 +311,13 @@ export class PluginMetadata implements StaticPluginMetadata {
    * @param value Reporter definition
    * @internal
    */
-  public addReporterDef(value: ReporterDef): void {
+  public addReporterDef(value: Schemas.ReporterDef): void {
     this.reporterDefMap.set(value.name, value);
     debug('%s added ReporterDef: %s', this, value.name);
   }
 
   /**
-   * Adds a {@link RuleDef} to the plugin's component map.
+   * Adds a {@link Schemas.RuleDef} to the plugin's component map.
    *
    * Should only be called within a `DefineRuleFn` post-validation and
    * registration.
@@ -331,8 +325,8 @@ export class PluginMetadata implements StaticPluginMetadata {
    * @param value Rule definition
    * @internal
    */
-  public addRuleDef<Schema extends RuleDefSchemaValue | void = void>(
-    def: RuleDef<Schema>,
+  public addRuleDef<Schema extends Schemas.RuleDefSchemaValue | void = void>(
+    def: Schemas.RuleDef<Schema>,
   ): void {
     const {name} = def;
     this.ruleDefMap.set(name, def);
@@ -340,9 +334,10 @@ export class PluginMetadata implements StaticPluginMetadata {
   }
 
   /**
-   * Serializes this object to a brief {@link StaticPluginMetadata} object.
+   * Serializes this object to a brief {@link Schemas.StaticPluginMetadata}
+   * object.
    */
-  public toJSON(): StaticPluginMetadata {
+  public toJSON(): Schemas.StaticPluginMetadata {
     return {
       id: this.id,
       version: this.version,

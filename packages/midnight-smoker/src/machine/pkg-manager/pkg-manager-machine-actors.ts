@@ -2,6 +2,7 @@ import {ERROR, FAILED} from '#constants';
 import {AbortError, isAbortError} from '#error/abort-error';
 import {InstallError} from '#error/install-error';
 import {PackError} from '#error/pack-error';
+import {PackParseError} from '#error/pack-parse-error';
 import {RunScriptError} from '#error/run-script-error';
 import {ScriptFailedError} from '#error/script-failed-error';
 import {UnknownScriptError} from '#error/unknown-script-error';
@@ -25,7 +26,6 @@ import {fromUnknownError, isExecaError, isSmokerError} from '#util/error-util';
 import {type FileManager} from '#util/filemanager';
 import {isFunction} from 'lodash';
 import {fromPromise} from 'xstate';
-import {PackParseError} from '../../error/pack-parse-error';
 import {type RunScriptOutput} from './pkg-manager-machine-events';
 
 /**
