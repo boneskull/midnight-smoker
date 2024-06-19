@@ -1,4 +1,4 @@
-import {type InstallEvent} from '#constants';
+import {type InstallEvents} from '#constants';
 import {type InstallError} from '#error/install-error';
 import type * as Schema from '#schema/meta/for-install-events';
 import {type PkgManagerEventBase} from './common';
@@ -9,7 +9,7 @@ export interface InstallEventData {
    *
    * @event
    */
-  [InstallEvent.InstallBegin]: InstallBeginEventData;
+  [InstallEvents.InstallBegin]: InstallBeginEventData;
 
   /**
    * Emitted all packages were installed successfully across all package
@@ -17,7 +17,7 @@ export interface InstallEventData {
    *
    * @event
    */
-  [InstallEvent.InstallOk]: InstallOkEventData;
+  [InstallEvents.InstallOk]: InstallOkEventData;
 
   /**
    * Emitted if any package fails to install; emitted _after_
@@ -25,34 +25,34 @@ export interface InstallEventData {
    *
    * @event
    */
-  [InstallEvent.InstallFailed]: InstallFailedEventData;
+  [InstallEvents.InstallFailed]: InstallFailedEventData;
 
   /**
    * Emitted when a package manager begins installing packages
    *
    * @event
    */
-  [InstallEvent.PkgManagerInstallBegin]: PkgManagerInstallBeginEventData;
+  [InstallEvents.PkgManagerInstallBegin]: PkgManagerInstallBeginEventData;
 
   /**
    * Emitted when a package manager finishes installing packages successfully
    *
    * @event
    */
-  [InstallEvent.PkgManagerInstallOk]: PkgManagerInstallOkEventData;
+  [InstallEvents.PkgManagerInstallOk]: PkgManagerInstallOkEventData;
 
   /**
    * Emitted when a package manager fails to install packages
    *
    * @event
    */
-  [InstallEvent.PkgManagerInstallFailed]: PkgManagerInstallFailedEventData;
+  [InstallEvents.PkgManagerInstallFailed]: PkgManagerInstallFailedEventData;
 
-  [InstallEvent.PkgInstallBegin]: PkgInstallBeginEventData;
+  [InstallEvents.PkgInstallBegin]: PkgInstallBeginEventData;
 
-  [InstallEvent.PkgInstallOk]: PkgInstallOkEventData;
+  [InstallEvents.PkgInstallOk]: PkgInstallOkEventData;
 
-  [InstallEvent.PkgInstallFailed]: PkgInstallFailedEventData;
+  [InstallEvents.PkgInstallFailed]: PkgInstallFailedEventData;
 }
 
 export interface InstallBeginEventData extends InstallEventDataBase {}

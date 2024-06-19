@@ -1,5 +1,5 @@
 import * as Const from '#constants';
-import {SmokerEvent} from '#constants/event';
+import {Events} from '#constants/event';
 import * as Err from '#error/meta/for-control-machine';
 import {type DataForEvent} from '#event/events';
 import {type SmokeOkEventData} from '#event/smoker-events';
@@ -678,11 +678,9 @@ export const ControlMachine = setup({
       actions: [
         {
           type: 'report',
-          params: ({
-            event: {reason},
-          }): DataForEvent<typeof SmokerEvent.Aborted> => {
+          params: ({event: {reason}}): DataForEvent<typeof Events.Aborted> => {
             return {
-              type: SmokerEvent.Aborted,
+              type: Events.Aborted,
               reason,
             };
           },
@@ -1218,10 +1216,10 @@ export const ControlMachine = setup({
           type: 'report',
           params: ({
             context: {staticPlugins, smokerOptions, workspaceInfo, pkgManagers},
-          }): DataForEvent<typeof SmokerEvent.SmokeBegin> => {
+          }): DataForEvent<typeof Events.SmokeBegin> => {
             assert.ok(pkgManagers);
             return {
-              type: SmokerEvent.SmokeBegin,
+              type: Events.SmokeBegin,
               plugins: staticPlugins,
               opts: smokerOptions,
               workspaceInfo: workspaceInfo.map(Util.asResult),
@@ -1262,8 +1260,8 @@ export const ControlMachine = setup({
                     },
                   ],
                 },
-                [SmokerEvent.PackOk]: 'done',
-                [SmokerEvent.PackFailed]: {
+                [Events.PackOk]: 'done',
+                [Events.PackFailed]: {
                   target: 'errored',
                 },
               },
@@ -1313,8 +1311,8 @@ export const ControlMachine = setup({
                     },
                   ],
                 },
-                [SmokerEvent.InstallOk]: 'done',
-                [SmokerEvent.InstallFailed]: 'errored',
+                [Events.InstallOk]: 'done',
+                [Events.InstallFailed]: 'errored',
               },
             },
             errored: {
@@ -1370,7 +1368,7 @@ export const ControlMachine = setup({
                     },
                   ],
                 },
-                [SmokerEvent.LintOk]: {
+                [Events.LintOk]: {
                   actions: [
                     {
                       type: 'assignLintResults',
@@ -1379,7 +1377,7 @@ export const ControlMachine = setup({
                   ],
                   target: 'done',
                 },
-                [SmokerEvent.LintFailed]: {
+                [Events.LintFailed]: {
                   actions: [
                     {
                       type: 'assignLintResults',
@@ -1431,7 +1429,7 @@ export const ControlMachine = setup({
                     },
                   ],
                 },
-                [SmokerEvent.RunScriptsOk]: {
+                [Events.RunScriptsOk]: {
                   actions: [
                     {
                       type: 'assignRunScriptResults',
@@ -1440,7 +1438,7 @@ export const ControlMachine = setup({
                   ],
                   target: 'done',
                 },
-                [SmokerEvent.RunScriptsFailed]: 'errored',
+                [Events.RunScriptsFailed]: 'errored',
               },
             },
             done: {
@@ -1482,14 +1480,14 @@ export const ControlMachine = setup({
                       pkgManagers = [],
                       staticPlugins,
                     },
-                  }): DataForEvent<typeof SmokerEvent.SmokeError> => {
+                  }): DataForEvent<typeof Events.SmokeError> => {
                     assert.ok(error);
                     const smokeError = new Err.SmokeError(error.errors, {
                       lint: lintResults,
                       script: runScriptResults,
                     });
                     return {
-                      type: SmokerEvent.SmokeError,
+                      type: Events.SmokeError,
                       lint: lintResults,
                       scripts: runScriptResults,
                       error: smokeError,
@@ -1517,7 +1515,7 @@ export const ControlMachine = setup({
                       staticPlugins,
                       workspaceInfo,
                     },
-                  }): DataForEvent<typeof SmokerEvent.SmokeFailed> => {
+                  }): DataForEvent<typeof Events.SmokeFailed> => {
                     const scriptFailed = runScriptResults.filter(
                       ({type}) => type === Const.FAILED,
                     ) as Schema.RunScriptResultFailed[];
@@ -1526,7 +1524,7 @@ export const ControlMachine = setup({
                     ) as Schema.LintResultFailed[];
                     assert.ok(pkgManagers);
                     return {
-                      type: SmokerEvent.SmokeFailed,
+                      type: Events.SmokeFailed,
                       lint: lintResults,
                       scripts: runScriptResults,
                       scriptFailed,
@@ -1555,8 +1553,8 @@ export const ControlMachine = setup({
                       workspaceInfo,
                       pkgManagers = [],
                     },
-                  }): DataForEvent<typeof SmokerEvent.SmokeOk> => ({
-                    type: SmokerEvent.SmokeOk,
+                  }): DataForEvent<typeof Events.SmokeOk> => ({
+                    type: Events.SmokeOk,
                     lint: lintResults,
                     scripts: runScriptResults,
                     plugins: staticPlugins,
@@ -1593,10 +1591,10 @@ export const ControlMachine = setup({
                 type: 'report',
                 params: ({
                   context: {lingered},
-                }): DataForEvent<typeof SmokerEvent.Lingered> => {
+                }): DataForEvent<typeof Events.Lingered> => {
                   assert.ok(lingered);
                   return {
-                    type: SmokerEvent.Lingered,
+                    type: Events.Lingered,
                     directories: lingered,
                   };
                 },
@@ -1611,7 +1609,7 @@ export const ControlMachine = setup({
           entry: [
             {
               type: 'report',
-              params: {type: SmokerEvent.BeforeExit},
+              params: {type: Events.BeforeExit},
             },
             {
               type: 'flushReporters',

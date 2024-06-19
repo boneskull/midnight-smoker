@@ -1,5 +1,5 @@
 import {FAILED, FINAL, OK, SKIPPED} from '#constants';
-import {SmokerEvent} from '#constants/event';
+import {ScriptEvents} from '#constants/event';
 import {type DataForEvent} from '#event/events';
 import {type ScriptEventData} from '#event/script-events';
 import {type ReporterMachine} from '#machine/reporter';
@@ -114,10 +114,10 @@ export const ScriptBusMachine = setup({
               smokerOptions: {script: scripts},
               workspaceInfo,
             },
-          }): DataForEvent<typeof SmokerEvent.RunScriptsBegin> => ({
+          }): DataForEvent<typeof ScriptEvents.RunScriptsBegin> => ({
             pkgManagers,
             workspaceInfo,
-            type: SmokerEvent.RunScriptsBegin,
+            type: ScriptEvents.RunScriptsBegin,
             totalScripts: scripts.length,
           }),
         },
@@ -142,8 +142,8 @@ export const ScriptBusMachine = setup({
                   smokerOptions: {script: scripts},
                 },
                 event: {manifest, pkgManager},
-              }): DataForEvent<typeof SmokerEvent.RunScriptBegin> => ({
-                type: SmokerEvent.RunScriptBegin,
+              }): DataForEvent<typeof ScriptEvents.RunScriptBegin> => ({
+                type: ScriptEvents.RunScriptBegin,
                 totalScripts: scripts.length,
                 pkgManager,
                 manifest,
@@ -160,8 +160,8 @@ export const ScriptBusMachine = setup({
                   smokerOptions: {script: scripts},
                 },
                 event: {manifest, pkgManager, error, rawResult},
-              }): DataForEvent<typeof SmokerEvent.RunScriptFailed> => ({
-                type: SmokerEvent.RunScriptFailed,
+              }): DataForEvent<typeof ScriptEvents.RunScriptFailed> => ({
+                type: ScriptEvents.RunScriptFailed,
                 totalScripts: scripts.length,
                 pkgManager,
                 manifest,
@@ -189,8 +189,8 @@ export const ScriptBusMachine = setup({
                   smokerOptions: {script: scripts},
                 },
                 event: {manifest, pkgManager},
-              }): DataForEvent<typeof SmokerEvent.RunScriptSkipped> => ({
-                type: SmokerEvent.RunScriptSkipped,
+              }): DataForEvent<typeof ScriptEvents.RunScriptSkipped> => ({
+                type: ScriptEvents.RunScriptSkipped,
                 totalScripts: scripts.length,
                 pkgManager,
                 manifest,
@@ -212,8 +212,8 @@ export const ScriptBusMachine = setup({
                     smokerOptions: {script: scripts},
                   },
                   event: {manifest, pkgManager, rawResult},
-                }): DataForEvent<typeof SmokerEvent.RunScriptOk> => ({
-                  type: SmokerEvent.RunScriptOk,
+                }): DataForEvent<typeof ScriptEvents.RunScriptOk> => ({
+                  type: ScriptEvents.RunScriptOk,
                   totalScripts: scripts.length,
                   pkgManager,
                   manifest,
@@ -241,9 +241,9 @@ export const ScriptBusMachine = setup({
                     smokerOptions: {script: scripts},
                   },
                   event,
-                }): DataForEvent<typeof SmokerEvent.RunScriptEnd> => ({
+                }): DataForEvent<typeof ScriptEvents.RunScriptEnd> => ({
                   ...event,
-                  type: SmokerEvent.RunScriptEnd,
+                  type: ScriptEvents.RunScriptEnd,
                   totalScripts: scripts.length,
                 }),
               },
@@ -265,11 +265,11 @@ export const ScriptBusMachine = setup({
                   },
                   event: {pkgManager, manifests},
                 }): DataForEvent<
-                  typeof SmokerEvent.PkgManagerRunScriptsBegin
+                  typeof ScriptEvents.PkgManagerRunScriptsBegin
                 > => ({
                   workspaceInfo: workspaceInfo.map(asResult),
                   manifests,
-                  type: SmokerEvent.PkgManagerRunScriptsBegin,
+                  type: ScriptEvents.PkgManagerRunScriptsBegin,
                   pkgManager,
                   totalPkgManagers,
                   totalScripts: totalUniqueScripts,
@@ -291,9 +291,9 @@ export const ScriptBusMachine = setup({
                   smokerOptions: {script: scripts},
                 },
                 event,
-              }): DataForEvent<typeof SmokerEvent.PkgManagerRunScriptsOk> => ({
+              }): DataForEvent<typeof ScriptEvents.PkgManagerRunScriptsOk> => ({
                 ...event,
-                type: SmokerEvent.PkgManagerRunScriptsOk,
+                type: ScriptEvents.PkgManagerRunScriptsOk,
                 totalPkgManagers: pkgManagers.length,
                 totalScripts: scripts.length,
               }),
@@ -312,10 +312,10 @@ export const ScriptBusMachine = setup({
                 },
                 event,
               }): DataForEvent<
-                typeof SmokerEvent.PkgManagerRunScriptsFailed
+                typeof ScriptEvents.PkgManagerRunScriptsFailed
               > => ({
                 ...event,
-                type: SmokerEvent.PkgManagerRunScriptsFailed,
+                type: ScriptEvents.PkgManagerRunScriptsFailed,
                 totalPkgManagers: pkgManagers.length,
                 totalScripts: scripts.length,
               }),
@@ -336,8 +336,8 @@ export const ScriptBusMachine = setup({
               },
             },
           }): DataForEvent<
-            | typeof SmokerEvent.RunScriptsOk
-            | typeof SmokerEvent.RunScriptsFailed
+            | typeof ScriptEvents.RunScriptsOk
+            | typeof ScriptEvents.RunScriptsFailed
           > => {
             assert.ok(results);
             const [failedResults, otherResults] = partition(results, 'error');
@@ -349,8 +349,8 @@ export const ScriptBusMachine = setup({
             const skipped = skippedResults.length;
 
             const type = failed
-              ? SmokerEvent.RunScriptsFailed
-              : SmokerEvent.RunScriptsOk;
+              ? ScriptEvents.RunScriptsFailed
+              : ScriptEvents.RunScriptsOk;
 
             return {
               type,

@@ -10,33 +10,25 @@ import {type SomePackError} from '#error/some-pack-error';
 import {TempDirError} from '#error/temp-dir-error';
 import {type Executor} from '#executor';
 import {
+  setupPkgManager,
+  teardownPkgManager,
+} from '#machine/actor/pkg-manager-lifecycle';
+import {createTempDir, pruneTempDir} from '#machine/actor/temp-dir';
+import {type CtrlEvent} from '#machine/event/control';
+import type * as InstallEvents from '#machine/event/install';
+import type * as LintEvents from '#machine/event/lint';
+import type * as PackEvents from '#machine/event/pack';
+import type * as ScriptEvents from '#machine/event/script';
+import type * as SmokerEvents from '#machine/event/smoker';
+import {type RuleInitPayload} from '#machine/payload';
+import {RuleMachine} from '#machine/rule-machine';
+import {
   idFromEventType,
   type ActorOutputError,
   type ActorOutputOk,
 } from '#machine/util';
 import {type PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
-import {type CheckResult} from '#schema/check-result';
-import {type InstallManifest} from '#schema/install-manifest';
-import {type InstallResult} from '#schema/install-result';
-import {type LintManifest} from '#schema/lint-manifest';
-import {
-  type LintResult,
-  type LintResultFailed,
-  type LintResultOk,
-} from '#schema/lint-result';
-import {
-  PkgManagerContextSchema,
-  type PkgManagerContext,
-  type PkgManagerDef,
-  type PkgManagerOpts,
-} from '#schema/pkg-manager-def';
-import {type BaseRuleConfigRecord} from '#schema/rule-options';
-import {type RunScriptManifest} from '#schema/run-script-manifest';
-import {type RunScriptResult} from '#schema/run-script-result';
-import {type SomeRuleDef} from '#schema/some-rule-def';
-import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
-import {type StaticPluginMetadata} from '#schema/static-plugin-metadata';
-import {type WorkspaceInfo} from '#schema/workspace-info';
+import type * as Schema from '#schema/meta/for-pkg-manager-machine';
 import {fromUnknownError} from '#util/error-util';
 import {type FileManager} from '#util/filemanager';
 import {asResult, type Result} from '#util/result';
@@ -57,23 +49,13 @@ import {
   type ActorRefFrom,
   type Snapshot,
 } from 'xstate';
-import {type CtrlEvent} from '../event/control';
-import type * as InstallEvents from '../event/install';
-import type * as LintEvents from '../event/lint';
-import type * as PackEvents from '../event/pack';
-import type * as ScriptEvents from '../event/script';
-import type * as SmokerEvents from '../event/smoker';
-import {type RuleInitPayload} from '../payload';
-import {RuleMachine} from '../rule-machine';
 import {
-  createTempDir,
   install,
   pack,
-  pruneTempDir,
+  prepareLintManifest,
   runScript,
-  setupPkgManager,
-  teardownPkgManager,
   type InstallInput,
+  type PrepareLintManifestInput,
 } from './pkg-manager-machine-actors';
 import type * as Event from './pkg-manager-machine-events';
 import {
@@ -102,15 +84,15 @@ export interface PkgManagerMachineContext extends PkgManagerMachineInput {
   additionalDeps: string[];
 
   /**
-   * The base {@link PkgManagerContext} object for passing to the
+   * The base {@link Schema.PkgManagerContext} object for passing to the
    * {@link PackageManagerDef}'s operations
    */
-  ctx?: PkgManagerContext;
+  ctx?: Schema.PkgManagerContext;
 
   /**
    * The current install job. Installations run in serial
    */
-  currentInstallJob?: InstallManifest;
+  currentInstallJob?: Schema.InstallManifest;
 
   /**
    * Aggregate error object for any error occuring in this machine
@@ -126,38 +108,38 @@ export interface PkgManagerMachineContext extends PkgManagerMachineInput {
   installError?: InstallError;
 
   /**
-   * Objects telling the {@link PkgManagerDef} what to install.
+   * Objects telling the {@link Schema.PkgManagerDef} what to install.
    *
    * Also sent/emitted within events.
    */
-  installManifests?: InstallManifest[];
+  installManifests?: Schema.InstallManifest[];
 
   /**
-   * Queue of {@link InstallManifest}s to install.
+   * Queue of {@link Schema.InstallManifest}s to install.
    */
-  installQueue?: InstallManifest[];
+  installQueue?: Schema.InstallManifest[];
 
   /**
    * Results of installation operations
    */
-  installResults?: InstallResult[];
+  installResults?: Schema.InstallResult[];
 
   /**
-   * Objects telling the {@link PkgManagerDef} what to lint
+   * Objects telling the {@link Schema.PkgManagerDef} what to lint
    */
-  lintManifests?: LintManifest[];
+  lintManifests?: Schema.LintManifest[];
 
   /**
-   * Queue of {@link LintManifest}s to lint
+   * Queue of {@link Schema.LintManifest}s to lint
    */
-  lintQueue?: LintManifest[];
+  lintQueue?: Schema.LintManifest[];
 
   /**
    * Options for package manager behavior.
    *
    * Props will be included in {@link ctx}.
    */
-  opts: PkgManagerOpts;
+  opts: Schema.PkgManagerOpts;
 
   /**
    * References to {@link pack} actors.
@@ -176,23 +158,29 @@ export interface PkgManagerMachineContext extends PkgManagerMachineInput {
   packError?: SomePackError;
 
   /**
-   * Queue of {@link WorkspaceInfo} objects to pack.
+   * Queue of {@link Schema.WorkspaceInfo} objects to pack.
    */
-  packQueue: WorkspaceInfo[];
+  packQueue: Schema.WorkspaceInfo[];
+
+  prepareLintManifestRefs?: Record<
+    string,
+    ActorRefFrom<typeof prepareLintManifest>
+  >;
 
   /**
    * The static representation of {@link PkgManagerInput.spec}.
    *
    * Just here for convenience, since many events will need this information.
    */
-  pkgManager: StaticPkgManagerSpec;
+  pkgManager: Schema.StaticPkgManagerSpec;
 
   /**
-   * List of {@link SomeRuleDef} objects derived from {@link ruleInitPayload}
+   * List of {@link Schema.SomeRuleDef} objects derived from
+   * {@link ruleInitPayload}
    *
    * Needed by `linting` state.
    */
-  ruleDefs?: SomeRuleDef[];
+  ruleDefs?: Schema.SomeRuleDef[];
   ruleErrors?: RuleError[];
 
   /**
@@ -209,29 +197,30 @@ export interface PkgManagerMachineContext extends PkgManagerMachineInput {
   ruleMachineRefs?: Record<string, ActorRefFrom<typeof RuleMachine>>;
 
   /**
-   * Mapping of `installPath` to `ruleId` to {@link CheckResult} objects.
+   * Mapping of `installPath` to `ruleId` to {@link Schema.CheckResult} objects.
    *
    * @todo Consider a different data structure. Maybe key on
    *   `${installPath}.${ruleId}`? Nested object?
    */
-  ruleResultMap: Map<string, Map<string, CheckResult[]>>;
+  ruleResultMap: Map<string, Map<string, Schema.CheckResult[]>>;
   runScriptActorRefs: Record<string, ActorRefFrom<typeof runScript>>;
 
   /**
-   * Objects telling the {@link PkgManagerDef} what scripts to run and where
+   * Objects telling the {@link Schema.PkgManagerDef} what scripts to run and
+   * where
    */
-  runScriptManifests?: RunScriptManifest[];
+  runScriptManifests?: Schema.RunScriptManifest[];
 
   /**
-   * Queue of {@link RunScriptManifest}s to run
+   * Queue of {@link Schema.RunScriptManifest}s to run
    */
-  runScriptQueue?: RunScriptManifest[];
+  runScriptQueue?: Schema.RunScriptManifest[];
 
   /**
    * Results of script operations; each object contains an event-ready
-   * {@link RunScriptManifest}.
+   * {@link Schema.RunScriptManifest}.
    */
-  runScriptResults?: RunScriptResult[];
+  runScriptResults?: Schema.RunScriptResult[];
 
   /**
    * {@inheritDoc PkgManagerMachineInput.shouldLint}
@@ -244,7 +233,7 @@ export interface PkgManagerMachineContext extends PkgManagerMachineInput {
   shouldShutdown: boolean;
 
   /**
-   * Per-{@link PkgManagerDef} temporary directory.
+   * Per-{@link Schema.PkgManagerDef} temporary directory.
    *
    * Will be property of {@link ctx}.
    *
@@ -255,7 +244,7 @@ export interface PkgManagerMachineContext extends PkgManagerMachineInput {
   /**
    * Static, event-ready view of {@link workspaceInfo}.
    */
-  workspaceInfoResult: Result<WorkspaceInfo>[];
+  workspaceInfoResult: Result<Schema.WorkspaceInfo>[];
 }
 
 export interface PkgManagerMachineInput {
@@ -269,7 +258,7 @@ export interface PkgManagerMachineInput {
   /**
    * Package manager definition provided by a plugin
    */
-  def: PkgManagerDef;
+  def: Schema.PkgManagerDef;
 
   /**
    * The executor to pass to the package manager's functions
@@ -293,7 +282,7 @@ export interface PkgManagerMachineInput {
   /**
    * Options for the package manager
    */
-  opts?: PkgManagerOpts;
+  opts?: Schema.PkgManagerOpts;
 
   /**
    * The parent actor reference.
@@ -306,14 +295,14 @@ export interface PkgManagerMachineInput {
    * The metadata for the plugin to which {@link PkgManagerMachineInput.def}
    * belongs
    */
-  plugin: StaticPluginMetadata;
+  plugin: Schema.StaticPluginMetadata;
 
   /**
    * Record of rule IDs to rule configs (options, severity)
    *
    * Corresponds to `SmokerOptions.rules`
    */
-  ruleConfigs: BaseRuleConfigRecord;
+  ruleConfigs: Schema.BaseRuleConfigRecord;
 
   /**
    * Array of rules to run with plugin information.
@@ -342,7 +331,7 @@ export interface PkgManagerMachineInput {
   shouldShutdown?: boolean;
 
   /**
-   * The package manager specification for {@link PkgManagerDef}.
+   * The package manager specification for {@link Schema.PkgManagerDef}.
    *
    * Represents the specific version of the package manager being used.
    */
@@ -359,18 +348,20 @@ export interface PkgManagerMachineInput {
    * If this contains a single item, then we either have one workspace _or_ are
    * not in a monorepo.
    */
-  workspaceInfo: WorkspaceInfo[];
+  workspaceInfo: Schema.WorkspaceInfo[];
 }
 
 /**
- * Type guard for an {@link InstallManifest} which originated in a workspace (in
- * other words, _not_ an additional dependency)
+ * Type guard for an {@link Schema.InstallManifest} which originated in a
+ * workspace (in other words, _not_ an additional dependency)
  *
  * @param value Install manifest to check
  * @returns `true` if `value` is a workspace manifest
  */
-function isWorkspaceManifest(value: InstallManifest): value is InstallManifest &
-  WorkspaceInfo & {
+function isWorkspaceManifest(
+  value: Schema.InstallManifest,
+): value is Schema.InstallManifest &
+  Schema.WorkspaceInfo & {
     installPath: string;
     isAdditional?: false;
   } {
@@ -378,7 +369,8 @@ function isWorkspaceManifest(value: InstallManifest): value is InstallManifest &
 }
 
 /**
- * Machine which controls how a {@link PkgManagerDef} performs its operations.
+ * Machine which controls how a {@link Schema.PkgManagerDef} performs its
+ * operations.
  */
 export const PkgManagerMachine = setup({
   actions: {
@@ -464,47 +456,49 @@ export const PkgManagerMachine = setup({
     appendInstallResult: assign({
       installResults: (
         {context: {installResults = []}},
-        installResult: InstallResult,
+        installResult: Schema.InstallResult,
       ) => [...installResults, installResult],
     }),
     appendRunScriptManifest: assign({
       runScriptManifests: (
         {context: {runScriptManifests = []}},
-        runScriptManifest: RunScriptManifest,
+        runScriptManifest: Schema.RunScriptManifest,
       ) => [...runScriptManifests, runScriptManifest],
       runScriptQueue: (
         {context: {runScriptQueue = []}},
-        runScriptManifest: RunScriptManifest,
+        runScriptManifest: Schema.RunScriptManifest,
       ) => [...runScriptQueue, runScriptManifest],
     }),
     appendLintManifest: assign({
       lintManifests: (
         {context: {lintManifests = []}},
-        lintManifest: LintManifest,
+        lintManifest: Schema.LintManifest,
       ) => [...lintManifests, lintManifest],
-      lintQueue: ({context: {lintQueue = []}}, lintItem: LintManifest) => [
-        ...lintQueue,
-        lintItem,
-      ],
+      lintQueue: (
+        {context: {lintQueue = []}},
+        lintItem: Schema.LintManifest,
+      ) => [...lintQueue, lintItem],
     }),
     appendRunScriptResult: assign({
       runScriptResults: (
         {context: {runScriptResults = []}},
-        runScriptResult: RunScriptResult,
+        runScriptResult: Schema.RunScriptResult,
       ) => [...runScriptResults, runScriptResult],
     }),
     createPkgManagerContext: assign({
       ctx: ({
         context: {spec, tmpdir, executor, workspaceInfo, useWorkspaces, opts},
-      }) =>
-        PkgManagerContextSchema.parse({
+      }): Schema.PkgManagerContext => {
+        assert.ok(tmpdir);
+        return {
           spec,
           tmpdir,
           executor,
           workspaceInfo,
           useWorkspaces,
           ...opts,
-        }),
+        };
+      },
     }),
     shutdown: assign({
       shouldShutdown: true,
@@ -653,6 +647,42 @@ export const PkgManagerMachine = setup({
         enqueue.sendTo(parentRef, evtEnd);
       },
     ),
+    spawnPrepareLintManifest: assign({
+      prepareLintManifestRefs: (
+        {
+          spawn,
+          context: {
+            fileManager,
+            pkgManager: {spec},
+            prepareLintManifestRefs = {},
+          },
+        },
+        {
+          workspaceInfo: workspace,
+          installPath,
+        }: {workspaceInfo: Schema.WorkspaceInfo; installPath: string},
+      ) => {
+        const input: PrepareLintManifestInput = {
+          fileManager,
+          workspace,
+          installPath,
+        };
+        const id = `prepareLintManifest.[${installPath}]<${spec}>`;
+        const ref = spawn('prepareLintManifest', {
+          id,
+          input,
+        });
+        return {...prepareLintManifestRefs, [id]: ref};
+      },
+    }),
+    stopPrepareLintManifest: enqueueActions(
+      ({enqueue, context: {prepareLintManifestRefs = {}}}, id: string) => {
+        enqueue.stopChild(id);
+
+        const {[id]: _, ...rest} = prepareLintManifestRefs;
+        enqueue.assign({prepareLintManifestRefs: rest});
+      },
+    ),
     spawnRunScript: assign({
       runScriptActorRefs: ({
         spawn,
@@ -770,7 +800,7 @@ export const PkgManagerMachine = setup({
       ({context: {parentRef}}) => parentRef,
       (
         {self: {id: sender}, context: {pkgManager}},
-        installManifest: InstallManifest,
+        installManifest: Schema.InstallManifest,
       ): PackEvents.CtrlPkgPackOkEvent => {
         assert.ok(isWorkspaceManifest(installManifest));
         const workspace = {
@@ -778,7 +808,7 @@ export const PkgManagerMachine = setup({
           pkgName: installManifest.pkgName,
           pkgJson: installManifest.pkgJson,
           pkgJsonPath: installManifest.pkgJsonPath,
-        } as WorkspaceInfo;
+        } as Schema.WorkspaceInfo;
         return {
           sender,
           type: 'PACK.PKG_PACK_OK',
@@ -856,7 +886,10 @@ export const PkgManagerMachine = setup({
           const evt: LintEvents.CtrlRuleBeginEvent = {
             sender,
             type: 'LINT.RULE_BEGIN',
-            manifest: asResult(manifest),
+            manifest: {
+              ...asResult(manifest),
+              workspace: asResult(manifest.workspace),
+            },
             rule: ruleId,
             config,
             pkgManager,
@@ -885,11 +918,11 @@ export const PkgManagerMachine = setup({
     appendInstallManifest: assign({
       installManifests: (
         {context: {installManifests = []}},
-        installManifest: InstallManifest,
+        installManifest: Schema.InstallManifest,
       ) => [...installManifests, installManifest],
       installQueue: (
         {context: {installQueue = []}},
-        installManifest: InstallManifest,
+        installManifest: Schema.InstallManifest,
       ) => [...installQueue, installManifest],
     }),
     assignTmpdir: assign({
@@ -898,7 +931,7 @@ export const PkgManagerMachine = setup({
     handleInstallResult: enqueueActions(
       (
         {enqueue, context: {workspaceInfo, shouldLint, scripts = []}},
-        installResult: InstallResult,
+        installResult: Schema.InstallResult,
       ) => {
         const {installManifest} = installResult;
         if (isWorkspaceManifest(installManifest)) {
@@ -911,14 +944,14 @@ export const PkgManagerMachine = setup({
           assert.ok(workspace);
 
           if (shouldLint) {
-            const lintManifest: LintManifest = {...workspace, installPath};
             enqueue.raise({
               type: 'LINT',
-              manifest: lintManifest,
+              installPath,
+              workspaceInfo: workspace,
             });
           }
           for (const script of scripts) {
-            const runScriptManifest: RunScriptManifest = {
+            const runScriptManifest: Schema.RunScriptManifest = {
               pkgName,
               cwd: installPath,
               pkgJson: workspace.pkgJson,
@@ -939,7 +972,7 @@ export const PkgManagerMachine = setup({
       ({context: {parentRef}}) => parentRef,
       (
         {self, context: {pkgManager}},
-        {installManifest, rawResult}: InstallResult,
+        {installManifest, rawResult}: Schema.InstallResult,
       ): InstallEvents.CtrlPkgInstallOkEvent => ({
         sender: self.id,
         rawResult,
@@ -981,33 +1014,33 @@ export const PkgManagerMachine = setup({
         const manifestsByInstallPath = keyBy(lintManifests, 'installPath');
 
         // turn the ugly map into `LintResult`
-        const lintResults: LintResult[] = [...ruleResultMap.entries()].map(
-          ([installPath, resultMap]) => {
-            const results = [...resultMap.values()].flat();
-            const [okResults, failedResults] = partition(
-              results,
-              (r) => r.type === OK,
-            );
-            hasIssues = hasIssues || Boolean(failedResults.length);
+        const lintResults: Schema.LintResult[] = [
+          ...ruleResultMap.entries(),
+        ].map(([installPath, resultMap]) => {
+          const results = [...resultMap.values()].flat();
+          const [okResults, failedResults] = partition(
+            results,
+            (r) => r.type === OK,
+          );
+          hasIssues = hasIssues || Boolean(failedResults.length);
 
-            const manifest = asResult(manifestsByInstallPath[installPath]);
-            assert.ok(manifest);
+          const manifest = asResult(manifestsByInstallPath[installPath]);
+          assert.ok(manifest);
 
-            const retval = failedResults.length
-              ? <LintResultFailed>{
-                  ...manifest,
-                  type: FAILED,
-                  results,
-                }
-              : <LintResultOk>{
-                  ...manifest,
-                  type: OK,
-                  results: okResults,
-                };
+          const retval = failedResults.length
+            ? <Schema.LintResultFailed>{
+                ...manifest,
+                type: FAILED,
+                results,
+              }
+            : <Schema.LintResultOk>{
+                ...manifest,
+                type: OK,
+                results: okResults,
+              };
 
-            return retval;
-          },
-        );
+          return retval;
+        });
 
         return error || hasIssues
           ? {
@@ -1029,7 +1062,7 @@ export const PkgManagerMachine = setup({
 
     /**
      * Creates install manifests for each additional dep and appends them as
-     * {@link InstallManifest}s to the install queue
+     * {@link Schema.InstallManifest}s to the install queue
      */
     enqueueAdditionalDeps: assign({
       installQueue: ({
@@ -1134,7 +1167,8 @@ export const PkgManagerMachine = setup({
       ) => {
         // ☠️
         const ruleResultsForManifestMap =
-          ruleResultMap.get(installPath) ?? new Map<string, CheckResult[]>();
+          ruleResultMap.get(installPath) ??
+          new Map<string, Schema.CheckResult[]>();
         const ruleResultsForRuleIdMap =
           ruleResultsForManifestMap.get(ruleId) ?? [];
         if (type === OK) {
@@ -1211,6 +1245,7 @@ export const PkgManagerMachine = setup({
   },
   actors: {
     RuleMachine,
+    prepareLintManifest,
     teardownPkgManager,
     setupPkgManager,
     createTempDir,
@@ -1787,8 +1822,27 @@ export const PkgManagerMachine = setup({
             LINT: {
               actions: [
                 {
+                  type: 'spawnPrepareLintManifest',
+                  params: ({context: {fileManager}, event}) => ({
+                    fileManager,
+                    ...event,
+                  }),
+                },
+              ],
+            },
+            'xstate.done.actor.prepareLintManifest.*': {
+              actions: [
+                {
                   type: 'appendLintManifest',
-                  params: ({event: {manifest}}) => manifest,
+                  params: ({event: {output}}) => output,
+                },
+              ],
+            },
+            'xstate.error.actor.prepareLintManifest.*': {
+              actions: [
+                {
+                  type: 'assignError',
+                  params: ({event: {error}}) => error,
                 },
               ],
             },

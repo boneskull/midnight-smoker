@@ -1,4 +1,4 @@
-import {type SmokerEvent} from '#constants/event';
+import {type SmokerEvents} from '#constants/event';
 import {type DataForEvent} from '#event/events';
 import {type PkgManagerMachineOutput} from '#machine/pkg-manager';
 import {type PluginLoaderMachineOutput} from '#machine/plugin-loader-machine';
@@ -44,11 +44,11 @@ export interface CtrlReporterMachineDoneEvent {
 }
 
 export type CtrlEventEmitted = DataForEvent<
-  | typeof SmokerEvent.Lingered
-  | typeof SmokerEvent.BeforeExit
-  | typeof SmokerEvent.SmokeBegin
-  | typeof SmokerEvent.SmokeOk
-  | typeof SmokerEvent.SmokeFailed
-  | typeof SmokerEvent.SmokeError
-  | typeof SmokerEvent.Aborted
+  | typeof SmokerEvents.Lingered
+  | typeof SmokerEvents.BeforeExit
+  | typeof SmokerEvents.SmokeBegin
+  | typeof SmokerEvents.SmokeOk
+  | typeof SmokerEvents.SmokeFailed
+  | typeof SmokerEvents.SmokeError
+  | typeof SmokerEvents.Aborted
 >;

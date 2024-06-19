@@ -1,5 +1,13 @@
-import {type WorkspaceInfo} from '#schema/workspace-info';
+import {WorkspaceInfoSchema} from '#schema/workspace-info';
+import {NonEmptyStringSchema, PackageJsonSchema} from '#util/schema-util';
+import {z} from 'zod';
 
-export interface LintManifest extends WorkspaceInfo {
-  installPath: string;
-}
+export const LintManifestSchema = z.object({
+  pkgName: NonEmptyStringSchema,
+  pkgJson: PackageJsonSchema,
+  pkgJsonPath: NonEmptyStringSchema,
+  installPath: NonEmptyStringSchema,
+  workspace: WorkspaceInfoSchema,
+});
+
+export type LintManifest = z.infer<typeof LintManifestSchema>;

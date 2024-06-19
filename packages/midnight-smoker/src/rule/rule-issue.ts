@@ -109,7 +109,7 @@ export class RuleIssue implements CheckFailed {
         ? fileURLToPath(filepath)
         : filepath
           ? filepath
-          : path.join(ctx.localPath, PACKAGE_JSON);
+          : path.join(ctx.workspace.localPath, PACKAGE_JSON);
   }
 
   /**

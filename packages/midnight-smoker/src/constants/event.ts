@@ -1,6 +1,6 @@
 import {constant} from '#util/constant';
 
-export const InstallEvent = constant({
+export const InstallEvents = constant({
   InstallBegin: 'InstallBegin',
   InstallFailed: 'InstallFailed',
   InstallOk: 'InstallOk',
@@ -12,7 +12,7 @@ export const InstallEvent = constant({
   PkgInstallOk: 'PkgInstallOk',
 });
 
-export const PackEvent = constant({
+export const PackEvents = constant({
   PackBegin: 'PackBegin',
   PackFailed: 'PackFailed',
   PackOk: 'PackOk',
@@ -24,7 +24,7 @@ export const PackEvent = constant({
   PkgPackFailed: 'PkgPackFailed',
 });
 
-export const ScriptEvent = {
+export const ScriptEvents = {
   RunScriptBegin: 'RunScriptBegin',
   RunScriptFailed: 'RunScriptFailed',
   RunScriptOk: 'RunScriptOk',
@@ -39,7 +39,7 @@ export const ScriptEvent = {
   PkgManagerRunScriptsOk: 'PkgManagerRunScriptsOk',
 } as const;
 
-export const LintEvent = constant({
+export const LintEvents = constant({
   RuleError: 'RuleError',
   RuleBegin: 'RuleBegin',
   RuleFailed: 'RuleFailed',
@@ -53,11 +53,7 @@ export const LintEvent = constant({
   LintOk: 'LintOk',
 });
 
-export const SmokerEvent = constant({
-  ...InstallEvent,
-  ...PackEvent,
-  ...ScriptEvent,
-  ...LintEvent,
+export const SmokerEvents = constant({
   BeforeExit: 'BeforeExit',
   Noop: 'Noop',
   Lingered: 'Lingered',
@@ -67,4 +63,12 @@ export const SmokerEvent = constant({
   Aborted: 'Aborted',
   SmokeOk: 'SmokeOk',
   UnknownError: 'UnknownError',
+});
+
+export const Events = constant({
+  ...InstallEvents,
+  ...PackEvents,
+  ...ScriptEvents,
+  ...LintEvents,
+  ...SmokerEvents,
 });

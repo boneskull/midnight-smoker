@@ -194,23 +194,34 @@ export async function runRule<T extends SomeRuleDef>(
 
   const ctx: StaticRuleContext = {
     installPath: cwd,
-    localPath: '',
     pkgName: '',
-    severity: config.severity,
     pkgJson: {},
     pkgJsonPath: '',
+    severity: config.severity,
     pkgManager: DEFAULT_PKG_MANAGER_SPEC,
     ...ruleContext,
     ruleId,
+    workspace: {
+      localPath: '',
+      pkgName: '',
+      pkgJson: {},
+      pkgJsonPath: '',
+    },
   };
 
   const manifest: LintManifest = {
     installPath: cwd,
     pkgJsonPath: '',
     pkgJson: {},
-    localPath: '',
     pkgName: '',
     ...lintManifest,
+    workspace: {
+      localPath: '',
+      pkgName: '',
+      pkgJson: {},
+      pkgJsonPath: '',
+      ...lintManifest?.workspace,
+    },
   };
 
   const input: RuleMachineInput = {

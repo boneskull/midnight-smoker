@@ -4,6 +4,7 @@ import {
   type StaticRuleContext,
   type StaticRuleDef,
 } from '#schema/rule-static';
+import {type WorkspaceInfo} from '#schema/workspace-info';
 import {asResult} from '#util/result';
 import {serialize} from '#util/serialize';
 import {type PackageJson} from 'type-fest';
@@ -70,6 +71,10 @@ export class RuleContext implements StaticRuleContext {
     return this.staticCtx.pkgJson;
   }
 
+  public get workspace(): WorkspaceInfo {
+    return this.staticCtx.workspace;
+  }
+
   /**
    * Gets a _copy_ of the list of issues.
    *
@@ -80,7 +85,7 @@ export class RuleContext implements StaticRuleContext {
   }
 
   public get localPath(): string {
-    return this.staticCtx.localPath;
+    return this.workspace.localPath;
   }
 
   /**

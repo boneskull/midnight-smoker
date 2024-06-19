@@ -1,3 +1,4 @@
+// TODO meta schema
 import {type ERROR, type FAILED, type OK} from '#constants';
 import {
   type PackError,
@@ -13,6 +14,7 @@ import {type StaticRuleContext} from '#schema/rule-static';
 import {type RunScriptManifest} from '#schema/run-script-manifest';
 import {type RunScriptResult} from '#schema/run-script-result';
 import {type SomeRuleDef} from '#schema/some-rule-def';
+import {type WorkspaceInfo} from '#schema/workspace-info';
 import {type Result} from '#util/result';
 import {type AbortEvent} from '../util/abort-event';
 
@@ -20,7 +22,6 @@ export type CheckOutput = CheckOutputOk | CheckOutputFailed;
 
 export type PkgManagerMachineEvents =
   | PkgManagerMachinePackDoneEvent
-  | PkgManagerMachineLintItemEvent
   | PkgManagerMachinePackErrorEvent
   | PkgManagerMachineHaltEvent
   | PkgManagerMachineRunScriptDoneEvent
@@ -30,6 +31,8 @@ export type PkgManagerMachineEvents =
   | PkgManagerMachineRunScriptErrorEvent
   | PkgManagerMachineRuleEndEvent
   | PkgManagerMachineCheckErrorEvent
+  | PkgManagerMachinePrepareLintManifestDoneEvent
+  | PkgManagerMachinePrepareLintManifestErrorEvent
   | AbortEvent;
 
 export interface BaseCheckOutput {
@@ -83,13 +86,9 @@ export interface PkgManagerMachineHaltEvent {
 }
 
 export interface PkgManagerMachineLintEvent {
-  manifest: LintManifest;
+  workspaceInfo: WorkspaceInfo;
+  installPath: string;
   type: 'LINT';
-}
-
-export interface PkgManagerMachineLintItemEvent {
-  output: LintManifest;
-  type: 'xstate.done.actor.prepareLintItem.*';
 }
 
 export interface PkgManagerMachinePackDoneEvent {
@@ -121,6 +120,16 @@ export interface PkgManagerMachineRunScriptErrorEvent {
 export interface PkgManagerMachineRunScriptEvent {
   manifest: RunScriptManifest;
   type: 'RUN_SCRIPT';
+}
+
+export interface PkgManagerMachinePrepareLintManifestDoneEvent {
+  output: LintManifest;
+  type: 'xstate.done.actor.prepareLintManifest.*';
+}
+
+export interface PkgManagerMachinePrepareLintManifestErrorEvent {
+  error: Error;
+  type: 'xstate.error.actor.prepareLintManifest.*';
 }
 
 /**

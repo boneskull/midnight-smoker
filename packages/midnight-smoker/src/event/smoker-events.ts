@@ -10,7 +10,7 @@ import {type StaticPluginMetadata} from '#schema/static-plugin-metadata';
 import {type WorkspaceInfo} from '#schema/workspace-info';
 import {type Result} from '#util/result';
 import {type Merge} from 'type-fest';
-import type {SmokerEvent} from '../constants/event';
+import type {Events} from '../constants/event';
 
 /**
  * Emitted after all other events have been emitted, and just before exit.
@@ -93,13 +93,13 @@ export interface AbortedEventData {
 }
 
 export interface SmokerEventData {
-  [SmokerEvent.Aborted]: AbortedEventData;
-  [SmokerEvent.BeforeExit]: BeforeExitEventData;
-  [SmokerEvent.Lingered]: LingeredEventData;
-  [SmokerEvent.SmokeBegin]: SmokeEventBase;
-  [SmokerEvent.SmokeFailed]: SmokeFailedEventData;
-  [SmokerEvent.SmokeOk]: SmokeOkEventData;
-  [SmokerEvent.SmokeError]: SmokeErrorEventData;
-  [SmokerEvent.UnknownError]: UnknownErrorEventData;
-  [SmokerEvent.Noop]: NoopEventData;
+  [Events.Aborted]: AbortedEventData;
+  [Events.BeforeExit]: BeforeExitEventData;
+  [Events.Lingered]: LingeredEventData;
+  [Events.SmokeBegin]: SmokeEventBase;
+  [Events.SmokeFailed]: SmokeFailedEventData;
+  [Events.SmokeOk]: SmokeOkEventData;
+  [Events.SmokeError]: SmokeErrorEventData;
+  [Events.UnknownError]: UnknownErrorEventData;
+  [Events.Noop]: NoopEventData;
 }

@@ -24,9 +24,11 @@ import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {type WorkspaceInfo} from '#schema/workspace-info';
 import {fromUnknownError, isExecaError, isSmokerError} from '#util/error-util';
 import {type FileManager} from '#util/filemanager';
-import {isFunction} from 'lodash';
+import Debug from 'debug';
 import {fromPromise} from 'xstate';
 import {type RunScriptOutput} from './pkg-manager-machine-events';
+
+const debug = Debug('midnight-smoker:machine:pkg-manager-machine-actors');
 
 /**
  * Input for {@link install}
@@ -44,22 +46,6 @@ export type PackInput = OperationInput<PkgManagerPackContext>;
 export type RunScriptInput = OperationInput<PkgManagerRunScriptContext>;
 
 /**
- * Input for {@link createTempDir}
- */
-export interface CreateTempDirInput {
-  fileManager: FileManager;
-  spec: StaticPkgManagerSpec;
-}
-
-/**
- * Input for the lifecycle actors
- */
-export interface LifecycleInput {
-  ctx: PkgManagerContext;
-  def: PkgManagerDef;
-}
-
-/**
  * Common input for various actors
  */
 export interface OperationInput<Ctx extends PkgManagerContext> {
@@ -69,66 +55,15 @@ export interface OperationInput<Ctx extends PkgManagerContext> {
 }
 
 /**
- * Input for {@link prepareLintItem}
+ * Input for {@link prepareLintManifest}
  */
-export interface PrepareLintItemInput {
+export interface PrepareLintManifestInput {
   fileManager: FileManager;
-  lintItem: Omit<LintManifest, 'pkgJson' | 'pkgJsonPath'>;
+
+  workspace: WorkspaceInfo;
+
+  installPath: string;
 }
-
-/**
- * Input for {@link pruneTempDir}
- */
-export interface PruneTempDirInput {
-  fileManager: FileManager;
-  tmpdir: string;
-}
-
-/**
- * Creates a temp dir for the package manager.
- *
- * Happens prior to the "setup" lifecycle hook
- */
-export const createTempDir = fromPromise<string, CreateTempDirInput>(
-  async ({input: {spec, fileManager}, signal}) => {
-    return fileManager.createTempDir(`${spec.bin}-${spec.version}`, signal);
-  },
-);
-
-/**
- * Runs the "setup" lifecycle of a package manager, if defined
- */
-export const setupPkgManager = fromPromise<void, LifecycleInput>(
-  async ({input: {def, ctx}}) => {
-    await Promise.resolve();
-    if (isFunction(def.setup)) {
-      await def.setup(ctx);
-    }
-  },
-);
-
-/**
- * Prunes the package manager's temporary directory.
- *
- * This happens after the teardown lifecycle hook
- */
-export const pruneTempDir = fromPromise<void, PruneTempDirInput>(
-  async ({input: {tmpdir, fileManager}, signal}) => {
-    await fileManager.pruneTempDir(tmpdir, signal);
-  },
-);
-
-/**
- * Runs the "teardown" lifecycle of a package manager, if defined
- */
-export const teardownPkgManager = fromPromise<void, LifecycleInput>(
-  async ({input: {def, ctx}}) => {
-    await Promise.resolve();
-    if (isFunction(def.teardown)) {
-      await def.teardown(ctx);
-    }
-  },
-);
 
 /**
  * Packs a package into a tarball
@@ -254,15 +189,24 @@ export const runScript = fromPromise<RunScriptOutput, RunScriptInput>(
 );
 
 /**
- * Assigns package.json information to a {@link LintManifest}
+ * Assigns package.json information from the installed workspace to a
+ * {@link LintManifest}
  */
-export const prepareLintItem = fromPromise<LintManifest, PrepareLintItemInput>(
-  async ({input: {lintItem, fileManager}, signal}) => {
-    const {packageJson: pkgJson, path: pkgJsonPath} =
-      await fileManager.findPkgUp(lintItem.installPath, {
-        strict: true,
-        signal,
-      });
-    return {...lintItem, pkgJson, pkgJsonPath};
-  },
-);
+export const prepareLintManifest = fromPromise<
+  LintManifest,
+  PrepareLintManifestInput
+>(async ({input: {workspace, installPath, fileManager}, signal}) => {
+  debug('Searching for package.json from %s', installPath);
+  const {packageJson: installedPkgJson, path: installedPkgJsonPath} =
+    await fileManager.findPkgUp(installPath, {
+      strict: true,
+      signal,
+    });
+  return {
+    pkgName: installedPkgJson.name ?? workspace.pkgName,
+    pkgJsonPath: installedPkgJsonPath,
+    pkgJson: installedPkgJson,
+    workspace,
+    installPath,
+  };
+});

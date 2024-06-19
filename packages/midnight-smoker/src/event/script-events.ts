@@ -7,7 +7,7 @@
 
 import type * as Schema from '#schema/meta/for-script-events';
 import {type Merge, type Simplify} from 'type-fest';
-import {type ScriptEvent} from '../constants/event';
+import {type ScriptEvents} from '../constants/event';
 import {type PkgManagerEventBase} from './common';
 
 export type ScriptEventData = {
@@ -16,7 +16,7 @@ export type ScriptEventData = {
    *
    * @event
    */
-  [ScriptEvent.PkgManagerRunScriptsBegin]: PkgManagerRunScriptsBeginEventData;
+  [ScriptEvents.PkgManagerRunScriptsBegin]: PkgManagerRunScriptsBeginEventData;
 
   /**
    * Emitted when a package manager has run all custom scripts and at least one
@@ -24,13 +24,13 @@ export type ScriptEventData = {
    *
    * @event
    */
-  [ScriptEvent.PkgManagerRunScriptsFailed]: PkgManagerRunScriptsFailedEventData;
+  [ScriptEvents.PkgManagerRunScriptsFailed]: PkgManagerRunScriptsFailedEventData;
 
   /**
    * Emitted when a package manager has run all custom scripts and all were
    * successful.
    */
-  [ScriptEvent.PkgManagerRunScriptsOk]: PkgManagerRunScriptsOkEventData;
+  [ScriptEvents.PkgManagerRunScriptsOk]: PkgManagerRunScriptsOkEventData;
 
   /**
    * Emitted once after the "checks" phase is complete (if enabled) and just
@@ -38,21 +38,21 @@ export type ScriptEventData = {
    *
    * @event
    */
-  [ScriptEvent.RunScriptsBegin]: RunScriptsBeginEventData;
+  [ScriptEvents.RunScriptsBegin]: RunScriptsBeginEventData;
 
   /**
    * Emitted once after all custom scripts have run and at least one has failed.
    *
    * @event
    */
-  [ScriptEvent.RunScriptsFailed]: RunScriptsFailedEventData;
+  [ScriptEvents.RunScriptsFailed]: RunScriptsFailedEventData;
 
   /**
    * Emitted once after all custom scripts have run and all were successful.
    *
    * @event
    */
-  [ScriptEvent.RunScriptsOk]: RunScriptsOkEventData;
+  [ScriptEvents.RunScriptsOk]: RunScriptsOkEventData;
 
   /**
    * Emitted just before a custom script is about to be run in a package's temp
@@ -60,7 +60,7 @@ export type ScriptEventData = {
    *
    * @event
    */
-  [ScriptEvent.RunScriptBegin]: RunScriptBeginEventData;
+  [ScriptEvents.RunScriptBegin]: RunScriptBeginEventData;
 
   /**
    * Emitted whenever a custom script (run as in {@link RunScriptBegin}) exits
@@ -70,21 +70,21 @@ export type ScriptEventData = {
    *
    * @event
    */
-  [ScriptEvent.RunScriptFailed]: RunScriptFailedEventData;
+  [ScriptEvents.RunScriptFailed]: RunScriptFailedEventData;
 
   /**
    * Emitted whenever a custom script runs successfully for a package.
    *
    * @event
    */
-  [ScriptEvent.RunScriptOk]: RunScriptOkEventData;
+  [ScriptEvents.RunScriptOk]: RunScriptOkEventData;
 
   /**
    * Emitted if a script is skipped for a workspace (because it does not exist)
    *
    * @event
    */
-  [ScriptEvent.RunScriptSkipped]: RunScriptSkippedEventData;
+  [ScriptEvents.RunScriptSkipped]: RunScriptSkippedEventData;
 
   /**
    * Emitted whenever running custom script (run as in {@link RunScriptBegin})
@@ -95,7 +95,7 @@ export type ScriptEventData = {
    *
    * @event
    */
-  [ScriptEvent.RunScriptError]: RunScriptErrorEventData;
+  [ScriptEvents.RunScriptError]: RunScriptErrorEventData;
 
   /**
    * Emitted once after running a custom script completes with any status.
@@ -103,7 +103,7 @@ export type ScriptEventData = {
    * @event
    */
 
-  [ScriptEvent.RunScriptEnd]: RunScriptEndEventData;
+  [ScriptEvents.RunScriptEnd]: RunScriptEndEventData;
 };
 
 export interface RunScriptsEventDataBase {

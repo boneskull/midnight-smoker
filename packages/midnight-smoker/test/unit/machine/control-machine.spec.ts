@@ -1,4 +1,4 @@
-import {ERROR, OK, PACKAGE_JSON, SmokerEvent} from '#constants';
+import {ERROR, Events, OK, PACKAGE_JSON} from '#constants';
 import {ErrorCodes} from '#error/codes';
 import {ControlMachine, type CtrlMachineInput} from '#machine/control-machine';
 import {PluginLoaderMachine} from '#machine/plugin-loader-machine';
@@ -222,7 +222,7 @@ describe('midnight-smoker', function () {
                 it('should emit Aborted', async function () {
                   await expect(
                     runner.runUntilEvent(
-                      [SmokerEvent.Aborted, SmokerEvent.SmokeError],
+                      [Events.Aborted, Events.SmokeError],
                       input,
                     ),
                     'to be fulfilled',

@@ -28,7 +28,15 @@ describe('midnight-smoker', function () {
           },
           pkgJsonPath: '/path/to/example-package/package.json',
           installPath: '/path/to/example-package',
-          localPath: '/path/to/example-package',
+          workspace: {
+            pkgName: 'example-package',
+            pkgJson: {
+              name: 'example-package',
+              version: '1.0.0',
+            },
+            pkgJsonPath: '/path/to/example-package/package.json',
+            localPath: '/some/local/path',
+          },
           pkgManager: 'smthing',
           severity: 'error',
           ruleId,

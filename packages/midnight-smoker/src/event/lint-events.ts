@@ -1,21 +1,22 @@
-import {type LintEvent} from '#constants';
+import {type LintEvents} from '#constants';
 import {type RuleError} from '#error/rule-error';
 import type * as Schema from '#schema/meta/for-lint-events';
 import {type Result} from '#util/result';
+import {type Merge} from 'type-fest';
 import {type PkgManagerEventBase} from './common';
 
 export interface LintEventData {
-  [LintEvent.PkgManagerLintBegin]: PkgManagerLintBeginEventData;
-  [LintEvent.PkgManagerLintOk]: PkgManagerLintOkEventData;
-  [LintEvent.PkgManagerLintFailed]: PkgManagerLintFailedEventData;
-  [LintEvent.RuleBegin]: RuleBeginEventData;
-  [LintEvent.RuleOk]: RuleOkEventData;
-  [LintEvent.RuleFailed]: RuleFailedEventData;
-  [LintEvent.RuleError]: RuleErrorEventData;
-  [LintEvent.RuleEnd]: RuleEndEventData;
-  [LintEvent.LintBegin]: LintBeginEventData;
-  [LintEvent.LintOk]: LintOkEventData;
-  [LintEvent.LintFailed]: LintFailedEventData;
+  [LintEvents.PkgManagerLintBegin]: PkgManagerLintBeginEventData;
+  [LintEvents.PkgManagerLintOk]: PkgManagerLintOkEventData;
+  [LintEvents.PkgManagerLintFailed]: PkgManagerLintFailedEventData;
+  [LintEvents.RuleBegin]: RuleBeginEventData;
+  [LintEvents.RuleOk]: RuleOkEventData;
+  [LintEvents.RuleFailed]: RuleFailedEventData;
+  [LintEvents.RuleError]: RuleErrorEventData;
+  [LintEvents.RuleEnd]: RuleEndEventData;
+  [LintEvents.LintBegin]: LintBeginEventData;
+  [LintEvents.LintOk]: LintOkEventData;
+  [LintEvents.LintFailed]: LintFailedEventData;
 }
 
 export interface PkgManagerLintBeginEventData
@@ -35,7 +36,9 @@ export interface PkgManagerLintOkEventData extends PkgManagerLintEventDataBase {
 }
 
 export interface RuleEventDataBase {
-  manifest: Result<Schema.LintManifest>;
+  manifest: Result<
+    Merge<Schema.LintManifest, {workspace: Result<Schema.WorkspaceInfo>}>
+  >;
   rule: string;
   config: Schema.SomeRuleConfig;
   totalRules: number;

@@ -29,10 +29,18 @@ describe('midnight-smoker', function () {
           },
           pkgJsonPath: '/path/to/example-package/package.json',
           installPath: '/path/to/example-package',
-          localPath: '/path/to/example-package',
           severity: RuleSeverities.Error,
           pkgManager: 'bebebebebee',
           ruleId,
+          workspace: {
+            pkgName: 'example-package',
+            pkgJson: {
+              name: 'example-package',
+              version: '1.0.0',
+            },
+            pkgJsonPath: '/path/to/example-package/package.json',
+            localPath: '/some/local/path',
+          },
         };
         let issue: RuleIssue;
 

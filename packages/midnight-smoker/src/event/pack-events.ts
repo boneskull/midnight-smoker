@@ -2,7 +2,7 @@ import {type PackError} from '#error/pack-error';
 import {type SomePackError} from '#error/some-pack-error';
 import type * as Schema from '#schema/meta/for-pack-events';
 import {type Result} from '#util/result';
-import type {PackEvent} from '../constants/event';
+import type {PackEvents} from '../constants/event';
 import {type PackParseError} from '../error/pack-parse-error';
 import type {PkgManagerEventBase} from './common';
 
@@ -12,14 +12,14 @@ export interface PackEventData {
    *
    * @event
    */
-  [PackEvent.PackBegin]: PackBeginEventData;
+  [PackEvents.PackBegin]: PackBeginEventData;
 
   /**
    * Emitted whenever a package is packed successfully into a tarball.
    *
    * @event
    */
-  [PackEvent.PackOk]: PackOkEventData;
+  [PackEvents.PackOk]: PackOkEventData;
 
   /**
    * Emitted whenever packing a tarball fails.
@@ -29,19 +29,19 @@ export interface PackEventData {
    *
    * @event
    */
-  [PackEvent.PackFailed]: PackFailedEventData;
+  [PackEvents.PackFailed]: PackFailedEventData;
 
-  [PackEvent.PkgManagerPackBegin]: PkgManagerPackBeginEventData;
+  [PackEvents.PkgManagerPackBegin]: PkgManagerPackBeginEventData;
 
-  [PackEvent.PkgManagerPackFailed]: PkgManagerPackFailedEventData;
+  [PackEvents.PkgManagerPackFailed]: PkgManagerPackFailedEventData;
 
-  [PackEvent.PkgManagerPackOk]: PkgManagerPackOkEventData;
+  [PackEvents.PkgManagerPackOk]: PkgManagerPackOkEventData;
 
-  [PackEvent.PkgPackBegin]: PkgPackBeginEventData;
+  [PackEvents.PkgPackBegin]: PkgPackBeginEventData;
 
-  [PackEvent.PkgPackFailed]: PkgPackFailedEventData;
+  [PackEvents.PkgPackFailed]: PkgPackFailedEventData;
 
-  [PackEvent.PkgPackOk]: PkgPackOkEventData;
+  [PackEvents.PkgPackOk]: PkgPackOkEventData;
 }
 
 export interface PkgPackEventDataBase {

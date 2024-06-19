@@ -3,6 +3,10 @@ import {type ExecResult} from '#executor';
 import {type CtrlMachineOutput} from '#machine/control-machine';
 import {OptionsParser} from '#options/options-parser';
 import {PluginRegistry} from '#plugin/plugin-registry';
+import {
+  type RawSmokerOptions,
+  type SmokerOptions,
+} from '#schema/smoker-options';
 import {type WorkspaceInfo} from '#schema/workspace-info';
 import {Smoker, type SmokeResults} from '#smoker';
 import {FileManager} from '#util/filemanager';
@@ -14,10 +18,6 @@ import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
 import {setup, type AnyStateMachine} from 'xstate';
-import {
-  type RawSmokerOptions,
-  type SmokerOptions,
-} from '../../dist/options/smoker-options';
 
 const expect = unexpected.clone().use(unexpectedSinon);
 

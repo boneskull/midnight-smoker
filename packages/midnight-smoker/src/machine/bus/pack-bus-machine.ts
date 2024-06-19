@@ -1,5 +1,5 @@
 import {FINAL} from '#constants';
-import {SmokerEvent} from '#constants/event';
+import {PackEvents} from '#constants/event';
 import {PackError} from '#error/pack-error';
 import {PackParseError} from '#error/pack-parse-error';
 import {type DataForEvent} from '#event/events';
@@ -100,8 +100,8 @@ export const PackBusMachine = setup({
           type: 'report',
           params: ({
             context: {pkgManagers = [], workspaceInfo, smokerOptions},
-          }): DataForEvent<typeof SmokerEvent.PackBegin> => ({
-            type: SmokerEvent.PackBegin,
+          }): DataForEvent<typeof PackEvents.PackBegin> => ({
+            type: PackEvents.PackBegin,
             packOptions: {
               cwd: smokerOptions.cwd,
               allWorkspaces: smokerOptions.all,
@@ -132,10 +132,10 @@ export const PackBusMachine = setup({
                   workspaceInfo: {length: totalPkgs},
                 },
                 event,
-              }): DataForEvent<typeof SmokerEvent.PkgPackBegin> => ({
+              }): DataForEvent<typeof PackEvents.PkgPackBegin> => ({
                 totalPkgs,
                 ...event,
-                type: SmokerEvent.PkgPackBegin,
+                type: PackEvents.PkgPackBegin,
               }),
             },
           ],
@@ -149,10 +149,10 @@ export const PackBusMachine = setup({
                   workspaceInfo: {length: totalPkgs},
                 },
                 event,
-              }): DataForEvent<typeof SmokerEvent.PkgPackOk> => ({
+              }): DataForEvent<typeof PackEvents.PkgPackOk> => ({
                 totalPkgs,
                 ...event,
-                type: SmokerEvent.PkgPackOk,
+                type: PackEvents.PkgPackOk,
               }),
             },
           ],
@@ -166,10 +166,10 @@ export const PackBusMachine = setup({
                   workspaceInfo: {length: totalPkgs},
                 },
                 event,
-              }): DataForEvent<typeof SmokerEvent.PkgPackFailed> => {
+              }): DataForEvent<typeof PackEvents.PkgPackFailed> => {
                 return {
                   ...event,
-                  type: SmokerEvent.PkgPackFailed,
+                  type: PackEvents.PkgPackFailed,
                   totalPkgs,
                 };
               },
@@ -192,8 +192,8 @@ export const PackBusMachine = setup({
                   workspaceInfo,
                 },
                 event: {pkgManager},
-              }): DataForEvent<typeof SmokerEvent.PkgManagerPackBegin> => ({
-                type: SmokerEvent.PkgManagerPackBegin,
+              }): DataForEvent<typeof PackEvents.PkgManagerPackBegin> => ({
+                type: PackEvents.PkgManagerPackBegin,
                 pkgManager,
                 packOptions: {
                   cwd,
@@ -226,8 +226,8 @@ export const PackBusMachine = setup({
                   },
                 },
                 event: {pkgManager, manifests, workspaceInfo},
-              }): DataForEvent<typeof SmokerEvent.PkgManagerPackOk> => ({
-                type: SmokerEvent.PkgManagerPackOk,
+              }): DataForEvent<typeof PackEvents.PkgManagerPackOk> => ({
+                type: PackEvents.PkgManagerPackOk,
                 pkgManager,
                 packOptions: {
                   allWorkspaces,
@@ -261,8 +261,8 @@ export const PackBusMachine = setup({
                   },
                 },
                 event: {pkgManager, error, workspaceInfo},
-              }): DataForEvent<typeof SmokerEvent.PkgManagerPackFailed> => ({
-                type: SmokerEvent.PkgManagerPackFailed,
+              }): DataForEvent<typeof PackEvents.PkgManagerPackFailed> => ({
+                type: PackEvents.PkgManagerPackFailed,
                 pkgManager,
                 packOptions: {
                   cwd,
@@ -292,16 +292,16 @@ export const PackBusMachine = setup({
               workspaceInfo,
               error,
             },
-          }):
-            | DataForEvent<typeof SmokerEvent.PackFailed>
-            | DataForEvent<typeof SmokerEvent.PackOk> => {
+          }): DataForEvent<
+            typeof PackEvents.PackFailed | typeof PackEvents.PackOk
+          > => {
             if (error) {
               assertSmokerError([PackError, PackParseError], error);
             }
             return error
               ? {
                   error,
-                  type: SmokerEvent.PackFailed,
+                  type: PackEvents.PackFailed,
                   packOptions: {
                     cwd,
                     allWorkspaces,
@@ -312,7 +312,7 @@ export const PackBusMachine = setup({
                   workspaceInfo,
                 }
               : {
-                  type: SmokerEvent.PackOk,
+                  type: PackEvents.PackOk,
                   packOptions: {
                     cwd,
                     allWorkspaces,

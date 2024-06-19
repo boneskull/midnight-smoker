@@ -21,6 +21,7 @@ import {serialize} from '#util/serialize';
 import Debug from 'debug';
 import {memfs} from 'memfs';
 import {type Volume} from 'memfs/lib/volume';
+import path from 'node:path';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
@@ -308,7 +309,7 @@ describe('midnight-smoker', function () {
               ruleConfigs: smokerOptions.rules,
               spec,
               useWorkspaces: false,
-              workspaceInfo: [],
+              workspaceInfo: [workspaceInfo],
               shouldShutdown: true,
             };
           });
@@ -322,7 +323,11 @@ describe('midnight-smoker', function () {
                       snapshot.matches({
                         working: {installing: {installingPkgs: 'installPkg'}},
                       }),
-                    {...input, additionalDeps: ['foo@1.0.0']},
+                    {
+                      ...input,
+                      additionalDeps: ['foo@1.0.0'],
+                      workspaceInfo: [],
+                    },
                   ),
                   'to be rejected',
                 );
@@ -340,7 +345,6 @@ describe('midnight-smoker', function () {
                     {
                       ...input,
                       additionalDeps: ['foo@1.0.0'],
-                      workspaceInfo: [workspaceInfo],
                     },
                   ),
                   'to be fulfilled with value satisfying',
@@ -369,7 +373,6 @@ describe('midnight-smoker', function () {
                     ],
                     {
                       ...input,
-                      workspaceInfo: [workspaceInfo],
                     },
                   ),
                   'to be fulfilled',
@@ -392,7 +395,6 @@ describe('midnight-smoker', function () {
                       ],
                       {
                         ...input,
-                        workspaceInfo: [workspaceInfo],
                       },
                     ),
                     'to be fulfilled',
@@ -436,7 +438,6 @@ describe('midnight-smoker', function () {
                       ],
                       {
                         ...input,
-                        workspaceInfo: [workspaceInfo],
                       },
                     ),
                     'to be fulfilled',
@@ -461,7 +462,6 @@ describe('midnight-smoker', function () {
                         ],
                         {
                           ...input,
-                          workspaceInfo: [workspaceInfo],
                         },
                       ),
                       'to be fulfilled',
@@ -493,6 +493,17 @@ describe('midnight-smoker', function () {
           });
 
           describe('linting', function () {
+            const tmpdir = '/tmp';
+            beforeEach(function () {
+              // configure filesystem for an installed package
+              // within the temp dir.  this is needed for reading the
+              // package.json at the install path of the tarballed workspace
+              sandbox.stub(fileManager, 'createTempDir').resolves(tmpdir);
+              vol.fromJSON({
+                [path.join(tmpdir, 'node_modules', 'foo', 'package.json')]:
+                  JSON.stringify({name: 'foo', version: '1.0.0'}),
+              });
+            });
             describe('when "shouldLint" flag not set', function () {
               it('should not lint', async function () {
                 await expect(
@@ -501,7 +512,6 @@ describe('midnight-smoker', function () {
                       snapshot.matches({working: {linting: 'lintingPkgs'}}),
                     {
                       ...input,
-                      workspaceInfo: [workspaceInfo],
                     },
                   ),
                   'to be rejected',
@@ -515,7 +525,6 @@ describe('midnight-smoker', function () {
                   ...input,
                   shouldLint: true,
                   ruleInitPayloads,
-                  workspaceInfo: [workspaceInfo],
                 };
               });
 
@@ -604,7 +613,6 @@ describe('midnight-smoker', function () {
                     ...input,
                     ruleInitPayloads: [],
                     shouldLint: true,
-                    workspaceInfo: [workspaceInfo],
                   }),
                   'to be rejected',
                 );
@@ -621,7 +629,6 @@ describe('midnight-smoker', function () {
                       snapshot.matches({working: {runningScripts: 'running'}}),
                     {
                       ...input,
-                      workspaceInfo: [workspaceInfo],
                     },
                   ),
                   'to be rejected',
@@ -638,7 +645,6 @@ describe('midnight-smoker', function () {
                     {
                       ...input,
                       scripts: ['test'],
-                      workspaceInfo: [workspaceInfo],
                     },
                   ),
                   'to be fulfilled',
@@ -666,7 +672,6 @@ describe('midnight-smoker', function () {
                       {
                         ...input,
                         scripts: ['test'],
-                        workspaceInfo: [workspaceInfo],
                       },
                     ),
                     'to be fulfilled',
@@ -711,7 +716,6 @@ describe('midnight-smoker', function () {
                       {
                         ...input,
                         scripts: ['test'],
-                        workspaceInfo: [workspaceInfo],
                       },
                     ),
                     'to be fulfilled',
@@ -733,7 +737,6 @@ describe('midnight-smoker', function () {
                       {
                         ...input,
                         scripts: ['test'],
-                        workspaceInfo: [workspaceInfo],
                       },
                     ),
                     'to be fulfilled',
@@ -761,7 +764,6 @@ describe('midnight-smoker', function () {
                       {
                         ...input,
                         scripts: ['test'],
-                        workspaceInfo: [workspaceInfo],
                       },
                     ),
                     'to be fulfilled',
@@ -776,7 +778,6 @@ describe('midnight-smoker', function () {
                       {
                         ...input,
                         scripts: ['test'],
-                        workspaceInfo: [workspaceInfo],
                       },
                     ),
                     'to be fulfilled',

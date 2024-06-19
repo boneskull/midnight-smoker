@@ -1,5 +1,5 @@
 import {FAILED, FINAL} from '#constants';
-import {SmokerEvent} from '#constants/event';
+import {LintEvents} from '#constants/event';
 import {type DataForEvent} from '#event/events';
 import {type LintEventData} from '#event/lint-events';
 import {type ReporterMachine} from '#machine/reporter';
@@ -105,8 +105,8 @@ export const LintBusMachine = setup({
           type: 'report',
           params: ({
             context: {pkgManagers = [], smokerOptions, ruleDefs, workspaceInfo},
-          }): DataForEvent<typeof SmokerEvent.LintBegin> => ({
-            type: SmokerEvent.LintBegin,
+          }): DataForEvent<typeof LintEvents.LintBegin> => ({
+            type: LintEvents.LintBegin,
             config: smokerOptions.rules,
             totalRules: ruleDefs.length,
             pkgManagers,
@@ -132,11 +132,11 @@ export const LintBusMachine = setup({
               params: ({
                 context: {ruleDefs: rules},
                 event,
-              }): DataForEvent<typeof SmokerEvent.RuleEnd> => {
+              }): DataForEvent<typeof LintEvents.RuleEnd> => {
                 return {
                   ...event,
                   totalRules: rules.length,
-                  type: SmokerEvent.RuleEnd,
+                  type: LintEvents.RuleEnd,
                 };
               },
             },
@@ -149,11 +149,11 @@ export const LintBusMachine = setup({
               params: ({
                 context: {ruleDefs: rules},
                 event,
-              }): DataForEvent<typeof SmokerEvent.RuleBegin> => {
+              }): DataForEvent<typeof LintEvents.RuleBegin> => {
                 return {
                   ...event,
                   totalRules: rules.length,
-                  type: SmokerEvent.RuleBegin,
+                  type: LintEvents.RuleBegin,
                 };
               },
             },
@@ -166,11 +166,11 @@ export const LintBusMachine = setup({
               params: ({
                 context: {ruleDefs: rules},
                 event,
-              }): DataForEvent<typeof SmokerEvent.RuleOk> => {
+              }): DataForEvent<typeof LintEvents.RuleOk> => {
                 return {
                   ...event,
                   totalRules: rules.length,
-                  type: SmokerEvent.RuleOk,
+                  type: LintEvents.RuleOk,
                 };
               },
             },
@@ -183,11 +183,11 @@ export const LintBusMachine = setup({
               params: ({
                 context: {ruleDefs: rules},
                 event,
-              }): DataForEvent<typeof SmokerEvent.RuleError> => {
+              }): DataForEvent<typeof LintEvents.RuleError> => {
                 return {
                   ...event,
                   totalRules: rules.length,
-                  type: SmokerEvent.RuleError,
+                  type: LintEvents.RuleError,
                 };
               },
             },
@@ -204,11 +204,11 @@ export const LintBusMachine = setup({
               params: ({
                 context: {ruleDefs: rules},
                 event,
-              }): DataForEvent<typeof SmokerEvent.RuleFailed> => {
+              }): DataForEvent<typeof LintEvents.RuleFailed> => {
                 return {
                   ...event,
                   totalRules: rules.length,
-                  type: SmokerEvent.RuleFailed,
+                  type: LintEvents.RuleFailed,
                 };
               },
             },
@@ -225,9 +225,9 @@ export const LintBusMachine = setup({
                   workspaceInfo,
                 },
                 event: {pkgManager},
-              }): DataForEvent<typeof SmokerEvent.PkgManagerLintBegin> => {
+              }): DataForEvent<typeof LintEvents.PkgManagerLintBegin> => {
                 return {
-                  type: SmokerEvent.PkgManagerLintBegin,
+                  type: LintEvents.PkgManagerLintBegin,
                   pkgManager,
                   totalRules: rules.length,
                   workspaceInfo: workspaceInfo.map(asResult),
@@ -256,10 +256,10 @@ export const LintBusMachine = setup({
                   workspaceInfo,
                 },
                 event: {pkgManager, results},
-              }): DataForEvent<typeof SmokerEvent.PkgManagerLintFailed> => {
+              }): DataForEvent<typeof LintEvents.PkgManagerLintFailed> => {
                 return {
                   workspaceInfo: workspaceInfo.map(asResult),
-                  type: SmokerEvent.PkgManagerLintFailed,
+                  type: LintEvents.PkgManagerLintFailed,
                   pkgManager,
                   results,
                   totalRules: rules.length,
@@ -288,10 +288,10 @@ export const LintBusMachine = setup({
                   workspaceInfo,
                 },
                 event: {pkgManager, results},
-              }): DataForEvent<typeof SmokerEvent.PkgManagerLintOk> => {
+              }): DataForEvent<typeof LintEvents.PkgManagerLintOk> => {
                 return {
                   workspaceInfo: workspaceInfo.map(asResult),
-                  type: SmokerEvent.PkgManagerLintOk,
+                  type: LintEvents.PkgManagerLintOk,
                   pkgManager,
                   results,
                   totalRules: rules.length,
@@ -314,9 +314,9 @@ export const LintBusMachine = setup({
               workspaceInfo,
             },
             event,
-          }):
-            | DataForEvent<typeof SmokerEvent.LintOk>
-            | DataForEvent<typeof SmokerEvent.LintFailed> => {
+          }): DataForEvent<
+            typeof LintEvents.LintOk | typeof LintEvents.LintFailed
+          > => {
             const totalRules = rules.length;
 
             if (lintResults.some((result) => result.type === FAILED)) {
@@ -327,7 +327,7 @@ export const LintBusMachine = setup({
                 totalRules,
                 pkgManagers,
                 workspaceInfo: workspaceInfo.map(asResult),
-                type: SmokerEvent.LintFailed,
+                type: LintEvents.LintFailed,
               };
             }
             return {
@@ -337,7 +337,7 @@ export const LintBusMachine = setup({
               totalRules: rules.length,
               pkgManagers,
               workspaceInfo: workspaceInfo.map(asResult),
-              type: SmokerEvent.LintOk,
+              type: LintEvents.LintOk,
             };
           },
         },

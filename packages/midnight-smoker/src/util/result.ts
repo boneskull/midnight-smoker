@@ -1,5 +1,5 @@
-import {type WorkspaceInfoLike} from '#schema/workspace-info';
-import {type Except, type TupleToUnion} from 'type-fest';
+import {omit} from 'lodash';
+import {type PackageJson, type TupleToUnion} from 'type-fest';
 
 /**
  * Props which are not allowed in a {@link Result}.
@@ -11,20 +11,20 @@ const OmittedResultProps = ['pkgJson'] as const;
  */
 type OmittedResultProp = TupleToUnion<typeof OmittedResultProps>;
 
+export type ResultLike = {
+  pkgJson?: PackageJson;
+};
+
 /**
- * Converts an object extending {@link WorkspaceInfoLike} to a {@link Result},
- * suitable for serialization
+ * Converts an object extending {@link ResultLike} to a {@link Result}, suitable
+ * for serialization
  *
  * @template T Any object extending {@link WorkspaceInfoLike}
  * @param obj Any object extending {@link WorkspaceInfoLike}
  * @returns A {@link Result} object
  */
-export function asResult<T extends WorkspaceInfoLike>(obj: T): Result<T> {
-  // loop over all omitted props and remove them from obj
-  return OmittedResultProps.reduce((acc, prop) => {
-    const {[prop]: _, ...result} = acc;
-    return result as Result<T>;
-  }, obj as Result<T>);
+export function asResult<T extends ResultLike>(obj: T): Result<T> {
+  return omit(obj, OmittedResultProps);
 }
 
 /**
@@ -42,8 +42,4 @@ export function asResult<T extends WorkspaceInfoLike>(obj: T): Result<T> {
  * @see {@link asResult}
  * @see {@link Except}
  */
-export type Result<T extends WorkspaceInfoLike> = Except<
-  T,
-  OmittedResultProp,
-  {requireExactProps: true}
->;
+export type Result<T extends ResultLike> = Omit<T, OmittedResultProp>;

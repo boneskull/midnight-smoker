@@ -8,13 +8,13 @@ import {OptionsParser} from '#options/options-parser';
 import {PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
 import {PluginRegistry} from '#plugin/plugin-registry';
+import {type SmokerOptions} from '#schema/smoker-options';
 import {type WorkspaceInfo} from '#schema/workspace-info';
 import {FileManager} from '#util/filemanager';
 import {memfs} from 'memfs';
 import {type Volume} from 'memfs/lib/volume';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
-import {type SmokerOptions} from '../../../dist/options/smoker-options';
 import {nullPkgManagerDef, nullReporter, nullRule} from '../mocks/component';
 import {createActorRunner} from './actor-helpers';
 

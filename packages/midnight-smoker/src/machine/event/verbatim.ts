@@ -1,4 +1,4 @@
-import {type SmokerEvent} from '#constants/event';
+import {type Events} from '#constants/event';
 import {type DataForEvent} from '#event/events';
 
 /**
@@ -9,11 +9,11 @@ import {type DataForEvent} from '#event/events';
 export type VerbatimEvents = DataForEvent<VerbatimEventNames>;
 
 export type VerbatimEventNames =
-  | typeof SmokerEvent.LintOk
-  | typeof SmokerEvent.LintFailed
-  | typeof SmokerEvent.PackOk
-  | typeof SmokerEvent.PackFailed
-  | typeof SmokerEvent.InstallOk
-  | typeof SmokerEvent.InstallFailed
-  | typeof SmokerEvent.RunScriptsFailed
-  | typeof SmokerEvent.RunScriptsOk;
+  | typeof Events.LintOk
+  | typeof Events.LintFailed
+  | typeof Events.PackOk
+  | typeof Events.PackFailed
+  | typeof Events.InstallOk
+  | typeof Events.InstallFailed
+  | typeof Events.RunScriptsFailed
+  | typeof Events.RunScriptsOk;

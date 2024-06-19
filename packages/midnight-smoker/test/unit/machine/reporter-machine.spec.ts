@@ -1,4 +1,4 @@
-import {ERROR, SmokerEvent} from '#constants';
+import {ERROR, Events} from '#constants';
 import {ErrorCodes} from '#error/codes';
 import {type DataForEvent, type EventData} from '#event/events';
 import {
@@ -229,7 +229,7 @@ describe('midnight-smoker', function () {
           it('should invoke the appropriate event listener in the reporter def', function () {
             actor.send({
               type: 'EVENT',
-              event: {type: SmokerEvent.Noop},
+              event: {type: Events.Noop},
             });
             expect(onNoop, 'was called once');
           });
@@ -239,11 +239,11 @@ describe('midnight-smoker', function () {
               onBeforeExit.rejects(new Error('test error'));
               actor.send({
                 type: 'EVENT',
-                event: {type: SmokerEvent.BeforeExit},
+                event: {type: Events.BeforeExit},
               });
               actor.send({
                 type: 'EVENT',
-                event: {type: SmokerEvent.Noop},
+                event: {type: Events.Noop},
               });
               await expect(
                 toPromise(actor),
@@ -266,15 +266,15 @@ describe('midnight-smoker', function () {
               onBeforeExit.rejects(new Error('test error'));
               actor.send({
                 type: 'EVENT',
-                event: {type: SmokerEvent.Noop},
+                event: {type: Events.Noop},
               });
               actor.send({
                 type: 'EVENT',
-                event: {type: SmokerEvent.BeforeExit},
+                event: {type: Events.BeforeExit},
               });
               actor.send({
                 type: 'EVENT',
-                event: {type: SmokerEvent.Noop},
+                event: {type: Events.Noop},
               });
               await toPromise(actor);
 
@@ -286,20 +286,20 @@ describe('midnight-smoker', function () {
             it('should ignore the events', async function () {
               actor.send({
                 type: 'EVENT',
-                event: {type: SmokerEvent.Noop},
+                event: {type: Events.Noop},
               });
               actor.send({
                 type: 'EVENT',
-                event: {type: SmokerEvent.Noop},
+                event: {type: Events.Noop},
               });
               actor.send({type: 'HALT'});
               actor.send({
                 type: 'EVENT',
-                event: {type: SmokerEvent.Noop},
+                event: {type: Events.Noop},
               });
               actor.send({
                 type: 'EVENT',
-                event: {type: SmokerEvent.Noop},
+                event: {type: Events.Noop},
               });
               await toPromise(actor);
               expect(onNoop, 'was called twice');
@@ -311,7 +311,7 @@ describe('midnight-smoker', function () {
           it('should stop the machine after draining the queue', async function () {
             actor.send({
               type: 'EVENT',
-              event: {type: SmokerEvent.BeforeExit},
+              event: {type: Events.BeforeExit},
             });
             actor.send({type: 'HALT'});
             await toPromise(actor);
@@ -326,7 +326,7 @@ describe('midnight-smoker', function () {
           describe('when a listener throws', function () {
             it('should reject with a ReporterListenerError', async function () {
               const queue: DataForEvent<keyof EventData>[] = [
-                {type: SmokerEvent.BeforeExit},
+                {type: Events.BeforeExit},
               ];
               def.onBeforeExit = sandbox.stub().throws(new Error('test error'));
               const input: DrainQueueInput = {
@@ -349,7 +349,7 @@ describe('midnight-smoker', function () {
           describe('when provided a non-empty queue', function () {
             it('should process the queue', async function () {
               const queue: DataForEvent<keyof EventData>[] = [
-                {type: SmokerEvent.BeforeExit},
+                {type: Events.BeforeExit},
               ];
               def.onBeforeExit = sandbox.stub();
               const input: DrainQueueInput = {

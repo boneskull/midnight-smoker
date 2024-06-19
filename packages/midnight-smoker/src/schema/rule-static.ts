@@ -1,10 +1,9 @@
+import {LintManifestSchema} from '#schema/lint-manifest';
 import {RuleSeveritySchema} from '#schema/rule-severity';
 import {NonEmptyStringSchema} from '#util/schema-util';
 import {z} from 'zod';
-import {WorkspaceInfoSchema} from './workspace-info';
 
-export const StaticRuleContextSchema = WorkspaceInfoSchema.extend({
-  installPath: NonEmptyStringSchema,
+export const StaticRuleContextSchema = LintManifestSchema.extend({
   severity: RuleSeveritySchema,
   ruleId: NonEmptyStringSchema,
   pkgManager: NonEmptyStringSchema.describe('Package manager name w/ version'),
