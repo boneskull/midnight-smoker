@@ -1,4 +1,5 @@
 import {ERROR, FINAL, OK} from '#constants';
+import {LifecycleError} from '#error/lifecycle-error';
 import {MachineError} from '#error/machine-error';
 import {type SomeDataForEvent} from '#event/events';
 import {
@@ -227,13 +228,24 @@ export const ReporterMachine = setup({
         src: 'setupReporter',
         input: ({context: {def, ctx}}) => ({def, ctx}),
         onDone: {
+          actions: log('listening for events'),
           target: 'listening',
         },
         onError: {
           actions: [
             {
               type: 'assignError',
-              params: ({event: {error}}) => ({error}),
+              params: ({event: {error}, context: {def, ctx}}) => {
+                return {
+                  error: new LifecycleError(
+                    fromUnknownError(error),
+                    'setup',
+                    'reporter',
+                    def.name,
+                    ctx.plugin,
+                  ),
+                };
+              },
             },
           ],
           target: 'teardown',
@@ -288,7 +300,17 @@ export const ReporterMachine = setup({
           actions: [
             {
               type: 'assignError',
-              params: ({event: {error}}) => ({error}),
+              params: ({event: {error}, context: {def, ctx}}) => {
+                return {
+                  error: new LifecycleError(
+                    fromUnknownError(error),
+                    'teardown',
+                    'reporter',
+                    def.name,
+                    ctx.plugin,
+                  ),
+                };
+              },
             },
           ],
           target: 'errored',

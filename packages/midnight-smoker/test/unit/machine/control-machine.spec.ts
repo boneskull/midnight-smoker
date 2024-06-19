@@ -1,7 +1,9 @@
 import {ERROR, Events, OK, PACKAGE_JSON} from '#constants';
 import {ErrorCodes} from '#error/codes';
 import {ControlMachine, type CtrlMachineInput} from '#machine/control-machine';
+import {PkgManagerMachine} from '#machine/pkg-manager';
 import {PluginLoaderMachine} from '#machine/plugin-loader-machine';
+import {ReporterMachine} from '#machine/reporter';
 import {OptionsParser} from '#options/options-parser';
 import {PluginRegistry} from '#plugin/plugin-registry';
 import {type SmokerOptions} from '#schema/smoker-options';
@@ -144,6 +146,86 @@ describe('midnight-smoker', function () {
                 aborted: true,
               },
             );
+          });
+        });
+
+        describe('when a ReporterMachine exits', function () {
+          describe('when it exits with an ERROR output', function () {
+            it('should abort', async function () {
+              const runner = createActorRunner(
+                ControlMachine.provide({
+                  actors: {
+                    ReporterMachine: ReporterMachine.provide({
+                      actors: {
+                        setupReporter: fromPromise(
+                          sandbox.stub().rejects(new Error('butts')),
+                        ),
+                      },
+                    }),
+                  },
+                }),
+              );
+              await expect(
+                runner.runUntilDone(input),
+                'to be fulfilled with value satisfying',
+                {
+                  type: ERROR,
+                  aborted: true,
+                  error: {
+                    errors: [
+                      {
+                        code: ErrorCodes.LifecycleError,
+                        cause: {
+                          message: 'butts',
+                        },
+                      },
+                    ],
+                  },
+                },
+              );
+            });
+          });
+        });
+
+        describe('when a PkgManagerMachine exits', function () {
+          describe('when it exits with an ERROR output', function () {
+            it('should abort', async function () {
+              const runner = createActorRunner(
+                ControlMachine.provide({
+                  actors: {
+                    PkgManagerMachine: PkgManagerMachine.provide({
+                      actors: {
+                        setupPkgManager: fromPromise(
+                          sandbox.stub().rejects(new Error('butts')),
+                        ),
+                      },
+                    }),
+                  },
+                }),
+                {
+                  logger: Debug('midnight-smoker:actor:ControlMachine'),
+                  id: 'ControlMachine',
+                },
+              );
+              await expect(
+                runner.runUntilDone(input),
+                'to be fulfilled with value satisfying',
+                {
+                  type: ERROR,
+                  aborted: true,
+                  error: {
+                    errors: [
+                      {
+                        code: ErrorCodes.LifecycleError,
+                        cause: {
+                          message: 'butts',
+                        },
+                      },
+                    ],
+                  },
+                },
+              );
+            });
           });
         });
 

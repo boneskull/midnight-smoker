@@ -1333,11 +1333,7 @@ export const PkgManagerMachine = setup({
       return msg;
     }),
   ],
-  exit: [
-    log(
-      ({context: {spec}}) => `PkgManagerMachine for ${spec} exiting gracefully`,
-    ),
-  ],
+  exit: [log(({context: {spec}}) => `PkgManagerMachine for ${spec} stopped`)],
   initial: 'startup',
   context: ({
     input: {
@@ -1384,15 +1380,15 @@ export const PkgManagerMachine = setup({
       ruleResultMap,
     };
   },
-  always: [
-    {
-      guard: 'hasError',
-      actions: [log(({context: {error}}) => `ERROR: ${error?.message}`)],
-    },
-  ],
   on: {
     ABORT: {
-      actions: [log('aborting!'), 'stopAllChildren', 'aborted'],
+      actions: [
+        log(({context: {error}}) =>
+          error ? `ERROR: ${error?.message}` : 'aborting',
+        ),
+        'stopAllChildren',
+        'aborted',
+      ],
       target: '.shutdown',
     },
   },

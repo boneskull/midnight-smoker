@@ -191,10 +191,13 @@ export class AnyActorRunner<T extends xs.AnyActorLogic>
     // order is important: create promise, then start.
     const actorPromise = xs.toPromise(actor);
     actor.start();
+    const ac = new AbortController();
     return Object.assign(
       Promise.race([
-        actorPromise,
-        scheduler.wait(timeout).then(() => {
+        actorPromise.finally(() => {
+          ac.abort();
+        }),
+        scheduler.wait(timeout, {signal: ac.signal}).then(() => {
           throw new Error(`Machine did not complete in ${timeout}ms`);
         }),
       ]),
@@ -321,10 +324,13 @@ export class AnyActorRunner<T extends xs.AnyActorLogic>
 
     const p = xs.toPromise(actor);
     actor.start();
+    const ac = new AbortController();
     return Object.assign(
       Promise.race([
-        p,
-        scheduler.wait(timeout).then(() => {
+        p.finally(() => {
+          ac.abort();
+        }),
+        scheduler.wait(timeout, {signal: ac.signal}).then(() => {
           const event = expectedEventQueue[0];
           if (event) {
             throw new Error(`Event not sent in ${timeout} ms: ${event}`);
@@ -540,6 +546,8 @@ export class AnyActorRunner<T extends xs.AnyActorLogic>
       actor = this.start(input, {logger, inspect, id});
     }
 
+    const ac = new AbortController();
+
     return Object.assign(
       Promise.race([
         new Promise<xs.ActorRefFrom<SpawnedActor>>((resolve) => {
@@ -550,8 +558,10 @@ export class AnyActorRunner<T extends xs.AnyActorLogic>
               }
             }),
           );
+        }).finally(() => {
+          ac.abort();
         }),
-        scheduler.wait(timeout).then(() => {
+        scheduler.wait(timeout, {signal: ac.signal}).then(() => {
           throw new Error(
             `Failed to detect an spawned actor matching ${actorId} in ${timeout}ms`,
           );
@@ -692,11 +702,14 @@ export class StateMachineRunner<T extends xs.AnyStateMachine>
     }
 
     const p = xs.toPromise(actor);
+    const ac = new AbortController();
     actor.start();
     return Object.assign(
       Promise.race([
-        p.then(noop, noop),
-        scheduler.wait(timeout).then(() => {
+        p.then(noop, noop).finally(() => {
+          ac.abort();
+        }),
+        scheduler.wait(timeout, {signal: ac.signal}).then(() => {
           throw new Error(
             `Failed to detect a transition from ${source} to ${target} in ${timeout}ms`,
           );

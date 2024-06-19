@@ -104,8 +104,11 @@ export const ControlMachine = setup({
     /**
      * Returns `true` if linting or script execution failed
      */
-    didFail: ({context: {lintResults = [], runScriptResults = []}}) =>
-      lintResults.some(({type}) => type === Const.FAILED) ||
+    didFail: ({
+      context: {lintResults = [], runScriptResults = [], pkgManagers},
+    }) =>
+      (Boolean(pkgManagers) &&
+        lintResults.some(({type}) => type === Const.FAILED)) ||
       runScriptResults.some(({type}) => type === Const.FAILED),
 
     /**
@@ -294,9 +297,10 @@ export const ControlMachine = setup({
      * procedure
      */
     flushReporters: enqueueActions(
-      ({enqueue, context: {reporterMachineRefs}}) => {
+      ({self, enqueue, context: {reporterMachineRefs}}) => {
         Object.values(reporterMachineRefs).forEach((reporterMachine) => {
           enqueue.sendTo(reporterMachine, {type: 'HALT'});
+          self.system._logger(`Sent HALT to ${reporterMachine.id}`);
         });
       },
     ),
@@ -360,13 +364,14 @@ export const ControlMachine = setup({
      */
     report: enqueueActions(
       (
-        {enqueue, context: {reporterMachineRefs}},
+        {self, enqueue, context: {reporterMachineRefs}},
         event: Event.CtrlEventEmitted,
       ) => {
         enqueue.emit(event);
         for (const reporterMachineRef of Object.values(reporterMachineRefs)) {
           enqueue.sendTo(reporterMachineRef, {type: 'EVENT', event});
         }
+        self.system._logger(`Emitted ${event.type}`);
       },
     ),
 
@@ -610,7 +615,19 @@ export const ControlMachine = setup({
     }),
     stopAllChildren: enqueueActions(({enqueue, self}) => {
       const snapshot = self.getSnapshot();
-      for (const child of Object.keys(snapshot.children)) {
+      const stoppableChildren = Object.keys(snapshot.children).filter(
+        (id) => !id.startsWith('ReporterMachine'),
+      );
+      for (const child of stoppableChildren) {
+        enqueue.stopChild(child);
+      }
+    }),
+    stopAllReporters: enqueueActions(({enqueue, self}) => {
+      const snapshot = self.getSnapshot();
+      const stoppableChildren = Object.keys(snapshot.children).filter(
+        (id) => !id.startsWith('ReporterMachine'),
+      );
+      for (const child of stoppableChildren) {
         enqueue.stopChild(child);
       }
     }),
@@ -659,20 +676,9 @@ export const ControlMachine = setup({
   initial: 'init',
   entry: [log('Starting')],
   exit: [log('Stopped')],
-  always: {
-    guard: 'hasError',
-    actions: [
-      log(({context: {error}}) => {
-        let msg = `❌ ERROR`;
-        if (error?.message) {
-          msg += `: ${error.message}`;
-        }
-        return msg;
-      }),
-    ],
-  },
   on: {
     ABORT: {
+      guard: not('isAborted'),
       description:
         'Immediately stops all children then begins shutdown procedure',
       actions: [
@@ -720,8 +726,8 @@ export const ControlMachine = setup({
             },
           },
           {type: 'stopReporterMachine', params: ({event}) => event},
+          'abort',
         ],
-        target: '#ControlMachine.shutdown',
       },
       {
         description:
@@ -787,6 +793,7 @@ export const ControlMachine = setup({
             type: 'stopPkgManagerMachine',
             params: ({event: {output}}) => output.id,
           },
+          'abort',
         ],
       },
     ],
@@ -1611,6 +1618,7 @@ export const ControlMachine = setup({
               type: 'report',
               params: {type: Events.BeforeExit},
             },
+            log('flushing reporters...'),
             {
               type: 'flushReporters',
             },
@@ -1625,6 +1633,21 @@ export const ControlMachine = setup({
               target: 'complete',
             },
           ],
+          after: {
+            2000: {
+              actions: [
+                log('Forcing shutdown; reporters did not exit cleanly'),
+                'stopAllReporters',
+                {
+                  type: 'assignError',
+                  params: () =>
+                    // TODO: create a TimeoutError
+                    new Error('Reporters failed to exit after 2000ms'),
+                },
+              ],
+              target: 'errored',
+            },
+          },
         },
         errored: {
           entry: [
