@@ -5,7 +5,7 @@ import {
   type EventName,
   type SomeDataForEvent,
 } from '#event/events';
-import {type PartialReporterContext} from '#machine/reporter/reporter-machine-events';
+import {type PartialReporterContext} from '#machine/reporter-machine';
 import {type ReporterContext} from '#schema/reporter-context';
 import {
   type ReporterDef,

@@ -5,8 +5,8 @@
  */
 
 import {SCRIPT_NAME} from '#constants';
+import {constant} from '#constants/create-constant';
 import type {RawSmokerOptions} from '#schema/smoker-options';
-import {constant} from '#util/constant';
 import {FileManager} from '#util/filemanager';
 import {toDualCasedObject} from '#util/schema-util';
 import Debug from 'debug';

@@ -12,22 +12,23 @@ import {
   type ReadSmokerPkgJsonInput,
 } from '#machine/actor/read-smoker-pkg-json';
 import * as Bus from '#machine/bus';
-import type * as Event from '#machine/event/control';
+import type * as Event from '#machine/event';
 import type * as Payload from '#machine/payload';
 import {
   PkgManagerMachine,
+  type PkgManagerMachineBeginEvent,
   type PkgManagerMachineOutput,
-} from '#machine/pkg-manager';
+} from '#machine/pkg-manager-machine';
 import {
   LoadableComponents,
   PluginLoaderMachine,
-  type PluginLoaderMachineOutputOk,
+  type PluginLoaderMachineOutput,
 } from '#machine/plugin-loader-machine';
 import {
   ReporterMachine,
   type ReporterMachineInput,
   type ReporterMachineOutput,
-} from '#machine/reporter';
+} from '#machine/reporter-machine';
 import * as MUtil from '#machine/util';
 import {PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
 import {type PluginRegistry} from '#plugin/plugin-registry';
@@ -52,7 +53,231 @@ import {
 type BusActorProp = ValueOf<typeof BusActors>;
 
 /**
- * Mapping of actor ID to actor reference prop in {@link CtrlMachineContext}.
+ * Output of a {@link SmokeMachine}
+ */
+export type SmokeMachineOutput = SmokeMachineOutputOk | SmokeMachineOutputError;
+
+/**
+ * Output of a {@link SmokeMachine} when an error occurs
+ */
+export type SmokeMachineOutputError = MUtil.ActorOutputError<
+  Error,
+  CommonSmokeMachineOutput
+>;
+
+/**
+ * Output of a {@link SmokeMachine} when no error occurs
+ */
+export type SmokeMachineOutputOk =
+  MUtil.ActorOutputOk<CommonSmokeMachineOutput>;
+
+/**
+ * Properties common to any type of {@link SmokeMachineOutput}
+ */
+interface CommonSmokeMachineOutput extends SmokeOkEventData {
+  /**
+   * If the machine has aborted, this will be `true`.
+   */
+  aborted?: boolean;
+
+  /**
+   * Actor ID
+   */
+  id: string;
+
+  /**
+   * If no scripts nor linting occurred, this will be `true`.
+   */
+  noop?: boolean;
+}
+
+/**
+ * Context for {@link SmokeMachine}
+ */
+export interface SmokeMachineContext extends SmokeMachineInput {
+  /**
+   * Whether or not the machine has aborted
+   */
+  aborted?: boolean;
+
+  /**
+   * Default executor provided to {@link PkgManagerMachine PkgManagerMachines}
+   * which uses `corepack` to run package manager executables.
+   *
+   * {@see {@link https://npm.im/corepack}}
+   */
+  defaultExecutor: Schema.Executor;
+
+  /**
+   * If anything errors, it will end up aggregated into here.
+   */
+  error?: Err.MachineError;
+
+  /**
+   * `FileManager` instance
+   */
+  fileManager: FileManager;
+
+  /**
+   * Reference to an {@link Bus.InstallBusMachine InstallBusMachine}
+   */
+  installBusMachineRef?: ActorRefFrom<typeof Bus.InstallBusMachine>;
+
+  /**
+   * List of directories which should be left behind after process completion
+   * (if any)
+   */
+  lingered?: string[];
+
+  /**
+   * Reference to a {@link Bus.LintBusMachine LintBusMachine}
+   */
+  lintBusMachineRef?: ActorRefFrom<typeof Bus.LintBusMachine>;
+
+  /**
+   * Results of linting workspaces
+   *
+   * Component of {@link SmokeMachineOutput}
+   */
+  lintResults?: Schema.LintResult[];
+
+  /**
+   * Mapping of actor ID to {@link PluginLoaderMachine} reference; one per plugin
+   */
+  loaderMachineRefs: Record<string, ActorRefFrom<typeof PluginLoaderMachine>>;
+
+  /**
+   * Reference to a {@link Bus.PackBusMachine PackBusMachine}
+   */
+  packBusMachineRef?: ActorRefFrom<typeof Bus.PackBusMachine>;
+
+  /**
+   * Temporary; package manager initialization payloads from the
+   * {@link PluginLoaderMachine}
+   */
+  pkgManagerInitPayloads: Payload.PkgManagerInitPayload[];
+
+  /**
+   * Mapping of actor ID to {@link PkgManagerMachine} reference
+   */
+  pkgManagerMachineRefs?: Record<
+    string,
+    ActorRefFrom<typeof PkgManagerMachine>
+  >;
+
+  /**
+   * Output of {@link PkgManagerMachine}s.
+   *
+   * Used in determining when we are "done"
+   */
+  pkgManagerMachinesOutput: PkgManagerMachineOutput[];
+
+  /**
+   * For convenience; static package manager specs for each enabled
+   * `PkgManagerDef`.
+   */
+  pkgManagers?: Schema.StaticPkgManagerSpec[];
+
+  /**
+   * Temporary; reporter initialization payloads from the
+   * {@link PluginLoaderMachine}
+   */
+  reporterInitPayloads: Payload.ReporterInitPayload[];
+
+  /**
+   * Mapping of actor ID to {@link ReporterMachine} reference; one per enabled
+   * reporter
+   */
+  reporterMachineRefs: Record<string, ActorRefFrom<typeof ReporterMachine>>;
+
+  /**
+   * Temporary; rule initialization payloads from the {@link PluginLoaderMachine}
+   */
+  ruleInitPayloads: Payload.RuleInitPayload[];
+
+  /**
+   * Results of running custom scripts.
+   *
+   * Component of {@link SmokeMachineOutput}
+   */
+  runScriptResults?: Schema.RunScriptResult[];
+
+  /**
+   * Reference to a {@link Bus.ScriptBusMachine ScriptBusMachine}
+   */
+  scriptBusMachineRef?: ActorRefFrom<typeof Bus.ScriptBusMachine>;
+
+  /**
+   * {@inheritDoc SmokeMachineInput.shouldShutdown}
+   */
+  shouldShutdown: boolean;
+
+  /**
+   * Contents of our own `package.json`
+   *
+   * Used in `RuleContext` objects when linting
+   */
+  smokerPkgJson?: PackageJson;
+
+  /**
+   * Timestamp; when the machine started
+   */
+  startTime: number;
+
+  /**
+   * Convenience; static plugin information for each plugin
+   */
+  staticPlugins: Schema.StaticPluginMetadata[];
+
+  /**
+   * The "system" {@link Executor} which will invoke a package manager in the
+   * user's `PATH`
+   */
+  systemExecutor: Schema.Executor;
+
+  /**
+   * {@link Schema.WorkspaceInfo Information} about workspaces
+   */
+  workspaceInfo: Schema.WorkspaceInfo[];
+}
+
+/**
+ * Input for {@link SmokeMachine}
+ */
+export interface SmokeMachineInput {
+  /**
+   * Default {@link Schema.Executor}
+   */
+  defaultExecutor?: Schema.Executor;
+
+  /**
+   * Custom {@link FileManager}
+   */
+  fileManager?: FileManager;
+
+  /**
+   * Plugin registry
+   */
+  pluginRegistry: PluginRegistry;
+
+  /**
+   * If `true`, the machine should shutdown after completing its work
+   */
+  shouldShutdown?: boolean;
+
+  /**
+   * Smoker options
+   */
+  smokerOptions: Schema.SmokerOptions;
+
+  /**
+   * System {@link Schema.Executor}
+   */
+  systemExecutor?: Schema.Executor;
+}
+
+/**
+ * Mapping of actor ID to actor reference prop in {@link SmokeMachineContext}.
  *
  * Used for various actions performing common tasks on bus machines.
  */
@@ -69,13 +294,13 @@ const BusActors = Util.constant({
  * Prior to this, plugins should already have been registered with the
  * {@link PluginRegistry}.
  */
-export const ControlMachine = setup({
+export const SmokeMachine = setup({
   types: {
-    context: {} as CtrlMachineContext,
-    emitted: {} as Event.CtrlEventEmitted,
-    events: {} as Event.CtrlEvent,
-    input: {} as CtrlMachineInput,
-    output: {} as CtrlMachineOutput,
+    context: {} as SmokeMachineContext,
+    emitted: {} as Event.SmokeMachineEventEmitted,
+    events: {} as Event.SmokeMachineEvent,
+    input: {} as SmokeMachineInput,
+    output: {} as SmokeMachineOutput,
   },
   actors: {
     ScriptBusMachine: Bus.ScriptBusMachine,
@@ -89,6 +314,10 @@ export const ControlMachine = setup({
     PluginLoaderMachine,
   },
   guards: {
+    /**
+     * Returns `true` if _all_ workspaces found have the `private` flag in their
+     * `package.json` files.
+     */
     allPrivateWorkspaces: (
       {
         context: {
@@ -97,7 +326,15 @@ export const ControlMachine = setup({
       },
       workspaceInfo: Schema.WorkspaceInfo[],
     ) => !allowPrivate && workspaceInfo.every(({pkgJson}) => pkgJson.private),
+
+    /**
+     * Returns true if the `aborted` flag has been set.
+     */
     isAborted: ({context: {aborted}}) => Boolean(aborted),
+
+    /**
+     * Returns `true` if the machine doesn't have anything to do.
+     */
 
     isNoop: and([not('shouldLint'), not('shouldRunScripts')]),
 
@@ -126,7 +363,8 @@ export const ControlMachine = setup({
     }) => lint,
 
     /**
-     * If `true`, then the `SHUTDOWN` event was received.
+     * If `true`, then either the `SHUTDOWN` event was received or it was set in
+     * {@link SmokeMachineInput}.
      */
     shouldShutdown: ({context: {shouldShutdown}}) => shouldShutdown,
 
@@ -138,6 +376,9 @@ export const ControlMachine = setup({
      * 1. This machine is not aborted
      * 2. No {@link PkgManagerMachine} has aborted
      * 3. Every `PkgManagerMachine` has completed its work
+     *
+     * @todo Should we be checking the health of `ReporterMachine`s and bus
+     *   machines?
      */
     isWorkComplete: and([
       not('isAborted'),
@@ -162,35 +403,84 @@ export const ControlMachine = setup({
       },
     }) => !isEmpty(scripts),
 
+    /**
+     * Returns `true` if a machine's output is {@link MUtil.ActorOutputOk "ok"}.
+     */
     isMachineOutputOk: (_, output: MUtil.ActorOutput) =>
       MUtil.isActorOutputOk(output),
 
+    /**
+     * Returns `true` if a machine's output is
+     * {@link MUtil.ActorOutputError "not ok"}.
+     */
     isMachineOutputNotOk: (_, output: MUtil.ActorOutput): boolean =>
       MUtil.isActorOutputNotOk(output),
 
+    /**
+     * Returns `true` if {@link SmokeMachineContext.error} is truthy.
+     */
     hasError: ({context: {error}}) => Boolean(error),
 
-    notHasError: not('hasError'),
+    /**
+     * Returns `true` if {@link SmokeMachineContext.error} is falsy.
+     */
+    hasNoError: not('hasError'),
 
+    /**
+     * Returns `true` if {@link SmokeMachineContext.reporterMachineRefs} has at
+     * least one value
+     */
     hasReporterRefs: ({context: {reporterMachineRefs}}) =>
       !isEmpty(reporterMachineRefs),
+
+    /**
+     * Returns `true` if {@link SmokeMachineContext.loaderMachineRefs} has at
+     * least one value
+     */
+    hasLoaderRefs: ({context: {loaderMachineRefs}}) =>
+      !isEmpty(loaderMachineRefs),
   },
   actions: {
+    /**
+     * Sends the `BEGIN` event to all `PkgManagerMachine`s, which should kickoff
+     * packing.
+     */
+    sendPkgManagerBegin: enqueueActions(
+      ({enqueue, context: {pkgManagerMachineRefs = {}}}) => {
+        const evt: PkgManagerMachineBeginEvent = {type: 'BEGIN'};
+        Object.values(pkgManagerMachineRefs).forEach((ref) => {
+          enqueue.sendTo(ref, evt);
+        });
+      },
+    ),
+
+    /**
+     * Raises an {@link Event.AbortEvent AbortEvent}.
+     */
     abort: raise({type: 'ABORT'}),
+
+    /**
+     * Sets {@link SmokeMachineContext.aborted} to `true`.
+     */
     aborted: assign({aborted: true}),
+
+    /**
+     * Appends a {@link PkgManagerMachineOutput} to
+     * {@link SmokeMachineContext.pkgManagerMachinesOutput pkgManagerMachinesOutput}
+     * (which is for tracking which {@link PkgManagerMachine PkgManagerMachines}
+     * have completed)
+     */
     appendPkgManagerMachineOutput: assign({
       pkgManagerMachinesOutput: (
         {context: {pkgManagerMachinesOutput}},
         output: PkgManagerMachineOutput,
-      ) => {
-        return [...pkgManagerMachinesOutput, output];
-      },
+      ) => [...pkgManagerMachinesOutput, output],
     }),
 
     /**
      * Assigns workspace info after {@link queryWorkspaces} has completed.
      *
-     * {@link CtrlMachineContext.uniquePkgsNames} is also cached here to safe a
+     * {@link SmokeMachineContext.uniquePkgsNames} is also cached here to safe a
      * few trips through the array.
      */
     assignWorkspaceInfo: assign({
@@ -229,9 +519,10 @@ export const ControlMachine = setup({
      * before the `BeforeExit` event.
      */
     appendLingered: assign({
-      lingered: ({context: {lingered = []}}, directory: string) => {
-        return [...lingered, directory];
-      },
+      lingered: ({context: {lingered = []}}, directory: string) => [
+        ...lingered,
+        directory,
+      ],
     }),
 
     /**
@@ -278,8 +569,10 @@ export const ControlMachine = setup({
 
     /**
      * Stops a given {@link PluginLoaderMachine}
+     *
+     * Generally executed _after_ the `PluginLoaderMachine` is done
      */
-    stopLoader: enqueueActions(
+    cleanupLoaderMachine: enqueueActions(
       ({enqueue, context: {loaderMachineRefs}}, id: string) => {
         enqueue.stopChild(id);
 
@@ -326,15 +619,13 @@ export const ControlMachine = setup({
     /**
      * Once the {@link Bus.ScriptBusMachine} emits `RunScriptsOk` or
      * `RunScriptsFailed`, we retain the results for output
-     * ({@link CtrlMachineOutput})
+     * ({@link SmokeMachineOutput})
      */
     appendRunScriptResult: assign({
       runScriptResults: (
         {context: {runScriptResults = []}},
         runScriptResult: Schema.RunScriptResult,
-      ) => {
-        return [...runScriptResults, runScriptResult];
-      },
+      ) => [...runScriptResults, runScriptResult],
     }),
 
     /**
@@ -358,26 +649,27 @@ export const ControlMachine = setup({
     ),
 
     /**
-     * Sends an event to all of the reporter machines.
+     * Sends an event directly to all of the reporter machines (not via a bus
+     * machine)
      *
      * Also emits the same event.
      */
     report: enqueueActions(
       (
         {self, enqueue, context: {reporterMachineRefs}},
-        event: Event.CtrlEventEmitted,
+        event: Event.SmokeMachineEventEmitted,
       ) => {
         enqueue.emit(event);
         for (const reporterMachineRef of Object.values(reporterMachineRefs)) {
           enqueue.sendTo(reporterMachineRef, {type: 'EVENT', event});
         }
-        self.system._logger(`Emitted ${event.type}`);
+        self.system._logger(`📨 Emitted ${event.type}`);
       },
     ),
 
     /**
      * Assigns `true` to
-     * {@link CtrlMachineContext.shouldShutdown shouldShutdown}.
+     * {@link SmokeMachineContext.shouldShutdown shouldShutdown}.
      *
      * This does _not_ imply an immediate shutdown; it just tells the machine to
      * go ahead and shutdown after its work is complete.
@@ -391,14 +683,14 @@ export const ControlMachine = setup({
      * At this point, the following should be true:
      *
      * 1. `midnight-smoker`'s `package.json` will have been read and assigned to
-     *    {@link CtrlMachineContext.smokerPkgJson smokerPkgJson}
+     *    {@link SmokeMachineContext.smokerPkgJson smokerPkgJson}
      * 2. The `PluginLoaderMachine` will have completed successfully and output the
      *    "init payload" objects, assigned to
-     *    {@link CtrlMachineContext.pkgManagerInitPayloads pkgManagerInitPayloads}
+     *    {@link SmokeMachineContext.pkgManagerInitPayloads pkgManagerInitPayloads}
      *    and
-     *    {@link CtrlMachineContext.reporterInitPayloads reporterInitPayloads}
+     *    {@link SmokeMachineContext.reporterInitPayloads reporterInitPayloads}
      * 3. Workspaces will have been queried and assigned to
-     *    {@link CtrlMachineContext.workspaceInfo workspaceInfo}
+     *    {@link SmokeMachineContext.workspaceInfo workspaceInfo}
      */
     spawnComponentMachines: assign({
       reporterMachineRefs: ({
@@ -492,8 +784,8 @@ export const ControlMachine = setup({
      * The machine is already likely stopped, but this makes it explicit and
      * clears the reference.
      */
-    stopPkgManagerMachine: enqueueActions(
-      ({enqueue, context: {pkgManagerMachineRefs}}, id: string) => {
+    cleanupPkgManagerMachine: enqueueActions(
+      ({enqueue, context: {pkgManagerMachineRefs}}, id: string): void => {
         enqueue.stopChild(id);
 
         assert.ok(pkgManagerMachineRefs);
@@ -507,27 +799,53 @@ export const ControlMachine = setup({
     ),
 
     /**
-     * Upon receiving initialization data from the {@link PluginLoaderMachine},
-     * this overwrites the context props with the data.
-     *
-     * In addition, it creates {@link CtrlMachineContext.pkgManagers}, which is
-     * just some sugar for keeping references to {@link StaticPkgManagerSpec}
-     * objects, which are often used by events.
+     * When a {@link PluginLoaderMachine} is finished, this processes its output.
      */
-    assignInitPayloads: assign({
-      reporterInitPayloads: (
-        _,
-        {reporterInitPayloads}: PluginLoaderMachineOutputOk,
-      ) => reporterInitPayloads,
-      pkgManagerInitPayloads: (
-        _,
-        {pkgManagerInitPayloads}: PluginLoaderMachineOutputOk,
-      ) => pkgManagerInitPayloads,
-      ruleInitPayloads: (_, {ruleInitPayloads}: PluginLoaderMachineOutputOk) =>
-        ruleInitPayloads,
-      pkgManagers: (_, {pkgManagerInitPayloads}: PluginLoaderMachineOutputOk) =>
-        pkgManagerInitPayloads.map(({spec}) => Util.serialize(spec)),
-    }),
+    pluginLoaderMachineDoneHandler: enqueueActions(
+      (
+        {
+          enqueue,
+          context: {
+            pkgManagers = [],
+            reporterInitPayloads = [],
+            pkgManagerInitPayloads = [],
+            ruleInitPayloads = [],
+          },
+        },
+        output: PluginLoaderMachineOutput,
+      ): void => {
+        const {id} = output;
+        if (MUtil.isActorOutputOk(output)) {
+          const {
+            reporterInitPayloads: newReporterInitPayloads,
+            ruleInitPayloads: newRuleInitPayloads,
+            pkgManagerInitPayloads: newPkgManagerInitPayloads,
+          } = output;
+          const newPkgManagers = newPkgManagerInitPayloads.map(({spec}) =>
+            Util.serialize(spec),
+          );
+          enqueue.assign({
+            reporterInitPayloads: [
+              ...reporterInitPayloads,
+              ...newReporterInitPayloads,
+            ],
+            ruleInitPayloads: [...ruleInitPayloads, ...newRuleInitPayloads],
+            pkgManagerInitPayloads: [
+              ...pkgManagerInitPayloads,
+              ...newPkgManagerInitPayloads,
+            ],
+            pkgManagers: [...pkgManagers, ...newPkgManagers],
+          });
+        } else {
+          // @ts-expect-error - TS sux
+          enqueue({type: 'assignError', params: output.error});
+          // @ts-expect-error - TS sux
+          enqueue({type: 'abort'});
+        }
+        // @ts-expect-error - TS sux
+        enqueue({type: 'cleanupLoaderMachine', params: id});
+      },
+    ),
 
     /**
      * After the init payloads have been used to spawn
@@ -535,7 +853,7 @@ export const ControlMachine = setup({
      * {@link PkgManagerMachine PkgManagerMachines}, we can safely drop the data
      * from the context.
      */
-    freeInitPayloads: assign({
+    clearInitPayloads: assign({
       pkgManagerInitPayloads: [],
       reporterInitPayloads: [],
       ruleInitPayloads: [],
@@ -545,7 +863,7 @@ export const ControlMachine = setup({
      * Generic action to free an event bus machine reference (and stop the
      * machine)
      */
-    freeBusMachineRef: enqueueActions(
+    cleanupBusMachine: enqueueActions(
       ({enqueue, context}, prop: BusActorProp) => {
         const ref = context[prop];
         if (ref) {
@@ -560,10 +878,10 @@ export const ControlMachine = setup({
      *
      * Events generally come from the
      * {@link PkgManagerMachine PkgManagerMachines}, and are sent here (the
-     * `ControlMachine`). This forwards those events to the appropriate event
-     * bus machine.
+     * `SmokeMachine`). This forwards those events to the appropriate event bus
+     * machine.
      *
-     * In some cases, the `ControlMachine` needs to take action based on the
+     * In some cases, the `SmokeMachine` needs to take action based on the
      * events; this is _a_ reason why the events are not sent directly from
      * `PkgManagerMachine` to the bus machines.
      */
@@ -613,7 +931,21 @@ export const ControlMachine = setup({
         return {...smokerOptions, add: normalizedAdds};
       },
     }),
-    stopAllChildren: enqueueActions(({enqueue, self}) => {
+
+    /**
+     * Stops most children, including:
+     *
+     * - `PkgManagerMachine`
+     * - `PluginLoaderMachine`
+     * - Any bus machines
+     *
+     * It _does not_ stop `ReporterMachine`s, because a) they may still have
+     * events they need to emit, and b) the `SmokeMachine` still needs to emit
+     * events during its shutdown process.
+     *
+     * @see `destroyAllReporterMachines` action
+     */
+    destroyMostChildren: enqueueActions(({enqueue, self}) => {
       const snapshot = self.getSnapshot();
       const stoppableChildren = Object.keys(snapshot.children).filter(
         (id) => !id.startsWith('ReporterMachine'),
@@ -622,18 +954,151 @@ export const ControlMachine = setup({
         enqueue.stopChild(child);
       }
     }),
-    stopAllReporters: enqueueActions(({enqueue, self}) => {
-      const snapshot = self.getSnapshot();
-      const stoppableChildren = Object.keys(snapshot.children).filter(
-        (id) => !id.startsWith('ReporterMachine'),
-      );
-      for (const child of stoppableChildren) {
-        enqueue.stopChild(child);
-      }
+
+    /**
+     * Stops all `ReporterMachines`s.
+     *
+     * This action is taken as a last resort if the `ReporterMachine`s do not
+     * shutdown gracefully before a timeout is exceeded.
+     */
+    destroyAllReporterMachines: enqueueActions(
+      ({enqueue, context: {reporterMachineRefs}}) => {
+        for (const child of Object.values(reporterMachineRefs)) {
+          enqueue.stopChild(child);
+        }
+        enqueue.assign({
+          reporterMachineRefs: Object.create(
+            null,
+          ) as SmokeMachineContext['reporterMachineRefs'],
+        });
+      },
+    ),
+
+    spawnEventBusMachines: assign({
+      packBusMachineRef: ({
+        spawn,
+        context: {workspaceInfo, smokerOptions, pkgManagers},
+        self: parentRef,
+      }) => {
+        assert.ok(pkgManagers);
+        const input: Bus.PackBusMachineInput = {
+          workspaceInfo,
+          smokerOptions,
+          pkgManagers,
+          parentRef,
+        };
+        const actor = spawn('PackBusMachine', {
+          id: 'PackBusMachine',
+          input,
+          systemId: 'PackBusMachine',
+        });
+        return MUtil.monkeypatchActorLogger(actor, 'PackBusMachine');
+      },
+      installBusMachineRef: ({
+        spawn,
+        context: {workspaceInfo, smokerOptions, pkgManagers},
+        self: parentRef,
+      }) => {
+        assert.ok(pkgManagers);
+        const input: Bus.InstallBusMachineInput = {
+          workspaceInfo,
+          smokerOptions,
+          pkgManagers,
+          parentRef,
+        };
+        const actor = spawn('InstallBusMachine', {
+          id: 'InstallBusMachine',
+          input,
+          systemId: 'InstallBusMachine',
+        });
+        return MUtil.monkeypatchActorLogger(actor, 'InstallBusMachine');
+      },
+      lintBusMachineRef: ({
+        spawn,
+        context: {workspaceInfo, smokerOptions, pkgManagers, ruleInitPayloads},
+        self: parentRef,
+      }) => {
+        // refuse to spawn if we shouldn't be linting anyway
+        if (!smokerOptions.lint) {
+          return undefined;
+        }
+        assert.ok(pkgManagers);
+        const input: Bus.LintBusMachineInput = {
+          workspaceInfo,
+          smokerOptions,
+          pkgManagers,
+          parentRef,
+          ruleDefs: ruleInitPayloads.map(({def}) => def),
+        };
+        const actor = spawn('LintBusMachine', {
+          id: 'LintBusMachine',
+          input,
+          systemId: 'LintBusMachine',
+        });
+        return MUtil.monkeypatchActorLogger(actor, 'LintBusMachine');
+      },
+      scriptBusMachineRef: ({
+        spawn,
+        context: {smokerOptions, pkgManagers, workspaceInfo},
+        self: parentRef,
+      }) => {
+        // refuse to spawn anything if there are no scripts requested
+        if (isEmpty(smokerOptions.script)) {
+          return undefined;
+        }
+        assert.ok(pkgManagers);
+        const input: Bus.ScriptBusMachineInput = {
+          smokerOptions,
+          pkgManagers,
+          parentRef,
+          workspaceInfo,
+        };
+        const actor = spawn('ScriptBusMachine', {
+          id: 'ScriptBusMachine',
+          input,
+          systemId: 'ScriptBusMachine',
+        });
+        return MUtil.monkeypatchActorLogger(actor, 'ScriptBusMachine');
+      },
     }),
+
+    /**
+     * Compares package managers received by the `PluginLoaderMachine`s against
+     * those that were requested by the user, and aborts if any are unsupported
+     * (missing).
+     */
+    validatePkgManagers: enqueueActions(
+      ({
+        enqueue,
+        context: {
+          smokerOptions: {pkgManager: desiredPkgManagers = []},
+          pkgManagerInitPayloads,
+        },
+      }) => {
+        const unsupportedPkgManagers = PkgManagerSpec.filterUnsupported(
+          pkgManagerInitPayloads.map(({spec}) => spec),
+          desiredPkgManagers,
+        );
+
+        for (const unsupported of unsupportedPkgManagers) {
+          enqueue({
+            // @ts-expect-error - TS sux
+            type: 'assignError',
+            params: new Err.UnsupportedPackageManagerError(
+              `No package manager implementation found that can handle "${unsupported}"`,
+              unsupported,
+            ),
+          });
+        }
+        if (!isEmpty(unsupportedPkgManagers)) {
+          // @ts-expect-error - TS sux
+          enqueue('abort');
+        }
+      },
+    ),
   },
 }).createMachine({
-  id: 'ControlMachine',
+  id: 'SmokeMachine',
   context: ({
     input: {
       fileManager,
@@ -643,7 +1108,7 @@ export const ControlMachine = setup({
       shouldShutdown = false,
       ...rest
     },
-  }): CtrlMachineContext => {
+  }): SmokeMachineContext => {
     defaultExecutor ??= rest.pluginRegistry.getExecutor(
       Const.DEFAULT_EXECUTOR_ID,
     );
@@ -651,10 +1116,17 @@ export const ControlMachine = setup({
       Const.SYSTEM_EXECUTOR_ID,
     );
     fileManager ??= Util.FileManager.create();
-    const staticPlugins: CtrlMachineContext['staticPlugins'] = Util.serialize(
+    const staticPlugins: SmokeMachineContext['staticPlugins'] = Util.serialize(
       rest.pluginRegistry.plugins,
     );
-    const startTime: CtrlMachineContext['startTime'] = performance.now();
+    const startTime: SmokeMachineContext['startTime'] = performance.now();
+    const loaderMachineRefs = Object.create(
+      null,
+    ) as SmokeMachineContext['loaderMachineRefs'];
+    const reporterMachineRefs = Object.create(
+      null,
+    ) as SmokeMachineContext['reporterMachineRefs'];
+
     return {
       ...rest,
       defaultExecutor,
@@ -664,8 +1136,8 @@ export const ControlMachine = setup({
       shouldShutdown,
       staticPlugins,
       startTime,
-      loaderMachineRefs: {},
-      reporterMachineRefs: {},
+      loaderMachineRefs,
+      reporterMachineRefs,
       workspaceInfo: [],
       pkgManagerInitPayloads: [],
       reporterInitPayloads: [],
@@ -698,7 +1170,7 @@ export const ControlMachine = setup({
           }
           return msg;
         }),
-        'stopAllChildren',
+        'destroyMostChildren',
         'aborted',
       ],
       target: '.shutdown',
@@ -749,6 +1221,7 @@ export const ControlMachine = setup({
       },
     ],
 
+    // TODO: create action pkgManagerMachineDoneHandler
     'xstate.done.actor.PkgManagerMachine.*': [
       {
         description:
@@ -763,7 +1236,7 @@ export const ControlMachine = setup({
             params: ({event: {output}}) => output,
           },
           {
-            type: 'stopPkgManagerMachine',
+            type: 'cleanupPkgManagerMachine',
             params: ({event: {output}}) => output.id,
           },
           log(
@@ -790,7 +1263,7 @@ export const ControlMachine = setup({
             },
           },
           {
-            type: 'stopPkgManagerMachine',
+            type: 'cleanupPkgManagerMachine',
             params: ({event: {output}}) => output.id,
           },
           'abort',
@@ -959,6 +1432,8 @@ export const ControlMachine = setup({
               },
             },
             loadingPlugins: {
+              description:
+                'Gathers component objects from each plugin; completed when all spawned PluginLoaderMachines have exited gracefully',
               entry: log('Spawning PluginLoaderMachine'),
               initial: 'loading',
               states: {
@@ -967,49 +1442,21 @@ export const ControlMachine = setup({
                     'Spawns PluginLoaderMachines; one per plugin. These will ultimately provide the PkgManagerDef, ReporterDef and RuleDef objects',
                   entry: 'spawnLoaders',
                   on: {
-                    'xstate.done.actor.PluginLoaderMachine.*': [
-                      {
-                        description:
-                          'Assigns init payloads (from PluginLoaderMachine output) to the context',
-                        guard: {
-                          type: 'isMachineOutputOk',
-                          params: ({event: {output}}) => output,
-                        },
-                        actions: [
-                          {
-                            type: 'assignInitPayloads',
-                            params: ({event: {output}}) => {
-                              MUtil.assertActorOutputOk(output);
-                              return output;
-                            },
-                          },
-                        ],
-                        target: 'done',
+                    'xstate.done.actor.PluginLoaderMachine.*': {
+                      actions: {
+                        type: 'pluginLoaderMachineDoneHandler',
+                        params: ({event: {output}}) => output,
                       },
-                      {
-                        guard: {
-                          type: 'isMachineOutputNotOk',
-                          params: ({event: {output}}) => output,
-                        },
-                        actions: [
-                          {
-                            type: 'assignError',
-                            params: ({event: {output}}) => {
-                              MUtil.assertActorOutputNotOk(output);
-                              return output.error;
-                            },
-                          },
-                        ],
-                        target: 'errored',
-                      },
-                    ],
+                    },
+                  },
+                  always: {
+                    guard: not('hasLoaderRefs'),
+                    target: 'done',
                   },
                 },
                 done: {
-                  type: Const.FINAL,
-                },
-                errored: {
-                  entry: 'abort',
+                  description:
+                    'At this point, all PluginLoaderMachines should be done',
                   type: Const.FINAL,
                 },
               },
@@ -1017,50 +1464,19 @@ export const ControlMachine = setup({
           },
           onDone: [
             {
-              guard: 'notHasError',
-              target: 'validatePkgManagers',
+              guard: 'hasError',
+              actions: log('Refusing to validate package managers!'),
             },
             {
-              guard: 'hasError',
-              actions: [log('Refusing to validate package managers!')],
+              target: 'validatingPkgManagers',
             },
           ],
         },
 
-        validatePkgManagers: {
+        validatingPkgManagers: {
           description:
             'Once the pkg managers have been loaded, we need to cross-reference them with the desired package managers--and fail if any are missing',
-          entry: [
-            enqueueActions(
-              ({
-                enqueue,
-                context: {
-                  smokerOptions: {pkgManager: desiredPkgManagers = []},
-                  pkgManagerInitPayloads,
-                },
-              }) => {
-                const unsupportedPkgManagers = PkgManagerSpec.filterUnsupported(
-                  pkgManagerInitPayloads.map(
-                    ({spec}) => spec,
-                    desiredPkgManagers,
-                  ),
-                );
-
-                for (const unsupported of unsupportedPkgManagers) {
-                  enqueue({
-                    type: 'assignError',
-                    params: new Err.UnsupportedPackageManagerError(
-                      `No package manager implementation found that can handle "${unsupported}"`,
-                      unsupported,
-                    ),
-                  });
-                }
-                if (!isEmpty(unsupportedPkgManagers)) {
-                  enqueue('abort');
-                }
-              },
-            ),
-          ],
+          entry: 'validatePkgManagers',
           always: [
             {
               guard: 'hasError',
@@ -1077,127 +1493,22 @@ export const ControlMachine = setup({
         spawningEventBusMachines: {
           description:
             'Spawns logically-organized helper machines machines which receive events from this machine, then prepare and emit events to the ReporterMachines',
-          entry: [
-            assign({
-              packBusMachineRef: ({
-                spawn,
-                context: {workspaceInfo, smokerOptions, pkgManagers},
-                self: parentRef,
-              }) => {
-                assert.ok(pkgManagers);
-                const input: Bus.PackBusMachineInput = {
-                  workspaceInfo,
-                  smokerOptions,
-                  pkgManagers,
-                  parentRef,
-                };
-                const actor = spawn('PackBusMachine', {
-                  input,
-                  systemId: 'PackBusMachine',
-                });
-                return MUtil.monkeypatchActorLogger(actor, 'PackBusMachine');
-              },
-              installBusMachineRef: ({
-                spawn,
-                context: {workspaceInfo, smokerOptions, pkgManagers},
-                self: parentRef,
-              }) => {
-                assert.ok(pkgManagers);
-                const input: Bus.InstallBusMachineInput = {
-                  workspaceInfo,
-                  smokerOptions,
-                  pkgManagers,
-                  parentRef,
-                };
-                const actor = spawn('InstallBusMachine', {
-                  input,
-                  systemId: 'InstallBusMachine',
-                });
-                return MUtil.monkeypatchActorLogger(actor, 'InstallBusMachine');
-              },
-              lintBusMachineRef: ({
-                spawn,
-                context: {
-                  workspaceInfo,
-                  smokerOptions,
-                  pkgManagers,
-                  ruleInitPayloads,
-                },
-                self: parentRef,
-              }) => {
-                // refuse to spawn if we shouldn't be linting anyway
-                if (!smokerOptions.lint) {
-                  return undefined;
-                }
-                assert.ok(pkgManagers);
-                const input: Bus.LintBusMachineInput = {
-                  workspaceInfo,
-                  smokerOptions,
-                  pkgManagers,
-                  parentRef,
-                  ruleDefs: ruleInitPayloads.map(({def}) => def),
-                };
-                const actor = spawn('LintBusMachine', {
-                  input,
-                  systemId: 'LintBusMachine',
-                });
-                return MUtil.monkeypatchActorLogger(actor, 'LintBusMachine');
-              },
-              scriptBusMachineRef: ({
-                spawn,
-                context: {smokerOptions, pkgManagers, workspaceInfo},
-                self: parentRef,
-              }) => {
-                // refuse to spawn anything if there are no scripts requested
-                if (isEmpty(smokerOptions.script)) {
-                  return undefined;
-                }
-                assert.ok(pkgManagers);
-                const input: Bus.ScriptBusMachineInput = {
-                  smokerOptions,
-                  pkgManagers,
-                  parentRef,
-                  workspaceInfo,
-                };
-                const actor = spawn('ScriptBusMachine', {
-                  input,
-                  systemId: 'ScriptBusMachine',
-                });
-                return MUtil.monkeypatchActorLogger(actor, 'ScriptBusMachine');
-              },
-            }),
-          ],
+          entry: 'spawnEventBusMachines',
           always: [
-            {
-              guard: 'notHasError',
-              target: 'spawningComponents',
-            },
             {
               guard: 'hasError',
               actions: [log('Refusing to spawn components!')],
             },
+            'spawningComponents',
           ],
         },
+
         spawningComponents: {
           description:
             'From components registered via plugins, Spawns PkgManagerMachines (one per PkgManagerDef) and ReporterMachines (one per ReporterDef)',
-          // TODO: ensure pkg manager doesn't start emitting events before the PackBusMachine is ready
           entry: 'spawnComponentMachines',
-          exit: 'freeInitPayloads',
-          always: [
-            {
-              guard: 'hasError',
-              target: 'errored',
-            },
-            {
-              guard: 'notHasError',
-              target: 'done',
-            },
-          ],
-        },
-        errored: {
-          entry: 'abort',
-          type: Const.FINAL,
+          exit: 'clearInitPayloads',
+          always: 'done',
         },
         done: {
           type: Const.FINAL,
@@ -1205,13 +1516,10 @@ export const ControlMachine = setup({
       },
       onDone: [
         {
-          guard: 'notHasError',
-          target: '#ControlMachine.working',
-        },
-        {
           guard: 'hasError',
           actions: log('Refusing to pack!'),
         },
+        {target: 'working'},
       ],
     },
 
@@ -1243,16 +1551,19 @@ export const ControlMachine = setup({
             listening: {
               description:
                 'Tells the PackBusMachine to emit PackBegin and start listening for events coming out of the PkgManagerMachines',
-              entry: {
-                type: 'listen',
-                params: BusActors.PackBusMachine,
-              },
+              entry: [
+                {
+                  type: 'listen',
+                  params: BusActors.PackBusMachine,
+                },
+                'sendPkgManagerBegin',
+              ],
               always: {
                 guard: 'hasError',
                 target: 'errored',
               },
               exit: {
-                type: 'freeBusMachineRef',
+                type: 'cleanupBusMachine',
                 params: BusActors.PackBusMachine,
               },
               on: {
@@ -1302,7 +1613,7 @@ export const ControlMachine = setup({
               },
 
               exit: {
-                type: 'freeBusMachineRef',
+                type: 'cleanupBusMachine',
                 params: BusActors.InstallBusMachine,
               },
 
@@ -1338,7 +1649,7 @@ export const ControlMachine = setup({
             idle: {
               always: {
                 guard: not('shouldLint'),
-                target: 'done',
+                target: 'noop',
               },
               on: {
                 'INSTALL.PKG_INSTALL_OK': {
@@ -1358,7 +1669,7 @@ export const ControlMachine = setup({
                 target: 'errored',
               },
               exit: {
-                type: 'freeBusMachineRef',
+                type: 'cleanupBusMachine',
                 params: BusActors.LintBusMachine,
               },
               on: {
@@ -1382,7 +1693,7 @@ export const ControlMachine = setup({
                       params: ({event: {results}}) => results,
                     },
                   ],
-                  target: 'done',
+                  target: 'ok',
                 },
                 [Events.LintFailed]: {
                   actions: [
@@ -1391,14 +1702,20 @@ export const ControlMachine = setup({
                       params: ({event: {results}}) => results,
                     },
                   ],
-                  target: 'errored',
+                  target: 'failed',
                 },
               },
             },
-            done: {
+            errored: {
               type: Const.FINAL,
             },
-            errored: {
+            ok: {
+              type: Const.FINAL,
+            },
+            failed: {
+              type: Const.FINAL,
+            },
+            noop: {
               type: Const.FINAL,
             },
           },
@@ -1409,7 +1726,7 @@ export const ControlMachine = setup({
             idle: {
               always: {
                 guard: not('shouldRunScripts'),
-                target: 'done',
+                target: 'noop',
               },
               on: {
                 'INSTALL.PKG_INSTALL_OK': 'listening',
@@ -1421,7 +1738,7 @@ export const ControlMachine = setup({
                 params: BusActors.ScriptBusMachine,
               },
               exit: {
-                type: 'freeBusMachineRef',
+                type: 'cleanupBusMachine',
                 params: BusActors.ScriptBusMachine,
               },
               on: {
@@ -1443,27 +1760,31 @@ export const ControlMachine = setup({
                       params: ({event}) => event.results,
                     },
                   ],
-                  target: 'done',
+                  target: 'ok',
                 },
-                [Events.RunScriptsFailed]: 'errored',
+                [Events.RunScriptsFailed]: 'failed',
               },
             },
-            done: {
+            failed: {
+              type: Const.FINAL,
+            },
+            ok: {
               type: Const.FINAL,
             },
             errored: {
               type: Const.FINAL,
             },
+            noop: {
+              type: Const.FINAL,
+            },
           },
         },
       },
-      always: [
-        {
-          // we begin the shutdown process when 1. the shouldShutdown flag is true, and 2. when all pkg managers have shut themselves down.
-          guard: and(['shouldShutdown', 'isWorkComplete']),
-          target: '#ControlMachine.shutdown',
-        },
-      ],
+      always: {
+        // we begin the shutdown process when 1. the shouldShutdown flag is true, and 2. when all pkg managers have shut themselves down.
+        guard: and(['shouldShutdown', 'isWorkComplete']),
+        target: 'shutdown',
+      },
     },
     shutdown: {
       description:
@@ -1580,35 +1901,27 @@ export const ControlMachine = setup({
             'Determines whether or not to report a lingering temp dir',
           always: [
             {
-              guard: {type: 'hasLingered'},
+              guard: 'hasLingered',
               target: 'reportLingered',
             },
-            {
-              guard: not('hasLingered'),
-              target: 'beforeExit',
-            },
+            'beforeExit',
           ],
         },
         reportLingered: {
           description: 'Reports the Lingered event',
-          always: {
-            guard: ({context: {lingered}}) => Boolean(lingered),
-            actions: [
-              {
-                type: 'report',
-                params: ({
-                  context: {lingered},
-                }): DataForEvent<typeof Events.Lingered> => {
-                  assert.ok(lingered);
-                  return {
-                    type: Events.Lingered,
-                    directories: lingered,
-                  };
-                },
-              },
-            ],
-            target: 'beforeExit',
+          entry: {
+            type: 'report',
+            params: ({
+              context: {lingered},
+            }): DataForEvent<typeof Events.Lingered> => {
+              assert.ok(lingered);
+              return {
+                type: Events.Lingered,
+                directories: lingered,
+              };
+            },
           },
+          always: 'beforeExit',
         },
         beforeExit: {
           description:
@@ -1629,7 +1942,7 @@ export const ControlMachine = setup({
               target: 'errored',
             },
             {
-              guard: and(['notHasError', not('hasReporterRefs')]),
+              guard: and(['hasNoError', not('hasReporterRefs')]),
               target: 'complete',
             },
           ],
@@ -1637,7 +1950,7 @@ export const ControlMachine = setup({
             2000: {
               actions: [
                 log('Forcing shutdown; reporters did not exit cleanly'),
-                'stopAllReporters',
+                'destroyAllReporterMachines',
                 {
                   type: 'assignError',
                   params: () =>
@@ -1692,9 +2005,9 @@ export const ControlMachine = setup({
       smokerOptions,
       aborted,
     },
-  }): CtrlMachineOutput => {
+  }): SmokeMachineOutput => {
     const noop = !smokerOptions.lint && isEmpty(smokerOptions.script);
-    const baseOutput: BaseCtrlMachineOutput = {
+    const baseOutput: CommonSmokeMachineOutput = {
       id: self.id,
       lint: lintResults,
       scripts: runScriptResults,
@@ -1717,93 +2030,3 @@ export const ControlMachine = setup({
         };
   },
 });
-
-export type CtrlMachineOutput = CtrlOutputOk | CtrlOutputError;
-
-export type CtrlOutputError = MUtil.ActorOutputError<
-  Error,
-  BaseCtrlMachineOutput
->;
-
-export type CtrlOutputOk = MUtil.ActorOutputOk<BaseCtrlMachineOutput>;
-
-interface BaseCtrlMachineOutput extends SmokeOkEventData {
-  id: string;
-
-  /**
-   * If no scripts nor linting occurred, this will be `true`.
-   */
-  noop?: boolean;
-
-  /**
-   * If the machine has aborted, this will be `true`.
-   */
-  aborted?: boolean;
-}
-
-export interface CtrlMachineContext extends CtrlMachineInput {
-  /**
-   * Whether or not the machine has aborted
-   */
-  aborted?: boolean;
-
-  /**
-   * Default executor provided to `PkgManagerMachine`s which are not using a
-   * system package manager.
-   */
-  defaultExecutor: Schema.Executor;
-
-  error?: Err.MachineError;
-  fileManager: FileManager;
-  installBusMachineRef?: ActorRefFrom<typeof Bus.InstallBusMachine>;
-  lingered?: string[];
-  lintBusMachineRef?: ActorRefFrom<typeof Bus.LintBusMachine>;
-  lintResults?: Schema.LintResult[];
-  loaderMachineRefs: Record<string, ActorRefFrom<typeof PluginLoaderMachine>>;
-  packBusMachineRef?: ActorRefFrom<typeof Bus.PackBusMachine>;
-  pkgManagerInitPayloads: Payload.PkgManagerInitPayload[];
-  pkgManagerMachineRefs?: Record<
-    string,
-    ActorRefFrom<typeof PkgManagerMachine>
-  >;
-
-  pkgManagerMachinesOutput: PkgManagerMachineOutput[];
-
-  pkgManagers?: Schema.StaticPkgManagerSpec[];
-  reporterInitPayloads: Payload.ReporterInitPayload[];
-  reporterMachineRefs: Record<string, ActorRefFrom<typeof ReporterMachine>>;
-  ruleInitPayloads: Payload.RuleInitPayload[];
-  runScriptResults?: Schema.RunScriptResult[];
-  scriptBusMachineRef?: ActorRefFrom<typeof Bus.ScriptBusMachine>;
-
-  /**
-   * {@inheritDoc CtrlMachineInput.shouldShutdown}
-   */
-  shouldShutdown: boolean;
-  smokerPkgJson?: PackageJson;
-
-  /**
-   * Timestamp; when the machine started
-   */
-  startTime: number;
-  staticPlugins: Schema.StaticPluginMetadata[];
-  systemExecutor: Schema.Executor;
-  workspaceInfo: Schema.WorkspaceInfo[];
-}
-
-/**
- * Input for {@link CtrlMachine}
- */
-
-export interface CtrlMachineInput {
-  defaultExecutor?: Schema.Executor;
-  fileManager?: FileManager;
-  pluginRegistry: PluginRegistry;
-
-  /**
-   * If `true`, the machine should shutdown after completing its work
-   */
-  shouldShutdown?: boolean;
-  smokerOptions: Schema.SmokerOptions;
-  systemExecutor?: Schema.Executor;
-}

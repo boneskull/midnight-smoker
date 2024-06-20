@@ -10,4 +10,4 @@ export {serialize} from '#util/serialize';
 
 export {delta} from '#util/util';
 
-export {constant} from '#util/constant';
+export {constant} from '#constants/create-constant';

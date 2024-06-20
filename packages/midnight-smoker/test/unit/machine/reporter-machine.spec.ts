@@ -10,7 +10,7 @@ import {
   teardownReporter,
   type ReporterLifecycleHookInput,
 } from '#machine/actor/reporter-lifecycle';
-import {ReporterMachine} from '#machine/reporter';
+import {ReporterMachine} from '#machine/reporter-machine';
 import {OptionsParser} from '#options/options-parser';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
 import {PluginRegistry} from '#plugin/plugin-registry';

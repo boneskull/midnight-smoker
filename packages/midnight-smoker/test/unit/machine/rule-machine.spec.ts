@@ -1,11 +1,10 @@
 import {OK, RuleSeverities} from '#constants';
 import {ErrorCodes} from '#error/codes';
 import {
-  RuleMachine,
   type PkgManagerMachineCheckErrorEvent,
   type PkgManagerMachineCheckResultEvent,
-  type RuleMachineInput,
-} from '#machine/pkg-manager';
+} from '#machine/pkg-manager-machine';
+import {RuleMachine, type RuleMachineInput} from '#machine/rule-machine';
 import {PluginRegistry} from '#plugin/plugin-registry';
 import {type LintManifest} from '#schema/lint-manifest';
 import {type SomeRuleConfig} from '#schema/rule-options';
@@ -30,15 +29,10 @@ import {createActorRunner} from './actor-helpers';
 const debug = Debug('midnight-smoker:test:loader-machine');
 const expect = unexpected.clone();
 
-const {
-  start,
-  waitForActor,
-  runUntilDone: run,
-  runUntilSnapshot,
-  runUntilEvent,
-} = createActorRunner(RuleMachine, {
-  logger: debug,
-});
+const {start, waitForActor, runUntilDone, runUntilSnapshot, runUntilEvent} =
+  createActorRunner(RuleMachine, {
+    logger: debug,
+  });
 
 describe('midnight-smoker', function () {
   describe('machine', function () {
@@ -95,7 +89,7 @@ describe('midnight-smoker', function () {
       describe('when plan is equal to the count of completed checks', function () {
         it('should exit', async function () {
           await expect(
-            run({...input, plan: 0}),
+            runUntilDone({...input, plan: 0}),
             'to be fulfilled with value satisfying',
             {results: expect.it('to be empty').and('to be an array')},
           );
@@ -187,7 +181,7 @@ describe('midnight-smoker', function () {
           });
 
           it('should output with a MachineError', async function () {
-            const actor = run(input);
+            const actor = runUntilDone(input);
             actor.send({
               type: 'CHECK',
               ctx: {} as StaticRuleContext,
@@ -204,7 +198,7 @@ describe('midnight-smoker', function () {
         });
 
         it('should output an array of the results', async function () {
-          const actor = run(input);
+          const actor = runUntilDone(input);
           actor.send({
             type: 'CHECK',
             ctx: {} as StaticRuleContext,

@@ -1,8 +1,9 @@
-import {FAILED, FINAL, OK} from '#constants';
+import {FAILED, FINAL, OK, type ERROR} from '#constants';
 import {AbortError, isAbortError} from '#error/abort-error';
 import {MachineError} from '#error/machine-error';
 import {RuleError} from '#error/rule-error';
 import {RuleContext} from '#rule/rule-context';
+import {type CheckFailed, type CheckOk} from '#schema/check-result';
 import {type LintManifest} from '#schema/lint-manifest';
 import {type SomeRuleConfig} from '#schema/rule-options';
 import {type StaticRuleContext} from '#schema/rule-static';
@@ -12,7 +13,8 @@ import {
   fromUnknownError,
   isSmokerError,
 } from '#util/error-util';
-import {asResult} from '#util/result';
+import {asResult, type Result} from '#util/result';
+import {serialize} from '#util/serialize';
 import {uniqueId} from '#util/unique-id';
 import {isNumber} from 'lodash';
 import assert from 'node:assert';
@@ -25,102 +27,16 @@ import {
   type ActorRefFrom,
   type Snapshot,
 } from 'xstate';
-import {idFromEventType} from '.';
-import {serialize} from '../util/serialize';
+import {type AbortEvent} from './event/abort';
 import {
-  type CheckInput,
-  type CheckOutput,
-  type CheckOutputFailed,
-  type CheckOutputOk,
   type PkgManagerMachineCheckErrorEvent,
   type PkgManagerMachineCheckResultEvent,
-} from './pkg-manager/pkg-manager-machine-events';
-import {type AbortEvent} from './util/abort-event';
+} from './pkg-manager-machine';
+import {idFromEventType} from './util';
 
-/**
- * Input for {@link RuleMachine}
- */
-export interface RuleMachineInput {
-  /**
-   * The {@link SomeRuleDef RuleDef} to which this machine is bound
-   */
-  def: SomeRuleDef;
+export type CheckOutput = CheckOutputOk | CheckOutputFailed;
 
-  /**
-   * The unique component ID of the {@link RuleMachineInput.def}
-   */
-  ruleId: string;
-
-  /**
-   * The user-supplied config for {@link RuleMachineInput.def}
-   */
-  config: SomeRuleConfig;
-
-  /**
-   * The parent machine reference
-   */
-  parentRef?: ActorRef<
-    Snapshot<unknown>,
-    PkgManagerMachineCheckResultEvent | PkgManagerMachineCheckErrorEvent
-  >;
-
-  /**
-   * The count of calls to {@link RuleMachineInput.def.check} expected to be run.
-   *
-   * @remarks
-   * Used by test code
-   */
-  plan?: number;
-}
-
-/**
- * Context for {@link RuleMachine}
- */
-export interface RuleMachineContext extends RuleMachineInput {
-  results: CheckOutput[];
-  checkRefs?: Record<string, ActorRefFrom<typeof check>>;
-  aborted?: boolean;
-  error?: MachineError;
-}
-
-/**
- * Event upon which the {@link RuleMachine} will run
- * {@link RuleMachineInput.def.check}
- */
-export interface RuleMachineCheckEvent {
-  type: 'CHECK';
-
-  /**
-   * Static rule context.
-   *
-   * A {@link RuleContext} will be created from this.
-   */
-  ctx: StaticRuleContext;
-
-  /**
-   * The {@link LintManifest} which triggered the run.
-   *
-   * @remarks
-   * This is not consumed directly, but is rather for round-tripping to
-   * associate the result with the manifest.
-   */
-  manifest: LintManifest;
-}
-
-/**
- * Event emitted when the {@link check} actor is done
- *
- * @event
- */
-export interface RuleMachineCheckActorDoneEvent {
-  type: 'xstate.done.actor.check.*';
-  output: CheckOutput;
-}
-
-export interface RuleMachineCheckActorErrorEvent {
-  type: 'xstate.error.actor.check.*';
-  error: Error;
-}
+export type RuleMachineCheckErrorEvent = PkgManagerMachineCheckErrorEvent;
 
 /**
  * Event emitted when a check is complete.
@@ -128,8 +44,6 @@ export interface RuleMachineCheckActorErrorEvent {
  * @event
  */
 export type RuleMachineCheckResultEvent = PkgManagerMachineCheckResultEvent;
-
-export type RuleMachineCheckErrorEvent = PkgManagerMachineCheckErrorEvent;
 
 /**
  * Union of events emitted by {@link RuleMachine}
@@ -147,6 +61,134 @@ export type RuleMachineEvent =
   | RuleMachineCheckActorErrorEvent
   | AbortEvent
   | RuleMachineCheckActorDoneEvent;
+
+export interface BaseCheckOutput {
+  config: SomeRuleConfig;
+  installPath: string;
+  manifest: Result<LintManifest>;
+  ruleId: string;
+}
+
+export interface CheckInput {
+  config: SomeRuleConfig;
+  ctx: StaticRuleContext;
+  def: SomeRuleDef;
+
+  /**
+   * This is for round-tripping
+   */
+  manifest: LintManifest;
+  ruleId: string;
+}
+
+export interface CheckOutputError extends BaseCheckOutput {
+  error: RuleError;
+  type: typeof ERROR;
+}
+
+export interface CheckOutputFailed extends BaseCheckOutput {
+  actorId: string;
+  result: CheckFailed[];
+  type: typeof FAILED;
+}
+
+export interface CheckOutputOk extends BaseCheckOutput {
+  actorId: string;
+  result: CheckOk;
+  type: typeof OK;
+}
+
+/**
+ * Event emitted when the {@link check} actor is done
+ *
+ * @event
+ */
+export interface RuleMachineCheckActorDoneEvent {
+  output: CheckOutput;
+  type: 'xstate.done.actor.check.*';
+}
+
+export interface RuleMachineCheckActorErrorEvent {
+  error: Error;
+  type: 'xstate.error.actor.check.*';
+}
+
+/**
+ * Event upon which the {@link RuleMachine} will run
+ * {@link RuleMachineInput.def.check}
+ */
+export interface RuleMachineCheckEvent {
+  /**
+   * Static rule context.
+   *
+   * A {@link RuleContext} will be created from this.
+   */
+  ctx: StaticRuleContext;
+
+  /**
+   * The {@link LintManifest} which triggered the run.
+   *
+   * @remarks
+   * This is not consumed directly, but is rather for round-tripping to
+   * associate the result with the manifest.
+   */
+  manifest: LintManifest;
+  type: 'CHECK';
+}
+
+/**
+ * Context for {@link RuleMachine}
+ */
+export interface RuleMachineContext extends RuleMachineInput {
+  aborted?: boolean;
+  checkRefs?: Record<string, ActorRefFrom<typeof check>>;
+  error?: MachineError;
+  results: CheckOutput[];
+}
+
+/**
+ * Input for {@link RuleMachine}
+ */
+export interface RuleMachineInput {
+  /**
+   * The user-supplied config for {@link RuleMachineInput.def}
+   */
+  config: SomeRuleConfig;
+
+  /**
+   * The {@link SomeRuleDef RuleDef} to which this machine is bound
+   */
+  def: SomeRuleDef;
+
+  /**
+   * The parent machine reference
+   */
+  parentRef?: ActorRef<
+    Snapshot<unknown>,
+    PkgManagerMachineCheckResultEvent | PkgManagerMachineCheckErrorEvent
+  >;
+
+  /**
+   * The count of calls to {@link RuleMachineInput.def.check} expected to be run.
+   *
+   * @remarks
+   * Used by test code
+   */
+  plan?: number;
+
+  /**
+   * The unique component ID of the {@link RuleMachineInput.def}
+   */
+  ruleId: string;
+}
+
+/**
+ * Output of {@link RuleMachine}
+ */
+export interface RuleMachineOutput {
+  aborted?: boolean;
+  results: CheckOutput[];
+}
 
 /**
  * Runs a single {@link RuleDef.check} against an installed package using
@@ -210,14 +252,6 @@ export const check = fromPromise<CheckOutput, CheckInput>(
     }
   },
 );
-
-/**
- * Output of {@link RuleMachine}
- */
-export interface RuleMachineOutput {
-  results: CheckOutput[];
-  aborted?: boolean;
-}
 
 /**
  * A machine which is bound to a {@link RuleDef} and executes its `check` method

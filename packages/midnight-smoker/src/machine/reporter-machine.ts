@@ -18,9 +18,15 @@ import {type SmokerOptions} from '#schema/smoker-options';
 import {fromUnknownError} from '#util/error-util';
 import {serialize} from '#util/serialize';
 import {isEmpty} from 'lodash';
-import {type PackageJson} from 'type-fest';
+import {type Except, type PackageJson} from 'type-fest';
 import {and, assign, log, not, setup} from 'xstate';
-import {type ReporterMachineEvents} from './reporter-machine-events';
+
+export type PartialReporterContext = Except<ReporterContext, 'signal'>;
+
+export type ReporterMachineEvents =
+  | ReporterMachineSmokeMachineEvent
+  | ReporterMachineAbortEvent
+  | ReporterMachineHaltEvent;
 
 /**
  * Output for {@link ReporterMachine}
@@ -29,6 +35,10 @@ import {type ReporterMachineEvents} from './reporter-machine-events';
  */
 export type ReporterMachineOutput = ActorOutput;
 
+export interface ReporterMachineAbortEvent {
+  type: 'ABORT';
+}
+
 /**
  * The machine context stuffs {@link ReporterMachineInput.smokerPkgJson} and
  * {@link ReporterMachineInput.smokerOptions} into
@@ -36,6 +46,11 @@ export type ReporterMachineOutput = ActorOutput;
  */
 export interface ReporterMachineContext
   extends Omit<ReporterMachineInput, 'smokerPkgJson' | 'smokerOptions'> {
+  /**
+   * The object passed to {@link drainQueue} which `ReporterDef` listeners
+   * receive.
+   */
+  ctx: OmitSignal<ReporterContext>;
   error?: MachineError;
 
   /**
@@ -55,12 +70,15 @@ export interface ReporterMachineContext
    * happening. If it _does_ happen, it will be ignored.
    */
   shouldShutdown: boolean;
+}
 
-  /**
-   * The object passed to {@link drainQueue} which `ReporterDef` listeners
-   * receive.
-   */
-  ctx: OmitSignal<ReporterContext>;
+export interface ReporterMachineSmokeMachineEvent {
+  event: SomeDataForEvent;
+  type: 'EVENT';
+}
+
+export interface ReporterMachineHaltEvent {
+  type: 'HALT';
 }
 
 /**

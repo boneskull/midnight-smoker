@@ -8,7 +8,6 @@ import {ScriptFailedError} from '#error/script-failed-error';
 import {UnknownScriptError} from '#error/unknown-script-error';
 import {type InstallManifest} from '#schema/install-manifest';
 import {type InstallResult} from '#schema/install-result';
-import {type LintManifest} from '#schema/lint-manifest';
 import {
   type PkgManagerContext,
   type PkgManagerDef,
@@ -16,19 +15,24 @@ import {
   type PkgManagerPackContext,
   type PkgManagerRunScriptContext,
 } from '#schema/pkg-manager-def';
+import {type RunScriptManifest} from '#schema/run-script-manifest';
 import {
+  type RunScriptResult,
   type RunScriptResultError,
   type RunScriptResultFailed,
 } from '#schema/run-script-result';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {type WorkspaceInfo} from '#schema/workspace-info';
 import {fromUnknownError, isExecaError, isSmokerError} from '#util/error-util';
-import {type FileManager} from '#util/filemanager';
-import Debug from 'debug';
 import {fromPromise} from 'xstate';
-import {type RunScriptOutput} from './pkg-manager-machine-events';
 
-const debug = Debug('midnight-smoker:machine:pkg-manager-machine-actors');
+/**
+ * Output of {@link runScript}
+ */
+export interface RunScriptOutput {
+  manifest: RunScriptManifest;
+  result: RunScriptResult;
+}
 
 /**
  * Input for {@link install}
@@ -52,17 +56,6 @@ export interface OperationInput<Ctx extends PkgManagerContext> {
   ctx: Omit<Ctx, 'signal'>;
   def: PkgManagerDef;
   spec: StaticPkgManagerSpec;
-}
-
-/**
- * Input for {@link prepareLintManifest}
- */
-export interface PrepareLintManifestInput {
-  fileManager: FileManager;
-
-  workspace: WorkspaceInfo;
-
-  installPath: string;
 }
 
 /**
@@ -187,26 +180,3 @@ export const runScript = fromPromise<RunScriptOutput, RunScriptInput>(
     }
   },
 );
-
-/**
- * Assigns package.json information from the installed workspace to a
- * {@link LintManifest}
- */
-export const prepareLintManifest = fromPromise<
-  LintManifest,
-  PrepareLintManifestInput
->(async ({input: {workspace, installPath, fileManager}, signal}) => {
-  debug('Searching for package.json from %s', installPath);
-  const {packageJson: installedPkgJson, path: installedPkgJsonPath} =
-    await fileManager.findPkgUp(installPath, {
-      strict: true,
-      signal,
-    });
-  return {
-    pkgName: installedPkgJson.name ?? workspace.pkgName,
-    pkgJsonPath: installedPkgJsonPath,
-    pkgJson: installedPkgJson,
-    workspace,
-    installPath,
-  };
-});

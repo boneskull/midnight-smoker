@@ -1,15 +1,17 @@
 export * from './bus';
 
-export * from './control-machine';
+export * from './smoke-machine';
 
 export * from './event';
 
 export * from './plugin-loader-machine';
 
-export * from './pkg-manager';
+export * from './pkg-manager-machine';
 
-export * from './reporter';
+export * from './reporter-machine';
 
 export * from './util';
 
 export * as xstate from 'xstate';
+
+export * from './rule-machine';

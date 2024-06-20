@@ -5,20 +5,13 @@ import {PackParseError} from '#error/pack-parse-error';
 import {type DataForEvent} from '#event/events';
 import {type PackEventData} from '#event/pack-events';
 import {type ListenEvent} from '#machine/bus';
-import {type ReporterMachine} from '#machine/reporter';
 import {type SmokerOptions} from '#schema/smoker-options';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {type WorkspaceInfo} from '#schema/workspace-info';
 import {assertSmokerError, fromUnknownError} from '#util/error-util';
 import {asResult} from '#util/result';
-import {
-  assign,
-  enqueueActions,
-  setup,
-  type ActorRefFrom,
-  type AnyActorRef,
-} from 'xstate';
-import {type CtrlPackEvents} from '../event/pack';
+import {assign, enqueueActions, setup, type AnyActorRef} from 'xstate';
+import {type SmokeMachinePackEvent} from '../event/pack';
 
 export interface PackBusMachineInput {
   workspaceInfo: WorkspaceInfo[];
@@ -33,7 +26,7 @@ export interface PackBusMachineContext extends PackBusMachineInput {
   error?: Error;
 }
 
-export type PackBusMachineEvents = ListenEvent | CtrlPackEvents;
+export type PackBusMachineEvents = ListenEvent | SmokeMachinePackEvent;
 
 export type ReportablePackEventData = DataForEvent<keyof PackEventData>;
 
@@ -58,20 +51,15 @@ export const PackBusMachine = setup({
         event: ReportablePackEventData,
       ) => {
         for (const id of actorIds) {
-          enqueue.sendTo(
-            ({system}) =>
-              system.get(id) as ActorRefFrom<typeof ReporterMachine>,
-            {type: 'EVENT', event},
-          );
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+          enqueue.sendTo<AnyActorRef>(({system}) => system.get(id), {
+            type: 'EVENT',
+            event,
+          });
         }
         enqueue.sendTo(parentRef, event);
       },
     ),
-    incrementPackCount: assign({
-      pkgManagerDidPackCount: ({context: {pkgManagerDidPackCount}}) => {
-        return pkgManagerDidPackCount + 1;
-      },
-    }),
     assignError: assign({
       // TODO: aggregate for multiple
       error: ({context}, {error}: {error?: unknown}): Error | undefined =>

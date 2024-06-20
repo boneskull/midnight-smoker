@@ -1,8 +1,8 @@
 /**
- * These events don't pass the xstate system boundary and are thus not listened
- * to by reporters.
+ * These events are internal to the state machines; `ReporterDef`
+ * implementations do not receive them.
  *
- * The events that reporters can listen to are found in
+ * The "public" events that reporters can listen to are found in
  * `midnight-smoker/events`.
  *
  * @packageDocumentation
@@ -18,8 +18,6 @@ export * from './pkg';
 
 export * from './script';
 
-export * from './smoker';
+export * from './smoke';
 
-export * from './control';
-
-export * from './verbatim';
+export * from './bus';

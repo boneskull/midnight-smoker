@@ -5,7 +5,7 @@ import {type RuleInitPayload} from '#machine/payload';
 import {
   PkgManagerMachine,
   type PkgManagerMachineInput,
-} from '#machine/pkg-manager';
+} from '#machine/pkg-manager-machine';
 import {OptionsParser} from '#options/options-parser';
 import {PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
@@ -32,10 +32,15 @@ import {createActorRunner} from './actor-helpers';
 const debug = Debug('midnight-smoker:test:pkg-manager-machine');
 const expect = unexpected.clone().use(unexpectedSinon);
 
-const {runUntilSnapshot, runUntilTransition, runUntilDone, runUntilEvent} =
-  createActorRunner(PkgManagerMachine, {
-    logger: debug,
-  });
+const {
+  runUntilSnapshot,
+  runUntilTransition,
+  runUntilDone,
+  runUntilEvent,
+  start,
+} = createActorRunner(PkgManagerMachine, {
+  logger: debug,
+});
 
 describe('midnight-smoker', function () {
   describe('machine', function () {
@@ -101,6 +106,7 @@ describe('midnight-smoker', function () {
             useWorkspaces: false,
             workspaceInfo: [],
             shouldShutdown: true,
+            immediate: true,
           };
         });
 
@@ -137,6 +143,32 @@ describe('midnight-smoker', function () {
                 aborted: true,
               },
             );
+          });
+        });
+
+        describe('when not in immediate mode', function () {
+          it('should not transition from initial state (.idle) to .startup', async function () {
+            await expect(
+              runUntilTransition(
+                'PkgManagerMachine.idle',
+                'PkgManagerMachine.startup',
+                {...input, immediate: false},
+              ),
+              'to be rejected',
+            );
+          });
+
+          describe('when "BEGIN" received', function () {
+            it('should transition from initial state (.idle) to .startup', async function () {
+              const actor = start({...input, immediate: false});
+              const p = runUntilTransition(
+                'PkgManagerMachine.idle',
+                'PkgManagerMachine.startup',
+                actor,
+              );
+              actor.send({type: 'BEGIN'});
+              await expect(p, 'to be fulfilled');
+            });
           });
         });
 
@@ -216,6 +248,7 @@ describe('midnight-smoker', function () {
               useWorkspaces: false,
               workspaceInfo: [],
               shouldShutdown: true,
+              immediate: true,
             };
           });
 
@@ -311,6 +344,7 @@ describe('midnight-smoker', function () {
               useWorkspaces: false,
               workspaceInfo: [workspaceInfo],
               shouldShutdown: true,
+              immediate: true,
             };
           });
 
@@ -809,6 +843,7 @@ describe('midnight-smoker', function () {
               useWorkspaces: false,
               workspaceInfo: [],
               shouldShutdown: true,
+              immediate: true,
             };
           });
 

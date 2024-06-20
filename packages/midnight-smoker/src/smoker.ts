@@ -7,7 +7,7 @@
  */
 import {type ComponentKind} from '#constants';
 import {InvalidArgError} from '#error/invalid-arg-error';
-import {ControlMachine, type CtrlMachineOutput} from '#machine/control-machine';
+import {SmokeMachine, type SmokeMachineOutput} from '#machine/smoke-machine';
 import {isActorOutputOk} from '#machine/util';
 import {OptionsParser} from '#options/options-parser';
 import {type Component, type ComponentObject} from '#plugin/component';
@@ -68,7 +68,7 @@ export class Smoker {
     {
       pluginRegistry = PluginRegistry.create(),
       fileManager = FileManager.create(),
-      controlMachine = ControlMachine,
+      controlMachine = SmokeMachine,
     }: SmokerCapabilities = {},
   ) {
     const {all, workspace} = opts;
@@ -195,11 +195,11 @@ export class Smoker {
         pluginRegistry,
         shouldShutdown: true,
       },
-      logger: Debug('midnight-smoker:ControlMachine'),
+      logger: Debug('midnight-smoker:SmokeMachine'),
       inspect: () => {},
     }).start();
 
-    const output = (await toPromise(controller)) as CtrlMachineOutput;
+    const output = (await toPromise(controller)) as SmokeMachineOutput;
 
     if (isActorOutputOk(output)) {
       const results: SmokeResults = {

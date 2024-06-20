@@ -13,30 +13,15 @@ import {
   loadPkgManagers,
   type LoadPkgManagersInput,
 } from './actor/load-pkg-managers';
+import {type AbortEvent} from './event/abort';
 import {
   type PkgManagerInitPayload,
   type ReporterInitPayload,
   type RuleInitPayload,
 } from './payload';
-import {type AbortEvent} from './util/abort-event';
-
-export const LoadableComponents = {
-  All: 'all',
-  PkgManagers: 'pkgManagers',
-  Reporters: 'reporters',
-  Rules: 'rules',
-} as const;
 
 export type LoadableComponent =
   (typeof LoadableComponents)[keyof typeof LoadableComponents];
-
-export interface PluginLoaderMachineInput {
-  plugin: Readonly<PluginMetadata>;
-  pluginRegistry: PluginRegistry;
-  smokerOptions: SmokerOptions;
-  component?: LoadableComponent;
-  workspaceInfo: WorkspaceInfo[];
-}
 
 export type PluginLoaderMachineContext = PluginLoaderMachineInput & {
   pkgManagerInitPayloads: PkgManagerInitPayload[];
@@ -47,22 +32,37 @@ export type PluginLoaderMachineContext = PluginLoaderMachineInput & {
   aborted?: boolean;
 };
 
-export type PluginLoaderMachineOutputOk = ActorOutputOk<{
-  pkgManagerInitPayloads: PkgManagerInitPayload[];
-  reporterInitPayloads: ReporterInitPayload[];
-  ruleInitPayloads: RuleInitPayload[];
-}>;
+export type PluginLoaderMachineEvent = AbortEvent;
+
+export type PluginLoaderMachineOutput =
+  | PluginLoaderMachineOutputOk
+  | PluginLoaderMachineOutputError;
 
 export type PluginLoaderMachineOutputError = ActorOutputError<
   MachineError,
   {aborted?: boolean}
 >;
 
-export type PluginLoaderMachineOutput =
-  | PluginLoaderMachineOutputOk
-  | PluginLoaderMachineOutputError;
+export type PluginLoaderMachineOutputOk = ActorOutputOk<{
+  pkgManagerInitPayloads: PkgManagerInitPayload[];
+  reporterInitPayloads: ReporterInitPayload[];
+  ruleInitPayloads: RuleInitPayload[];
+}>;
 
-export type PluginLoaderMachineEvent = AbortEvent;
+export interface PluginLoaderMachineInput {
+  component?: LoadableComponent;
+  plugin: Readonly<PluginMetadata>;
+  pluginRegistry: PluginRegistry;
+  smokerOptions: SmokerOptions;
+  workspaceInfo: WorkspaceInfo[];
+}
+
+export const LoadableComponents = {
+  All: 'all',
+  PkgManagers: 'pkgManagers',
+  Reporters: 'reporters',
+  Rules: 'rules',
+} as const;
 
 export const PluginLoaderMachine = setup({
   types: {

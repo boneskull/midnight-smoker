@@ -10,7 +10,7 @@
 
 /* eslint-disable @typescript-eslint/no-var-requires */
 
-import {MIDNIGHT_SMOKER, PACKAGE_JSON, UNKNOWN_TMPDIR_PREFIX} from '#constants';
+import {DEFAULT_TMPDIR_PREFIX, MIDNIGHT_SMOKER, PACKAGE_JSON} from '#constants';
 import {AbortError} from '#error/abort-error';
 import {MissingPackageJsonError} from '#error/missing-pkg-json-error';
 import {UnreadablePackageJsonError} from '#error/unreadable-pkg-json-error';
@@ -81,7 +81,7 @@ export class FileManager {
    * @returns New temp dir path
    */
   public async createTempDir(
-    prefix: string = UNKNOWN_TMPDIR_PREFIX,
+    prefix: string = DEFAULT_TMPDIR_PREFIX,
     signal?: AbortSignal,
   ): Promise<string> {
     if (signal?.aborted) {

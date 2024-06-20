@@ -1,14 +1,26 @@
+/**
+ * Exports {@link BusEvent}.
+ *
+ * @packageDocumentation
+ */
+
 import {type Events} from '#constants/event';
 import {type DataForEvent} from '#event/events';
 
 /**
- * These events are emitted by the bus machines, and are identical to the "real"
- * events emitted by midnight-smoker.
+ * Events emitted by bus machines and received by `SmokeMachine`.
+ *
+ * These are _not_ re-emitted by `SmokeMachine`.
+ *
+ * @event
  */
 
-export type VerbatimEvents = DataForEvent<VerbatimEventNames>;
+export type BusEvent = DataForEvent<BusEventName>;
 
-export type VerbatimEventNames =
+/**
+ * Names of {@link BusEvent} events.
+ */
+export type BusEventName =
   | typeof Events.LintOk
   | typeof Events.LintFailed
   | typeof Events.PackOk

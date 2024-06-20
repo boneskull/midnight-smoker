@@ -2,20 +2,13 @@ import {FINAL, InstallEvents} from '#constants';
 import {type InstallError} from '#error/install-error';
 import {type DataForEvent} from '#event/events';
 import {type InstallEventData} from '#event/install-events';
-import {type ReporterMachine} from '#machine/reporter';
 import {type SmokerOptions} from '#schema/smoker-options';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {type WorkspaceInfo} from '#schema/workspace-info';
 import {fromUnknownError} from '#util/error-util';
-import {
-  assign,
-  enqueueActions,
-  setup,
-  type ActorRefFrom,
-  type AnyActorRef,
-} from 'xstate';
-import {type CtrlInstallEvent} from '../event/install';
-import {type ListenEvent} from './bus-event';
+import {assign, enqueueActions, setup, type AnyActorRef} from 'xstate';
+import {type SmokeMachineInstallEvent} from '../event/install';
+import {type ListenEvent} from './common-event';
 
 export interface InstallBusMachineInput {
   workspaceInfo: WorkspaceInfo[];
@@ -31,7 +24,7 @@ export interface InstallBusMachineContext extends InstallBusMachineInput {
   error?: Error;
 }
 
-export type InstallBusMachineEvents = ListenEvent | CtrlInstallEvent;
+export type InstallBusMachineEvents = ListenEvent | SmokeMachineInstallEvent;
 
 export type ReportableInstallEventData = DataForEvent<keyof InstallEventData>;
 
@@ -54,11 +47,11 @@ export const InstallBusMachine = setup({
         event: ReportableInstallEventData,
       ) => {
         for (const id of machines) {
-          enqueue.sendTo(
-            ({system}) =>
-              system.get(id) as ActorRefFrom<typeof ReporterMachine>,
-            {type: 'EVENT', event},
-          );
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+          enqueue.sendTo<AnyActorRef>(({system}) => system.get(id), {
+            type: 'EVENT',
+            event,
+          });
         }
         enqueue.sendTo(parentRef, event);
       },

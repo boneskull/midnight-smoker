@@ -1,8 +1,8 @@
-import {type OmitSignal} from '#machine/util/actor-util';
 import {type ReporterContext} from '#schema/reporter-context';
 import {type ReporterDef} from '#schema/reporter-def';
 import {isFunction} from 'lodash';
 import {fromPromise} from 'xstate';
+import {type OmitSignal} from '../util';
 
 /**
  * Input for {@link setupReporter} and {@link teardownReporter}

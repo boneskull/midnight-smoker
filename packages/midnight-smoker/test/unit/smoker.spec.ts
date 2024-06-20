@@ -1,6 +1,5 @@
 import {DEFAULT_COMPONENT_ID, FINAL, SYSTEM_EXECUTOR_ID} from '#constants';
 import {type ExecResult} from '#executor';
-import {type CtrlMachineOutput} from '#machine/control-machine';
 import {OptionsParser} from '#options/options-parser';
 import {PluginRegistry} from '#plugin/plugin-registry';
 import {
@@ -18,6 +17,7 @@ import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
 import {setup, type AnyStateMachine} from 'xstate';
+import {type SmokeMachineOutput} from '../../dist/machine/smoke-machine';
 
 const expect = unexpected.clone().use(unexpectedSinon);
 
@@ -27,9 +27,9 @@ describe('midnight-smoker', function () {
   let fileManager: FileManager;
   let pluginRegistry: PluginRegistry;
 
-  let mockControlMachine: AnyStateMachine;
+  let mockSmokeMachine: AnyStateMachine;
   let outputStub: sinon.SinonStub;
-  let controlOutput: CtrlMachineOutput;
+  let controlOutput: SmokeMachineOutput;
   beforeEach(function () {
     sandbox = createSandbox();
     const {vol} = memfs();
@@ -47,7 +47,7 @@ describe('midnight-smoker', function () {
       plugins: serialize(pluginRegistry.plugins),
     };
     outputStub = sandbox.stub().returns(controlOutput);
-    mockControlMachine = setup({
+    mockSmokeMachine = setup({
       types: {input: {} as {shouldShutdown: boolean}},
     }).createMachine({
       id: 'test',
@@ -97,7 +97,7 @@ describe('midnight-smoker', function () {
         smoker = await Smoker.createWithCapabilities(opts, {
           fileManager,
           pluginRegistry,
-          controlMachine: mockControlMachine,
+          controlMachine: mockSmokeMachine,
         });
       });
 

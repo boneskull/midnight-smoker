@@ -1,9 +1,9 @@
 import {ERROR, Events, OK, PACKAGE_JSON} from '#constants';
 import {ErrorCodes} from '#error/codes';
-import {ControlMachine, type CtrlMachineInput} from '#machine/control-machine';
-import {PkgManagerMachine} from '#machine/pkg-manager';
+import {PkgManagerMachine} from '#machine/pkg-manager-machine';
 import {PluginLoaderMachine} from '#machine/plugin-loader-machine';
-import {ReporterMachine} from '#machine/reporter';
+import {ReporterMachine} from '#machine/reporter-machine';
+import {SmokeMachine, type SmokeMachineInput} from '#machine/smoke-machine';
 import {OptionsParser} from '#options/options-parser';
 import {PluginRegistry} from '#plugin/plugin-registry';
 import {type SmokerOptions} from '#schema/smoker-options';
@@ -28,14 +28,14 @@ const expect = unexpected.clone().use(unexpectedSinon);
 
 describe('midnight-smoker', function () {
   describe('machine', function () {
-    describe('ControlMachine', function () {
+    describe('SmokeMachine', function () {
       let pluginRegistry: PluginRegistry;
       let fileManager: FileManager;
       let vol: Volume;
       let smokerOptions: SmokerOptions;
       let sandbox: sinon.SinonSandbox;
-      let input: CtrlMachineInput;
-      let runner: StateMachineRunner<typeof ControlMachine>;
+      let input: SmokeMachineInput;
+      let runner: StateMachineRunner<typeof SmokeMachine>;
 
       beforeEach(async function () {
         ({vol} = memfs());
@@ -87,9 +87,9 @@ describe('midnight-smoker', function () {
           systemExecutor: nullExecutor,
         };
 
-        runner = createActorRunner(ControlMachine, {
-          logger: Debug('midnight-smoker:actor:ControlMachine'),
-          id: 'ControlMachine',
+        runner = createActorRunner(SmokeMachine, {
+          logger: Debug('midnight-smoker:actor:SmokeMachine'),
+          id: 'SmokeMachine',
         });
       });
 
@@ -127,7 +127,7 @@ describe('midnight-smoker', function () {
                     type: 'OK',
                   },
                 ],
-                id: 'ControlMachine',
+                id: 'SmokeMachine',
               },
             );
           });
@@ -153,7 +153,7 @@ describe('midnight-smoker', function () {
           describe('when it exits with an ERROR output', function () {
             it('should abort', async function () {
               const runner = createActorRunner(
-                ControlMachine.provide({
+                SmokeMachine.provide({
                   actors: {
                     ReporterMachine: ReporterMachine.provide({
                       actors: {
@@ -191,7 +191,7 @@ describe('midnight-smoker', function () {
           describe('when it exits with an ERROR output', function () {
             it('should abort', async function () {
               const runner = createActorRunner(
-                ControlMachine.provide({
+                SmokeMachine.provide({
                   actors: {
                     PkgManagerMachine: PkgManagerMachine.provide({
                       actors: {
@@ -203,8 +203,8 @@ describe('midnight-smoker', function () {
                   },
                 }),
                 {
-                  logger: Debug('midnight-smoker:actor:ControlMachine'),
-                  id: 'ControlMachine',
+                  logger: Debug('midnight-smoker:actor:SmokeMachine'),
+                  id: 'SmokeMachine',
                 },
               );
               await expect(
@@ -234,7 +234,7 @@ describe('midnight-smoker', function () {
             describe('when the context has an error when the child states have completed', function () {
               it('should not transition to .validatePkgManagers', async function () {
                 const runner = createActorRunner(
-                  ControlMachine.provide({
+                  SmokeMachine.provide({
                     actors: {
                       queryWorkspaces: fromPromise(() => {
                         throw new Error('butts');
@@ -245,8 +245,8 @@ describe('midnight-smoker', function () {
 
                 await expect(
                   runner.runUntilTransition(
-                    'ControlMachine.init.initComponents',
-                    'ControlMachine.init.validatePkgManagers',
+                    'SmokeMachine.init.initComponents',
+                    'SmokeMachine.init.validatingPkgManagers',
                     input,
                   ),
                   'to be rejected',
@@ -258,8 +258,8 @@ describe('midnight-smoker', function () {
               it('should query workspaces and finish', async function () {
                 await expect(
                   runner.runUntilTransition(
-                    'ControlMachine.init.initComponents.queryingWorkspaces.queryWorkspaces',
-                    'ControlMachine.init.initComponents.queryingWorkspaces.done',
+                    'SmokeMachine.init.initComponents.queryingWorkspaces.queryWorkspaces',
+                    'SmokeMachine.init.initComponents.queryingWorkspaces.done',
                     input,
                   ),
                   'to be fulfilled',
@@ -267,10 +267,10 @@ describe('midnight-smoker', function () {
               });
 
               describe('when the queryWorkspaces actor fails', function () {
-                let runner: StateMachineRunner<typeof ControlMachine>;
-                let machine: typeof ControlMachine;
+                let runner: StateMachineRunner<typeof SmokeMachine>;
+                let machine: typeof SmokeMachine;
                 beforeEach(function () {
-                  machine = ControlMachine.provide({
+                  machine = SmokeMachine.provide({
                     actors: {
                       queryWorkspaces: fromPromise(() => {
                         throw new Error('butts');
@@ -283,8 +283,8 @@ describe('midnight-smoker', function () {
                 it('should transition to its error state', async function () {
                   await expect(
                     runner.runUntilTransition(
-                      'ControlMachine.init.initComponents.queryingWorkspaces.queryWorkspaces',
-                      'ControlMachine.init.initComponents.queryingWorkspaces.errored',
+                      'SmokeMachine.init.initComponents.queryingWorkspaces.queryWorkspaces',
+                      'SmokeMachine.init.initComponents.queryingWorkspaces.errored',
                       input,
                     ),
                     'to be fulfilled',
@@ -362,8 +362,8 @@ describe('midnight-smoker', function () {
               it('should read the package.json and finish', async function () {
                 await expect(
                   runner.runUntilTransition(
-                    'ControlMachine.init.initComponents.readSmokerPkgJson.reading',
-                    'ControlMachine.init.initComponents.readSmokerPkgJson.done',
+                    'SmokeMachine.init.initComponents.readSmokerPkgJson.reading',
+                    'SmokeMachine.init.initComponents.readSmokerPkgJson.done',
                     input,
                   ),
                   'to be fulfilled',
@@ -397,8 +397,8 @@ describe('midnight-smoker', function () {
               it('should load plugins and finish', async function () {
                 await expect(
                   runner.runUntilTransition(
-                    'ControlMachine.init.initComponents.loadingPlugins.loading',
-                    'ControlMachine.init.initComponents.loadingPlugins.done',
+                    'SmokeMachine.init.initComponents.loadingPlugins.loading',
+                    'SmokeMachine.init.initComponents.loadingPlugins.done',
                     input,
                   ),
                   'to be fulfilled',
@@ -409,7 +409,7 @@ describe('midnight-smoker', function () {
                 it('should abort', async function () {
                   const err = new Error('yuk');
                   const {runUntilDone} = createActorRunner(
-                    ControlMachine.provide({
+                    SmokeMachine.provide({
                       actors: {
                         PluginLoaderMachine: PluginLoaderMachine.provide({
                           actors: {
@@ -435,19 +435,172 @@ describe('midnight-smoker', function () {
                   );
                 });
               });
+
+              describe('when multiple plugins should be loaded', function () {
+                it('needs a test');
+              });
             });
           });
 
-          describe('.validatePkgManagers', function () {
-            it('needs a test');
+          describe('.validatingPkgManagers', function () {
+            describe('when all desired pkg managers are fulfilled', function () {
+              it('should transition to .spawningEventBusMachines', async function () {
+                await expect(
+                  runner.runUntilTransition(
+                    'SmokeMachine.init.validatingPkgManagers',
+                    'SmokeMachine.init.spawningEventBusMachines',
+                    input,
+                  ),
+                  'to be fulfilled',
+                );
+              });
+            });
+
+            describe('when a desired pkg manager is not fulfilled', function () {
+              it('should not transition to .spawningEventBusMachines', async function () {
+                await expect(
+                  runner.runUntilTransition(
+                    'SmokeMachine.init.validatingPkgManagers',
+                    'SmokeMachine.init.spawningEventBusMachines',
+                    {
+                      ...input,
+                      smokerOptions: {
+                        ...input.smokerOptions,
+                        pkgManager: [
+                          ...input.smokerOptions.pkgManager,
+                          'not-a-real-pkg-manager',
+                        ],
+                      },
+                    },
+                  ),
+                  'to be rejected',
+                );
+              });
+
+              it('should abort', async function () {
+                await expect(
+                  runner.runUntilDone({
+                    ...input,
+                    smokerOptions: {
+                      ...input.smokerOptions,
+                      pkgManager: [
+                        ...input.smokerOptions.pkgManager,
+                        'not-a-real-pkg-manager',
+                      ],
+                    },
+                  }),
+                  'to be fulfilled with value satisfying',
+                  {
+                    type: ERROR,
+                    aborted: true,
+                    error: {
+                      errors: [
+                        {
+                          code: ErrorCodes.UnsupportedPackageManagerError,
+                        },
+                      ],
+                    },
+                  },
+                );
+              });
+            });
           });
 
           describe('.spawningEventBusMachines', function () {
-            it('needs a test');
+            describe('when no scripts provided', function () {
+              it('should not spawn a ScriptBusMachine', async function () {
+                await expect(
+                  runner.waitForActor('ScriptBusMachine', input),
+                  'to be rejected',
+                );
+              });
+            });
+
+            describe('when scripts provided', function () {
+              it('should spawn a ScriptBusMachine', async function () {
+                await expect(
+                  runner.waitForActor('ScriptBusMachine', {
+                    ...input,
+                    smokerOptions: {
+                      ...input.smokerOptions,
+                      script: ['foo'],
+                    },
+                  }),
+                  'to be fulfilled',
+                );
+              });
+            });
+
+            describe('when linting requested', function () {
+              it('should spawn a LintBusMachine', async function () {
+                await expect(
+                  runner.waitForActor('LintBusMachine', input),
+                  'to be fulfilled',
+                );
+              });
+            });
+
+            it('should spawn a PackBusMachine', async function () {
+              await expect(
+                runner.waitForActor('PackBusMachine', input),
+                'to be fulfilled',
+              );
+            });
+
+            it('should spawn an InstallBusMachine', async function () {
+              await expect(
+                runner.waitForActor('InstallBusMachine', input),
+                'to be fulfilled',
+              );
+            });
+
+            describe('when an error occurs', function () {
+              it('should not transition to .spawningComponents', async function () {
+                const runner = createActorRunner(
+                  SmokeMachine.provide({
+                    actions: {
+                      spawnEventBusMachines: sandbox
+                        .stub()
+                        .throws(new Error('Nein.')),
+                    },
+                  }),
+                );
+                await expect(
+                  runner.runUntilTransition(
+                    'SmokeMachine.init.spawningEventBusMachines',
+                    'SmokeMachine.init.spawningComponents',
+                    input,
+                  ),
+                  'to be rejected',
+                );
+              });
+            });
           });
 
           describe('.spawningComponents', function () {
-            it('needs a test');
+            it('should spawn ReporterMachine(s) and PkgManagerMachine(s), then complete', async function () {
+              const actor = runner.start(input);
+              const p = Promise.all([
+                runner.waitForActor(/^ReporterMachine/, actor),
+                runner.waitForActor(/^PkgManagerMachine/, actor),
+                // this final one stops the machine
+                runner.runUntilTransition(
+                  'SmokeMachine.init.spawningComponents',
+                  'SmokeMachine.init.done',
+                  actor,
+                ),
+              ]);
+              // first we need to wait until we hit spawningComponents. since
+              // the spawnComponentMachines action is sync, we need to queue up
+              // the other promises _before_ this, because otherwise they will
+              // have happened already
+              await runner.waitForTransition(
+                'SmokeMachine.init.spawningEventBusMachines',
+                'SmokeMachine.init.spawningComponents',
+                actor,
+              );
+              await expect(p, 'to be fulfilled');
+            });
           });
         });
       });

@@ -2,7 +2,6 @@ import {FAILED, FINAL, OK, SKIPPED} from '#constants';
 import {ScriptEvents} from '#constants/event';
 import {type DataForEvent} from '#event/events';
 import {type ScriptEventData} from '#event/script-events';
-import {type ReporterMachine} from '#machine/reporter';
 import {type RunScriptResult} from '#schema/run-script-result';
 import {type SmokerOptions} from '#schema/smoker-options';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
@@ -11,15 +10,9 @@ import {fromUnknownError} from '#util/error-util';
 import {asResult} from '#util/result';
 import {partition} from 'lodash';
 import assert from 'node:assert';
-import {
-  assign,
-  enqueueActions,
-  setup,
-  type ActorRefFrom,
-  type AnyActorRef,
-} from 'xstate';
-import {type CtrlScriptEvents} from '../event/script';
-import {type ListenEvent} from './bus-event';
+import {assign, enqueueActions, setup, type AnyActorRef} from 'xstate';
+import {type SmokeMachineScriptEvent} from '../event/script';
+import {type ListenEvent} from './common-event';
 
 export interface ScriptBusMachineInput {
   smokerOptions: SmokerOptions;
@@ -35,7 +28,7 @@ export interface ScriptBusMachineContext extends ScriptBusMachineInput {
   runScriptResults?: RunScriptResult[];
 }
 
-export type ScriptBusMachineEvent = ListenEvent | CtrlScriptEvents;
+export type ScriptBusMachineEvent = ListenEvent | SmokeMachineScriptEvent;
 
 export type ReportableScriptEventData = DataForEvent<keyof ScriptEventData>;
 
@@ -67,11 +60,11 @@ export const ScriptBusMachine = setup({
         event: ReportableScriptEventData,
       ) => {
         for (const id of machines) {
-          enqueue.sendTo(
-            ({system}) =>
-              system.get(id) as ActorRefFrom<typeof ReporterMachine>,
-            {type: 'EVENT', event},
-          );
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+          enqueue.sendTo<AnyActorRef>(({system}) => system.get(id), {
+            type: 'EVENT',
+            event,
+          });
         }
         enqueue.sendTo(parentRef, event);
       },

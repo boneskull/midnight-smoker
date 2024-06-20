@@ -1,5 +1,16 @@
-import {constant} from '#util/constant';
+/**
+ * Constants for event names
+ *
+ * @packageDocumentation
+ */
 
+import {constant} from '#constants/create-constant';
+
+/**
+ * Install-related event names
+ *
+ * @enum
+ */
 export const InstallEvents = constant({
   InstallBegin: 'InstallBegin',
   InstallFailed: 'InstallFailed',
@@ -12,6 +23,11 @@ export const InstallEvents = constant({
   PkgInstallOk: 'PkgInstallOk',
 });
 
+/**
+ * Pack-related event names
+ *
+ * @enum
+ */
 export const PackEvents = constant({
   PackBegin: 'PackBegin',
   PackFailed: 'PackFailed',
@@ -24,6 +40,11 @@ export const PackEvents = constant({
   PkgPackFailed: 'PkgPackFailed',
 });
 
+/**
+ * Script-related event names
+ *
+ * @enum
+ */
 export const ScriptEvents = {
   RunScriptBegin: 'RunScriptBegin',
   RunScriptFailed: 'RunScriptFailed',
@@ -39,6 +60,11 @@ export const ScriptEvents = {
   PkgManagerRunScriptsOk: 'PkgManagerRunScriptsOk',
 } as const;
 
+/**
+ * Lint-related event names
+ *
+ * @enum
+ */
 export const LintEvents = constant({
   RuleError: 'RuleError',
   RuleBegin: 'RuleBegin',
@@ -53,7 +79,12 @@ export const LintEvents = constant({
   LintOk: 'LintOk',
 });
 
-export const SmokerEvents = constant({
+/**
+ * Core event names
+ *
+ * @enum
+ */
+export const CoreEvents = constant({
   BeforeExit: 'BeforeExit',
   Noop: 'Noop',
   Lingered: 'Lingered',
@@ -65,10 +96,15 @@ export const SmokerEvents = constant({
   UnknownError: 'UnknownError',
 });
 
+/**
+ * All event names
+ *
+ * @enum
+ */
 export const Events = constant({
   ...InstallEvents,
   ...PackEvents,
   ...ScriptEvents,
   ...LintEvents,
-  ...SmokerEvents,
+  ...CoreEvents,
 });

@@ -5,11 +5,6 @@ import {type ReporterDef} from '#schema/reporter-def';
 import {type SomeRuleDef} from '#schema/some-rule-def';
 import {type Merge} from 'type-fest';
 
-interface BaseInitPayload {
-  plugin: Readonly<PluginMetadata>;
-  id: string;
-}
-
 export type PkgManagerInitPayload = Merge<
   BaseInitPayload,
   {
@@ -31,3 +26,8 @@ export type RuleInitPayload = Merge<
     def: SomeRuleDef;
   }
 >;
+
+interface BaseInitPayload {
+  id: string;
+  plugin: Readonly<PluginMetadata>;
+}

@@ -6,4 +6,4 @@ export * from './pack-bus-machine';
 
 export * from './script-bus-machine';
 
-export * from './bus-event';
+export * from './common-event';

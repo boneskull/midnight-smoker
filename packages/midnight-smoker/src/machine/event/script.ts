@@ -1,77 +1,155 @@
-import type {
-  PkgManagerRunScriptsBeginEventData,
-  PkgManagerRunScriptsFailedEventData,
-  PkgManagerRunScriptsOkEventData,
-  RunScriptBeginEventData,
-  RunScriptEndEventData,
-  RunScriptErrorEventData,
-  RunScriptFailedEventData,
-  RunScriptOkEventData,
-  RunScriptSkippedEventData,
-} from '#event/script-events';
+/**
+ * Script-related events received by `SmokeMachine`.
+ *
+ * These events are views into the public events as seen in {@link ScriptEvent}.
+ *
+ * @remarks
+ * `SmokeMachine` does not listen for each event individually; instead it
+ * listens for `SCRIPT.*` events
+ * @packageDocumentation
+ * @see {@link SmokeMachineScriptEvent}
+ * @todo Might need `*Pkg*`-type events here.
+ */
+import type * as ScriptEvent from '#event/script-events';
 import {type MachineEvent} from '#machine/util';
 
+/**
+ * These fields are omitted from the `*PkgManager*` events because they are
+ * computed by the bus machines.
+ *
+ * The idea being that the `PkgManagerMachine` or whatever is sending them
+ * doesn't need to track this information itself.
+ */
 export type ComputedPkgManagerRunScriptsFields =
   | 'totalScripts'
   | 'totalPkgManagers';
 
+/**
+ * These fields are emitted from the `*RunScript*` events because they are
+ * computed by the bus machines.
+ *
+ * The idea being that the `PkgManagerMachine` or whatever is sending them
+ * doesn't need to track this information itself.
+ */
 export type ComputedRunScriptFields = 'totalScripts';
 
-export type CtrlPkgManagerRunScriptsBeginEvent = MachineEvent<
+/**
+ * Received from `PkgManagerMachine` when it begins running scripts.
+ *
+ * @event
+ */
+export type SmokeMachinePkgManagerRunScriptsBeginEvent = MachineEvent<
   'SCRIPT.PKG_MANAGER_RUN_SCRIPTS_BEGIN',
-  Omit<PkgManagerRunScriptsBeginEventData, ComputedPkgManagerRunScriptsFields>
+  Omit<
+    ScriptEvent.PkgManagerRunScriptsBeginEventData,
+    ComputedPkgManagerRunScriptsFields
+  >
 >;
 
-export type CtrlPkgManagerRunScriptsFailedEvent = MachineEvent<
+/**
+ * Received from `PkgManagerMachine` when a script failed.
+ *
+ * @event
+ */
+export type SmokeMachinePkgManagerRunScriptsFailedEvent = MachineEvent<
   'SCRIPT.PKG_MANAGER_RUN_SCRIPTS_FAILED',
-  Omit<PkgManagerRunScriptsFailedEventData, ComputedPkgManagerRunScriptsFields>
+  Omit<
+    ScriptEvent.PkgManagerRunScriptsFailedEventData,
+    ComputedPkgManagerRunScriptsFields
+  >
 >;
 
-export type CtrlPkgManagerRunScriptsOkEvent = MachineEvent<
+/**
+ * Received from `PkgManagerMachine` when all scripts have run successfully.
+ */
+export type SmokeMachinePkgManagerRunScriptsOkEvent = MachineEvent<
   'SCRIPT.PKG_MANAGER_RUN_SCRIPTS_OK',
-  Omit<PkgManagerRunScriptsOkEventData, ComputedPkgManagerRunScriptsFields>
+  Omit<
+    ScriptEvent.PkgManagerRunScriptsOkEventData,
+    ComputedPkgManagerRunScriptsFields
+  >
 >;
 
-export type CtrlRunScriptBeginEvent = MachineEvent<
+/**
+ * Received from `PkgManagerMachine` when it begins running a script.
+ */
+export type SmokeMachineRunScriptBeginEvent = MachineEvent<
   'SCRIPT.RUN_SCRIPT_BEGIN',
-  Omit<RunScriptBeginEventData, ComputedRunScriptFields>
+  Omit<ScriptEvent.RunScriptBeginEventData, ComputedRunScriptFields>
 >;
 
-export type CtrlRunScriptEndEvent = MachineEvent<
+/**
+ * Received from `PkgManagerMachine` when a script ends (regardless of success).
+ *
+ * @event
+ */
+export type SmokeMachineRunScriptEndEvent = MachineEvent<
   'SCRIPT.RUN_SCRIPT_END',
-  Omit<RunScriptEndEventData, ComputedRunScriptFields>
+  Omit<ScriptEvent.RunScriptEndEventData, ComputedRunScriptFields>
 >;
 
-export type CtrlRunScriptErrorEvent = MachineEvent<
+/**
+ * Received from `PkgManagerMachine` when a script errors (e.g., cannot be found
+ * or otherwise cannot be run)
+ *
+ * @event
+ */
+export type SmokeMachineRunScriptErrorEvent = MachineEvent<
   'SCRIPT.RUN_SCRIPT_ERROR',
-  Omit<RunScriptErrorEventData, ComputedRunScriptFields>
+  Omit<ScriptEvent.RunScriptErrorEventData, ComputedRunScriptFields>
 >;
 
-export type CtrlRunScriptFailedEvent = MachineEvent<
+/**
+ * Received from `PkgManagerMachine` when a script failed.
+ *
+ * @event
+ */
+export type SmokeMachineRunScriptFailedEvent = MachineEvent<
   'SCRIPT.RUN_SCRIPT_FAILED',
-  Omit<RunScriptFailedEventData, ComputedRunScriptFields>
+  Omit<ScriptEvent.RunScriptFailedEventData, ComputedRunScriptFields>
 >;
 
-export type CtrlRunScriptOkEvent = MachineEvent<
+/**
+ * Received from `PkgManagerMachine` when a script runs successfully.
+ *
+ * @event
+ */
+export type SmokeMachineRunScriptOkEvent = MachineEvent<
   'SCRIPT.RUN_SCRIPT_OK',
-  Omit<RunScriptOkEventData, ComputedRunScriptFields>
+  Omit<ScriptEvent.RunScriptOkEventData, ComputedRunScriptFields>
 >;
 
-export type CtrlRunScriptSkippedEvent = MachineEvent<
+/**
+ * Received from `PkgManagerMachine` when a script is skipped.
+ *
+ * @event
+ */
+export type SmokeMachineRunScriptSkippedEvent = MachineEvent<
   'SCRIPT.RUN_SCRIPT_SKIPPED',
-  Omit<RunScriptSkippedEventData, ComputedRunScriptFields>
+  Omit<ScriptEvent.RunScriptSkippedEventData, ComputedRunScriptFields>
 >;
 
-export type SomeCtrlRunScriptEndEvent =
-  | CtrlRunScriptFailedEvent
-  | CtrlRunScriptOkEvent
-  | CtrlRunScriptSkippedEvent
-  | CtrlRunScriptErrorEvent;
+/**
+ * Script-related events received by `SmokeMachine`.
+ *
+ * @event
+ */
+export type SmokeMachineScriptEvent =
+  | SmokeMachinePkgManagerRunScriptsBeginEvent
+  | SmokeMachinePkgManagerRunScriptsOkEvent
+  | SmokeMachinePkgManagerRunScriptsFailedEvent
+  | SmokeMachineRunScriptBeginEvent
+  | SmokeMachineRunScriptEndEvent
+  | SomeSmokeMachineRunScriptEndEvent;
 
-export type CtrlScriptEvents =
-  | CtrlPkgManagerRunScriptsBeginEvent
-  | CtrlPkgManagerRunScriptsOkEvent
-  | CtrlPkgManagerRunScriptsFailedEvent
-  | CtrlRunScriptBeginEvent
-  | CtrlRunScriptEndEvent
-  | SomeCtrlRunScriptEndEvent;
+/**
+ * A union of all possible events that can be received by `SmokeMachine` when a
+ * script run ends.
+ *
+ * @event
+ */
+export type SomeSmokeMachineRunScriptEndEvent =
+  | SmokeMachineRunScriptFailedEvent
+  | SmokeMachineRunScriptOkEvent
+  | SmokeMachineRunScriptSkippedEvent
+  | SmokeMachineRunScriptErrorEvent;
