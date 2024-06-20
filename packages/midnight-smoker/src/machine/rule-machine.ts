@@ -1,32 +1,27 @@
-import {FAILED, FINAL, OK, type ERROR} from '#constants';
-import {AbortError, isAbortError} from '#error/abort-error';
+import {FINAL} from '#constants';
 import {MachineError} from '#error/machine-error';
 import {RuleError} from '#error/rule-error';
-import {RuleContext} from '#rule/rule-context';
-import {type CheckFailed, type CheckOk} from '#schema/check-result';
 import {type LintManifest} from '#schema/lint-manifest';
 import {type SomeRuleConfig} from '#schema/rule-options';
 import {type StaticRuleContext} from '#schema/rule-static';
 import {type SomeRuleDef} from '#schema/some-rule-def';
-import {
-  assertSmokerError,
-  fromUnknownError,
-  isSmokerError,
-} from '#util/error-util';
-import {asResult, type Result} from '#util/result';
-import {serialize} from '#util/serialize';
+import {assertSmokerError, fromUnknownError} from '#util/error-util';
 import {uniqueId} from '#util/unique-id';
 import {isNumber} from 'lodash';
 import assert from 'node:assert';
 import {
   assign,
   enqueueActions,
-  fromPromise,
   setup,
   type ActorRef,
   type ActorRefFrom,
   type Snapshot,
 } from 'xstate';
+import {
+  check,
+  type CheckOutputFailed,
+  type CheckOutputOk,
+} from './actor/operations';
 import {type AbortEvent} from './event/abort';
 import {
   type PkgManagerMachineCheckErrorEvent,
@@ -61,42 +56,6 @@ export type RuleMachineEvent =
   | RuleMachineCheckActorErrorEvent
   | AbortEvent
   | RuleMachineCheckActorDoneEvent;
-
-export interface BaseCheckOutput {
-  config: SomeRuleConfig;
-  installPath: string;
-  manifest: Result<LintManifest>;
-  ruleId: string;
-}
-
-export interface CheckInput {
-  config: SomeRuleConfig;
-  ctx: StaticRuleContext;
-  def: SomeRuleDef;
-
-  /**
-   * This is for round-tripping
-   */
-  manifest: LintManifest;
-  ruleId: string;
-}
-
-export interface CheckOutputError extends BaseCheckOutput {
-  error: RuleError;
-  type: typeof ERROR;
-}
-
-export interface CheckOutputFailed extends BaseCheckOutput {
-  actorId: string;
-  result: CheckFailed[];
-  type: typeof FAILED;
-}
-
-export interface CheckOutputOk extends BaseCheckOutput {
-  actorId: string;
-  result: CheckOk;
-  type: typeof OK;
-}
 
 /**
  * Event emitted when the {@link check} actor is done
@@ -189,69 +148,6 @@ export interface RuleMachineOutput {
   aborted?: boolean;
   results: CheckOutput[];
 }
-
-/**
- * Runs a single {@link RuleDef.check} against an installed package using
- * user-provided configuration
- */
-export const check = fromPromise<CheckOutput, CheckInput>(
-  async ({self, input, signal}) => {
-    const {ctx: staticCtx, config, def, ruleId} = input;
-    if (signal.aborted) {
-      throw new AbortError(signal.reason, self.id);
-    }
-    const {opts} = config;
-    const ctx = RuleContext.create(def, staticCtx, ruleId);
-
-    try {
-      await def.check(ctx, opts, signal);
-    } catch (err) {
-      if (isAbortError(err)) {
-        if (isSmokerError(AbortError, err)) {
-          throw err;
-        }
-        throw new AbortError(err.message || signal.reason, self.id);
-      }
-      throw new RuleError(
-        `Rule "${ruleId}" threw an exception`,
-        {...asResult(staticCtx), ruleId, config},
-        fromUnknownError(err),
-      );
-    }
-
-    const result = ctx.finalize();
-    const manifest = asResult(serialize(input.manifest));
-
-    switch (result.type) {
-      case 'OK': {
-        const output: CheckOutputOk = {
-          config,
-          manifest,
-          ruleId,
-          result,
-          type: OK,
-          actorId: self.id,
-          installPath: ctx.installPath,
-        };
-        return output;
-      }
-      case 'FAILED': {
-        const output: CheckOutputFailed = {
-          installPath: ctx.installPath,
-          config,
-          manifest,
-          ruleId,
-          // TODO fix this readonly disagreement.  it _should_ be read-only, but that breaks somewhere down the line
-          result: [...result.result],
-          actorId: self.id,
-          type: FAILED,
-        };
-
-        return output;
-      }
-    }
-  },
-);
 
 /**
  * A machine which is bound to a {@link RuleDef} and executes its `check` method

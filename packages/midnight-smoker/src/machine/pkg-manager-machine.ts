@@ -63,7 +63,8 @@ import {
   type ActorRefFrom,
   type Snapshot,
 } from 'xstate';
-import {type CheckOutput, type CheckOutputError} from './rule-machine';
+import {type CheckOutputError} from './actor/operations';
+import {type CheckOutput} from './rule-machine';
 
 export type PkgManagerMachineEvent =
   | PkgManagerMachinePackDoneEvent
