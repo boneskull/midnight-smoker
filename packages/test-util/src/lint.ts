@@ -239,5 +239,5 @@ export async function runRule<T extends SomeRuleDef>(
 
   ruleMachine.start().send(checkEvent);
 
-  return machinePromise;
+  return machinePromise.then(({results}) => results[0]);
 }

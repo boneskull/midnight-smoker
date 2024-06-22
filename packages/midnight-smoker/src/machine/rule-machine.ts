@@ -8,13 +8,14 @@ import {type SomeRuleDef} from '#schema/some-rule-def';
 import {assertSmokerError, fromUnknownError} from '#util/error-util';
 import {uniqueId} from '#util/unique-id';
 import {isNumber} from 'lodash';
-import assert from 'node:assert';
 import {
-  assign,
-  enqueueActions,
-  setup,
   type ActorRef,
   type ActorRefFrom,
+  assign,
+  type DoneActorEvent,
+  enqueueActions,
+  type ErrorActorEvent,
+  setup,
   type Snapshot,
 } from 'xstate';
 import {
@@ -27,7 +28,6 @@ import {
   type PkgManagerMachineCheckErrorEvent,
   type PkgManagerMachineCheckResultEvent,
 } from './pkg-manager-machine';
-import {idFromEventType} from './util';
 
 export type CheckOutput = CheckOutputOk | CheckOutputFailed;
 
@@ -62,13 +62,13 @@ export type RuleMachineEvent =
  *
  * @event
  */
-export interface RuleMachineCheckActorDoneEvent {
-  output: CheckOutput;
+export interface RuleMachineCheckActorDoneEvent
+  extends DoneActorEvent<CheckOutput> {
   type: 'xstate.done.actor.check.*';
 }
 
-export interface RuleMachineCheckActorErrorEvent {
-  error: Error;
+export interface RuleMachineCheckActorErrorEvent
+  extends ErrorActorEvent<Error> {
   type: 'xstate.error.actor.check.*';
 }
 
@@ -362,11 +362,7 @@ export const RuleMachine = setup({
             {type: 'assignError', params: ({event: {error}}) => ({error})},
             {
               type: 'stopCheckActor',
-              params: ({event}) => {
-                const id = idFromEventType(event);
-                assert.ok(id);
-                return id;
-              },
+              params: ({event: {actorId}}) => actorId,
             },
           ],
         },

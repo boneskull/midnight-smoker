@@ -36,11 +36,7 @@ import {
 } from '#machine/event/smoke';
 import {type RuleInitPayload} from '#machine/payload';
 import {RuleMachine} from '#machine/rule-machine';
-import {
-  idFromEventType,
-  type ActorOutputError,
-  type ActorOutputOk,
-} from '#machine/util';
+import {type ActorOutputError, type ActorOutputOk} from '#machine/util';
 import {type PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
 import type * as Schema from '#schema/meta/for-pkg-manager-machine';
 import {fromUnknownError} from '#util/error-util';
@@ -61,6 +57,8 @@ import {
   setup,
   type ActorRef,
   type ActorRefFrom,
+  type DoneActorEvent,
+  type ErrorActorEvent,
   type Snapshot,
 } from 'xstate';
 import {type CheckOutputError} from './actor/operations';
@@ -417,8 +415,8 @@ export interface PkgManagerMachineLintEvent {
  *
  * @event
  */
-export interface PkgManagerMachinePackDoneEvent {
-  output: Schema.InstallManifest;
+export interface PkgManagerMachinePackDoneEvent
+  extends DoneActorEvent<Schema.InstallManifest> {
   type: 'xstate.done.actor.pack.*';
 }
 
@@ -429,8 +427,8 @@ export interface PkgManagerMachinePackDoneEvent {
  *
  * @event
  */
-export interface PkgManagerMachinePackErrorEvent {
-  error: PackError | PackParseError;
+export interface PkgManagerMachinePackErrorEvent
+  extends ErrorActorEvent<PackError | PackParseError> {
   type: 'xstate.error.actor.pack.*';
 }
 
@@ -1663,11 +1661,7 @@ export const PkgManagerMachine = setup({
                     },
                     {
                       type: 'stopPackActor',
-                      params: ({event}) => {
-                        const id = idFromEventType(event);
-                        assert.ok(id);
-                        return id;
-                      },
+                      params: ({event: {actorId}}) => actorId,
                     },
                   ],
                 },
