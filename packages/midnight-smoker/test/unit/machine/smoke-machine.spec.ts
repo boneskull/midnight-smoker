@@ -633,6 +633,85 @@ describe('midnight-smoker', function () {
               );
               await expect(p, 'to be fulfilled');
             });
+
+            describe('when it succeeds', function () {
+              it('should transition from .init to .working', async function () {
+                const actor = runner.start(input);
+                await expect(
+                  Promise.all([
+                    runner.waitForTransition(
+                      'SmokeMachine.init.spawningComponents',
+                      'SmokeMachine.init.done',
+                      actor,
+                    ),
+                    runner.waitForTransition(
+                      'SmokeMachine.init',
+                      'SmokeMachine.working',
+                      actor,
+                    ),
+                  ]).finally(() => actor.stop()),
+                  'to be fulfilled',
+                );
+              });
+
+              it('should clear the init payloads from the context', async function () {
+                const actor = runner.start(input);
+                const snapshot = await runner.runUntilSnapshot(
+                  (snapshot) => snapshot.matches('working'),
+                  actor,
+                );
+                expect(
+                  {
+                    ...snapshot.context.pkgManagerInitPayloads,
+                    ...snapshot.context.ruleInitPayloads,
+                    ...snapshot.context.reporterInitPayloads,
+                  },
+                  'to be empty',
+                );
+              });
+            });
+          });
+        });
+
+        describe('.working', function () {
+          describe('when entering', function () {
+            it('should have cleared the init payloads from the context', async function () {
+              const snapshot = await runner.runUntilSnapshot(
+                (snapshot) => snapshot.matches('working'),
+                input,
+              );
+              expect(
+                {
+                  ...snapshot.context.pkgManagerInitPayloads,
+                  ...snapshot.context.ruleInitPayloads,
+                  ...snapshot.context.reporterInitPayloads,
+                },
+                'to be empty',
+              );
+            });
+
+            it('should emit SmokeBegin', async function () {
+              const actor = runner.start(input);
+
+              // TODO: really need some sort of pipeline. this event is synchronously
+              // emitted after we reach the snapshot.
+              const p = runner.runUntilEvent([Events.SmokeBegin], actor);
+              await runner.waitForSnapshot(
+                (snapshot) => snapshot.matches('working'),
+                actor,
+              );
+              await expect(p, 'to be fulfilled');
+            });
+
+            it('should spawn LISTEN to the PackBusMachine', async function () {
+              const actor = runner.start(input);
+              await expect(
+                runner.waitForEvent(['LISTEN'], actor, {
+                  target: 'PackBusMachine',
+                }),
+                'to be fulfilled',
+              );
+            });
           });
         });
       });
