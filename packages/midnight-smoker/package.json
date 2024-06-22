@@ -174,7 +174,7 @@
     "stringify-object": "3.3.0",
     "terminal-link": "2.1.1",
     "type-fest": "4.19.0",
-    "xstate": "5.13.1",
+    "xstate": "5.14.0",
     "yargs": "17.7.2",
     "zod": "3.22.4",
     "zod-validation-error": "2.1.0"

@@ -17,6 +17,11 @@
       "default": false,
       "description": "Operate on all workspaces. The root workspace is omitted unless `includeRoot` is `true`"
     },
+    "allowPrivate": {
+      "$ref": "#/$defs/defaultFalse",
+      "default": false,
+      "description": "Operate on private workspaces"
+    },
     "bail": {
       "$ref": "#/$defs/defaultFalse",
       "default": false,
@@ -487,12 +492,15 @@
       ],
       "description": "One or more workspaces to run scripts in"
     },
+    "allow-private": {
+      "$ref": "#/properties/allowPrivate"
+    },
     "pkg-manager": {
       "$ref": "#/properties/pkgManager"
     }
   },
   "additionalProperties": false,
-  "description": "midnight-smoker options schema",
+  "description": "Pre-plugin midnight-smoker options schema",
   "$defs": {
     "defaultTrue": {
       "type": "boolean",

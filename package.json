@@ -84,7 +84,7 @@
     "ts-node": "10.9.2",
     "tsd": "0.31.0",
     "type-fest": "4.19.0",
-    "typescript": "5.2.2",
+    "typescript": "5.5.2",
     "unexpected": "13.2.1",
     "unexpected-sinon": "11.1.0"
   },
