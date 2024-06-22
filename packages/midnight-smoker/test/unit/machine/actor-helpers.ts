@@ -68,13 +68,22 @@ export type ActorRunnerOptions = {
   timeout?: number;
 };
 
+export type ActorRunnerOptionsWithTarget = ActorRunnerOptions & {
+  target?: xs.AnyActorRef | string;
+};
+
 /**
  * Options in {@link ActorRunner} methods where an existing {@link Actor} is
  * provided instead of input for a new `Actor`.
  *
  * These methods cannot and should not overwrite an existing actor's ID.
  */
-export type ActorRunnerOptionsWithActor = Omit<ActorRunnerOptions, 'id'>;
+export type ActorRunnerOptionsForActor = Omit<ActorRunnerOptions, 'id'>;
+
+export type ActorRunnerOptionsForActorWithTarget =
+  ActorRunnerOptionsForActor & {
+    target?: xs.AnyActorRef | string;
+  };
 
 /**
  * Frankenpromise that is both a `Promise` and an {@link xs.Actor}.
@@ -156,10 +165,51 @@ export interface ActorRunner<T extends xs.AnyActorLogic> {
    * @returns An {@link ActorThenable} which fulfills with the matching events
    *   (assuming they all occurred in order)
    */
-  runUntilEvent<const EventTypes extends ActorEventTypeTuple<T>>(
+  runUntilEvent<
+    const EventTypes extends
+      | ActorEventTypeTuple<T>
+      | ActorEventTypeTuple<xs.AnyActorLogic>,
+  >(
     events: EventTypes,
     input: xs.InputFrom<T> | xs.Actor<T>,
-  ): ActorThenable<T, ActorEventTuple<T, EventTypes>>;
+    options:
+      | ActorRunnerOptionsWithTarget
+      | ActorRunnerOptionsForActorWithTarget,
+  ): ActorThenable<
+    T,
+    | ActorEventTuple<T, EventTypes>
+    | ActorEventTuple<xs.AnyActorLogic, EventTypes>
+  >;
+
+  /**
+   * Runs an actor (or starts a new one) until it emits or sends one or more
+   * events (in order).
+   *
+   * Returns a combination of a `Promise` and an {@link xs.Actor} so that events
+   * may be sent to the actor.
+   *
+   * @param events One or more _event names_ (the `type` field) to wait for (in
+   *   order)
+   * @param input Input for {@link defaultActorLogic} or an existing {@link Actor}
+   * @param options Options
+   * @returns An {@link ActorThenable} which fulfills with the matching events
+   *   (assuming they all occurred in order)
+   */
+  waitForEvent<
+    const EventTypes extends
+      | ActorEventTypeTuple<T>
+      | ActorEventTypeTuple<xs.AnyActorLogic>,
+  >(
+    events: EventTypes,
+    input: xs.InputFrom<T> | xs.Actor<T>,
+    options:
+      | ActorRunnerOptionsWithTarget
+      | ActorRunnerOptionsForActorWithTarget,
+  ): ActorThenable<
+    T,
+    | ActorEventTuple<T, EventTypes>
+    | ActorEventTuple<xs.AnyActorLogic, EventTypes>
+  >;
 
   /**
    * Waits for an actor to be spawned.
@@ -177,6 +227,7 @@ export interface ActorRunner<T extends xs.AnyActorLogic> {
   runUntilActor(
     actorId: string | RegExp,
     input: xs.InputFrom<T> | xs.Actor<T>,
+    options?: ActorRunnerOptions | ActorRunnerOptionsForActor,
   ): ActorThenable<T, xs.AnyActorRef>;
 
   /**
@@ -269,7 +320,7 @@ export interface StateMachineActorRunner<T extends xs.AnyStateMachine>
     target: string,
     input: xs.InputFrom<T> | xs.Actor<T>,
     options?: OptionsWithoutInspect<
-      ActorRunnerOptions | ActorRunnerOptionsWithActor
+      ActorRunnerOptions | ActorRunnerOptionsForActor
     >,
   ): ActorThenable<T>;
 
@@ -296,7 +347,7 @@ export interface StateMachineActorRunner<T extends xs.AnyStateMachine>
     target: string,
     input: xs.InputFrom<T> | xs.Actor<T>,
     options?: OptionsWithoutInspect<
-      ActorRunnerOptions | ActorRunnerOptionsWithActor
+      ActorRunnerOptions | ActorRunnerOptionsForActor
     >,
   ): ActorThenable<T>;
 }
@@ -474,7 +525,7 @@ export class AnyActorRunner<T extends xs.AnyActorLogic>
    */
   public instrumentActor(
     actor: xs.Actor<T>,
-    options: ActorRunnerOptionsWithActor,
+    options: ActorRunnerOptionsForActor,
   ): xs.Actor<T> {
     const {logger = this.defaultLogger, inspect = this.defaultInspector} =
       options;
@@ -510,7 +561,7 @@ export class AnyActorRunner<T extends xs.AnyActorLogic>
    */
   public runUntilDone(
     actor: xs.Actor<T>,
-    options?: ActorRunnerOptionsWithActor,
+    options?: ActorRunnerOptionsForActor,
   ): ActorThenable<T, xs.OutputFrom<T>>;
 
   /**
@@ -523,13 +574,13 @@ export class AnyActorRunner<T extends xs.AnyActorLogic>
   @bind()
   public runUntilDone(
     input: xs.InputFrom<T> | xs.Actor<T>,
-    options: ActorRunnerOptions | ActorRunnerOptionsWithActor = {},
+    options: ActorRunnerOptions | ActorRunnerOptionsForActor = {},
   ): ActorThenable<T, xs.OutputFrom<T>> {
     const {timeout = this.defaultTimeout} = options;
 
     const actor =
       input instanceof xs.Actor
-        ? this.instrumentActor(input, options as ActorRunnerOptionsWithActor)
+        ? this.instrumentActor(input, options as ActorRunnerOptionsForActor)
         : this.createInstrumentedActor(input, options as ActorRunnerOptions);
 
     // order is important: create promise, then start.
@@ -570,7 +621,7 @@ export class AnyActorRunner<T extends xs.AnyActorLogic>
   public runUntilEvent<const EventTypes extends ActorEventTypeTuple<T>>(
     events: EventTypes,
     input: xs.InputFrom<T>,
-    options?: ActorRunnerOptions,
+    options?: ActorRunnerOptionsWithTarget,
   ): ActorThenable<T, ActorEventTuple<T, EventTypes>>;
 
   /**
@@ -594,8 +645,53 @@ export class AnyActorRunner<T extends xs.AnyActorLogic>
   public runUntilEvent<const EventTypes extends ActorEventTypeTuple<T>>(
     events: EventTypes,
     actor: xs.Actor<T>,
-    options?: ActorRunnerOptionsWithActor,
+    options?: ActorRunnerOptionsForActorWithTarget,
   ): ActorThenable<T, ActorEventTuple<T, EventTypes>>;
+
+  /**
+   * Runs an actor until it emits or sends one or more events (in order).
+   *
+   * Returns a combination of a `Promise` and an {@link xs.Actor} so that events
+   * may be sent to the actor.
+   *
+   * @param events One or more _event names_ (the `type` field) to wait for (in
+   *   order)
+   * @param input Actor input
+   * @param options Options
+   * @returns An {@link ActorThenable} which fulfills with the matching events
+   *   (assuming they all occurred in order)
+   */
+  public runUntilEvent<
+    const EventTypes extends ActorEventTypeTuple<xs.AnyActorLogic>,
+  >(
+    events: EventTypes,
+    input: xs.InputFrom<T>,
+    options?: ActorRunnerOptionsWithTarget,
+  ): ActorThenable<T, ActorEventTuple<xs.AnyActorLogic, EventTypes>>;
+
+  /**
+   * Runs an actor until it emits or sends one or more events (in order).
+   *
+   * Returns a combination of a `Promise` and an {@link xs.Actor} so that events
+   * may be sent to the actor.
+   *
+   * @param events One or more _event names_ (the `type` field) to wait for (in
+   *   order)
+   * @param actor Actor
+   * @param options Options
+   * @returns An {@link ActorThenable} which fulfills with the matching events
+   *   (assuming they all occurred in order)
+   * @todo See if we cannot distinguish between emitted events, sent events,
+   *   etc., at runtime. This would prevent the need to blindly subscribe and
+   *   use the inspector at the same time.
+   */
+  public runUntilEvent<
+    const EventTypes extends ActorEventTypeTuple<xs.AnyActorLogic>,
+  >(
+    events: EventTypes,
+    actor: xs.Actor<T>,
+    options?: ActorRunnerOptionsForActorWithTarget,
+  ): ActorThenable<T, ActorEventTuple<xs.AnyActorLogic, EventTypes>>;
 
   /**
    * Runs an actor (or starts a new one) until it emits or sends one or more
@@ -614,22 +710,167 @@ export class AnyActorRunner<T extends xs.AnyActorLogic>
    *   (assuming they all occurred in order)
    */
   @bind()
-  public runUntilEvent<const EventTypes extends ActorEventTypeTuple<T>>(
+  public runUntilEvent<
+    const EventTypes extends
+      | ActorEventTypeTuple<T>
+      | ActorEventTypeTuple<xs.AnyActorLogic>,
+  >(
     events: EventTypes,
     input: xs.InputFrom<T> | xs.Actor<T>,
-    options: ActorRunnerOptions | ActorRunnerOptionsWithActor = {},
-  ): ActorThenable<T, ActorEventTuple<T, EventTypes>> {
+    options: ActorRunnerOptions | ActorRunnerOptionsForActor = {},
+  ): ActorThenable<
+    T,
+    | ActorEventTuple<T, EventTypes>
+    | ActorEventTuple<xs.AnyActorLogic, EventTypes>
+  > {
+    const actor =
+      input instanceof xs.Actor
+        ? this.instrumentActor(
+            input,
+            options as ActorRunnerOptionsForActorWithTarget,
+          )
+        : this.createInstrumentedActor(
+            input,
+            options as ActorRunnerOptionsWithTarget,
+          );
+
+    const pActor = this.waitForEvent(events, actor, options);
+    // XXX: afaict we can only have one .finally attached to `pActor`.
+    // there's already one there, so this is what I came up with.
+    pActor.then(
+      () => {
+        actor.stop();
+      },
+      () => {
+        actor.stop();
+      },
+    );
+    return pActor;
+  }
+
+  /**
+   * Runs an actor until it emits or sends one or more events (in order).
+   *
+   * Returns a combination of a `Promise` and an {@link xs.Actor} so that events
+   * may be sent to the actor.
+   *
+   * @param events One or more _event names_ (the `type` field) to wait for (in
+   *   order)
+   * @param input Actor input
+   * @param options Options
+   * @returns An {@link ActorThenable} which fulfills with the matching events
+   *   (assuming they all occurred in order)
+   */
+  public waitForEvent<const EventTypes extends ActorEventTypeTuple<T>>(
+    events: EventTypes,
+    input: xs.InputFrom<T>,
+    options?: ActorRunnerOptionsWithTarget,
+  ): ActorThenable<T, ActorEventTuple<T, EventTypes>>;
+
+  /**
+   * Runs an actor until it emits or sends one or more events (in order).
+   *
+   * Returns a combination of a `Promise` and an {@link xs.Actor} so that events
+   * may be sent to the actor.
+   *
+   * @param events One or more _event names_ (the `type` field) to wait for (in
+   *   order)
+   * @param actor Actor
+   * @param options Options
+   * @returns An {@link ActorThenable} which fulfills with the matching events
+   *   (assuming they all occurred in order)
+   * @todo See if we cannot distinguish between emitted events, sent events,
+   *   etc., at runtime. This would prevent the need to blindly subscribe and
+   *   use the inspector at the same time.
+   */
+  public waitForEvent<const EventTypes extends ActorEventTypeTuple<T>>(
+    events: EventTypes,
+    actor: xs.Actor<T>,
+    options?: ActorRunnerOptionsForActorWithTarget,
+  ): ActorThenable<T, ActorEventTuple<T, EventTypes>>;
+
+  /**
+   * Runs an actor until it emits or sends one or more events (in order).
+   *
+   * Returns a combination of a `Promise` and an {@link xs.Actor} so that events
+   * may be sent to the actor.
+   *
+   * @param events One or more _event names_ (the `type` field) to wait for (in
+   *   order)
+   * @param input Actor input
+   * @param options Options
+   * @returns An {@link ActorThenable} which fulfills with the matching events
+   *   (assuming they all occurred in order)
+   */
+  public waitForEvent<
+    const EventTypes extends ActorEventTypeTuple<xs.AnyActorLogic>,
+  >(
+    events: EventTypes,
+    input: xs.InputFrom<T>,
+    options?: ActorRunnerOptionsWithTarget,
+  ): ActorThenable<T, ActorEventTuple<xs.AnyActorLogic, EventTypes>>;
+
+  /**
+   * Runs an actor until it emits or sends one or more events (in order).
+   *
+   * Returns a combination of a `Promise` and an {@link xs.Actor} so that events
+   * may be sent to the actor.
+   *
+   * @param events One or more _event names_ (the `type` field) to wait for (in
+   *   order)
+   * @param actor Actor
+   * @param options Options
+   * @returns An {@link ActorThenable} which fulfills with the matching events
+   *   (assuming they all occurred in order)
+   * @todo See if we cannot distinguish between emitted events, sent events,
+   *   etc., at runtime. This would prevent the need to blindly subscribe and
+   *   use the inspector at the same time.
+   */
+  public waitForEvent<
+    const EventTypes extends ActorEventTypeTuple<xs.AnyActorLogic>,
+  >(
+    events: EventTypes,
+    actor: xs.Actor<T>,
+    options?: ActorRunnerOptionsForActorWithTarget,
+  ): ActorThenable<T, ActorEventTuple<xs.AnyActorLogic, EventTypes>>;
+
+  /**
+   * Runs an actor (or starts a new one) until it emits or sends one or more
+   * events (in order).
+   *
+   * Returns a combination of a `Promise` and an {@link xs.Actor} so that events
+   * may be sent to the actor.
+   *
+   * @param events One or more _event names_ (the `type` field) to wait for (in
+   *   order)
+   * @param input Input for {@link defaultActorLogic} or an existing {@link Actor}
+   * @param options Options
+   * @returns An {@link ActorThenable} which fulfills with the matching events
+   *   (assuming they all occurred in order)
+   */
+  @bind()
+  public waitForEvent<
+    const EventTypes extends
+      | ActorEventTypeTuple<T>
+      | ActorEventTypeTuple<xs.AnyActorLogic>,
+  >(
+    events: EventTypes,
+    input: xs.InputFrom<T> | xs.Actor<T>,
+    options:
+      | ActorRunnerOptionsWithTarget
+      | ActorRunnerOptionsForActorWithTarget = {},
+  ) {
     const expectedEventQueue = [...events];
     if (!expectedEventQueue.length) {
       throw new TypeError('Expected one or more event types');
     }
 
-    const {timeout = this.defaultTimeout} = options;
+    const {timeout = this.defaultTimeout, target} = options;
     const id = this.getActorId(input, (options as ActorRunnerOptions).id);
 
     const actor =
       input instanceof xs.Actor
-        ? this.instrumentActor(input, options as ActorRunnerOptionsWithActor)
+        ? this.instrumentActor(input, options as ActorRunnerOptionsForActor)
         : this.createInstrumentedActor(input, options as ActorRunnerOptions);
 
     const {
@@ -649,10 +890,19 @@ export class AnyActorRunner<T extends xs.AnyActorLogic>
         const type = expectedEventQueue[0];
         if (evt.type === '@xstate.event' && type === evt.event.type) {
           if (evt.sourceRef?.id === id) {
+            if (target) {
+              if (typeof target === 'string' && evt.actorRef.id !== target) {
+                return;
+              } else if (
+                typeof target === 'object' &&
+                evt.actorRef.id !== target.id
+              ) {
+                return;
+              }
+            }
             emitted.push(evt.event as EventFromEventType<T, typeof type>);
             expectedEventQueue.shift();
             if (!expectedEventQueue.length) {
-              evt.sourceRef.stop();
               resolve(emitted);
             }
             subscription?.unsubscribe();
@@ -676,26 +926,31 @@ export class AnyActorRunner<T extends xs.AnyActorLogic>
 
     let subscription: xs.Subscription | undefined;
 
-    // subscription fields emitted events
-    const subscribe = (type: EventTypes[number]) => {
-      subscription = actor.on(type, (evt) => {
-        if (ac.signal.aborted) {
-          return;
-        }
-        subscription?.unsubscribe();
-        emitted.push(evt.event as EventFromEventType<T, typeof type>);
-        expectedEventQueue.shift();
-        if (!expectedEventQueue.length) {
-          actor.stop();
-          resolve(emitted);
-        } else {
-          subscription = subscribe(expectedEventQueue[0]);
-        }
-      });
-      return subscription;
-    };
+    // if there's a target, it means we are looking for an event sent from
+    // the root actor somewhere else.  this means we won't be looking
+    // for an emitted event.
+    if (!target) {
+      // subscription fields emitted events
+      const subscribe = (type: (typeof events)[number]) => {
+        subscription = actor.on(type, (evt) => {
+          if (ac.signal.aborted) {
+            return;
+          }
+          subscription?.unsubscribe();
+          emitted.push(evt.event as EventFromEventType<T, typeof type>);
+          expectedEventQueue.shift();
+          if (!expectedEventQueue.length) {
+            actor.stop();
+            resolve(emitted);
+          } else {
+            subscription = subscribe(expectedEventQueue[0]);
+          }
+        });
+        return subscription;
+      };
 
-    subscription = subscribe(expectedEventQueue[0]);
+      subscription = subscribe(expectedEventQueue[0]);
+    }
 
     actor.start();
 
@@ -711,7 +966,6 @@ export class AnyActorRunner<T extends xs.AnyActorLogic>
       actor,
       promise.finally(() => {
         subscription?.unsubscribe();
-        actor.stop();
       }),
     );
   }
@@ -753,7 +1007,7 @@ export class AnyActorRunner<T extends xs.AnyActorLogic>
   public runUntilSnapshot(
     predicate: (snapshot: xs.SnapshotFrom<T>) => boolean,
     actor: xs.Actor<T>,
-    options?: ActorRunnerOptionsWithActor,
+    options?: ActorRunnerOptionsForActor,
   ): ActorThenable<T, xs.SnapshotFrom<T>>;
 
   /**
@@ -774,13 +1028,13 @@ export class AnyActorRunner<T extends xs.AnyActorLogic>
   public runUntilSnapshot(
     predicate: (snapshot: xs.SnapshotFrom<T>) => boolean,
     input: xs.InputFrom<T> | xs.Actor<T>,
-    options: ActorRunnerOptions | ActorRunnerOptionsWithActor = {},
+    options: ActorRunnerOptions | ActorRunnerOptionsForActor = {},
   ): ActorThenable<T, xs.SnapshotFrom<T>> {
     const {timeout = this.defaultTimeout} = options;
 
     const actor =
       input instanceof xs.Actor
-        ? this.instrumentActor(input, options as ActorRunnerOptionsWithActor)
+        ? this.instrumentActor(input, options as ActorRunnerOptionsForActor)
         : this.createInstrumentedActor(input, options as ActorRunnerOptions);
 
     actor.start();
@@ -824,19 +1078,19 @@ export class AnyActorRunner<T extends xs.AnyActorLogic>
   ): xs.Actor<T>;
   public start(
     actor: xs.Actor<T>,
-    options?: Omit<ActorRunnerOptionsWithActor, 'timeout'>,
+    options?: Omit<ActorRunnerOptionsForActor, 'timeout'>,
   ): xs.Actor<T>;
   @bind()
   public start(
     input: xs.InputFrom<T> | xs.Actor<T>,
     options: Omit<
-      ActorRunnerOptions | ActorRunnerOptionsWithActor,
+      ActorRunnerOptions | ActorRunnerOptionsForActor,
       'timeout'
     > = {},
   ): xs.Actor<T> {
     const actor =
       input instanceof xs.Actor
-        ? this.instrumentActor(input, options as ActorRunnerOptionsWithActor)
+        ? this.instrumentActor(input, options as ActorRunnerOptionsForActor)
         : this.createInstrumentedActor(input, options as ActorRunnerOptions);
     return actor.start();
   }
@@ -894,12 +1148,13 @@ export class AnyActorRunner<T extends xs.AnyActorLogic>
    * @param input Actor input or an {@link xs.Actor}
    * @param options Options
    * @returns The `ActorRef` of the spawned actor
+   * @todo Add option for "emit only"
    */
   @bind()
   public waitForActor(
     actorId: string | RegExp,
     input: xs.InputFrom<T> | xs.Actor<T>,
-    options: ActorRunnerOptions | ActorRunnerOptionsWithActor = {},
+    options: ActorRunnerOptions | ActorRunnerOptionsForActor = {},
   ): ActorThenable<T, xs.AnyActorRef> {
     const predicate =
       typeof actorId === 'string'
@@ -909,7 +1164,7 @@ export class AnyActorRunner<T extends xs.AnyActorLogic>
     const {timeout = this.defaultTimeout} = options;
     const actor =
       input instanceof xs.Actor
-        ? this.instrumentActor(input, options as ActorRunnerOptionsWithActor)
+        ? this.instrumentActor(input, options as ActorRunnerOptionsForActor)
         : this.createInstrumentedActor(input, options as ActorRunnerOptions);
 
     const {
@@ -965,12 +1220,11 @@ export class AnyActorRunner<T extends xs.AnyActorLogic>
   public runUntilActor(
     actorId: string | RegExp,
     input: xs.InputFrom<T> | xs.Actor<T>,
-    options: ActorRunnerOptions | ActorRunnerOptionsWithActor = {},
+    options: ActorRunnerOptions | ActorRunnerOptionsForActor = {},
   ): ActorThenable<T, xs.AnyActorRef> {
     const actor = this.start(input, options);
     const pActor = this.waitForActor(actorId, actor, options);
-    // eslint-disable-next-line @typescript-eslint/no-floating-promises
-    pActor.finally(() => {
+    void pActor.finally(() => {
       actor.stop();
     });
     return pActor;
@@ -1009,7 +1263,7 @@ export class AnyActorRunner<T extends xs.AnyActorLogic>
   public waitForSnapshot(
     predicate: (snapshot: xs.SnapshotFrom<T>) => boolean,
     actor: xs.Actor<T>,
-    options?: ActorRunnerOptionsWithActor,
+    options?: ActorRunnerOptionsForActor,
   ): ActorThenable<T, xs.SnapshotFrom<T>>;
 
   /**
@@ -1028,13 +1282,13 @@ export class AnyActorRunner<T extends xs.AnyActorLogic>
   public waitForSnapshot(
     predicate: (snapshot: xs.SnapshotFrom<T>) => boolean,
     input: xs.InputFrom<T> | xs.Actor<T>,
-    options: ActorRunnerOptions | ActorRunnerOptionsWithActor = {},
+    options: ActorRunnerOptions | ActorRunnerOptionsForActor = {},
   ): ActorThenable<T, xs.SnapshotFrom<T>> {
     const {timeout = this.defaultTimeout} = options;
 
     const actor =
       input instanceof xs.Actor
-        ? this.instrumentActor(input, options as ActorRunnerOptionsWithActor)
+        ? this.instrumentActor(input, options as ActorRunnerOptionsForActor)
         : this.createInstrumentedActor(input, options as ActorRunnerOptions);
 
     actor.start();
@@ -1070,6 +1324,13 @@ export class StateMachineRunner<T extends xs.AnyStateMachine>
   implements StateMachineActorRunner<T>
 {
   constructor(public readonly runner: AnyActorRunner<T>) {}
+
+  /**
+   * {@inheritDoc AnyActorRunner.waitForEvent}
+   */
+  public get waitForEvent() {
+    return this.runner.waitForEvent;
+  }
 
   /**
    * {@inheritDoc AnyActorRunner.defaultActorLogic}
@@ -1170,7 +1431,7 @@ export class StateMachineRunner<T extends xs.AnyStateMachine>
    *   transition occurs
    * @todo Type narrowing for `source` and `target` once xstate supports it
    *
-   * @todo Attempt to reuse {@link waitUntilTransition}
+   * @todo Attempt to reuse {@link waitForTransition}
    */
   @bind()
   public runUntilTransition(
@@ -1178,7 +1439,7 @@ export class StateMachineRunner<T extends xs.AnyStateMachine>
     target: string,
     input: xs.InputFrom<T> | xs.Actor<T>,
     options: OptionsWithoutInspect<
-      ActorRunnerOptions | ActorRunnerOptionsWithActor
+      ActorRunnerOptions | ActorRunnerOptionsForActor
     > = {},
   ): ActorThenable<T> {
     const {timeout = this.defaultTimeout} = options;
@@ -1217,7 +1478,7 @@ export class StateMachineRunner<T extends xs.AnyStateMachine>
         ? this.runner.instrumentActor(input, {
             ...options,
             inspect: transitionInspector,
-          } as ActorRunnerOptionsWithActor)
+          } as ActorRunnerOptionsForActor)
         : this.runner.createInstrumentedActor(input, {
             ...options,
             id,
@@ -1285,7 +1546,7 @@ export class StateMachineRunner<T extends xs.AnyStateMachine>
     target: string,
     input: xs.InputFrom<T> | xs.Actor<T>,
     options: OptionsWithoutInspect<
-      ActorRunnerOptions | ActorRunnerOptionsWithActor
+      ActorRunnerOptions | ActorRunnerOptionsForActor
     > = {},
   ): ActorThenable<T> {
     const {timeout = this.defaultTimeout} = options;
@@ -1325,7 +1586,7 @@ export class StateMachineRunner<T extends xs.AnyStateMachine>
         ? this.runner.instrumentActor(input, {
             ...options,
             inspect: transitionInspector,
-          } as ActorRunnerOptionsWithActor)
+          } as ActorRunnerOptionsForActor)
         : this.runner.createInstrumentedActor(input, {
             ...options,
             id,
