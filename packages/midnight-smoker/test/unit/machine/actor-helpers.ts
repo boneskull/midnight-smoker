@@ -162,6 +162,24 @@ export interface ActorRunner<T extends xs.AnyActorLogic> {
   ): ActorThenable<T, ActorEventTuple<T, EventTypes>>;
 
   /**
+   * Waits for an actor to be spawned.
+   *
+   * "Actor" here refers to _some other actor_--not the actor provided via
+   * `input` nor created from the input object (this is the "root" actor).
+   *
+   * Immediately stops the root actor thereafter.
+   *
+   * @param actorId A string or RegExp to match against the actor ID
+   * @param input Actor input or an {@link xs.Actor}
+   * @param options Options
+   * @returns The `ActorRef` of the spawned actor
+   */
+  runUntilActor(
+    actorId: string | RegExp,
+    input: xs.InputFrom<T> | xs.Actor<T>,
+  ): ActorThenable<T, xs.AnyActorRef>;
+
+  /**
    * Runs an actor until the snapshot predicate returns `true`.
    *
    * Immediately stops the actor thereafter.
@@ -202,10 +220,10 @@ export interface ActorRunner<T extends xs.AnyActorLogic> {
    * @param options Options
    * @returns The `ActorRef` of the spawned actor
    */
-  waitForActor<SpawnedActor extends xs.AnyActorLogic = xs.AnyActorLogic>(
+  waitForActor(
     actorId: string | RegExp,
     input: xs.InputFrom<T> | xs.Actor<T>,
-  ): ActorThenable<T, xs.ActorRefFrom<SpawnedActor>>;
+  ): ActorThenable<T, xs.AnyActorRef>;
 
   /**
    * Runs a new or existing actor until the snapshot predicate returns `true`.
@@ -370,19 +388,20 @@ export class AnyActorRunner<T extends xs.AnyActorLogic>
   /**
    * Creates an {@link ActorThenable} from an {@link Actor} and a {@link Promise}.
    *
-   * @param actor An `Actor`
+   * @param actor An `Actor` or an `ActorThenable`
    * @param promise Any `Promise`
    * @returns An `Actor` which is also a thenable
    * @internal
    */
   public static createActorThenable<T extends xs.AnyActorLogic, Out = void>(
-    actor: xs.Actor<T>,
+    actor: xs.Actor<T> | ActorThenable<T, Out>,
     promise: Promise<Out>,
   ): ActorThenable<T, Out> {
     // there are myriad ways to do this, and here is one.
-    const pThen = promise.then.bind(promise);
-    const pCatch = promise.catch.bind(promise);
-    const pFinally = promise.finally.bind(promise);
+    const pThen = 'then' in actor ? actor.then : promise.then.bind(promise);
+    const pCatch = 'catch' in actor ? actor.catch : promise.catch.bind(promise);
+    const pFinally =
+      'finally' in actor ? actor.finally : promise.finally.bind(promise);
     return new Proxy(actor, {
       get: (target, prop, receiver) => {
         switch (prop) {
@@ -516,17 +535,20 @@ export class AnyActorRunner<T extends xs.AnyActorLogic>
     // order is important: create promise, then start.
     const p = xs.toPromise(actor);
     actor.start();
+
     const ac = new AbortController();
+
+    AnyActorRunner.createTimer(
+      ac,
+      timeout,
+      `Actor did not complete in ${timeout}ms`,
+    );
+
     return AnyActorRunner.createActorThenable(
       actor,
-      Promise.race([
-        p.finally(() => {
-          ac.abort();
-        }),
-        scheduler.wait(timeout, {signal: ac.signal}).then(() => {
-          throw new Error(`Actor did not complete in ${timeout}ms`);
-        }),
-      ]),
+      p.finally(() => {
+        ac.abort();
+      }),
     );
   }
 
@@ -548,7 +570,7 @@ export class AnyActorRunner<T extends xs.AnyActorLogic>
   public runUntilEvent<const EventTypes extends ActorEventTypeTuple<T>>(
     events: EventTypes,
     input: xs.InputFrom<T>,
-    options?: OptionsWithoutInspect<ActorRunnerOptions>,
+    options?: ActorRunnerOptions,
   ): ActorThenable<T, ActorEventTuple<T, EventTypes>>;
 
   /**
@@ -572,7 +594,7 @@ export class AnyActorRunner<T extends xs.AnyActorLogic>
   public runUntilEvent<const EventTypes extends ActorEventTypeTuple<T>>(
     events: EventTypes,
     actor: xs.Actor<T>,
-    options?: OptionsWithoutInspect<ActorRunnerOptionsWithActor>,
+    options?: ActorRunnerOptionsWithActor,
   ): ActorThenable<T, ActorEventTuple<T, EventTypes>>;
 
   /**
@@ -595,60 +617,77 @@ export class AnyActorRunner<T extends xs.AnyActorLogic>
   public runUntilEvent<const EventTypes extends ActorEventTypeTuple<T>>(
     events: EventTypes,
     input: xs.InputFrom<T> | xs.Actor<T>,
-    options: OptionsWithoutInspect<
-      ActorRunnerOptions | ActorRunnerOptionsWithActor
-    > = {},
+    options: ActorRunnerOptions | ActorRunnerOptionsWithActor = {},
   ): ActorThenable<T, ActorEventTuple<T, EventTypes>> {
     const expectedEventQueue = [...events];
-
     if (!expectedEventQueue.length) {
       throw new TypeError('Expected one or more event types');
     }
-    const id = this.getActorId(
-      input,
-      (options as OptionsWithoutInspect<ActorRunnerOptions>).id,
-    );
 
-    // inspector fields events sent to another actor
-    const runUntilEventInspector = (evt: xs.InspectionEvent) => {
-      const type = expectedEventQueue[0];
-      if (evt.type === '@xstate.event' && type === evt.event.type) {
-        if (evt.sourceRef?.id === id) {
-          emitted.push(evt.event as EventFromEventType<T, typeof type>);
-          expectedEventQueue.shift();
-          if (!expectedEventQueue.length) {
-            evt.sourceRef.stop();
-          }
-          subscription?.unsubscribe();
-        }
-      }
-    };
+    const {timeout = this.defaultTimeout} = options;
+    const id = this.getActorId(input, (options as ActorRunnerOptions).id);
 
     const actor =
       input instanceof xs.Actor
-        ? this.instrumentActor(input, {
-            ...options,
-            inspect: runUntilEventInspector,
-          } as ActorRunnerOptionsWithActor)
-        : this.createInstrumentedActor(input, {
-            ...options,
-            inspect: runUntilEventInspector,
-          } as ActorRunnerOptions);
+        ? this.instrumentActor(input, options as ActorRunnerOptionsWithActor)
+        : this.createInstrumentedActor(input, options as ActorRunnerOptions);
+
+    const {
+      promise,
+      resolve,
+      reject,
+      abortController: ac,
+    } = AnyActorRunner.createAbortablePromise<ActorEventTuple<T, EventTypes>>();
 
     const emitted: ActorEventTuple<T, EventTypes> = [] as any;
 
-    const {timeout = this.defaultTimeout} = options;
+    actor.system.inspect({
+      next: (evt: xs.InspectionEvent) => {
+        if (ac.signal.aborted) {
+          return;
+        }
+        const type = expectedEventQueue[0];
+        if (evt.type === '@xstate.event' && type === evt.event.type) {
+          if (evt.sourceRef?.id === id) {
+            emitted.push(evt.event as EventFromEventType<T, typeof type>);
+            expectedEventQueue.shift();
+            if (!expectedEventQueue.length) {
+              evt.sourceRef.stop();
+              resolve(emitted);
+            }
+            subscription?.unsubscribe();
+          }
+        }
+      },
+      error: reject,
+      complete: () => {
+        if (ac.signal.aborted) {
+          return;
+        }
+        if (expectedEventQueue.length) {
+          reject(
+            new Error(
+              `Event(s) not sent nor emitted: ${expectedEventQueue.join(', ')}`,
+            ),
+          );
+        }
+      },
+    });
 
     let subscription: xs.Subscription | undefined;
 
     // subscription fields emitted events
     const subscribe = (type: EventTypes[number]) => {
       subscription = actor.on(type, (evt) => {
+        if (ac.signal.aborted) {
+          return;
+        }
         subscription?.unsubscribe();
         emitted.push(evt.event as EventFromEventType<T, typeof type>);
         expectedEventQueue.shift();
         if (!expectedEventQueue.length) {
           actor.stop();
+          resolve(emitted);
         } else {
           subscription = subscribe(expectedEventQueue[0]);
         }
@@ -658,37 +697,22 @@ export class AnyActorRunner<T extends xs.AnyActorLogic>
 
     subscription = subscribe(expectedEventQueue[0]);
 
-    const p = xs.toPromise(actor);
     actor.start();
-    const ac = new AbortController();
+
+    AnyActorRunner.createTimer(
+      ac,
+      timeout,
+      `Event(s) not sent nor emitted in ${timeout}ms: ${expectedEventQueue.join(
+        ', ',
+      )}`,
+    );
+
     return AnyActorRunner.createActorThenable(
       actor,
-      Promise.race([
-        p.finally(() => {
-          ac.abort();
-        }),
-        scheduler.wait(timeout, {signal: ac.signal}).then(() => {
-          const event = expectedEventQueue[0];
-          if (event) {
-            throw new Error(`Event not sent in ${timeout} ms: ${event}`);
-          }
-          throw new Error(
-            `All events sent in order, but actor timed out in ${timeout}ms`,
-          );
-        }),
-      ])
-        .then(() => {
-          if (expectedEventQueue.length) {
-            throw new Error(
-              `Event(s) not sent nor emitted: ${expectedEventQueue.join(', ')}`,
-            );
-          }
-          return emitted;
-        })
-        .finally(() => {
-          subscription?.unsubscribe();
-          actor.stop();
-        }),
+      promise.finally(() => {
+        subscription?.unsubscribe();
+        actor.stop();
+      }),
     );
   }
 
@@ -818,6 +842,50 @@ export class AnyActorRunner<T extends xs.AnyActorLogic>
   }
 
   /**
+   * Creates
+   *
+   * @param abortController `AbortController`, if any
+   * @returns Object containing the `Promise`, its `resolve` and `reject`
+   *   functions, and an `AbortController`
+   */
+  public static createAbortablePromise<TReturn>(
+    abortController = new AbortController(),
+  ): {
+    promise: Promise<TReturn>;
+    resolve: (value: TReturn) => void;
+    reject: (reason: unknown) => void;
+    abortController: AbortController;
+  } {
+    const {signal} = abortController;
+    let resolve: (value: TReturn) => void;
+    let reject: (reason: unknown) => void;
+
+    const promise = new Promise<TReturn>((res, rej) => {
+      resolve = res;
+      reject = rej;
+      signal.addEventListener('abort', reject);
+      if (signal.aborted) {
+        reject(signal.reason);
+      }
+    }).finally(() => {
+      signal.removeEventListener('abort', reject);
+      abortController.abort();
+    });
+
+    return {promise, resolve: resolve!, reject: reject!, abortController};
+  }
+
+  protected static createTimer(
+    ac: AbortController,
+    timeout: number,
+    message?: string,
+  ) {
+    scheduler.wait(timeout, {signal: ac.signal}).then(() => {
+      ac.abort(new Error(message || `Timeout of ${timeout}ms exceeded`));
+    }, noop);
+  }
+
+  /**
    * A function that waits for an actor to be spawned.
    *
    * Does **not** stop the root actor.
@@ -828,11 +896,11 @@ export class AnyActorRunner<T extends xs.AnyActorLogic>
    * @returns The `ActorRef` of the spawned actor
    */
   @bind()
-  public waitForActor<SpawnedActor extends xs.AnyActorLogic = xs.AnyActorLogic>(
+  public waitForActor(
     actorId: string | RegExp,
     input: xs.InputFrom<T> | xs.Actor<T>,
     options: ActorRunnerOptions | ActorRunnerOptionsWithActor = {},
-  ): ActorThenable<T, xs.ActorRefFrom<SpawnedActor>> {
+  ): ActorThenable<T, xs.AnyActorRef> {
     const predicate =
       typeof actorId === 'string'
         ? (id: string) => id === actorId
@@ -844,31 +912,68 @@ export class AnyActorRunner<T extends xs.AnyActorLogic>
         ? this.instrumentActor(input, options as ActorRunnerOptionsWithActor)
         : this.createInstrumentedActor(input, options as ActorRunnerOptions);
 
+    const {
+      promise,
+      resolve,
+      reject,
+      abortController: ac,
+    } = AnyActorRunner.createAbortablePromise<xs.AnyActorRef>();
+
+    actor.system.inspect({
+      next: (evt) => {
+        if (predicate(evt.actorRef.id)) {
+          resolve(evt.actorRef);
+        }
+      },
+      error: (err) => {
+        reject(err);
+      },
+      complete: () => {
+        reject(
+          new Error(
+            `Actor terminated before detecting spawned actor matching ${actorId}`,
+          ),
+        );
+      },
+    });
+
     actor.start();
 
-    const ac = new AbortController();
-
-    return Object.assign(
-      Promise.race([
-        new Promise<xs.ActorRefFrom<SpawnedActor>>((resolve) => {
-          actor.system.inspect(
-            xs.toObserver((evt) => {
-              if (evt.type === '@xstate.actor' && predicate(evt.actorRef.id)) {
-                resolve(evt.actorRef as xs.ActorRefFrom<SpawnedActor>);
-              }
-            }),
-          );
-        }).finally(() => {
-          ac.abort();
-        }),
-        scheduler.wait(timeout, {signal: ac.signal}).then(() => {
-          throw new Error(
-            `Failed to detect an spawned actor matching ${actorId} in ${timeout}ms`,
-          );
-        }),
-      ]),
-      actor,
+    AnyActorRunner.createTimer(
+      ac,
+      timeout,
+      `Failed to detect an spawned actor matching ${actorId} in ${timeout}ms`,
     );
+
+    return AnyActorRunner.createActorThenable(actor, promise);
+  }
+
+  /**
+   * Waits for an actor to be spawned.
+   *
+   * "Actor" here refers to _some other actor_--not the actor provided via
+   * `input` nor created from the input object (this is the "root" actor).
+   *
+   * Immediately stops the root actor thereafter.
+   *
+   * @param actorId A string or RegExp to match against the actor ID
+   * @param input Actor input or an {@link xs.Actor}
+   * @param options Options
+   * @returns The `ActorRef` of the spawned actor
+   */
+  @bind()
+  public runUntilActor(
+    actorId: string | RegExp,
+    input: xs.InputFrom<T> | xs.Actor<T>,
+    options: ActorRunnerOptions | ActorRunnerOptionsWithActor = {},
+  ): ActorThenable<T, xs.AnyActorRef> {
+    const actor = this.start(input, options);
+    const pActor = this.waitForActor(actorId, actor, options);
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+    pActor.finally(() => {
+      actor.stop();
+    });
+    return pActor;
   }
 
   /**
@@ -945,7 +1050,7 @@ export class AnyActorRunner<T extends xs.AnyActorLogic>
               'Actor terminated without satisfying predicate',
             )
           ) {
-            throw new Error(`Actor stopped before satisfying predicate`);
+            throw new Error(`Actor terminated before satisfying predicate`);
           }
         }
         throw err;
@@ -1034,6 +1139,13 @@ export class StateMachineRunner<T extends xs.AnyStateMachine>
    */
   public get waitForActor() {
     return this.runner.waitForActor;
+  }
+
+  /**
+   * {@inheritDoc AnyActorRunner.runUntilActor}
+   */
+  public get runUntilActor() {
+    return this.runner.runUntilActor;
   }
 
   /**

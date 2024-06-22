@@ -11,6 +11,7 @@ import {FileManager} from '#util/filemanager';
 import Debug from 'debug';
 import {memfs} from 'memfs';
 import {type Volume} from 'memfs/lib/volume';
+import {beforeEach} from 'mocha';
 import path from 'node:path';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
@@ -40,8 +41,8 @@ describe('midnight-smoker', function () {
       beforeEach(async function () {
         ({vol} = memfs());
         fileManager = FileManager.create({fs: vol as any});
-        pluginRegistry = PluginRegistry.create({fileManager});
         sandbox = createSandbox();
+        pluginRegistry = PluginRegistry.create({fileManager});
         await pluginRegistry.registerPlugin('test-plugin', {
           plugin(api) {
             api.definePackageManager(nullPkgManagerDef);
@@ -405,6 +406,13 @@ describe('midnight-smoker', function () {
                 );
               });
 
+              it('should spawn a PluginLoaderMachine', async function () {
+                await expect(
+                  runner.runUntilActor(/^PluginLoaderMachine/, input),
+                  'to be fulfilled',
+                );
+              });
+
               describe('when the PluginLoaderMachine outputs the ERROR type', function () {
                 it('should abort', async function () {
                   const err = new Error('yuk');
@@ -437,7 +445,31 @@ describe('midnight-smoker', function () {
               });
 
               describe('when multiple plugins should be loaded', function () {
-                it('needs a test');
+                beforeEach(async function () {
+                  await pluginRegistry.registerPlugin('test-plugin2', {
+                    plugin(api) {
+                      api.definePackageManager({
+                        ...nullPkgManagerDef,
+                        name: 'moo',
+                      });
+                    },
+                  });
+                });
+                it('should spawn a PluginLoaderMachine for each plugin', async function () {
+                  const actor = runner.start(input);
+                  try {
+                    await expect(
+                      Promise.all([
+                        runner.waitForActor(/^PluginLoaderMachine/, actor),
+                        runner.waitForActor(/^PluginLoaderMachine/, actor),
+                      ]),
+                      'to be fulfilled with value satisfying',
+                      expect.it('to have length', 2),
+                    );
+                  } finally {
+                    actor.stop();
+                  }
+                });
               });
             });
           });
