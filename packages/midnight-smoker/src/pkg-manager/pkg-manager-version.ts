@@ -5,6 +5,7 @@
  * @see {@link normalizeVersion}
  */
 import {asValidationError} from '#error/validation-error';
+import {type PkgManager} from '#schema/pkg-manager';
 import {
   parseRange,
   type PkgManagerVersionData,
@@ -21,6 +22,29 @@ import {maxSatisfying, parse, type SemVer} from 'semver';
  * be matched to a known version
  */
 export type VersionNormalizer = (value: string) => SemVer | undefined;
+
+/**
+ * Creates a version normalizer from the `versions` field of a package manager
+ * and caches it.
+ *
+ * The function. It caches the function.
+ *
+ * @param pkgManager `PkgManager` instance
+ * @returns Version normalizer function accepting an alleged version or tag
+ *   string
+ */
+export function getVersionNormalizer(
+  pkgManager: PkgManager,
+): VersionNormalizer {
+  let normalize: VersionNormalizer;
+  if (normalizerMap.has(pkgManager)) {
+    normalize = normalizerMap.get(pkgManager)!;
+  } else {
+    normalize = normalizeVersion(pkgManager.versions);
+    normalizerMap.set(pkgManager, normalize);
+  }
+  return normalize;
+}
 
 /**
  * Normalizes a valid tag by retrieving its corresponding version from a map of
@@ -152,3 +176,4 @@ export function normalizeVersion(
 }
 
 const debug = createDebug(__filename);
+const normalizerMap = new WeakMap<PkgManager, VersionNormalizer>();

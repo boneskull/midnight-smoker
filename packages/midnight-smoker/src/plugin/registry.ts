@@ -5,11 +5,12 @@ import {
   type ComponentKind,
   ComponentKinds,
   DEFAULT_COMPONENT_ID,
+  OK,
   RuleSeverities,
 } from '#constants';
 import * as Err from '#error/meta/for-plugin-registry';
+import {PkgManagerLoaderMachine} from '#machine/pkg-manager-loader-machine';
 import {RegistryMachine} from '#machine/registry-machine';
-import {loadPkgManagers} from '#pkg-manager/pkg-manager-loader';
 import {
   type BaseComponentEnvelope,
   type EnvelopeForKind,
@@ -33,6 +34,7 @@ import {
   type ActorRefFrom,
   createActor,
   type Subscription,
+  toPromise,
   waitFor,
 } from 'xstate';
 
@@ -374,13 +376,22 @@ export class PluginRegistry implements Disposable {
     workspaceInfo: Schema.WorkspaceInfo[],
     smokerOptions: Schema.SmokerOptions,
   ): Promise<PkgManagerEnvelope[]> {
-    return loadPkgManagers(
-      this.plugins,
-      workspaceInfo,
-      this.#fileManager,
-      (obj) => this.getComponentId(obj),
-      {desiredPkgManagers: smokerOptions.pkgManager},
-    );
+    const actor = createActor(PkgManagerLoaderMachine, {
+      input: {
+        componentRegistry: this.#componentRegistry,
+        desiredPkgManagers: smokerOptions.pkgManager,
+        fileManager: this.#fileManager,
+        plugins: this.plugins,
+        workspaceInfo,
+      },
+    });
+    const p = toPromise(actor);
+    actor.start();
+    const result = await p;
+    if (result.type === OK) {
+      return result.envelopes;
+    }
+    throw result.error;
   }
 
   public enabledReporters(

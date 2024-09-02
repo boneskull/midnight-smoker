@@ -3,14 +3,11 @@
  *
  * @packageDocumentation
  */
-import {queryWorkspacesLogic} from '#machine/index';
-import {guessPackageManager} from '#pkg-manager/pkg-manager-loader';
 import {Smoker} from '#smoker';
 import {bold} from 'chalk';
 // eslint-disable-next-line @typescript-eslint/no-restricted-imports
 import {inspect} from 'node:util';
 import {type Writable} from 'type-fest';
-import {createActor, toPromise} from 'xstate';
 import {
   type ArgumentsCamelCase,
   type Argv,
@@ -46,15 +43,7 @@ export class ViewCommand extends BaseCommand {
   public static async viewDefaultPkgManager(
     opts: ArgumentsCamelCase<ViewOptionTypes>,
   ) {
-    const actor = createActor(queryWorkspacesLogic, {
-      input: {all: true, cwd: process.cwd()},
-    });
-    const p = toPromise(actor);
-    actor.start();
-    const workspaceInfo = await p;
-
-    const pkgManagers = await Smoker.getPkgManagers();
-    const pkgManager = await guessPackageManager(workspaceInfo, pkgManagers);
+    const pkgManager = await Smoker.getDefaultPkgManager(opts);
 
     if (opts.json) {
       BaseCommand.writeJson(pkgManager);
