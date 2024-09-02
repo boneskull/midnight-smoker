@@ -55,7 +55,7 @@
     "testing"
   ],
   "scripts": {
-    "prepare": "tsx ./scripts/update-pm-versions.ts",
+    "prepublishOnly": "tsx ./scripts/update-pm-versions.ts",
     "test": "run-p test:unit",
     "test:e2e": "mocha \"test/e2e/**/*.spec.ts\" -p --timeout 5s --slow 2500",
     "test:smoke": "smoker",
