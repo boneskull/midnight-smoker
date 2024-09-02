@@ -57,7 +57,7 @@
   "scripts": {
     "prepublishOnly": "tsx ./scripts/update-pm-versions.ts",
     "test": "run-p test:unit",
-    "test:e2e": "mocha \"test/e2e/**/*.spec.ts\" -p --timeout 5s --slow 2500",
+    "test:e2e": "mocha \"test/e2e/**/*.spec.ts\" -p --timeout 5s --slow 2500 --fgrep \"[snapshot]\" --invert",
     "test:smoke": "smoker",
     "test:snapshots-only": "npm run test:e2e -- --fgrep \"[snapshot]\"",
     "test:unit": "mocha \"test/unit/**/*.spec.ts\"",
