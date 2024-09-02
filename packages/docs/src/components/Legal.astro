@@ -1,0 +1,19 @@
+---
+const url = 'https://github.com/boneskull';
+const author = 'Christopher Hiller'
+---
+
+<div class="legal" aria-label="Legal">
+  <p>&copy; 2023 <a href={url} set:text={author}></a>. All Rights Reserved. Licensed Apache-2.0</p>
+</div>
+
+<style>
+.legal {
+  border-top: 1px solid var(--sl-color-hairline);
+	max-width: var(--sl-content-width);
+	padding: 1.5rem var(--sl-content-pad-x);
+  margin-left: auto;
+  text-align: right;
+  font-size: var(--sl-text-body-sm);
+}
+</style>
