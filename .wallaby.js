@@ -59,8 +59,8 @@ module.exports = (wallaby) => {
       './packages/plugin-default/src/**/*.ts',
       './packages/plugin-default/package.json',
       './packages/plugin-default/test/**/*.ts',
-      './packages/test-util/src/**/*.ts',
-      './packages/test-util/package.json',
+      // './packages/test-util/src/**/*.ts',
+      // './packages/test-util/package.json',
       '!**/*.spec.ts',
     ],
     filesWithNoCoverageCalculated: [
@@ -73,7 +73,7 @@ module.exports = (wallaby) => {
     tests: [
       './packages/midnight-smoker/test/**/*.spec.ts',
       './packages/plugin-default/test/**/*.spec.ts',
-      './packages/test-util/test/**/*.spec.ts',
+      // './packages/test-util/test/**/*.spec.ts',
       '!**/e2e/**/*.spec.ts',
     ],
     runMode: 'onsave',
