@@ -1,5 +1,6 @@
 {
   "name": "midnight-smoker",
+  "version": "infinity",
   "engines": {
     "node": "^16.20.0 || ^18.0.0 || ^20.0.0 || ^22.0.0",
     "npm": ">=7.0.0"
@@ -19,7 +20,7 @@
     "#machine/actor/*": "./machine/actor/*.ts",
     "#machine/actor/operation/*": "./machine/actor/operation/*.ts",
     "#machine/util": "./machine/util/index.ts",
-    "#machine/util/*": "./machine/util/t.js",
+    "#machine/util/*": "./machine/util/*.ts",
     "#machine/bus": "./machine/bus/index.ts",
     "#machine/event": "./machine/event/index.ts",
     "#machine/event/*": "./machine/event/*.ts",

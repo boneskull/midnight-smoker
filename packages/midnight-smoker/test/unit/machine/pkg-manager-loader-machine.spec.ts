@@ -244,44 +244,47 @@ describe('midnight-smoker', function () {
               );
             });
           });
-        });
-      });
 
-      describe('when provided an in-range system package manager', function () {
-        beforeEach(function () {
-          actor = createActor(PkgManagerLoaderMachine, {
-            id,
-            input: {
-              ...input,
-              desiredPkgManagers: ['nullpm@1'],
-              workspaceInfo,
-            },
-            logger,
-          });
-        });
-
-        it('should load the package manager', async function () {
-          await expect(
-            runUntilDone(actor),
-            'to be fulfilled with value satisfying',
-            {
-              desiredPkgManagers: ['nullpm@1'],
-              envelopes: [
-                {
-                  pkgManager,
-                  spec: {
-                    ...nullPkgManagerSpec.toJSON(),
-                    bin: expect.it('to end with', path.join('mocks', 'nullpm')),
-                    label: `${nullPkgManagerSpec.label} (${SYSTEM})`,
-                    requestedAs: 'nullpm@1',
-                    version: '1.0.0',
-                  },
+          describe('when provided an in-range system package manager', function () {
+            beforeEach(function () {
+              actor = createActor(PkgManagerLoaderMachine, {
+                id,
+                input: {
+                  ...input,
+                  desiredPkgManagers: ['nullpm@1'],
+                  workspaceInfo,
                 },
-              ],
-              type: OK,
-              unsupported: [],
-            },
-          );
+                logger,
+              });
+            });
+
+            it('should load the package manager', async function () {
+              await expect(
+                runUntilDone(actor),
+                'to be fulfilled with value satisfying',
+                {
+                  desiredPkgManagers: ['nullpm@1'],
+                  envelopes: [
+                    {
+                      pkgManager,
+                      spec: {
+                        ...nullPkgManagerSpec.toJSON(),
+                        bin: expect.it(
+                          'to end with',
+                          path.join('mocks', 'nullpm'),
+                        ),
+                        label: `${nullPkgManagerSpec.label} (${SYSTEM})`,
+                        requestedAs: 'nullpm@1',
+                        version: '1.0.0',
+                      },
+                    },
+                  ],
+                  type: OK,
+                  unsupported: [],
+                },
+              );
+            });
+          });
         });
       });
 
