@@ -1,7 +1,6 @@
 exports['midnight-smoker [E2E] general behavior when packing fails when the package.json is missing a version field should provide a reason [snapshot] 1'] = `
 ABORT
 Aborted due to unrecoverable error. Bummer! [ESMOKER_SMOKE]
-  (Try again with --verbose for more details)
 `
 
 exports['midnight-smoker [E2E] general behavior when packing fails when the package.json is missing a version field when in verbose mode should provide more detail [snapshot] 1'] = `
@@ -34,7 +33,6 @@ Stack Trace:
 exports['midnight-smoker [E2E] general behavior when packing fails when the package.json contains an invalid version should provide a reason [snapshot] 1'] = `
 ABORT
 Aborted due to unrecoverable error. Bummer! [ESMOKER_SMOKE]
-  (Try again with --verbose for more details)
 `
 
 exports['midnight-smoker [E2E] general behavior when packing fails when the package.json contains an invalid version when in verbose mode should provide more detail [snapshot] 1'] = `
@@ -72,7 +70,6 @@ Smokin'…
 npm@<version> (system) failed to install package /path/to/some.tgz: Not Found - GET https://registry.npmjs.org/4923867iajhiknfdeskjusyghikuwyhwaqheakkcjzhxfksdjfhd - Not found
 ABORT
 Aborted due to unrecoverable error. Bummer! [ESMOKER_SMOKE]
-  (Try again with --verbose for more details)
 `
 
 exports['midnight-smoker [E2E] general behavior installation when installation fails when in verbose mode should provide more detail [snapshot] 1'] = `

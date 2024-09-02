@@ -15,7 +15,6 @@ midnight-smoker@<version>
 Smokin'…
 ABORT
 Aborted due to unrecoverable error. Bummer! [ESMOKER_SMOKE]
-  (Try again with --verbose for more details)
 `
 
 exports['midnight-smoker [E2E] custom scripts multiple scripts when the scripts succeed should produce expected output [snapshot] 1'] = `
