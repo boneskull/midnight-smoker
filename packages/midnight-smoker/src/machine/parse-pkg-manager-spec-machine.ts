@@ -1,10 +1,7 @@
 import {ERROR, FINAL, OK, SYSTEM} from '#constants';
 import {MachineError} from '#error/machine-error';
-import {
-  accepts,
-  filterMatchingPkgManagers,
-} from '#pkg-manager/pkg-manager-loader';
 import {PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
+import {getVersionNormalizer} from '#pkg-manager/pkg-manager-version';
 import {type ComponentRegistry} from '#plugin/component';
 import {type PkgManagerEnvelope} from '#plugin/component-envelope';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
@@ -12,14 +9,18 @@ import {
   type DesiredPkgManager,
   parseDesiredPkgManagerSpec,
 } from '#schema/desired-pkg-manager';
+import {type PkgManager} from '#schema/pkg-manager';
 import {
   isKnownStaticPkgManagerSpec,
   isStaticPkgManagerSpec,
+  type PartialStaticPkgManagerSpec,
   type StaticPkgManagerSpec,
 } from '#schema/static-pkg-manager-spec';
+import {RangeSchema} from '#schema/version';
 import * as assert from '#util/assert';
 import {fromUnknownError} from '#util/error-util';
 import {caseInsensitiveEquals} from '#util/util';
+import {type Range, type SemVer} from 'semver';
 import {assign, log, setup} from 'xstate';
 
 import {
@@ -33,27 +34,9 @@ import {
   INIT_ACTION,
 } from './util';
 
-export interface ParsePkgManagerSpecMachineInput {
-  componentRegistry: ComponentRegistry;
-  defaultSystemPkgManagerEnvelope?: PkgManagerEnvelope;
-  desiredPkgManager: DesiredPkgManager;
-  didGuess?: boolean;
-
-  plugins: Readonly<PluginMetadata>[];
-}
-
-export interface ParsePkgManagerSpecMachineContext
-  extends ParsePkgManagerSpecMachineInput {
-  envelope?: PkgManagerEnvelope;
-  error?: MachineError;
-  spec: StaticPkgManagerSpec;
-}
-
-export type ParsePkgManagerSpecMachineOutputOk = ActorOutputOk<{
-  defaultSystemPkgManagerEnvelope?: PkgManagerEnvelope;
-  desiredPkgManager: DesiredPkgManager;
-  envelope?: PkgManagerEnvelope;
-}>;
+export type ParsePkgManagerSpecMachineOutput =
+  | ParsePkgManagerSpecMachineOutputError
+  | ParsePkgManagerSpecMachineOutputOk;
 
 export type ParsePkgManagerSpecMachineOutputError = ActorOutputError<
   MachineError,
@@ -63,9 +46,90 @@ export type ParsePkgManagerSpecMachineOutputError = ActorOutputError<
   }
 >;
 
-export type ParsePkgManagerSpecMachineOutput =
-  | ParsePkgManagerSpecMachineOutputError
-  | ParsePkgManagerSpecMachineOutputOk;
+export type ParsePkgManagerSpecMachineOutputOk = ActorOutputOk<{
+  defaultSystemPkgManagerEnvelope?: PkgManagerEnvelope;
+  desiredPkgManager: DesiredPkgManager;
+  envelope?: PkgManagerEnvelope;
+}>;
+
+export interface ParsePkgManagerSpecMachineContext
+  extends ParsePkgManagerSpecMachineInput {
+  envelope?: PkgManagerEnvelope;
+  error?: MachineError;
+  spec: StaticPkgManagerSpec;
+}
+
+export interface ParsePkgManagerSpecMachineInput {
+  componentRegistry: ComponentRegistry;
+  defaultSystemPkgManagerEnvelope?: PkgManagerEnvelope;
+  desiredPkgManager: DesiredPkgManager;
+  didGuess?: boolean;
+  plugins: Readonly<PluginMetadata>[];
+}
+
+/**
+ * Returns a `SemVer` if the `pkgManager` can support `allegedVersion`.
+ *
+ * @param pkgManager Packaged manager
+ * @param allegedVersion A requested version, tag, range, etc.
+ * @returns `SemVer` if the requested version is supported by the package
+ *   manager component, otherwise `undefined`
+ */
+function accepts(
+  pkgManager: PkgManager,
+  allegedVersion: string,
+): SemVer | undefined {
+  const range = getRange(pkgManager);
+  const normalize = getVersionNormalizer(pkgManager);
+  const version = normalize(allegedVersion);
+  return version && range.test(version) ? version : undefined;
+}
+
+/**
+ * Filter callback which finds all {@link PkgManager}s which match a partial
+ * spec.
+ *
+ * We use {@link PkgManager.name} and {@link PkgManager.bin} to match against
+ * {@link PartialStaticPkgManagerSpec.name}.
+ *
+ * @param spec Partial package manager spec
+ * @param pkgManagers List of package managers
+ * @returns Array of matching package managers
+ */
+function filterMatchingPkgManagers(
+  spec: PartialStaticPkgManagerSpec,
+  pkgManagers: PkgManager[],
+): PkgManager[] {
+  const {name: specName} = spec;
+  return specName
+    ? pkgManagers.filter(
+        (pkgManager) =>
+          caseInsensitiveEquals(pkgManager.name, specName) ||
+          caseInsensitiveEquals(pkgManager.bin, specName),
+      )
+    : pkgManagers;
+}
+
+/**
+ * Parses the range of versions supported by a package manager from the
+ * `supportedVesrionRange` field and caches it.
+ *
+ * @param pkgManager `PkgManager` instance
+ * @returns SemVer {@link Range}
+ * @todo Use `_.memoize()`?
+ */
+function getRange(pkgManager: PkgManager): Range {
+  let range: Range;
+  if (rangeMap.has(pkgManager)) {
+    range = rangeMap.get(pkgManager)!;
+  } else {
+    range = RangeSchema.parse(pkgManager.supportedVersionRange);
+    rangeMap.set(pkgManager, range);
+  }
+  return range;
+}
+
+const rangeMap = new WeakMap<PkgManager, Range>();
 
 /**
  * @internal

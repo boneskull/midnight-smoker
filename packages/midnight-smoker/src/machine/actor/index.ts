@@ -1,7 +1,5 @@
 export * from './flush-queue';
 
-export * from './load-pkg-managers';
-
 export * from './operation';
 
 export * from './pkg-manager-lifecycle';

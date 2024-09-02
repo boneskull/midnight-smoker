@@ -34,8 +34,6 @@ export * from '#schema/workspace-info';
 
 export * from '#util/result';
 
-export * from './pkg-manager-loader';
-
 export * from './pkg-manager-spec';
 
 export * from './pkg-manager-version';

@@ -17,6 +17,8 @@ import {
 import {InvalidArgError} from '#error/invalid-arg-error';
 import {UnknownError} from '#error/unknown-error';
 import {type Executor} from '#executor';
+import {guessPkgManagerLogic} from '#machine/actor/guess-pkg-manager';
+import {queryWorkspacesLogic} from '#machine/actor/query-workspaces';
 import {SmokeMachine, type SmokeMachineOutput} from '#machine/smoke-machine';
 import {OptionsParser} from '#options/options-parser';
 import {type Component, type ComponentObject} from '#plugin/component';
@@ -43,7 +45,7 @@ import {
 
 import {type SmokeResults} from './event';
 import {type PkgManager} from './pkg-manager';
-import {BLESSED_PLUGINS, PluginRegistry} from './plugin';
+import {BLESSED_PLUGINS, type PluginMetadata, PluginRegistry} from './plugin';
 import {type Reporter} from './reporter';
 
 export type {SmokeResults};
@@ -147,6 +149,32 @@ export class Smoker extends EventEmitter {
       caps,
     );
     return new Smoker(smokerOptions, {...caps, pluginRegistry});
+  }
+
+  public static async getDefaultPkgManager(
+    this: void,
+    rawSmokerOptions?: RawSmokerOptions,
+  ): Promise<string> {
+    const smoker = await Smoker.create(rawSmokerOptions);
+
+    const wsActor = createActor(queryWorkspacesLogic, {
+      input: {all: true, cwd: process.cwd()},
+    });
+    const wsP = toPromise(wsActor);
+    wsActor.start();
+    const workspaceInfo = await wsP;
+
+    const guessActor = createActor(guessPkgManagerLogic, {
+      input: {
+        fileManager: FileManager.create(),
+        plugins: smoker.getAllPlugins(),
+        workspaceInfo,
+      },
+    });
+    const guessP = toPromise(guessActor);
+    guessActor.start();
+    const desiredPkgManager = await guessP;
+    return desiredPkgManager;
   }
 
   /**
@@ -327,7 +355,7 @@ export class Smoker extends EventEmitter {
   /**
    * @internal
    */
-  private getAllPlugins(): StaticPluginMetadata[] {
+  private getAllPlugins(): Readonly<PluginMetadata>[] {
     return this.pluginRegistry.plugins;
   }
 
