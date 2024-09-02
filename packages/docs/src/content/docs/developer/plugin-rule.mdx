@@ -1,0 +1,188 @@
+---
+title: Writing rules
+description: Writing custom rules for midnight-smoker
+---
+
+import {Tabs, TabItem} from '@astrojs/starlight/components';
+
+## Writing a Rule
+
+Much like [ESLint](https://eslint.org), a custom rule allows the implementor to write a function which performs a "check" and potentially raises an issue. But instead of running against an [AST](https://en.wikipedia.org/wiki/Abstract_syntax_tree), `midnight-smoker` runs against an [_installed package artifact._](#package-artifacts).
+
+First, we'll hope to better understand what a rule is _for_ and what it _should_, _should not_ or _must not_ (!) do.
+
+### Rule Rights & Responsibilities
+
+- A rule **should perform I/O**.
+
+  Pure static analysis of a `package.json` file _may_ be better suited for something like an ESLint plugin. A `midnight-smoker` rule wants to skulk around in the filesystem and/or create child processes.
+
+- A rule **must not throw** exceptions (or reject).
+
+  Catch them, and instead call `RuleContext.addIssueFromError()`—a convenience method for this very purpose. An exception thrown from a rule _will cause `midnight-smoker` to exit immediately_ with a non-zero exit code.
+
+- A rule **must not print** anything to the console.
+
+  We have reporters for that. I mean—I _guess_ it's fine for you console debuggers out there.
+
+- As of this writing, a rule **should not query the severity** and change its behavior based on its value.
+
+  Whether there's an actual use-case for this is TBD; `RuleContext.severity` may be removed in the future!
+
+- A rule **should not attempt to reference the original package**.
+
+  Unless you're doing some sort of "diff", this is to be avoided. `midnight-smoker` is designed to run against the [_installed package artifact_](#package-artifacts) only.
+
+### Package Artifacts
+
+A _package artifact_ is the result of running [`npm pack`](https://docs.npmjs.com/cli/v10/commands/npm-pack) in a package—it's just a tarball (`.tgz` file). Roughly, `midnight-smoker` creates a temporary directory and installs this tarball into it as if it were a dependency.
+
+The directory where the tarball was installed (typically `node_modules/<package-name>`) is the _installed package artifact_. This is the context in which `midnight-smoker`, uh… smokes.
+
+### Example Rule: `no-unlicensed`
+
+To create a rule, we'll use the `api.defineRule()` function. The example plugin below defines a rule which asserts the published package will ship with license information in its `package.json` _and_ an external license file.
+
+<Tabs>
+  <TabItem label="TypeScript">
+
+    {/* prettier-ignore */}
+    ```ts file=../../../../../../example/plugin-rule/ts/index.ts title="plugin-rule.ts"
+    ```
+
+  </TabItem>
+  <TabItem label="ESM">
+
+    {/* prettier-ignore */}
+    ```ts file=../../../../../../example/plugin-rule/esm/index.js title="plugin-rule.mjs"
+    ```
+
+  </TabItem>
+</Tabs>
+
+The first parameter to the `check` function is the `RuleContext` object. This object contains information about the package artifact, the severity of the rule, and the `addIssue()` function, which we'll discuss next.
+
+### `addIssue()`
+
+The `addIssue()` function is used to report an issue. In most cases, passing this function a message will suffice. In other cases, it may be useful to provide a second parameter which contains additional information about the issue. This "extra data" is only shown when `midnight-smoker` is run with the `--verbose` flag.
+
+Because the _severity_ is user-controlled, a rule implementation needn't report an issue as a "warning" or an "error". Thus, merely calling `addIssue()` implies nothing about the exit code of `smoker`.
+
+### Rule Options
+
+A rule definition _may_ define its own options on the `schema` property. These options are user-configurable via a [config file](/reference/config).
+
+`midnight-smoker` provides [Zod](https://zod.dev) for defining option schemas. We have some rules (haha?) about these an options schemas:
+
+1. It _must_ be an _object_, e.g., created with `z.object()`.
+2. It _must_ be fully optional (even if you don't write it as such, it will be _made_ optional).
+3. It _should_ provide defaults for its properties.
+4. It _should_ leverage `z.describe()` to provide descriptions for its properties; these will be output in any error messages printed the your rule is misconfigured by an end-user.
+
+If a rule definition has no `schema` property, any options provided by the user will be passed through as-is to the `opts` parameter (second parameter) of the `check()` function.
+
+### Verifying the Plugin
+
+To verify that `midnight-smoker` loads our plugin successfully, try the `list-plugins` command:
+
+<Tabs>
+  <TabItem label="TypeScript">
+
+    {/* prettier-ignore */}
+    ```shell title="List Plugins"
+    npm exec smoker -- --plugin ./plugin-rule.ts list-plugins
+    ```
+
+  </TabItem>
+  <TabItem label="ESM">
+
+    {/* prettier-ignore */}
+    ```shell title="List Plugins"
+    npm exec smoker -- --plugin ./plugin-rule.mjs list-plugins
+    ```
+
+  </TabItem>
+</Tabs>
+
+You should see something like this:
+
+```ansi title="Plugin List"
+[0;90m┌────────────┬─────────┬──────────────────────────────────────────┬────────────┐[0m[0m
+[0;90m│[0m [0;36mName[0m       [0;90m│[0m [0;36mVersion[0m [0;90m│[0m [0;36mDescription[0m                              [0;90m│[0m [0;36mResolved[0m   [0;90m│[0m[0m
+[0;90m├────────────┼─────────┼──────────────────────────────────────────┼────────────┤[0m[0m
+[0;90m│[0m [0;33;1m(built-in)[0m [0;90m│[0m 0.0.0   [0;90m│[0m Default behavior for midnight-smoker     [0;90m│[0m ../../pac… [0;90m│[0m[0m
+[0;90m├────────────┼─────────┼──────────────────────────────────────────┼────────────┤[0m[0m
+[0;90m│[0m [0;33;1mexample[0m    [0;90m│[0m 1.0.0   [0;90m│[0m Provides a rule which validates licenses [0;90m│[0m index.ts   [0;90m│[0m[0m
+[0;90m└────────────┴─────────┴──────────────────────────────────────────┴────────────┘[0m[0m
+[0m
+```
+
+You can also list all the rules via the `list-rules` command:
+
+<Tabs>
+  <TabItem label="TypeScript">
+
+    {/* prettier-ignore */}
+    ```shell title="List Rules"
+    npm exec smoker -- --plugin ./plugin-rule.ts list-rules
+    ```
+
+  </TabItem>
+  <TabItem label="ESM">
+
+    {/* prettier-ignore */}
+    ```shell title="List Rules"
+    npm exec smoker -- --plugin ./plugin-rule.mjs list-rules
+    ```
+
+  </TabItem>
+</Tabs>
+
+Producing:
+
+```ansi title="Rule List"
+[0;90m┌────────────────────────┬─────────────────────────────────────────┬───────────┐[0m[0m
+[0;90m│[0m [0;36mName[0m                   [0;90m│[0m [0;36mDescription[0m                             [0;90m│[0m [0;36mPlugin[0m    [0;90m│[0m[0m
+[0;90m├────────────────────────┼─────────────────────────────────────────┼───────────┤[0m[0m
+[0;90m│[0m [0;33;1mno-banned-files[0m        [0;90m│[0m Ensures banned files won't be published [0;90m│[0m (builtin) [0;90m│[0m[0m
+[0;90m│[0m                        [0;90m│[0m to the registry                         [0;90m│[0m           [0;90m│[0m[0m
+[0;90m├────────────────────────┼─────────────────────────────────────────┼───────────┤[0m[0m
+[0;90m│[0m [0;33;1mno-missing-entry-point[0m [0;90m│[0m Checks that the package contains an     [0;90m│[0m (builtin) [0;90m│[0m[0m
+[0;90m│[0m                        [0;90m│[0m entry point; only applies to CJS        [0;90m│[0m           [0;90m│[0m[0m
+[0;90m│[0m                        [0;90m│[0m packages without an "exports" field     [0;90m│[0m           [0;90m│[0m[0m
+[0;90m├────────────────────────┼─────────────────────────────────────────┼───────────┤[0m[0m
+[0;90m│[0m [0;33;1mno-missing-exports[0m     [0;90m│[0m Checks that all files in the "exports"  [0;90m│[0m (builtin) [0;90m│[0m[0m
+[0;90m│[0m                        [0;90m│[0m field (if present) exist                [0;90m│[0m           [0;90m│[0m[0m
+[0;90m├────────────────────────┼─────────────────────────────────────────┼───────────┤[0m[0m
+[0;90m│[0m [0;33;1mno-missing-pkg-files[0m   [0;90m│[0m Checks that files referenced in         [0;90m│[0m (builtin) [0;90m│[0m[0m
+[0;90m│[0m                        [0;90m│[0m package.json exist in the tarball       [0;90m│[0m           [0;90m│[0m[0m
+[0;90m├────────────────────────┼─────────────────────────────────────────┼───────────┤[0m[0m
+[0;90m│[0m [0;33;1mexample/no-unlicensed[0m  [0;90m│[0m Checks that a package has a license     [0;90m│[0m example   [0;90m│[0m[0m
+[0;90m└────────────────────────┴─────────────────────────────────────────┴───────────┘[0m
+
+```
+
+Next, [find out why](#scoped-identifiers) the rule is named `example/no-unlicensed` instead of just `no-unlicensed`.
+
+### Scoped Identifiers
+
+The gist is this: **any rules _other_ than the built-in rules have _scoped_ identifiers.**
+
+A rule's scoped identifier is its _unique, canonical name_, and thus how it must be referenced in a config file.
+
+Here's an example config file showing how a rule is referenced by its scoped identifier:
+
+```json title="smoker.config.json"
+{
+  "plugin": ["./plugin-rule.mjs"],
+  "rules": {
+    "example/no-unlicensed": ["error", {"files": ["LICENSE-MIT"]}]
+  }
+}
+```
+
+> The above example a) loads the ESM version of our example plugin, and b) configures the example rule to _only_ consider a file named `LICENSE-MIT` to be a valid license file.
+
+In fact, **all externally-defined components have a scoped identifier**. Some need to be named explicitly (rules, reporters), and others do not (rule runners, script runners).
+
+Next, we'll learn how to [write a custom reporter](/developer/plugin-reporter).
