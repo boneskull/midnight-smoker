@@ -4,7 +4,6 @@
  * @packageDocumentation
  */
 import {castArray} from '#util/util';
-import {italic} from 'chalk';
 import pluralize from 'pluralize';
 
 import {AggregateSmokerError} from './aggregate-smoker-error';
@@ -29,13 +28,5 @@ export class SmokeError extends AggregateSmokerError {
       )}. Bummer!`,
       errs,
     );
-  }
-
-  public override formatMessage(verbose?: boolean): string {
-    let msg = super.formatMessage(verbose);
-    if (!verbose) {
-      msg += italic`\n  (Try again with --verbose for more details)`;
-    }
-    return msg;
   }
 }
