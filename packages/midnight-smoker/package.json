@@ -153,7 +153,7 @@
     "smoke:ts": "tsx ./src/cli/smoker-cli.ts --version",
     "test": "run-s test:unit test:smoke",
     "test:ci": "run-s test:unit test:smoke test:e2e",
-    "test:e2e": "mocha --timeout 20s --slow 10s \"test/e2e/**/*.spec.ts\"",
+    "test:e2e": "mocha --timeout 20s --slow 10s \"test/e2e/**/*.spec.ts\" --fgrep \"[snapshot]\" --invert",
     "test:smoke": "node ./bin/smoker.js run smoke:ts smoke:js --add tsx --add @tsconfig/node18",
     "test:snapshots-only": "npm run test:e2e -- --fgrep \"[snapshot]\"",
     "test:unit": "mocha \"test/unit/**/*.spec.ts\"",
