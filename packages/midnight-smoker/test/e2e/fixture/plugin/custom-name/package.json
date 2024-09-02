@@ -1,0 +1,8 @@
+{
+  "name": "custom-name-plugin",
+  "version": "1.0.0",
+  "description": "Example of a midnight-smoker plugin providing a custom name",
+  "scripts": {
+    "postinstall": "echo \"Do not install this fixture\"; exit 1"
+  }
+}

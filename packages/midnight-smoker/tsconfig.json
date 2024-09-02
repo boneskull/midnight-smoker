@@ -1,11 +1,11 @@
 {
-  "extends": "@tsconfig/node16/tsconfig.json",
-  "files": [],
-  "ts-node": {
-    "transpileOnly": true
-  },
+  "extends": [
+    "../../.config/tsconfig.src.json",
+    "./.config/tsconfig.paths.json"
+  ],
+  "include": ["./src", "./test", "./scripts"],
+  "exclude": ["./test/e2e/fixture/**/*"],
   "compilerOptions": {
-    "composite": true
-  },
-  "references": [{"path": "./src"}, {"path": "./test"}]
+    "outDir": "./dist"
+  }
 }

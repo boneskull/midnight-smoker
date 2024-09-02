@@ -4,3 +4,7 @@ dist
 __snapshots__
 **/*.tpl
 **/fixture/**/*
+docs/api/
+example/
+**/.astro/**/*
+env.d.ts
