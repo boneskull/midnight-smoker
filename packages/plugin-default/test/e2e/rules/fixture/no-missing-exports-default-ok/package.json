@@ -1,0 +1,10 @@
+{
+  "name": "no-missing-exports-default-ok",
+  "version": "1.0.0",
+  "exports": {
+    "stuff": "./index.js",
+    "require": "./index-missing.cjs",
+    "default": "./index.js"
+  },
+  "type": "module"
+}

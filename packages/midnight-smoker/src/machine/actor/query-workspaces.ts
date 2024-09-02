@@ -1,0 +1,209 @@
+import {PACKAGE_JSON} from '#constants';
+import {InvalidPkgJsonError} from '#error/invalid-pkg-json-error';
+import {
+  type NormalizedPackageJson,
+  NormalizedPackageJsonSchema,
+  type PackageJson,
+  PkgJsonWorkspacesSchema,
+} from '#schema/package-json';
+import {type WorkspaceInfo} from '#schema/workspace-info';
+import {FileManager} from '#util/filemanager';
+import * as hwp from '#util/hwp';
+import {hrRelativePath} from '#util/util';
+import assert from 'assert';
+import {isEmpty, partition, uniqBy} from 'lodash';
+import {minimatch} from 'minimatch';
+import path from 'path';
+import {fromPromise} from 'xstate';
+import {type ZodError} from 'zod';
+
+export interface QueryWorkspacesLogicInput {
+  all: boolean;
+  cwd: string;
+  fileManager?: FileManager;
+  workspace?: string[];
+}
+
+/**
+ * Normalize a `package.json` object, insofar as we want to normalize it.
+ *
+ * @privateRemarks
+ * Should this be the default behavior when `{normalize: true}` provided to
+ * `readPkgJson`, or should we continue to allow `normalize-pkg-data` to handle
+ * it?
+ * @param pkgJson A parsed `package.json` obj
+ * @returns A "normalized" `package.json` obj
+ */
+function normalizePkgJson(
+  pkgJson: PackageJson,
+  pkgJsonPath: string,
+): NormalizedPackageJson {
+  return NormalizedPackageJsonSchema.parse(pkgJson, {
+    errorMap: (issue, ctx) => {
+      return {
+        message: `${pkgJsonPath}: ${issue.message ?? ctx.defaultError}`,
+      };
+    },
+  });
+}
+
+export const queryWorkspacesLogic = fromPromise<
+  WorkspaceInfo[],
+  QueryWorkspacesLogicInput
+>(
+  async ({
+    input: {
+      all: allWorkspaces,
+      cwd,
+      fileManager = FileManager.create(),
+      workspace: onlyWorkspaces = [],
+    },
+    signal,
+  }): Promise<WorkspaceInfo[]> => {
+    const {packageJson: rawRootPkgJson, path: rootPkgJsonPath} =
+      await fileManager.findPkgUp(cwd, {
+        signal,
+        strict: true,
+      });
+
+    let rootPkgJson: NormalizedPackageJson;
+
+    try {
+      rootPkgJson = normalizePkgJson(rawRootPkgJson, rootPkgJsonPath);
+    } catch (err) {
+      throw new InvalidPkgJsonError(
+        `Invalid ${PACKAGE_JSON} at ${hrRelativePath(rootPkgJsonPath)}`,
+        err as ZodError,
+        rootPkgJsonPath,
+      );
+    }
+
+    /**
+     * @param wsPatterns Array of workspace pattterns from `workspaces` field in
+     *   `package.json`
+     * @param pickPkgNames Array of package names to pick from the patterns
+     * @returns
+     */
+    const getWorkspaceInfo = async (
+      wsPatterns: string[],
+      pickPkgNames: string[] = [],
+    ): Promise<WorkspaceInfo[]> => {
+      const isPickedPkg = isEmpty(pickPkgNames)
+        ? () => true
+        : (pkgName: string) => pickPkgNames.includes(pkgName);
+
+      const workspaces: WorkspaceInfo[] = await hwp.flatMap(
+        fileManager.globIterate(wsPatterns, {
+          cwd,
+          signal,
+          withFileTypes: true,
+        }),
+        async (workspacePath, {signal}) => {
+          if (signal.aborted || !workspacePath.isDirectory()) {
+            return [];
+          }
+
+          const fullpath = workspacePath.fullpath();
+          const pkgJsonPath = path.join(fullpath, PACKAGE_JSON);
+          const pkgJson = await fileManager.readPkgJson(pkgJsonPath, {
+            signal,
+          });
+
+          let workspacePkgJson: NormalizedPackageJson;
+          try {
+            workspacePkgJson = normalizePkgJson(pkgJson, pkgJsonPath);
+          } catch (err) {
+            throw new InvalidPkgJsonError(
+              `Invalid ${PACKAGE_JSON} in workspace ${hrRelativePath(
+                rootPkgJsonPath,
+              )}`,
+              err as ZodError,
+              rootPkgJsonPath,
+            );
+          }
+
+          if (
+            signal.aborted ||
+            !workspacePkgJson ||
+            !isPickedPkg(workspacePkgJson.name)
+          ) {
+            return [];
+          }
+
+          return [
+            {
+              localPath: fullpath,
+              pkgJson: workspacePkgJson,
+              pkgJsonPath,
+              pkgName: workspacePkgJson.name,
+              private: Boolean(workspacePkgJson.private),
+            },
+          ];
+        },
+      );
+      return workspaces;
+    };
+
+    const result = PkgJsonWorkspacesSchema.safeParse(rootPkgJson.workspaces);
+
+    let workspaceInfo: WorkspaceInfo[] = [];
+    if (result.success) {
+      const {data} = result;
+
+      const patterns: string[] = (
+        Array.isArray(data)
+          ? data
+          : [...(data.packages ?? []), ...(data.nohoist ?? [])]
+      ).map((pattern) => path.normalize(pattern));
+
+      if (allWorkspaces) {
+        workspaceInfo = await getWorkspaceInfo(patterns);
+      } else if (!isEmpty(onlyWorkspaces)) {
+        // a workspace, per npm's CLI, can be a package name _or_ a path.
+        // we can detect a path by checking if any of the workspace patterns
+        // in the root package.json match the workspace.
+        const relWorkspaces = onlyWorkspaces.map((onlyWs) => {
+          const normalized = path.normalize(onlyWs);
+          return path.isAbsolute(normalized)
+            ? path.relative(cwd, normalized)
+            : normalized;
+        });
+
+        const [pickPaths, pickPkgNames] = partition(relWorkspaces, (onlyWs) =>
+          patterns.some((ws) => minimatch(onlyWs, ws)),
+        );
+        const promises: Promise<WorkspaceInfo[]>[] = [];
+
+        // if we found some paths matching the patterns, then look for those
+        if (!isEmpty(pickPaths)) {
+          promises.push(getWorkspaceInfo(pickPaths));
+        }
+        // if we found things that might be package names, look for those too
+        if (!isEmpty(pickPkgNames)) {
+          promises.push(getWorkspaceInfo(patterns, pickPkgNames));
+        }
+        // since it's possible for these to overlap, we gotta dedupe it
+        workspaceInfo = (await Promise.all(promises)).flat();
+      }
+    }
+
+    if (isEmpty(workspaceInfo)) {
+      assert.ok(
+        rootPkgJson.name,
+        `no package name in root ${PACKAGE_JSON}: ${rootPkgJsonPath}`,
+      );
+
+      workspaceInfo = [
+        {
+          localPath: cwd,
+          pkgJson: rootPkgJson,
+          pkgJsonPath: rootPkgJsonPath,
+          pkgName: rootPkgJson.name,
+          private: Boolean(rootPkgJson.private),
+        },
+      ];
+    }
+
+    return uniqBy(workspaceInfo, 'localPath');
+  },
+);

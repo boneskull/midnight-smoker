@@ -1,10 +1,12 @@
 # 💨 midnight-smoker
 
-> Run smoke tests against packages as they would be published
+> Smoke test your package tarball (instead of failing miserably)
 
 ## Packages
 
-- [midnight-smoker](./packages/midnight-smoker) - the main thing
+- [`midnight-smoker`](./packages/midnight-smoker) - the main thing
+- [`@midnight-smoker/plugin-defaults`](./packages/plugin-defaults) - default set of plugins
+- [`@midnight-smoker/test-util`](./packages/test-util) - test utilities for plugins
 
 ## License
 

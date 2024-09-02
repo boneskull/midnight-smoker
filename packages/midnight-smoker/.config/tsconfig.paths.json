@@ -1,0 +1,36 @@
+{
+  "compilerOptions": {
+    "paths": {
+      "@midnight-smoker/plugin-default": ["../../plugin-default/src/index.js"],
+      "#cli/*": ["../src/cli/*.js"],
+      "#capabilities": ["../src/capabilities.js"],
+      "#config": ["../src/config/index.js"],
+      "#config/*": ["../src/config/*.js"],
+      "#constants": ["../src/constants/index.js"],
+      "#constants/*": ["../src/constants/*.js"],
+      "#error/*": ["../src/error/*.js"],
+      "#error/meta/*": ["../src/error/meta/*.js"],
+      "#event/*": ["../src/event/*.js"],
+      "#executor": ["../src/executor/index.js"],
+      "#machine/*": ["../src/machine/*.js"],
+      "#machine/util": ["../src/machine/util/index.js"],
+      "#machine/util/*": ["../src/machine/util/*.js"],
+      "#machine/bus": ["../src/machine/bus/index.js"],
+      "#machine/actor/*": ["../src/machine/actor/*.js"],
+      "#machine/actor/operation/*": ["../src/machine/actor/operation/*.js"],
+      "#machine/event": ["../src/machine/event/index.js"],
+      "#machine/event/*": ["../src/machine/event/*.js"],
+      "#options/*": ["../src/options/*.js"],
+      "#pkg-manager/*": ["../src/pkg-manager/*.js"],
+      "#plugin/*": ["../src/plugin/*.js"],
+      "#reporter/*": ["../src/reporter/*.js"],
+      "#rule/*": ["../src/rule/*.js"],
+      "#schema/*": ["../src/schema/*.js"],
+      "#schema/meta/*": ["../src/schema/meta/*.js"],
+      "#smoker": ["../src/smoker.js"],
+      "#util/*": ["../src/util/*.js"],
+      "#util/meta/*": ["../src/util/meta/*.js"],
+      "#util/guard/*": ["../src/util/guard/*.js"]
+    }
+  }
+}

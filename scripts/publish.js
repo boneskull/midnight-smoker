@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 /* eslint-disable @typescript-eslint/no-var-requires */
+/* eslint-disable @stylistic/js/lines-around-comment */
 /* eslint-disable n/shebang */
 // @ts-check
+
+// TODO: replace with laverna
 
 /**
  * Custom publishing script which wraps `npm publish` to only attempt publishing
@@ -11,10 +14,10 @@
  */
 
 const Glob = require('glob');
-const path = require('node:path');
-const Fs = require('node:fs');
-const util = require('node:util');
 const childProcess = require('node:child_process');
+const Fs = require('node:fs');
+const path = require('node:path');
+const util = require('node:util');
 
 /**
  * Default path to workspace root
@@ -28,12 +31,12 @@ const DEFAULT_GLOB_OPTS = /**
  * @type {const}
  */ ({
   cwd: DEFAULT_ROOT,
-  withFileTypes: true,
   ignore: {
     ignored: /**
      * @param {GlobDirent} p
      */ (p) => !p.parent || !p.isDirectory(),
   },
+  withFileTypes: true,
 });
 
 /**
@@ -43,8 +46,8 @@ const DEFAULT_SPAWN_OPTS = /**
  * @type {const}
  */ ({
   cwd: DEFAULT_ROOT,
-  stdio: 'inherit',
   shell: true,
+  stdio: 'inherit',
 });
 
 /**
@@ -162,10 +165,10 @@ const Publish = {
   async invokeNpmPublish(
     pkgs,
     {
-      dryRun = false,
-      spawn = childProcess.spawn,
       console = globalThis.console,
+      dryRun = false,
       root: cwd = DEFAULT_ROOT,
+      spawn = childProcess.spawn,
     } = {},
   ) {
     await new Promise((resolve, reject) => {
@@ -194,21 +197,49 @@ const Publish = {
   },
 
   /**
+   * Parses CLI args for script
+   *
+   * @param {string[]} [args]
+   */
+  parseArgs(args) {
+    const {values} = util.parseArgs({
+      args,
+      options: {
+        dryRun: {
+          type: 'boolean',
+        },
+        help: {
+          type: 'boolean',
+        },
+        newPkg: {
+          multiple: true,
+          type: 'string',
+        },
+        root: {
+          default: DEFAULT_ROOT,
+          type: 'string',
+        },
+      },
+    });
+    return values;
+  },
+
+  /**
    * Inspects all workspaces and publishes any that have not yet been published
    *
    * @param {PublishWorkspacesOptions} opts - Options
    * @returns {Promise<void>}
    */
   async publishWorkspaces({
+    console = globalThis.console,
     dryRun = false,
+    exec = util.promisify(childProcess.exec),
     fs: _fs = Fs,
     glob = Glob.glob,
-    exec = util.promisify(childProcess.exec),
-    spawn = childProcess.spawn,
-    parseJson = JSON.parse,
-    console = globalThis.console,
-    root: cwd = DEFAULT_ROOT,
     newPkg: newPkgs = [],
+    parseJson = JSON.parse,
+    root: cwd = DEFAULT_ROOT,
+    spawn = childProcess.spawn,
   } = {}) {
     if (dryRun) {
       console.info('*** DRY RUN *** DRY RUN *** DRY RUN *** DRY RUN ***');
@@ -272,145 +303,136 @@ const Publish = {
     let pkgs;
 
     try {
+      const mapper =
+        /**
+         * Given a dirent object from `glob`, returns the package name if it
+         * hasn't already been published
+         */
+        async (dirent) => {
+          /**
+           * Parsed contents of `package.json` for the package in the dir
+           * represented by `dirent`
+           *
+           * @type {PackageJson}
+           */
+          let pkg;
+
+          /**
+           * `package.json` contents as read from file
+           *
+           * @type {Buffer | string}
+           */
+          let pkgJsonContents;
+
+          const pkgDir = dirent.fullpath();
+          const pkgJsonPath = path.join(pkgDir, 'package.json');
+          try {
+            pkgJsonContents = await fs.readFile(pkgJsonPath);
+          } catch (err) {
+            if (err.code === 'ENOENT') {
+              console.warn(
+                `Workspace dir ${pkgDir} contains no \`package.json\`. Please move whatever this is somewhere else, or update \`workspaces\` in the workspace root \`package.json\` to exclude this dir; skipping`,
+              );
+              return;
+            }
+            console.error(`Failed to read ${pkgJsonPath}`);
+            throw err;
+          }
+
+          try {
+            pkg = parseJson(pkgJsonContents.toString('utf-8'));
+          } catch (err) {
+            console.error(`Failed to parse ${pkgJsonPath} as JSON`);
+            throw err;
+          }
+
+          // NOTE TO DEBUGGERS: it's possible, though unlikely, that `pkg`
+          // parses into something other than a plain object. if it does
+          // happen, the error may be opaque.
+          const {name, private, version} = pkg;
+
+          // private workspaces should be ignored
+          if (private) {
+            console.info(`Skipping workspace ${name}; private package`);
+            return;
+          }
+
+          if (!(name && version)) {
+            throw new Error(
+              `Missing package name and/or version in ${pkgJsonPath}; cannot be published`,
+            );
+          }
+
+          /**
+           * Raw STDOUT of `npm view <name> versions --json`
+           *
+           * @type {string | undefined}
+           */
+          let versionContents;
+          try {
+            versionContents = await exec(`npm view ${name} versions --json`, {
+              cwd,
+            }).then(({stdout}) => stdout);
+          } catch (err) {
+            if (newPkgs.includes(name)) {
+              console.info(`Package ${name} confirmed as new`);
+            } else {
+              // when called with `--json`, you get a JSON error.
+              // this could also be handled in a catch() chained to the `exec` promise
+              if ('stdout' in err) {
+                /**
+                 * @type {{
+                 *   error: {
+                 *     code: string;
+                 *     summary: string;
+                 *     detail: string;
+                 *   };
+                 * }}
+                 */
+                let errJson;
+                try {
+                  errJson = parseJson(err.stdout);
+                } catch {
+                  throw err;
+                }
+                throw new Error(
+                  `Querying npm for package ${name} failed: ${errJson.error.summary} ${errJson.error.detail}`,
+                );
+              }
+              throw err;
+            }
+          }
+
+          if (versionContents !== undefined) {
+            /**
+             * List of published versions for this pkg
+             *
+             * @type {string[]}
+             */
+            let versions;
+            try {
+              versions = parseJson(versionContents);
+            } catch (err) {
+              console.error(
+                `Failed to parse output from \`npm view\` for ${name} as JSON`,
+              );
+              throw err;
+            }
+
+            // ANOTHER NOTE TO DEBUGGERS: we are assuming the parsed JSON
+            // result is a `string[]`. if it isn't, this `includes()` call may
+            // fail
+            if (versions.includes(version)) {
+              console.info(`Skipping ${name}@${version}; already published`);
+              return;
+            }
+          }
+
+          return {name, version};
+        };
       pkgs = /**
        * @type {{name: string; version: string}[]}
-       */ (
-        (
-          await Promise.all(
-            dirents.map(
-              /**
-               * Given a dirent object from `glob`, returns the package name if
-               * it hasn't already been published
-               */
-              async (dirent) => {
-                /**
-                 * Parsed contents of `package.json` for the package in the dir
-                 * represented by `dirent`
-                 *
-                 * @type {PackageJson}
-                 */
-                let pkg;
-
-                /**
-                 * `package.json` contents as read from file
-                 *
-                 * @type {Buffer | string}
-                 */
-                let pkgJsonContents;
-
-                const pkgDir = dirent.fullpath();
-                const pkgJsonPath = path.join(pkgDir, 'package.json');
-                try {
-                  pkgJsonContents = await fs.readFile(pkgJsonPath);
-                } catch (err) {
-                  if (err.code === 'ENOENT') {
-                    console.warn(
-                      `Workspace dir ${pkgDir} contains no \`package.json\`. Please move whatever this is somewhere else, or update \`workspaces\` in the workspace root \`package.json\` to exclude this dir; skipping`,
-                    );
-                    return;
-                  }
-                  console.error(`Failed to read ${pkgJsonPath}`);
-                  throw err;
-                }
-
-                try {
-                  pkg = parseJson(pkgJsonContents.toString('utf-8'));
-                } catch (err) {
-                  console.error(`Failed to parse ${pkgJsonPath} as JSON`);
-                  throw err;
-                }
-
-                // NOTE TO DEBUGGERS: it's possible, though unlikely, that `pkg`
-                // parses into something other than a plain object. if it does
-                // happen, the error may be opaque.
-                const {private, name, version} = pkg;
-
-                // private workspaces should be ignored
-                if (private) {
-                  console.info(`Skipping workspace ${name}; private package`);
-                  return;
-                }
-
-                if (!(name && version)) {
-                  throw new Error(
-                    `Missing package name and/or version in ${pkgJsonPath}; cannot be published`,
-                  );
-                }
-
-                /**
-                 * Raw STDOUT of `npm view <name> versions --json`
-                 *
-                 * @type {string | undefined}
-                 */
-                let versionContents;
-                try {
-                  versionContents = await exec(
-                    `npm view ${name} versions --json`,
-                    {cwd},
-                  ).then(({stdout}) => stdout);
-                } catch (err) {
-                  if (newPkgs.includes(name)) {
-                    console.info(`Package ${name} confirmed as new`);
-                  } else {
-                    // when called with `--json`, you get a JSON error.
-                    // this could also be handled in a catch() chained to the `exec` promise
-                    if ('stdout' in err) {
-                      /**
-                       * @type {{
-                       *   error: {
-                       *     code: string;
-                       *     summary: string;
-                       *     detail: string;
-                       *   };
-                       * }}
-                       */
-                      let errJson;
-                      try {
-                        errJson = parseJson(err.stdout);
-                      } catch {
-                        throw err;
-                      }
-                      throw new Error(
-                        `Querying npm for package ${name} failed: ${errJson.error.summary} ${errJson.error.detail}`,
-                      );
-                    }
-                    throw err;
-                  }
-                }
-
-                if (versionContents !== undefined) {
-                  /**
-                   * List of published versions for this pkg
-                   *
-                   * @type {string[]}
-                   */
-                  let versions;
-                  try {
-                    versions = parseJson(versionContents);
-                  } catch (err) {
-                    console.error(
-                      `Failed to parse output from \`npm view\` for ${name} as JSON`,
-                    );
-                    throw err;
-                  }
-
-                  // ANOTHER NOTE TO DEBUGGERS: we are assuming the parsed JSON
-                  // result is a `string[]`. if it isn't, this `includes()` call may
-                  // fail
-                  if (versions.includes(version)) {
-                    console.info(
-                      `Skipping ${name}@${version}; already published`,
-                    );
-                    return;
-                  }
-                }
-
-                return {name, version};
-              },
-            ),
-          )
-        ).filter(Boolean)
-      );
+       */ ((await Promise.all(dirents.map(mapper))).filter(Boolean));
     } catch (err) {
       console.error('Workspace analysis failed; refusing to publish');
       throw err;
@@ -442,35 +464,7 @@ const Publish = {
       `Publishing ${pkgs.length} package(s): ${nameVersionPairs.join(', ')}`,
     );
 
-    await Publish.invokeNpmPublish(pkgNames, {dryRun, spawn, console});
-  },
-
-  /**
-   * Parses CLI args for script
-   *
-   * @param {string[]} [args]
-   */
-  parseArgs(args) {
-    const {values} = util.parseArgs({
-      args,
-      options: {
-        dryRun: {
-          type: 'boolean',
-        },
-        root: {
-          type: 'string',
-          default: DEFAULT_ROOT,
-        },
-        help: {
-          type: 'boolean',
-        },
-        newPkg: {
-          type: 'string',
-          multiple: true,
-        },
-      },
-    });
-    return values;
+    await Publish.invokeNpmPublish(pkgNames, {console, dryRun, spawn});
   },
 };
 

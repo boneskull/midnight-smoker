@@ -1,27 +1,32 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 import type {ExecaReturnValue} from 'execa';
 import type unexpected from 'unexpected';
-import {readPackageJsonSync} from '../src/util';
 
-const {packageJson} = readPackageJsonSync({cwd: __dirname, strict: true});
+import {isBoolean, isInteger, isObject, isString} from 'lodash';
+
 export default {
-  name: 'unexpected-midnight-smoker-internal',
-  version: packageJson.version,
   installInto(expect: typeof unexpected) {
     expect
       .addType({
-        name: 'ExecaReturnValue',
         base: 'object',
         identify(v: any): v is ExecaReturnValue {
           return (
-            v &&
-            typeof v === 'object' &&
-            typeof v.command === 'string' &&
-            typeof v.exitCode === 'number' &&
-            typeof v.stdout === 'string' &&
-            typeof v.stderr === 'string' &&
-            typeof v.failed === 'boolean'
+            isObject(v) &&
+            'command' in v &&
+            isString(v.command) &&
+            'exitCode' in v &&
+            isInteger(v.exitCode) &&
+            'stdout' in v &&
+            isString(v.stdout) &&
+            'stderr' in v &&
+            isString(v.stderr) &&
+            'failed' in v &&
+            isBoolean(v.failed)
           );
         },
+        name: 'ExecaReturnValue',
       })
       .addAssertion(
         '<ExecaReturnValue> [not] to have failed',
@@ -48,4 +53,5 @@ export default {
         },
       );
   },
+  name: 'unexpected-midnight-smoker-internal',
 };
