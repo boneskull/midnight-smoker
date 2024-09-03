@@ -157,7 +157,7 @@
     "test:smoke": "node ./bin/smoker.js run smoke:ts smoke:js --add tsx --add @tsconfig/node18",
     "test:snapshots-only": "npm run test:e2e -- --fgrep \"[snapshot]\"",
     "test:unit": "mocha \"test/unit/**/*.spec.ts\"",
-    "test:update-snapshots": "cross-env SNAPSHOT_UPDATE=1 npm run test:e2e -- --fgrep \"[snapshot]\"",
+    "test:update-snapshots": "cross-env SNAPSHOT_UPDATE=1 mocha --timeout 20s --slow 10s \"test/e2e/**/*.spec.ts\" -- --fgrep \"[snapshot]\"",
     "update-schema": "tsx ./scripts/generate-schema.ts"
   },
   "dependencies": {

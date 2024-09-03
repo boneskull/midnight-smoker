@@ -23,7 +23,7 @@ describe('midnight-smoker [E2E]', function () {
 
     describe('invalid usage', function () {
       describe('when invalid option is provided', function () {
-        it('should show help', async function () {
+        it('should show help [snapshot]', async function () {
           try {
             await execSmoker(['--hlep']);
             expect.fail();

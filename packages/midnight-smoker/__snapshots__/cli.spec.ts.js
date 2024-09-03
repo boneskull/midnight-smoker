@@ -1,3 +1,39 @@
+exports['midnight-smoker [E2E] command-line interface invalid usage when invalid option is provided should show help [snapshot] 1'] = `
+smoker lint
+
+Lint package artifacts
+
+Commands:
+  smoker lint                   Lint package artifacts                 [default]
+  smoker list <component>       List available components          [aliases: ls]
+  smoker run-script <script..>  Run custom script(s) against package artifacts
+                                                                  [aliases: run]
+  smoker view <item>            View information about stuff     [aliases: show]
+
+Input:
+      --all                Run in all workspaces                       [boolean]
+      --allow-private      Do not ignore private packages              [boolean]
+  -p, --pkg-manager, --pm  Use a specific package manager
+                                                       [array] [default: (auto)]
+  -w, --workspace          Run script in a specific workspace or workspaces
+                                                                         [array]
+
+Output:
+      --json      Output JSON only. Alias for "--reporter=json"        [boolean]
+  -r, --reporter  Reporter(s) to use                  [array] [default: console]
+      --verbose   Enable verbose output                                [boolean]
+
+Options:
+      --version            Show version number                         [boolean]
+  -c, --config             Path to config file                          [string]
+  -P, --plugin, --plugins  Plugin(s) to use                              [array]
+      --help               Show help                                   [boolean]
+
+RTFM at: https://boneskull.github.io/midnight-smoker
+
+Unknown argument: hlep
+`
+
 exports['midnight-smoker [E2E] command-line interface invalid usage when invalid command is provided should show help [snapshot] 1'] = `
 smoker lint
 
