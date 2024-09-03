@@ -5,7 +5,7 @@
  * @see {@link execSmoker}
  */
 import Debug from 'debug';
-import {node as execa, type NodeOptions} from 'execa';
+import _execa, {type NodeOptions} from 'execa';
 import * as Executor from 'midnight-smoker/executor';
 
 import {CLI_PATH} from './constants';
@@ -16,6 +16,7 @@ const debug = Debug('midnight-smoker:test-util:e2e');
  * Options for {@link execSmoker}
  */
 export interface ExecSmokerOpts extends NodeOptions {
+  execa?: Pick<typeof _execa, 'node'>;
   json?: boolean;
 }
 
@@ -26,7 +27,7 @@ export type ExecSmokerOptsWithJson = {json: true} & ExecSmokerOpts;
 
 /**
  * Execute `smoker` with the given `args` and `opts` using
- * {@link execa execa.node}.
+ * {@link _execa.node execa.node}.
  *
  * @param args - Args to `smoker`
  * @param opts - Options, mostly for `execa`
@@ -68,7 +69,7 @@ export async function execSmoker<T = unknown>(
  * @see {@link https://npm.im/execa}
  */
 export async function execSmoker(args: string[], opts: ExecSmokerOpts = {}) {
-  const {json, ...execaOpts} = opts;
+  const {execa = _execa, json, ...execaOpts} = opts;
   if (json) {
     args = [...new Set(args).add('--json')];
   }
@@ -76,7 +77,7 @@ export async function execSmoker(args: string[], opts: ExecSmokerOpts = {}) {
   debug(`CWD: ${opts.cwd}`);
   let result: Executor.ExecResult;
   try {
-    result = await execa(CLI_PATH, args, {
+    result = await execa.node(CLI_PATH, args, {
       env: {...process.env, DEBUG: ''},
       ...execaOpts,
     });
