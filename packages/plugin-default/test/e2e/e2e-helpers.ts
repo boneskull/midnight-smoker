@@ -3,7 +3,6 @@ import stripAnsi from 'strip-ansi';
 import unexpected from 'unexpected';
 
 import type {SmokerJsonOutput} from '../../src/json-types';
-
 const expect = unexpected.clone();
 
 export function createPkgManagerTest(cwd: string, extraArgs: string[] = []) {
@@ -42,14 +41,14 @@ export function createPkgManagerTest(cwd: string, extraArgs: string[] = []) {
 export function createBehaviorTest(cwd: string, extraArgs: string[] = []) {
   return (spec: string, actual: any) => {
     describe(`requested: ${spec}`, function () {
-      it('should exhibit the expected behavior', async function () {
-        const {stdout} = await execSmoker(
-          ['run', 'smoke', '--pm', spec, '--no-lint', '--json', ...extraArgs],
+      it('should produce the expected result', async function () {
+        const {results} = (await execSmoker(
+          ['run', 'smoke', '--pm', spec, '--no-lint', ...extraArgs],
           {
             cwd,
+            json: true,
           },
-        );
-        const {results} = JSON.parse(stdout) as SmokerJsonOutput;
+        )) as SmokerJsonOutput;
         expect(results.scripts!, 'to satisfy', actual);
       });
     });

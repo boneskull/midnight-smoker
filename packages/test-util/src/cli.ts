@@ -26,20 +26,6 @@ export interface ExecSmokerOpts extends NodeOptions {
 export type ExecSmokerOptsWithJson = {json: true} & ExecSmokerOpts;
 
 /**
- * Execute `smoker` with the given `args` and `opts` using
- * {@link _execa.node execa.node}.
- *
- * @param args - Args to `smoker`
- * @param opts - Options, mostly for `execa`
- * @returns Result of running the `smoker` executable
- * @see {@link https://npm.im/execa}
- */
-export async function execSmoker(
-  args: string[],
-  opts?: ExecSmokerOpts,
-): Promise<Executor.ExecResult>;
-
-/**
  * Execute `smoker`, but parse the result as JSON.
  *
  * If `smoker` exits with a non-zero exit code or otherwise fails, the result
@@ -56,6 +42,20 @@ export async function execSmoker<T = unknown>(
   args: string[],
   opts: ExecSmokerOptsWithJson,
 ): Promise<T>;
+
+/**
+ * Execute `smoker` with the given `args` and `opts` using
+ * {@link _execa.node execa.node}.
+ *
+ * @param args - Args to `smoker`
+ * @param opts - Options, mostly for `execa`
+ * @returns Result of running the `smoker` executable
+ * @see {@link https://npm.im/execa}
+ */
+export async function execSmoker(
+  args: string[],
+  opts?: ExecSmokerOpts,
+): Promise<Executor.ExecResult>;
 
 /**
  * Runs the `smoker` executable with the given `args` and `opts` using
