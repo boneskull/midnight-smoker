@@ -29,11 +29,6 @@
       "types": "./dist/package-manager/data.d.ts",
       "typedoc": "./src/package-manager/data.ts",
       "default": "./dist/package-manager/data.js"
-    },
-    "./reporter": {
-      "types": "./dist/reporter/index.d.ts",
-      "typedoc": "./src/reporter/index.ts",
-      "default": "./dist/reporter/index.js"
     }
   },
   "types": "./dist/index.d.ts",
