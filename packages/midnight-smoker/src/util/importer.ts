@@ -1,7 +1,7 @@
 import {isObject} from 'lodash';
 import {Module} from 'node:module';
 import path from 'node:path';
-import {fileURLToPath} from 'node:url';
+import {fileURLToPath, pathToFileURL} from 'node:url';
 
 import {createDebug} from './debug';
 
@@ -45,8 +45,9 @@ export const mimport: ImportFn = async (
     );
   }
 
-  debug('Attempting import: %s', moduleId);
-  let raw: unknown = await import(moduleId);
+  const moduleUrl = pathToFileURL(moduleId);
+  debug('Attempting import: %s', moduleUrl);
+  let raw: unknown = await import(`${moduleUrl}`);
 
   // unwrap default export of CJS modules
   if (raw && isObject(raw) && 'default' in raw) {
