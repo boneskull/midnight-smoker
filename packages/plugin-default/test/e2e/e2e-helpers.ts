@@ -41,14 +41,14 @@ export function createPkgManagerTest(cwd: string, extraArgs: string[] = []) {
 export function createBehaviorTest(cwd: string, extraArgs: string[] = []) {
   return (spec: string, actual: any) => {
     describe(`requested: ${spec}`, function () {
-      it('should produce the expected result', async function () {
-        const {results} = (await execSmoker(
+      it('should produce the expected', async function () {
+        const {results} = await execSmoker<SmokerJsonOutput>(
           ['run', 'smoke', '--pm', spec, '--no-lint', ...extraArgs],
           {
             cwd,
             json: true,
           },
-        )) as SmokerJsonOutput;
+        );
         expect(results.scripts!, 'to satisfy', actual);
       });
     });
