@@ -12,6 +12,7 @@ import {
   PkgManagerSpec,
   type StaticPkgManagerSpec,
 } from 'midnight-smoker/pkg-manager';
+import path from 'node:path';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
@@ -168,7 +169,7 @@ describe('@midnight-smoker/plugin-default', function () {
                 {
                   cwd: '/some/dir',
                   pkgName: 'tubby',
-                  pkgSpec: `/some/dir/tubby-3.2.1.tgz`,
+                  pkgSpec: path.normalize(`/some/dir/tubby-3.2.1.tgz`),
                 },
               );
             });
@@ -184,9 +185,9 @@ describe('@midnight-smoker/plugin-default', function () {
               executor,
               installManifest: {
                 cwd: MOCK_TMPDIR,
-                installPath: `${MOCK_TMPDIR}/node_modules/bar`,
+                installPath: path.normalize(`${MOCK_TMPDIR}/node_modules/bar`),
                 pkgName: 'bar',
-                pkgSpec: `${MOCK_TMPDIR}/bar.tgz`,
+                pkgSpec: path.normalize(`${MOCK_TMPDIR}/bar.tgz`),
               },
               signal: new AbortController().signal,
               spec,
@@ -251,7 +252,7 @@ describe('@midnight-smoker/plugin-default', function () {
               executor,
               loose: false,
               manifest: {
-                cwd: `${MOCK_TMPDIR}/node_modules/foo`,
+                cwd: path.normalize(`${MOCK_TMPDIR}/node_modules/foo`),
                 localPath: '/some/path',
                 pkgJson: {name: 'foo', version: '1.0.0'},
                 pkgJsonPath: '',
