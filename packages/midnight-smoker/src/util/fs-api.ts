@@ -10,6 +10,8 @@ export interface FileManagerOptions {
 export interface ReadPkgJsonNormalizedResult {
   packageJson: NormalizedPackageJson;
   path: string;
+
+  rawPackageJson: string;
 }
 
 export interface ReadPkgJsonOptions {
@@ -26,7 +28,10 @@ export interface ReadPkgJsonNormalizeOptions extends ReadPkgJsonOptions {
   normalize: true;
 }
 
-export interface ReadPkgJsonResult {
+export interface FindPkgJsonResult {
   packageJson: PackageJson;
+
   path: string;
+
+  rawPackageJson: string;
 }

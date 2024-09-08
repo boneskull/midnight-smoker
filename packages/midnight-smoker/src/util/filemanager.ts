@@ -18,10 +18,10 @@ import {UnreadablePackageJsonError} from '#error/unreadable-pkg-json-error';
 import {type NormalizedPackageJson} from '#schema/package-json';
 import {
   type FileManagerOptions,
+  type FindPkgJsonResult,
   type ReadPkgJsonNormalizedResult,
   type ReadPkgJsonNormalizeOptions,
   type ReadPkgJsonOptions,
-  type ReadPkgJsonResult,
   type ReadPkgJsonStrictOptions,
 } from '#util/fs-api';
 import {
@@ -41,6 +41,11 @@ import {createDebug} from './debug';
 import {memoize} from './decorator';
 import {fromUnknownError} from './error-util';
 import {isSmokerError} from './guard/smoker-error';
+
+export type ReadPkgJsonResult<T> = {
+  packageJson: T;
+  rawPackageJson: string;
+};
 
 export interface FindUpOptions {
   followSymlinks?: boolean;
@@ -116,16 +121,16 @@ export class FileManager {
   public async findPkgUp(
     cwd: string,
     options: ReadPkgJsonStrictOptions,
-  ): Promise<ReadPkgJsonResult>;
+  ): Promise<FindPkgJsonResult>;
   public async findPkgUp(
     cwd: string,
     options?: ReadPkgJsonOptions,
-  ): Promise<ReadPkgJsonResult | undefined>;
+  ): Promise<FindPkgJsonResult | undefined>;
   @memoize((cwd, opts) => JSON.stringify({cwd, opts}))
   public async findPkgUp(
     cwd: string,
     {normalize, signal, strict}: ReadPkgJsonOptions = {},
-  ): Promise<ReadPkgJsonNormalizedResult | ReadPkgJsonResult | undefined> {
+  ): Promise<FindPkgJsonResult | ReadPkgJsonNormalizedResult | undefined> {
     if (signal?.aborted) {
       throw new AbortError(signal.reason);
     }
@@ -144,19 +149,23 @@ export class FileManager {
       throw new AbortError(signal.reason);
     }
     if (normalize) {
-      const pkgJson = await this.readPkgJson(filepath, {
+      const {packageJson, rawPackageJson} = await this.readPkgJson(filepath, {
         normalize: true,
         signal,
       });
       return {
-        packageJson: pkgJson,
+        packageJson,
         path: filepath,
+        rawPackageJson,
       };
     }
-    const pkgJson = await this.readPkgJson(filepath, {signal});
+    const {packageJson, rawPackageJson} = await this.readPkgJson(filepath, {
+      signal,
+    });
     return {
-      packageJson: pkgJson,
+      packageJson,
       path: filepath,
+      rawPackageJson,
     };
   }
 
@@ -295,20 +304,20 @@ export class FileManager {
   public async readPkgJson(
     filepath: string,
     options: {normalize: true} & ReadPkgJsonOptions,
-  ): Promise<NormalizedPackageJson>;
+  ): Promise<ReadPkgJsonResult<NormalizedPackageJson>>;
   public async readPkgJson(
     filepath: string,
     options: {normalize?: false} & ReadPkgJsonOptions,
-  ): Promise<PackageJson>;
+  ): Promise<ReadPkgJsonResult<PackageJson>>;
   public async readPkgJson(
     filepath: string,
     options?: ReadPkgJsonOptions,
-  ): Promise<NormalizedPackageJson | PackageJson>;
+  ): Promise<ReadPkgJsonResult<NormalizedPackageJson | PackageJson>>;
   @memoize((filepath, opts) => JSON.stringify({filepath, opts}))
   public async readPkgJson(
     filepath: string,
     options: ReadPkgJsonOptions = {},
-  ): Promise<NormalizedPackageJson | PackageJson> {
+  ): Promise<ReadPkgJsonResult<NormalizedPackageJson | PackageJson>> {
     const {normalize, signal} = options;
     if (signal?.aborted) {
       throw new AbortError(signal.reason);
@@ -322,10 +331,13 @@ export class FileManager {
       if (normalize) {
         normalizePkgData(packageJson);
         debug('Read & normalized JSON at %s', filepath);
-        return packageJson as NormalizedPackageJson;
+        return {
+          packageJson: packageJson as NormalizedPackageJson,
+          rawPackageJson: file,
+        };
       }
       debug('Read JSON at %s', filepath);
-      return packageJson;
+      return {packageJson, rawPackageJson: file};
     } catch (err) {
       if (isSmokerError(AbortError, err)) {
         throw err;
