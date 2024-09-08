@@ -94,14 +94,14 @@ describe('midnight-smoker', function () {
             const packageJson = {
               name: 'midnight-smoker',
             } as PackageJson;
+            const rawPackageJson = JSON.stringify(packageJson);
             sandbox
               .stub(fm, 'findPkgUp')
-              .resolves({packageJson, path: 'pookage.json'});
-            await expect(
-              fm.readSmokerPkgJson(),
-              'to be fulfilled with',
+              .resolves({packageJson, path: 'pookage.json', rawPackageJson});
+            await expect(fm.readSmokerPkgJson(), 'to be fulfilled with', {
               packageJson,
-            );
+              rawPackageJson,
+            });
             expect(fm.findPkgUp, 'was called once');
           });
 
@@ -109,9 +109,10 @@ describe('midnight-smoker', function () {
             const packageJson = {
               name: 'midnight-smoker',
             } as PackageJson;
+            const rawPackageJson = JSON.stringify(packageJson);
             sandbox
               .stub(fm, 'findPkgUp')
-              .resolves({packageJson, path: 'pookage.json'});
+              .resolves({packageJson, path: 'pookage.json', rawPackageJson});
             await expect(
               fm.readSmokerPkgJson(),
               'to be fulfilled with',
