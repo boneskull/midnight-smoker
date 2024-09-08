@@ -185,10 +185,24 @@
               "anyOf": [
                 {
                   "type": "object",
-                  "properties": {},
-                  "additionalProperties": true,
-                  "description": "Empty object",
-                  "default": {}
+                  "properties": {
+                    "ignoreIfESM": {
+                      "type": "boolean",
+                      "default": false,
+                      "description": "If true, ignore ESM packages (\"type\": \"module\")"
+                    },
+                    "ignoreIfEsm": {
+                      "$ref": "#/properties/rules/properties/no-missing-entry-point/allOf/0/anyOf/0/properties/ignoreIfESM"
+                    },
+                    "ignore-if-esm": {
+                      "$ref": "#/properties/rules/properties/no-missing-entry-point/allOf/0/anyOf/0/properties/ignoreIfESM"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "description": "Object with keys in camelCase and kebab-case",
+                  "default": {
+                    "ignoreIfESM": false
+                  }
                 },
                 {
                   "$ref": "#/$defs/severity",
@@ -221,7 +235,7 @@
                   "additionalProperties": false
                 }
               ],
-              "description": "Empty object"
+              "description": "Object with keys in camelCase and kebab-case"
             },
             {
               "$ref": "#/properties/rules/properties/no-missing-entry-point/allOf/0/anyOf/3"
@@ -495,7 +509,9 @@
           "allow": [],
           "deny": []
         },
-        "no-missing-entry-point": {},
+        "no-missing-entry-point": {
+          "ignoreIfESM": false
+        },
         "no-missing-exports": {
           "glob": true,
           "import": true,
