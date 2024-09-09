@@ -170,9 +170,11 @@ export const RegistryMachine = setup({
        */
       inFlight: ({context: {inFlight, registrations}}, {id, metadata}) => {
         assert.ok(!(id in registrations));
+        assert.ok(id in inFlight);
+
         const flightData: ValueOf<typeof inFlight> = {
-          ...inFlight[id],
-          complete: [...inFlight[id].complete, metadata],
+          ...inFlight[id]!,
+          complete: [...inFlight[id]!.complete, metadata],
         };
         return {
           ...inFlight,

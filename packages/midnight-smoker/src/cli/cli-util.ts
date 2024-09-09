@@ -1,3 +1,4 @@
+import * as assert from '#util/assert';
 import {formatStackTrace} from '#util/format';
 import {isSomeSmokerError} from '#util/guard/some-smoker-error';
 import {serialize} from '#util/serialize';
@@ -30,6 +31,9 @@ export function createTable(
   const colWidths = items.reduce<number[]>(
     (widths, item) => {
       item.forEach((col, i) => {
+        assert.ok(widths[i]);
+        assert.ok(headerWidths[i]);
+
         widths[i] = Math.max(
           widths[i],
           stringWidth(String(col)) + padding * 2,
@@ -46,6 +50,7 @@ export function createTable(
   if (totalWidth > termCols) {
     const diff = totalWidth - termCols;
     const colIdx = colWidths.indexOf(maxCol);
+    assert.ok(colWidths[colIdx]);
     colWidths[colIdx] -= diff;
   }
 

@@ -16,6 +16,7 @@
  * @todo Copy license notice
  */
 import {PACKAGE_JSON} from '#constants';
+import * as assert from '#util/assert';
 import {createDebug} from '#util/debug';
 import {FileManager} from '#util/filemanager';
 import {mimport} from '#util/importer';
@@ -249,6 +250,7 @@ export class Midconfig implements AsyncSearcher {
     const {base, ext} = path.parse(absPath);
     const loaderKey = ext || NOEXT;
     const loader = this.loaders[loaderKey];
+    assert.ok(loader, `No loader specified for extension "${loaderKey}"`);
     Midconfig.validateLoader(loader, loaderKey);
 
     // TODO this could go thru FileManager.readPkgJson
@@ -326,6 +328,7 @@ export class Midconfig implements AsyncSearcher {
         const loaderKey = path.extname(searchPlace) || NOEXT;
         const loader = this.loaders[loaderKey];
 
+        assert.ok(loader, `No loader specified for extension "${loaderKey}"`);
         // handle package.json
         if (searchPlace === PACKAGE_JSON) {
           const pkg = (await loader(filepath, content)) as PackageJson;

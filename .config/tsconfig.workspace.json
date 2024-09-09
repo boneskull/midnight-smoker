@@ -6,6 +6,7 @@
     "customConditions": ["typedoc"],
     "resolveJsonModule": true,
     "resolvePackageJsonImports": true,
-    "noImplicitOverride": true
+    "noImplicitOverride": true,
+    "noUncheckedIndexedAccess": true
   }
 }

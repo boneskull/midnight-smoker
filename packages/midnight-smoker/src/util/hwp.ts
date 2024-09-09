@@ -85,7 +85,7 @@ async function* mapIterator<T, TReturn>(
     // the promise list
     while (true) {
       while (promises.length > 0) {
-        yield await promises[0];
+        yield await promises[0]!;
         void promises.shift();
         if (next) {
           next();

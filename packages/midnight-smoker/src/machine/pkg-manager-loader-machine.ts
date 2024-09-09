@@ -223,7 +223,7 @@ export const PkgManagerLoaderMachine = setup({
                 }): ParsePkgManagerSpecMachineInput => ({
                   componentRegistry,
                   defaultSystemPkgManagerEnvelope,
-                  desiredPkgManager: envelopeQueue[0],
+                  desiredPkgManager: envelopeQueue[0]!,
                   didGuess,
                   plugins,
                 }),

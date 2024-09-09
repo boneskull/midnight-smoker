@@ -78,7 +78,7 @@ describe('midnight-smoker', function () {
           } as WorkspaceInfo,
         ];
         vol.fromJSON({
-          '/package.json': JSON.stringify(workspaceInfo[0].pkgJson),
+          '/package.json': JSON.stringify(workspaceInfo[0]!.pkgJson),
         });
         input = {
           componentRegistry: pluginRegistry.componentRegistry,

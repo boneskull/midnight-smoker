@@ -270,7 +270,8 @@ export class PluginRegistry implements Disposable {
       | SetOptional<EnvelopeForKind<T>, keyof BaseComponentEnvelope>
       | undefined,
   ): EnvelopeForKind<T>[] {
-    return [...this.componentsForKind(kind)].reduce<EnvelopeForKind<T>[]>(
+    const components = this.componentsForKind(kind);
+    return [...components].reduce<EnvelopeForKind<T>[]>(
       (acc, [id, component]) => {
         const partialEnabledComponentEnvelope = predicate(component, id);
         if (partialEnabledComponentEnvelope) {
@@ -442,7 +443,7 @@ export class PluginRegistry implements Disposable {
   public enabledRules(smokerOptions: Schema.SmokerOptions): RuleEnvelope[] {
     const {rules: configs} = smokerOptions;
     return this.enabledComponentEnvelopes(ComponentKinds.Rule, (rule, id) => {
-      const config = configs[id];
+      const config = configs[id]!;
       if (config.severity !== RuleSeverities.Off) {
         return {config, rule};
       }
@@ -553,7 +554,7 @@ export class PluginRegistry implements Disposable {
     if (error) {
       throw error;
     }
-    return head(registrations[id]!)!;
+    return head(registrations[id])!;
   }
 
   /**

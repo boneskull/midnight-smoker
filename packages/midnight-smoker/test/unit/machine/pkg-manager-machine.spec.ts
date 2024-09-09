@@ -104,7 +104,7 @@ describe('midnight-smoker', function () {
         ruleEnvelopes = plugin.rules.map((rule) => {
           const id = pluginRegistry.getComponentId(rule);
           return {
-            config: smokerOptions.rules[id],
+            config: smokerOptions.rules[id]!,
             id,
             plugin,
             rule,
