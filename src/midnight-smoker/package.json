@@ -1,0 +1,162 @@
+{
+  "name": "midnight-smoker",
+  "version": "8.0.0",
+  "type": "module",
+  "description": "Smoke test & lint your package artifacts (instead of failing miserably)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/boneskull/midnight-smoker.git",
+    "directory": "packages/midnight-smoker"
+  },
+  "homepage": "https://boneskull.github.io/midnight-smoker",
+  "bugs": {
+    "url": "https://github.com/boneskull/midnight-smoker/issues"
+  },
+  "author": "Christopher Hiller <boneskull@boneskull.com> (https://boneskull.com/)",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": "^18.0.0 || ^20.0.0 || ^22.0.0",
+    "npm": ">=8.6.0"
+  },
+  "bin": {
+    "smoker": "bin/smoker.js"
+  },
+  "main": "./dist/src/index.js",
+  "imports": {
+    "#capabilities": "./src/capabilities.ts",
+    "#cli/*": "./src/cli/*.ts",
+    "#config": "./src/config/index.ts",
+    "#config/*": "./src/config/*.ts",
+    "#constants": "./src/constants/index.ts",
+    "#constants/*": "./src/constants/*.ts",
+    "#error/*": "./src/error/*.ts",
+    "#error/meta/*": "./src/error/meta/*.ts",
+    "#event/*": "./src/event/*.ts",
+    "#executor": "./src/executor/index.ts",
+    "#machine/*": "./src/machine/*.ts",
+    "#machine/actor/*": "./src/machine/actor/*.ts",
+    "#machine/actor/operation/*": "./src/machine/actor/operation/*.ts",
+    "#machine/util": "./src/machine/util/index.ts",
+    "#machine/util/*": "./src/machine/util/*.ts",
+    "#machine/bus": "./src/machine/bus/index.ts",
+    "#machine/event": "./src/machine/event/index.ts",
+    "#machine/event/*": "./src/machine/event/*.ts",
+    "#options/*": "./src/options/*.ts",
+    "#pkg-manager/*": "./src/pkg-manager/*.ts",
+    "#plugin/*": "./src/plugin/*.ts",
+    "#reporter/*": "./src/reporter/*.ts",
+    "#rule/*": "./src/rule/*.ts",
+    "#schema/*": "./src/schema/*.ts",
+    "#schema/meta/*": "./src/schema/meta/*.ts",
+    "#smoker": "./src/smoker.ts",
+    "#util/*": "./src/util/*.ts",
+    "#util/meta/*": "./src/util/meta/*.ts",
+    "#util/guard/*": "./src/util/guard/*.ts"
+  },
+  "types": "./dist/src/index.d.ts",
+  "files": [
+    "./bin",
+    "./dist/src",
+    "./schema",
+    "./src",
+    "CHANGELOG.md",
+    "!**/*.tsbuildinfo",
+    "!jsconfig.json",
+    "!tsconfig.json"
+  ],
+  "keywords": [
+    "test",
+    "testing",
+    "smoke",
+    "smoketest",
+    "user",
+    "enduser",
+    "production",
+    "publish",
+    "package",
+    "npm",
+    "ci",
+    "workspace",
+    "workspaces"
+  ],
+  "scripts": {
+    "preversion": "run-s update-schema && git add -A ./schema/midnight-smoker.schema.json",
+    "smoke:js": "node ./bin/smoker.js --version",
+    "smoke:ts": "tsx ./src/cli/smoker-cli.ts --version",
+    "test": "run-s test:unit test:smoke",
+    "test:ci": "run-s test:unit test:smoke test:e2e",
+    "test:e2e": "mocha --timeout 20s --slow 10s \"test/e2e/**/*.spec.ts\" --fgrep \"[snapshot]\" --invert",
+    "test:smoke": "node ./bin/smoker.js run smoke:ts smoke:js --add tsx --add @tsconfig/node18",
+    "test:snapshots-only": "npm run test:e2e -- --fgrep \"[snapshot]\"",
+    "test:unit": "mocha \"test/unit/**/*.spec.ts\"",
+    "test:update-snapshots": "cross-env SNAPSHOT_UPDATE=1 mocha --timeout 20s --slow 10s \"test/e2e/**/*.spec.ts\" -- --fgrep \"[snapshot]\"",
+    "update-schema": "tsx ./scripts/generate-schema.ts"
+  },
+  "dependencies": {
+    "@humanwhocodes/momoa": "3.2.1",
+    "@midnight-smoker/plugin-default": "file:../plugin-default",
+    "@types/semver": "7.5.6",
+    "chalk": "4.1.2",
+    "cli-table3": "0.6.3",
+    "debug": "4.3.4",
+    "emphasize": "7.0.0",
+    "execa": "5.1.1",
+    "glob": "10.3.10",
+    "json-stable-stringify": "1.0.2",
+    "lodash": "4.17.21",
+    "minimatch": "9.0.3",
+    "normalize-package-data": "6.0.1",
+    "pluralize": "8.0.0",
+    "pretty-error": "4.0.0",
+    "read-pkg-up": "7.0.1",
+    "semver": "7.5.4",
+    "source-map-support": "0.5.21",
+    "string-width": "4.2.3",
+    "stringify-object": "3.3.0",
+    "terminal-link": "2.1.1",
+    "type-fest": "4.19.0",
+    "which": "4.0.0",
+    "xstate": "5.17.4",
+    "yargs": "17.7.2",
+    "zod": "3.22.4",
+    "zod-validation-error": "2.1.0"
+  },
+  "devDependencies": {
+    "@types/debug": "4.1.12",
+    "@types/json-stable-stringify": "1.0.36",
+    "@types/lodash": "4.14.202",
+    "@types/pluralize": "0.0.33",
+    "@types/stringify-object": "3.3.1",
+    "@types/which": "3.0.4",
+    "@types/yargs": "17.0.32",
+    "memfs": "4.6.0",
+    "strip-ansi": "5.2.0",
+    "xstate-audition": "1.2.0",
+    "zod-to-json-schema": "3.22.3"
+  },
+  "overrides": {
+    "zod": "$zod"
+  },
+  "tshy": {
+    "exports": {
+      ".": "./src/index.ts",
+      "package.json": "./package.json",
+      "./plugin": "./src/plugin/index.ts",
+      "./error": "./src/error/index.ts",
+      "./event": "./src/event/index.ts",
+      "./machine": "./src/machine/index.ts",
+      "./rule": "./src/rule/index.ts",
+      "./reporter": "./src/reporter/index.ts",
+      "./executor": "./src/executor/index.ts",
+      "./options": "./src/options/index.ts",
+      "./pkg-manager": "./src/pkg-manager/index.ts",
+      "./schema": "./src/schema/index.ts",
+      "./smoker": "./bin/smoker.js",
+      "./constants": "./src/constants/index.ts",
+      "./util": "./src/util/index.ts"
+    },
+    "exclude": [
+      "test/**/*.ts"
+    ]
+  }
+}

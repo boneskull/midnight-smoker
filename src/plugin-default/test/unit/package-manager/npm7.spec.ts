@@ -1,0 +1,363 @@
+import {type ExecaError} from 'execa';
+import stringify from 'json-stable-stringify';
+import {ErrorCode} from 'midnight-smoker/error';
+import {
+  ExecError,
+  type ExecResult,
+  type Executor,
+} from 'midnight-smoker/executor';
+import {
+  type PkgManagerInstallContext,
+  type PkgManagerPackContext,
+  type PkgManagerRunScriptContext,
+  PkgManagerSpec,
+  type StaticPkgManagerSpec,
+} from 'midnight-smoker/pkg-manager';
+import path from 'node:path';
+import {createSandbox} from 'sinon';
+import unexpected from 'unexpected';
+import unexpectedSinon from 'unexpected-sinon';
+
+import {type NpmPackItem} from '../../../src/package-manager/npm.js';
+import {Npm7} from '../../../src/package-manager/npm7.js';
+
+const expect = unexpected.clone().use(unexpectedSinon);
+
+const MOCK_TMPDIR = '/some/dir';
+
+describe('@midnight-smoker/plugin-default', function () {
+  let sandbox: sinon.SinonSandbox;
+
+  let result: ExecResult;
+  let executor: sinon.SinonStubbedMember<Executor>;
+
+  beforeEach(function () {
+    sandbox = createSandbox();
+
+    result = {
+      command: '',
+      escapedCommand: '',
+      exitCode: 0,
+      failed: false,
+      isCanceled: false,
+      killed: false,
+      stderr: '',
+      stdout: '',
+      timedOut: false,
+    };
+    executor = sandbox.stub().resolves(result) as typeof executor;
+  });
+
+  afterEach(function () {
+    sandbox.restore();
+  });
+
+  describe('package manager', function () {
+    describe('Npm7', function () {
+      let spec: StaticPkgManagerSpec;
+
+      before(function () {
+        spec = PkgManagerSpec.create('npm@7.0.0').toJSON();
+      });
+
+      describe('method', function () {
+        describe('pack()', function () {
+          const npmPackItems: NpmPackItem[] = [
+            {
+              filename: 'tubby-3.2.1.tgz',
+              files: [],
+              name: 'tubby',
+            },
+          ];
+          let ctx: PkgManagerPackContext;
+
+          beforeEach(function () {
+            executor.resolves({
+              stdout: JSON.stringify(npmPackItems),
+            } as any);
+            ctx = {
+              executor,
+              localPath: '/some/path',
+              pkgJson: {name: 'foo', version: '1.0.0'},
+              pkgJsonPath: '/some/path/to/package.json',
+              pkgName: 'foo',
+              rawPkgJson: stringify({name: 'foo', version: '1.0.0'}),
+              signal: new AbortController().signal,
+              spec,
+              tmpdir: MOCK_TMPDIR,
+              workspaceInfo: [
+                {
+                  localPath: '/some/path',
+                  pkgJson: {name: 'foo', version: '1.0.0'},
+                  pkgJsonPath: '/some/path/to/package.json',
+                  pkgName: 'foo',
+                  rawPkgJson: stringify({name: 'foo', version: '1.0.0'}),
+                },
+              ],
+            };
+          });
+
+          describe('when called with a base context', function () {
+            it('should call exec without extra flags', async function () {
+              await Npm7.pack(ctx);
+
+              expect(executor, 'to have a call satisfying', [
+                spec,
+                [
+                  'pack',
+                  '--json',
+                  `--pack-destination=${MOCK_TMPDIR}`,
+                  '--foreground-scripts=false',
+                ],
+              ]);
+            });
+          });
+
+          describe('when Npm7 failed to spawn', function () {
+            beforeEach(async function () {
+              const execaError: ExecaError = {
+                command: '',
+                escapedCommand: '',
+                exitCode: 0,
+                failed: false,
+                isCanceled: false,
+                killed: false,
+                message: '',
+                name: '',
+                shortMessage: '',
+                stderr: '',
+                stdout: JSON.stringify({
+                  error: {
+                    summary: 'foo',
+                  },
+                }),
+                timedOut: false,
+              };
+              executor.rejects(new ExecError(execaError));
+            });
+
+            it('should reject', async function () {
+              await expect(
+                Npm7.pack(ctx),
+                'to be rejected with error satisfying',
+                {
+                  code: ErrorCode.PackError,
+                },
+              );
+            });
+          });
+
+          describe(`when Npm7's stdout returns something other than a JSON string`, function () {
+            beforeEach(function () {
+              executor.resetBehavior();
+              executor.resolves({stdout: '{not json}'} as any);
+            });
+
+            it('should reject', async function () {
+              await expect(
+                Npm7.pack(ctx),
+                'to be rejected with error satisfying',
+                {
+                  code: ErrorCode.PackParseError,
+                },
+              );
+            });
+          });
+
+          describe('when packing is successful', function () {
+            it('should resolve with an array of InstallManifest objects', async function () {
+              await expect(
+                Npm7.pack(ctx),
+                'to be fulfilled with value satisfying',
+                {
+                  cwd: '/some/dir',
+                  pkgName: 'tubby',
+                  pkgSpec: path.normalize(`/some/dir/tubby-3.2.1.tgz`),
+                },
+              );
+            });
+          });
+        });
+
+        describe('install()', function () {
+          let ctx: PkgManagerInstallContext;
+
+          beforeEach(function () {
+            executor.resolves({exitCode: 0, stdout: 'stuff'} as any);
+            ctx = {
+              executor,
+              installManifest: {
+                cwd: MOCK_TMPDIR,
+                installPath: path.normalize(`${MOCK_TMPDIR}/node_modules/bar`),
+                pkgName: 'bar',
+                pkgSpec: path.normalize(`${MOCK_TMPDIR}/bar.tgz`),
+              },
+              signal: new AbortController().signal,
+              spec,
+              tmpdir: MOCK_TMPDIR,
+              workspaceInfo: [],
+            };
+          });
+
+          describe('when Npm7 fails and outputs garbage', function () {
+            const err = new ExecError({} as ExecaError);
+
+            beforeEach(function () {
+              executor.rejects(err);
+            });
+
+            it('should reject', async function () {
+              await expect(
+                Npm7.install(ctx),
+                'to be rejected with error satisfying',
+                {
+                  cause: err,
+                  code: ErrorCode.InstallError,
+                },
+              );
+            });
+          });
+
+          it('should call Npm7 with "--global-style"', async function () {
+            await Npm7.install(ctx);
+            expect(executor, 'to have a call satisfying', [
+              spec,
+              [
+                'install',
+                ctx.installManifest.pkgSpec,
+                '--no-audit',
+                '--no-package-lock',
+                '--global-style',
+                '--json',
+              ],
+              {},
+              {cwd: '/some/dir'},
+            ]);
+          });
+
+          describe('when "manifest" argument is empty', function () {
+            it('should reject', async function () {
+              await expect(
+                // @ts-expect-error bad type
+                Npm7.install({...ctx, installManifest: undefined}),
+                'to be rejected',
+              );
+            });
+          });
+        });
+
+        describe('runScript()', function () {
+          let ctx: PkgManagerRunScriptContext;
+
+          beforeEach(function () {
+            executor.resolves({failed: false, stdout: 'stuff'} as any);
+            ctx = {
+              executor,
+              loose: false,
+              manifest: {
+                cwd: path.normalize(`${MOCK_TMPDIR}/node_modules/foo`),
+                localPath: '/some/path',
+                pkgJson: {name: 'foo', version: '1.0.0'},
+                pkgJsonPath: '',
+                pkgName: 'foo',
+                rawPkgJson: stringify({name: 'foo', version: '1.0.0'}),
+                script: 'some-script',
+              },
+              signal: new AbortController().signal,
+              spec,
+              tmpdir: MOCK_TMPDIR,
+              workspaceInfo: [],
+            };
+          });
+
+          describe('when Npm7 fails', function () {
+            beforeEach(function () {
+              executor.rejects(
+                new ExecError({
+                  stderr: 'some error',
+                } as ExecaError),
+              );
+            });
+
+            it('should resolve with a result containing an error', async function () {
+              await expect(
+                Npm7.runScript(ctx),
+                'to be fulfilled with value satisfying',
+                {
+                  error: {code: ErrorCode.RunScriptError},
+                },
+              );
+            });
+          });
+
+          describe('when the script fails', function () {
+            beforeEach(function () {
+              const result: ExecResult = {
+                command: '',
+                escapedCommand: '',
+                exitCode: 1,
+                failed: true,
+                isCanceled: false,
+                killed: false,
+                stderr: '',
+                stdout: '',
+                timedOut: false,
+              };
+              executor.resolves(result);
+            });
+
+            it('should resolve with a result containing an error', async function () {
+              await expect(
+                Npm7.runScript(ctx),
+                'to be fulfilled with value satisfying',
+                {
+                  error: {
+                    code: ErrorCode.ScriptFailedError,
+                    context: {exitCode: 1},
+                  },
+                },
+              );
+            });
+          });
+
+          describe('when the script was not found', function () {
+            beforeEach(function () {
+              const result: ExecResult = {
+                command: '',
+                escapedCommand: '',
+                exitCode: 1,
+                failed: true,
+                isCanceled: false,
+                killed: false,
+                stderr: 'missing script: some-script',
+                stdout: '',
+                timedOut: false,
+              };
+              executor.resolves(result);
+            });
+
+            it('should resolve with a result containing an error', async function () {
+              await expect(
+                Npm7.runScript(ctx),
+                'to be fulfilled with value satisfying',
+                {
+                  error: {code: ErrorCode.UnknownScriptError},
+                },
+              );
+            });
+          });
+
+          describe('when the script succeeds', function () {
+            it('should resolve with a result containing no error', async function () {
+              await expect(
+                Npm7.runScript(ctx),
+                'to be fulfilled with value satisfying',
+                expect.it('not to have key', 'error'),
+              );
+            });
+          });
+        });
+      });
+    });
+  });
+});

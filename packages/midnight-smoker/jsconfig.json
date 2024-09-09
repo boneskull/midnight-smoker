@@ -1,5 +1,0 @@
-{
-  "extends": "../../.config/tsconfig.workspace.json",
-  "files": [],
-  "include": ["dist/**/*"]
-}

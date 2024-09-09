@@ -1,6 +1,7 @@
 {
   "name": "midnight-smoker-monorepo",
   "version": "0.0.0",
+  "type": "module",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/boneskull/midnight-smoker.git"
@@ -13,7 +14,7 @@
   "license": "Apache-2.0",
   "private": true,
   "workspaces": [
-    "packages/*"
+    "src/*"
   ],
   "engines": {
     "node": "^18.0.0 || ^20.0.0 || ^22.0.0",
@@ -21,14 +22,14 @@
   },
   "scripts": {
     "build": "tsc -b",
-    "clean": "shx rm -rf \"packages/*/dist\" \"packages/*/*.tsbuildinfo\" \"packages/src/*.tsbuildinfo\" \"packages/*/test/*.tsbuildinfo\" \"packages/scripts/*.tsbuildinfo\"",
+    "clean": "shx rm -rf \"src/*/dist\" \"src/*/*.tsbuildinfo\" \"src/src/*.tsbuildinfo\" \"src/*/test/*.tsbuildinfo\" \"src/scripts/*.tsbuildinfo\"",
     "dev": "tsc -b --watch",
     "dev:docs": "npx docsify-cli serve docs",
-    "docs:build": "shx cp ./packages/midnight-smoker/README.md ./docs/README.md",
+    "docs:build": "shx cp ./src/midnight-smoker/README.md ./docs/README.md",
     "husky-install": "husky install",
     "lint": "run-p lint:eslint lint:md lint:deps",
     "lint:commit": "commitlint",
-    "lint:deps": "depcruise -c ./.config/dependency-cruiser.js packages",
+    "lint:deps": "depcruise -c ./.config/dependency-cruiser.js src",
     "lint:eslint": "eslint .",
     "lint:fix": "eslint . --fix",
     "lint:md": "markdownlint-cli2 \"**/*.md\"",
@@ -87,9 +88,10 @@
     "sinon": "16.1.3",
     "snap-shot-it": "7.9.10",
     "tsd": "0.31.0",
+    "tshy": "3.0.2",
     "tsx": "4.17.0",
     "type-fest": "4.19.0",
-    "typescript": "5.5.2",
+    "typescript": "5.5.4",
     "unexpected": "13.2.1",
     "unexpected-sinon": "11.1.0"
   },

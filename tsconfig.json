@@ -1,9 +1,23 @@
 {
-  "extends": "./.config/tsconfig.workspace.json",
-  "files": [],
+  "compilerOptions": {
+    "declaration": true,
+    "declarationMap": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "inlineSources": true,
+    "jsx": "react",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "strict": true,
+    "target": "es2022",
+    "stripInternal": true
+  },
   "references": [
-    {"path": "./packages/midnight-smoker/tsconfig.json"},
-    {"path": "./packages/test-util/tsconfig.json"},
-    {"path": "./packages/plugin-default/tsconfig.json"}
+    {"path": "./src/midnight-smoker"},
+    {"path": "./src/test-util"},
+    {"path": "./src/plugin-default"}
   ]
 }
