@@ -811,6 +811,7 @@ export const PkgManagerMachine = setup({
         const manifest = queue.shift()!;
         for (const {id: ruleId} of ruleEnvelopes) {
           const config = ruleConfigs[ruleId];
+          assert.ok(config, `No rule config found for rule ID "${ruleId}"`);
           const evt: MachineLintEvents.SmokeMachineRuleBeginEvent = {
             config,
             manifest: {
@@ -973,7 +974,7 @@ export const PkgManagerMachine = setup({
         const manifestsByInstallPath = keyBy(lintManifests, 'installPath');
 
         // turn the ugly map into `LintResult`
-        const lintResults = [...ruleResultMap.entries()].map<Schema.LintResult>(
+        const lintResults = [...ruleResultMap].map<Schema.LintResult>(
           ([installPath, resultMap]) => {
             const results = [...resultMap.values()].flat();
             const [okResults, failedResults] = partition(results, {
@@ -981,9 +982,12 @@ export const PkgManagerMachine = setup({
             }) as [Schema.CheckResultOk[], Schema.CheckResultFailed[]];
             hasIssues = hasIssues || !isEmpty(failedResults);
 
-            const manifest = asResult(manifestsByInstallPath[installPath]);
-            assert.ok(manifest, `Expected a lint manifest for ${installPath}`);
+            assert.ok(
+              manifestsByInstallPath[installPath],
+              `Expected a lint manifest for ${installPath}`,
+            );
 
+            const manifest = asResult(manifestsByInstallPath[installPath]);
             const retval = isEmpty(failedResults)
               ? ({
                   ...manifest,

@@ -352,7 +352,7 @@ export const ProgressReporter: Reporter<ProgressReporterContext> = {
     preface(pkgJson, plugins);
 
     if (pkgManagers.length === 1) {
-      multiBar.log(`📦 Smokin' with ${formatPkgManager(pkgManagers[0])}\n`);
+      multiBar.log(`📦 Smokin' with ${formatPkgManager(pkgManagers[0]!)}\n`);
     }
   },
   onSmokeFailed(ctx) {

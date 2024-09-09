@@ -30,7 +30,7 @@ const debug = Debug('midnight-smoker:plugin-default:reporter:console');
  */
 function randomItem<T>(items: [T, ...T[]] | readonly [T, ...T[]] | T[]): T {
   const index = Math.floor(Math.random() * items.length);
-  return items[index];
+  return items[index]!;
 }
 
 type ConsoleReporterContext = {

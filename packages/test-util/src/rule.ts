@@ -212,7 +212,7 @@ export async function runRule<T extends SomeRule>(
   if (isEmpty(workspaces)) {
     throw new ReferenceError(`No workspaces found in "${cwd}"`);
   }
-  const workspace = workspaces[0];
+  const workspace = workspaces[0]!;
 
   const ctx: StaticRuleContext = {
     installPath: cwd,

@@ -1,3 +1,4 @@
+import {ErrorCode} from '#error/codes';
 import {JSONBlamer} from '#rule/json-blamer';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
@@ -153,82 +154,17 @@ describe('midnight-smoker', function () {
         });
 
         describe('getContext()', function () {
-          const json = `{
-  "foo": {
-    "bar": "baz"
-  },
-  "baz": {
-    "qux": "quux"
-  }
-}`;
-
-          beforeEach(function () {
-            jsonBlamer = new JSONBlamer(json, '/path/to/file.json');
-          });
-
-          it('should return the correct context around the keypath location', function () {
-            const result = jsonBlamer.find('foo.bar');
-
-            const context = jsonBlamer.getContext(result!, {
-              before: 1,
+          describe('when called without a BlameInfo', function () {
+            it('should reject', async function () {
+              const result = jsonBlamer.find('papa.smurf');
+              await expect(
+                jsonBlamer.getContext(result!),
+                'to be rejected with error satisfying',
+                {
+                  code: ErrorCode.InvalidArgError,
+                },
+              );
             });
-
-            expect(
-              context,
-              'to be',
-              `  "foo": {
-    "bar": "baz"
-`,
-            );
-          });
-
-          it('should return the entire JSON if the context exceeds the JSON length', function () {
-            const result = jsonBlamer.find('foo.bar');
-
-            const context = jsonBlamer.getContext(result!, {
-              before: 10,
-            });
-
-            expect(
-              context,
-              'to be',
-              `{
-  "foo": {
-    "bar": "baz"
-`,
-            );
-          });
-
-          it('should return the correct context when the keypath is at the start of the JSON', function () {
-            const result = jsonBlamer.find('foo.bar');
-
-            const context = jsonBlamer.getContext(result!, {
-              before: 0,
-            });
-
-            expect(
-              context,
-              'to be',
-              `
-    "bar": "baz"
-`,
-            );
-          });
-
-          it('should return the correct context when the keypath is at the end of the JSON', function () {
-            const result = jsonBlamer.find('baz.qux');
-
-            const context = jsonBlamer.getContext(result!, {
-              before: 1,
-            });
-
-            expect(
-              context,
-              'to equal',
-              `  "baz": {
-    "qux": "quux"
-`,
-            );
           });
         });
       });

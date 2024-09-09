@@ -204,7 +204,7 @@ export class ExportsInspector<Schema extends Rule.RuleSchemaValue> {
       return;
     }
 
-    const key = keypath[keypath.length - 1];
+    const key = keypath[keypath.length - 1]!;
 
     switch (key) {
       case CONDITIONAL_EXPORT_IMPORT: {

@@ -201,7 +201,9 @@ describe('midnight-smoker [E2E]', function () {
         });
 
         after(async function () {
-          await fs.rm(lingering[0], {force: true, recursive: true});
+          if (lingering[0]) {
+            await fs.rm(lingering[0], {force: true, recursive: true});
+          }
         });
       });
 

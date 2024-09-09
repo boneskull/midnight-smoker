@@ -72,7 +72,7 @@ function pkgManager(label: string) {
   if (parts.length === 1) {
     return parts[0];
   }
-  const other = parts[1].split(' ');
+  const other = parts[1]!.split(' ');
   if (other.length === 1) {
     return `${parts[0]}@${parts[1]}`;
   }

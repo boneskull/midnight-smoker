@@ -1,5 +1,6 @@
 import {ErrorCode} from '#error/codes';
 import {FileManager} from '#util/filemanager';
+import stringify from 'json-stable-stringify';
 import {memfs} from 'memfs';
 import {type Volume} from 'memfs/lib/volume';
 import sinon from 'sinon';
@@ -94,14 +95,15 @@ describe('midnight-smoker', function () {
             const packageJson = {
               name: 'midnight-smoker',
             } as PackageJson;
-            const rawPackageJson = JSON.stringify(packageJson);
+            const rawPackageJson = stringify(packageJson);
             sandbox
               .stub(fm, 'findPkgUp')
               .resolves({packageJson, path: 'pookage.json', rawPackageJson});
-            await expect(fm.readSmokerPkgJson(), 'to be fulfilled with', {
+            await expect(
+              fm.readSmokerPkgJson(),
+              'to be fulfilled with',
               packageJson,
-              rawPackageJson,
-            });
+            );
             expect(fm.findPkgUp, 'was called once');
           });
 
@@ -109,7 +111,7 @@ describe('midnight-smoker', function () {
             const packageJson = {
               name: 'midnight-smoker',
             } as PackageJson;
-            const rawPackageJson = JSON.stringify(packageJson);
+            const rawPackageJson = stringify(packageJson);
             sandbox
               .stub(fm, 'findPkgUp')
               .resolves({packageJson, path: 'pookage.json', rawPackageJson});
@@ -150,7 +152,7 @@ describe('midnight-smoker', function () {
                   foo: {
                     'someFile.txt': '',
                   },
-                  'package.json': JSON.stringify({
+                  'package.json': stringify({
                     name: 'foo',
                     version: '1.0.0',
                   }),
@@ -163,8 +165,8 @@ describe('midnight-smoker', function () {
           it('should read a package.json file', async function () {
             await expect(
               fm.readPkgJson('/some-dir/package.json'),
-              'to be fulfilled with',
-              {name: 'foo', version: '1.0.0'},
+              'to be fulfilled with value satisfying',
+              {packageJson: {name: 'foo', version: '1.0.0'}},
             );
           });
 
@@ -182,10 +184,12 @@ describe('midnight-smoker', function () {
                 fm.readPkgJson('/some-dir/package.json', {normalize: true}),
                 'to be fulfilled with value satisfying',
                 {
-                  _id: 'foo@1.0.0',
-                  name: 'foo',
-                  readme: expect.it('to be a string'),
-                  version: '1.0.0',
+                  packageJson: {
+                    _id: 'foo@1.0.0',
+                    name: 'foo',
+                    readme: expect.it('to be a string'),
+                    version: '1.0.0',
+                  },
                 },
               );
             });
@@ -200,7 +204,7 @@ describe('midnight-smoker', function () {
                   foo: {
                     'someFile.txt': '',
                   },
-                  'package.json': JSON.stringify({
+                  'package.json': stringify({
                     name: 'foo',
                     version: '1.0.0',
                   }),
@@ -266,7 +270,7 @@ describe('midnight-smoker', function () {
                 foo: {
                   'someFile.txt': '',
                 },
-                'package.json': JSON.stringify({name: 'foo', version: '1.0.0'}),
+                'package.json': stringify({name: 'foo', version: '1.0.0'}),
               },
             });
           });
