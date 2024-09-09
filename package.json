@@ -64,7 +64,7 @@
     "eslint-plugin-n": "15.7.0",
     "eslint-plugin-promise": "6.1.1",
     "husky": "8.0.3",
-    "lint-staged": "14.0.1",
+    "lint-staged": "15.2.10",
     "markdownlint-cli2": "0.11.0",
     "markdownlint-cli2-formatter-pretty": "0.0.5",
     "mocha": "10.2.0",
