@@ -1,4 +1,5 @@
 import {type ExecaError} from 'execa';
+import stringify from 'json-stable-stringify';
 import {ErrorCode} from 'midnight-smoker/error';
 import {
   ExecError,
@@ -80,6 +81,7 @@ describe('@midnight-smoker/plugin-default', function () {
               pkgJson: {name: 'foo', version: '1.0.0'},
               pkgJsonPath: '/some/path/to/package.json',
               pkgName: 'foo',
+              rawPkgJson: stringify({name: 'foo', version: '1.0.0'}),
               signal: new AbortController().signal,
               spec,
               tmpdir: MOCK_TMPDIR,
@@ -89,6 +91,7 @@ describe('@midnight-smoker/plugin-default', function () {
                   pkgJson: {name: 'foo', version: '1.0.0'},
                   pkgJsonPath: '/some/path/to/package.json',
                   pkgName: 'foo',
+                  rawPkgJson: stringify({name: 'foo', version: '1.0.0'}),
                 },
               ],
             };
@@ -257,6 +260,7 @@ describe('@midnight-smoker/plugin-default', function () {
                 pkgJson: {name: 'foo', version: '1.0.0'},
                 pkgJsonPath: '',
                 pkgName: 'foo',
+                rawPkgJson: stringify({name: 'foo', version: '1.0.0'}),
                 script: 'some-script',
               },
               signal: new AbortController().signal,

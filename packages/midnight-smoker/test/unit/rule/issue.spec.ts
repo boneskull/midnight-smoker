@@ -5,6 +5,7 @@ import {RuleIssue, type RuleIssueParams} from '#rule/rule-issue';
 import {type StaticRuleContext} from '#rule/static-rule-context';
 import {type StaticRule} from '#schema/static-rule';
 import {asResult} from '#util/result';
+import stringify from 'json-stable-stringify';
 import {omit} from 'lodash';
 import unexpected from 'unexpected';
 
@@ -41,6 +42,10 @@ describe('midnight-smoker', function () {
             },
             pkgJsonPath: '/path/to/example-package/package.json',
             pkgName: 'example-package',
+            rawPkgJson: stringify({
+              name: 'example-package',
+              version: '1.0.0',
+            }),
           },
         };
         let issue: RuleIssue;

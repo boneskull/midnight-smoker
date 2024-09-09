@@ -11,17 +11,21 @@ import {RuleIssue} from './rule-issue';
 import {type StaticRuleContext} from './static-rule-context';
 
 export interface AddIssueOptions {
+  /**
+   * Arbitrary data. I'm not sure what this is for.
+   */
   data?: unknown;
-  filepath?: string | URL;
-}
 
-/**
- * The `addIssue` function that a {@link RuleCheckFn} uses to create a
- * {@link RuleIssue}. The {@link RuleCheckFn} then returns an array of these.
- *
- * Member of a {@link RuleContext}.
- */
-export type AddIssueFn = (message: string, opts?: AddIssueOptions) => void;
+  /**
+   * Path to the file where the issue was found.
+   */
+  filepath?: string | URL;
+
+  /**
+   * If the file is a JSON file, a keypath representing the location of issue.
+   */
+  jsonField?: string;
+}
 
 /**
  * A context object which is provided to a {@link RuleCheckFn}, containing
@@ -42,31 +46,6 @@ export class RuleContext implements StaticRuleContext {
    * used for getters.
    */
   private readonly staticCtx: StaticRuleContext;
-
-  /**
-   * Adds an issue to the list of issues for this context.
-   *
-   * This should be called by the {@link RuleCheckFn} when it detects a problem.
-   *
-   * @param message - Message for the issue
-   * @param filepath - Filepath where the issue was found
-   * @param data - Additional data to include in the issue
-   */
-  public addIssue: AddIssueFn = function (
-    this: RuleContext,
-    message,
-    {data, filepath} = {},
-  ) {
-    this.#addIssue(
-      RuleIssue.create({
-        ctx: serialize(this),
-        data,
-        filepath,
-        message,
-        rule: this.staticRuleDef,
-      }),
-    );
-  };
 
   public readonly staticRuleDef: StaticRule;
 
@@ -99,6 +78,30 @@ export class RuleContext implements StaticRuleContext {
    */
   #addIssue(issue: RuleIssue): void {
     this.#issues.push(issue);
+  }
+
+  /**
+   * Adds an issue to the list of issues for this context.
+   *
+   * This should be called by the {@link RuleCheckFn} when it detects a problem.
+   *
+   * @param message - Message for the issue
+   * @param options - Options; see {@link AddIssueOptions}
+   */
+  public addIssue(
+    message: string,
+    {data, filepath, jsonField}: AddIssueOptions = {},
+  ) {
+    this.#addIssue(
+      RuleIssue.create({
+        ctx: serialize(this),
+        data,
+        filepath,
+        jsonField,
+        message,
+        rule: this.staticRuleDef,
+      }),
+    );
   }
 
   /**

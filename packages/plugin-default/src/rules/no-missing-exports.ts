@@ -1,7 +1,6 @@
 import type {PluginAPI} from 'midnight-smoker/plugin';
 
-import Debug from 'debug';
-
+import {createDebug} from '../debug';
 import {
   CONDITIONAL_EXPORT_DEFAULT,
   CONDITIONAL_EXPORT_IMPORT,
@@ -11,7 +10,7 @@ import {
   ExportsInspector,
 } from './exports-inspector';
 
-const debug = Debug('midnight-smoker:plugin-default:no-missing-exports');
+const debug = createDebug(__filename);
 
 export default function noMissingExports({
   defineRule,

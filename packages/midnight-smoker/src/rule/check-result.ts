@@ -19,6 +19,7 @@ export interface CheckResultFailed extends BaseCheckResult {
   filepath?: string;
   id: string;
   isError: boolean;
+  jsonField?: string;
   message: string;
   type: typeof FAILED;
 }

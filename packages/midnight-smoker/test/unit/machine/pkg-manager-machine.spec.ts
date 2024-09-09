@@ -30,6 +30,7 @@ import {type SmokerOptions} from '#schema/smoker-options';
 import {type WorkspaceInfo} from '#schema/workspace-info';
 import {FileManager} from '#util/filemanager';
 import {serialize} from '#util/serialize';
+import stringify from 'json-stable-stringify';
 import {set} from 'lodash';
 import {memfs} from 'memfs';
 import {type Volume} from 'memfs/lib/volume';
@@ -140,6 +141,7 @@ describe('midnight-smoker', function () {
                 pkgJson: {name: 'bar', version: '1.0.0'},
                 pkgJsonPath: '/package.json',
                 pkgName: 'bar',
+                rawPkgJson: stringify({name: 'bar', version: '1.0.0'}),
               },
             ],
           };
@@ -298,6 +300,7 @@ describe('midnight-smoker', function () {
                   pkgJson: {name: 'bar', version: '1.0.0'},
                   pkgJsonPath: '/package.json',
                   pkgName: 'bar',
+                  rawPkgJson: stringify({name: 'bar', version: '1.0.0'}),
                 },
               ],
             };

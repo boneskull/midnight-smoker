@@ -6,7 +6,6 @@ import {
   InstallManifestSchema,
 } from '#schema/install-manifest';
 import {type PkgManagerPackContext} from '#schema/pkg-manager';
-import {type WorkspaceInfo} from '#schema/workspace-info';
 import {isSmokerError} from '#util/guard/smoker-error';
 import {fromPromise} from 'xstate';
 
@@ -56,7 +55,8 @@ export const packLogic = fromPromise<InstallManifest, PackLogicInput>(
           pkgJson: ctx.pkgJson,
           pkgJsonPath: ctx.pkgJsonPath,
           pkgName: ctx.pkgName,
-        } as WorkspaceInfo,
+          rawPkgJson: ctx.rawPkgJson,
+        },
         ctx.tmpdir,
         err,
       );

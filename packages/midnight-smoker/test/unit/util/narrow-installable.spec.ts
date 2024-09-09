@@ -1,6 +1,7 @@
 import {type NormalizedPackageJson} from '#schema/package-json';
 import {type WorkspaceInfo} from '#schema/workspace-info';
 import {narrowInstallables} from '#util/narrow-installables';
+import stringify from 'json-stable-stringify';
 import unexpected from 'unexpected';
 
 const expect = unexpected.clone();
@@ -25,6 +26,7 @@ describe('midnight-smoker', function () {
             pkgJson,
             pkgJsonPath: '',
             pkgName: '',
+            rawPkgJson: stringify(pkgJson),
           },
         ];
 

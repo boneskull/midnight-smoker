@@ -60,16 +60,19 @@ export const queryWorkspacesLogic = fromPromise<
     },
     signal,
   }): Promise<WorkspaceInfo[]> => {
-    const {packageJson: rawRootPkgJson, path: rootPkgJsonPath} =
-      await fileManager.findPkgUp(cwd, {
-        signal,
-        strict: true,
-      });
+    const {
+      packageJson: rootPackageJson,
+      path: rootPkgJsonPath,
+      rawPackageJson: rawRootPkgJson,
+    } = await fileManager.findPkgUp(cwd, {
+      signal,
+      strict: true,
+    });
 
     let rootPkgJson: NormalizedPackageJson;
 
     try {
-      rootPkgJson = normalizePkgJson(rawRootPkgJson, rootPkgJsonPath);
+      rootPkgJson = normalizePkgJson(rootPackageJson, rootPkgJsonPath);
     } catch (err) {
       throw new InvalidPkgJsonError(
         `Invalid ${PACKAGE_JSON} at ${hrRelativePath(rootPkgJsonPath)}`,
@@ -105,13 +108,14 @@ export const queryWorkspacesLogic = fromPromise<
 
           const fullpath = workspacePath.fullpath();
           const pkgJsonPath = path.join(fullpath, PACKAGE_JSON);
-          const pkgJson = await fileManager.readPkgJson(pkgJsonPath, {
-            signal,
-          });
+          const {packageJson, rawPackageJson: rawPkgJson} =
+            await fileManager.readPkgJson(pkgJsonPath, {
+              signal,
+            });
 
           let workspacePkgJson: NormalizedPackageJson;
           try {
-            workspacePkgJson = normalizePkgJson(pkgJson, pkgJsonPath);
+            workspacePkgJson = normalizePkgJson(packageJson, pkgJsonPath);
           } catch (err) {
             throw new InvalidPkgJsonError(
               `Invalid ${PACKAGE_JSON} in workspace ${hrRelativePath(
@@ -137,6 +141,7 @@ export const queryWorkspacesLogic = fromPromise<
               pkgJsonPath,
               pkgName: workspacePkgJson.name,
               private: Boolean(workspacePkgJson.private),
+              rawPkgJson,
             },
           ];
         },
@@ -200,6 +205,7 @@ export const queryWorkspacesLogic = fromPromise<
           pkgJsonPath: rootPkgJsonPath,
           pkgName: rootPkgJson.name,
           private: Boolean(rootPkgJson.private),
+          rawPkgJson: rawRootPkgJson,
         },
       ];
     }
