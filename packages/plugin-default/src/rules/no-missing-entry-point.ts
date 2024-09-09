@@ -1,12 +1,10 @@
-import type {PluginAPI} from 'midnight-smoker/plugin';
-
-import Debug from 'debug';
+import {PACKAGE_JSON, type PluginAPI} from 'midnight-smoker';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-const debug = Debug(
-  'midnight-smoker:plugin-default:rule:no-missing-entry-point',
-);
+import {createDebug} from '../debug';
+
+const debug = createDebug(__filename);
 
 const DEFAULT_FIELD = 'main';
 
@@ -19,14 +17,11 @@ const DEFAULT_FIELD = 'main';
  */
 const DEFAULT_ENTRY_POINTS = ['index.js', 'index.json', 'index.node'] as const;
 
-export default function noMissingEntryPoint({defineRule}: PluginAPI) {
+export default function noMissingEntryPoint({defineRule, z}: PluginAPI) {
   defineRule({
-    async check({addIssue, installPath, pkgJson}) {
-      // skip if the package has an "exports" field or it's an ESM package
-      if (
-        'exports' in pkgJson ||
-        ('type' in pkgJson && pkgJson.type === 'module')
-      ) {
+    async check({addIssue, installPath, pkgJson, pkgName}, {ignoreIfESM}) {
+      // skip if the package is type=module
+      if (!ignoreIfESM && pkgJson.type === 'module') {
         return;
       }
 
@@ -38,10 +33,11 @@ export default function noMissingEntryPoint({defineRule}: PluginAPI) {
         const relativePath = pkgJson[field];
         const filepath = path.resolve(installPath, relativePath);
         try {
-          await fs.stat(filepath);
+          await fs.access(filepath, fs.constants.R_OK);
         } catch {
           addIssue(
-            `No entry point found for package "${pkgJson.name}"; file from field "${field}" unreadable at path: ${relativePath}`,
+            `File from field "${field}" unreadable at path: ${relativePath}`,
+            {filepath: PACKAGE_JSON, jsonField: field},
           );
         }
       } else {
@@ -61,7 +57,7 @@ export default function noMissingEntryPoint({defineRule}: PluginAPI) {
         }
         if (!found) {
           addIssue(
-            `No entry point found for package "${pkgJson.name}"; (index.js, index.json or index.node)`,
+            `No entry point found for package "${pkgName}"; (index.js, index.json or index.node)`,
           );
         }
       }
@@ -69,6 +65,12 @@ export default function noMissingEntryPoint({defineRule}: PluginAPI) {
     description:
       'Checks that the package contains an entry point; only applies to CJS packages without an "exports" field',
     name: 'no-missing-entry-point',
+    schema: z.object({
+      ignoreIfESM: z
+        .boolean()
+        .default(false)
+        .describe('If true, ignore ESM packages ("type": "module")'),
+    }),
     url: 'https://boneskull.github.io/midnight-smoker/rules/no-missing-entry-point',
   });
 }

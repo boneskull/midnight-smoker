@@ -2,6 +2,7 @@ import {OK} from '#constants';
 import {RuleContext} from '#rule/rule-context';
 import {type StaticRuleContext} from '#rule/static-rule-context';
 import {type SomeRule} from '#schema/rule';
+import stringify from 'json-stable-stringify';
 import {omit} from 'lodash';
 import unexpected from 'unexpected';
 import {fileURLToPath} from 'url';
@@ -39,6 +40,10 @@ describe('midnight-smoker', function () {
             },
             pkgJsonPath: '/path/to/example-package/package.json',
             pkgName: 'example-package',
+            rawPkgJson: stringify({
+              name: 'example-package',
+              version: '1.0.0',
+            }),
           },
         };
 

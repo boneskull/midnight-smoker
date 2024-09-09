@@ -20,6 +20,7 @@ export const WorkspaceInfoSchema = z.strictObject({
   pkgJsonPath: NonEmptyStringSchema,
   pkgName: NonEmptyStringSchema,
   private: z.boolean().optional(),
+  rawPkgJson: z.string(),
 });
 
 /**
@@ -59,4 +60,11 @@ export type WorkspaceInfo = Readonly<{
    * Corresponds to the `private` field of the `package.json`
    */
   private?: boolean;
+
+  /**
+   * A Momoa AST representing the `package.json` file.
+   *
+   * This probably doesn't need to be used directly.
+   */
+  rawPkgJson: string;
 }>;

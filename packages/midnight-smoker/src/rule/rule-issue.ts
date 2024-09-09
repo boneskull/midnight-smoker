@@ -7,12 +7,14 @@ import {FAILED, PACKAGE_JSON, RuleSeverities} from '#constants';
 import {type RuleError} from '#error/rule-error';
 import {type CheckResultFailed} from '#rule/check-result';
 import {type StaticRule} from '#schema/static-rule';
+import {type WorkspaceInfo} from '#schema/workspace-info';
 import {asResult, type Result} from '#util/result';
 import {serialize} from '#util/serialize';
 import {uniqueId, type UniqueId} from '#util/unique-id';
 import path from 'node:path';
 import {fileURLToPath} from 'url';
 
+import {JSONBlamer} from './json-blamer';
 import {type StaticRuleContext} from './static-rule-context';
 
 /**
@@ -41,6 +43,8 @@ export interface RuleIssueParams {
    * Filepath to the problem file. Defaults to `package.json`
    */
   filepath?: string | URL;
+
+  jsonField?: string;
 
   /**
    * The message for this issue
@@ -79,6 +83,8 @@ export class RuleIssue implements CheckResultFailed {
    */
   public readonly id: UniqueId<'issue'>;
 
+  public readonly jsonField?: string;
+
   /**
    * {@inheritDoc RuleIssueParams.message}
    */
@@ -96,22 +102,25 @@ export class RuleIssue implements CheckResultFailed {
     data,
     error,
     filepath,
+    jsonField,
     message,
     rule,
   }: RuleIssueParams) {
     // just in case StaticRuleDef is a Rule
     this.rule = serialize(rule);
     this.ctx = asResult(ctx);
-    this.message = message;
     this.data = data;
     this.error = error;
     this.id = uniqueId({prefix: 'issue'});
+    this.jsonField = jsonField;
     this.filepath =
       filepath instanceof URL
         ? fileURLToPath(filepath)
         : filepath
           ? filepath
           : path.join(ctx.workspace.localPath, PACKAGE_JSON);
+
+    this.message = message;
   }
 
   /**
@@ -124,13 +133,35 @@ export class RuleIssue implements CheckResultFailed {
     return Object.freeze(new RuleIssue(params));
   }
 
+  public static async getSourceContext(
+    workspace: WorkspaceInfo,
+    filepath: string,
+    jsonField: string,
+  ) {
+    if (filepath === PACKAGE_JSON) {
+      const blamer = new JSONBlamer(
+        workspace.rawPkgJson,
+        workspace.pkgJsonPath,
+      );
+      const res = blamer.find(jsonField);
+      if (res) {
+        const context = await blamer.getContext(res);
+        return `${context}\n`;
+      }
+      return '';
+    } else {
+      return '';
+    }
+  }
+
   /**
    * Converts the {@link RuleIssue} object to a JSON representation.
    *
    * @returns The JSON representation of the {@link RuleIssue} object.
    */
   public toJSON(): CheckResultFailed {
-    const {ctx, data, error, filepath, id, isError, message, rule} = this;
+    const {ctx, data, error, filepath, id, isError, jsonField, message, rule} =
+      this;
     return {
       ctx,
       data: serialize(data),
@@ -138,6 +169,7 @@ export class RuleIssue implements CheckResultFailed {
       filepath,
       id,
       isError,
+      jsonField,
       message,
       rule,
       type: FAILED,

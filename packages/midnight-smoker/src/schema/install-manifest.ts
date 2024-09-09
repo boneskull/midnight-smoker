@@ -10,7 +10,10 @@ export type InstallManifest = Readonly<
     installPath?: string;
     isAdditional?: boolean;
     pkgSpec: string;
-  } & SetOptional<WorkspaceInfo, 'localPath' | 'pkgJson' | 'pkgJsonPath'>
+  } & SetOptional<
+    WorkspaceInfo,
+    'localPath' | 'pkgJson' | 'pkgJsonPath' | 'rawPkgJson'
+  >
 >;
 
 /**
@@ -32,6 +35,7 @@ export const InstallManifestSchema = WorkspaceInfoSchema.partial({
   localPath: true,
   pkgJson: true,
   pkgJsonPath: true,
+  rawPkgJson: true,
 })
   .extend({
     cwd: NonEmptyStringSchema.describe('The working directory for the install'),

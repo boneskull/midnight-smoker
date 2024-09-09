@@ -3,10 +3,11 @@ import spinners from 'cli-spinners';
 import Debug from 'debug';
 import {groupBy, head, isEmpty} from 'lodash';
 import {error, info, warning} from 'log-symbols';
-import {FAILED} from 'midnight-smoker/constants';
+import {FAILED, PACKAGE_JSON} from 'midnight-smoker/constants';
 import {type Reporter} from 'midnight-smoker/reporter';
 import {
   type CheckResultFailed,
+  RuleIssue,
   RuleSeverities,
   type StaticRule,
 } from 'midnight-smoker/rule';
@@ -60,7 +61,7 @@ export const ConsoleReporter: Reporter<ConsoleReporterContext> = {
       console.error(yellow(dir));
     }
   },
-  onLintFailed({spinner}, {results: lintResults}) {
+  async onLintFailed({spinner}, {results: lintResults}) {
     for (const {pkgName, results} of lintResults) {
       const failed = results.filter(
         ({type}) => type === FAILED,
@@ -86,14 +87,28 @@ export const ConsoleReporter: Reporter<ConsoleReporterContext> = {
       for (const [filepath, failed] of Object.entries(failedByFilepath)) {
         lines.push(`│ ${yellow(bold(hrRelativePath(filepath)))}:`);
         for (const {
-          ctx: {severity},
+          ctx,
+          filepath = PACKAGE_JSON,
+          jsonField,
           message,
           rule,
         } of failed) {
-          if (severity === RuleSeverities.Error) {
+          if (ctx.severity === RuleSeverities.Error) {
             lines.push(`│   ${error} ${ruleNameError(rule)} — ${message}`);
           } else {
             lines.push(`│   ${warning} ${ruleNameWarning(rule)} — ${message}`);
+          }
+          if (jsonField) {
+            let sourceCtx = await RuleIssue.getSourceContext(
+              ctx.workspace,
+              filepath,
+              jsonField,
+            );
+            sourceCtx = sourceCtx
+              .split('\n')
+              .map((line) => `│     ${line}`)
+              .join('\n');
+            lines.push(sourceCtx);
           }
         }
       }

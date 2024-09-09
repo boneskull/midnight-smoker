@@ -11,13 +11,17 @@ import {
   parse,
 } from '@humanwhocodes/momoa';
 import chalk from 'chalk';
-import {isString, toPath} from 'lodash';
+import {isString, max, toPath} from 'lodash';
+import path from 'node:path';
+import stringWidth from 'string-width';
+import stripAnsi from 'strip-ansi';
 
 import {JSONLocation} from './json-location';
 
 type ContainerNode = DocumentNode | ElementNode | MemberNode;
 
 export type JSONBlamerResult = {
+  filepath: string;
   keypath: string;
   loc: JSONLocation;
   value: JSONValue;
@@ -81,6 +85,7 @@ export class JSONBlamer {
       const value = evaluate(getValue(found));
 
       return {
+        filepath: this.jsonPath,
         keypath,
         loc,
         value,
@@ -88,19 +93,25 @@ export class JSONBlamer {
     }
   }
 
-  public getContext(
+  public async getContext(
     result: JSONBlamerResult,
     options: {before: number} = {before: 2},
-  ): string {
+  ): Promise<string> {
+    const {common, createEmphasize} = await import('emphasize');
+    const emphasize = createEmphasize({json: common.json});
+
+    const highlighted = emphasize.highlight('json', this.json).value;
+
     const {before} = options;
-    const lines = this.json.split('\n');
+    const lines = highlighted.split('\n');
     const startLine = Math.max(result.loc.start.line - 1 - before, 0);
     const endLine = result.loc.end.line;
 
+    const maxLineNumberLength = `${endLine}`.length;
     let contextLines = lines.slice(startLine, endLine).join('\n');
 
     if (result.loc.start.line === result.loc.end.line) {
-      const line = lines[result.loc.start.line - 1];
+      const line = stripAnsi(lines[result.loc.start.line - 1]);
       const highlightedLine =
         line.slice(0, result.loc.start.column - 1) +
         chalk.bgRed.white(
@@ -113,7 +124,25 @@ export class JSONBlamer {
         highlightedLine;
     }
 
-    return `${contextLines}\n`;
+    contextLines = contextLines
+      .split('\n')
+      .map((line, idx) => {
+        const lineNumber = chalk.dim(
+          `${startLine + idx + 1}:`.padStart(maxLineNumberLength),
+        );
+        return `${lineNumber} ${line}`;
+      })
+      .join('\n');
+    const maxLineLength =
+      max(contextLines.split('\n').map((line) => stringWidth(line))) ?? 40;
+    const title =
+      `— ${path.basename(result.filepath)} `.padEnd(maxLineLength - 1, '—') +
+      '✂';
+    const titleLength = stringWidth(title);
+    console.error(maxLineLength - titleLength);
+    contextLines =
+      title + '\n' + contextLines + '\n' + '—'.repeat(maxLineLength - 1) + '✂';
+    return `\n${contextLines}`;
   }
 }
 
