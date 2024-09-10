@@ -40,16 +40,17 @@ export class ListCommand extends BaseCommand {
    * Retrieves a list of package managers and displays them in a table format.
    * If the `json` option is provided, the list is outputted as JSON.
    *
-   * @param opts - The options for listing package managers.
+   * @param rawSmokerOptions - The options for listing package managers.
    * @returns A promise that resolves once the list is displayed.
    */
   private static async listPkgManagers(
-    opts: ArgumentsCamelCase<ListOptionTypes>,
+    rawSmokerOptions: ArgumentsCamelCase<ListOptionTypes>,
   ): Promise<void> {
-    const pkgManagers = await Smoker.getPkgManagers(opts);
-    debug('Found %d pkg manager modules', pkgManagers.length);
+    const smoker = await Smoker.create(rawSmokerOptions);
+    const pkgManagers = smoker.getAllPkgManagers();
+    debug('Found %d pkg manager components', pkgManagers.length);
 
-    if (opts.json) {
+    if (rawSmokerOptions.json) {
       BaseCommand.writeJson(pkgManagers);
       return;
     }
@@ -75,13 +76,14 @@ export class ListCommand extends BaseCommand {
   /**
    * Lists the plugins based on the provided options.
    *
-   * @param opts - The options for listing the plugins.
+   * @param rawSmokerOptions - The options for listing the plugins.
    * @returns A promise that resolves when the plugins are listed.
    */
   private static async listPlugins(
-    opts: ArgumentsCamelCase<ListOptionTypes>,
+    rawSmokerOptions: ArgumentsCamelCase<ListOptionTypes>,
   ): Promise<void> {
-    const plugins = await Smoker.getPlugins(opts);
+    const smoker = await Smoker.create(rawSmokerOptions);
+    const plugins = smoker.getAllPlugins();
     debug('Found %d plugins', plugins.length);
 
     // blessed plugins first
@@ -91,7 +93,7 @@ export class ListCommand extends BaseCommand {
       ['desc'],
     );
 
-    if (opts.json) {
+    if (rawSmokerOptions.json) {
       BaseCommand.writeJson(sortedPlugins);
       return;
     }
@@ -118,9 +120,10 @@ export class ListCommand extends BaseCommand {
   private static async listReporters(
     opts: ArgumentsCamelCase<ListOptionTypes>,
   ): Promise<void> {
-    const reporters = await Smoker.getReporters(opts).then((reporters) =>
-      reporters.filter((reporter) => !reporter.isHidden),
-    );
+    const smoker = await Smoker.create(opts);
+    const reporters = smoker
+      .getAllReporters()
+      .filter((reporter) => !reporter.isHidden);
     debug('Found %d visible reporters', reporters.length);
 
     if (opts.json) {
@@ -144,22 +147,23 @@ export class ListCommand extends BaseCommand {
   /**
    * Lists the rules based on the provided options.
    *
-   * @param opts - The options for listing the rules.
+   * @param rawSmokerOptions - The options for listing the rules.
    * @returns A promise that resolves once the rules are listed.
    */
   private static async listRules(
-    opts: ArgumentsCamelCase<ListOptionTypes>,
+    rawSmokerOptions: ArgumentsCamelCase<ListOptionTypes>,
   ): Promise<void> {
-    const rules = await Smoker.getRules(opts);
+    const smoker = await Smoker.create(rawSmokerOptions);
+    const rules = smoker.getAllRules();
 
     debug('Found %d rules', rules.length);
 
     const headers =
-      terminalLink.isSupported && !opts.json
+      terminalLink.isSupported && !smoker.smokerOptions.json
         ? ['Name', 'Description', 'Plugin']
         : ['Name', 'Description', 'Plugin', 'URL'];
 
-    if (opts.json) {
+    if (smoker.smokerOptions.json) {
       BaseCommand.writeJson(rules);
       return;
     }

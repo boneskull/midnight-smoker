@@ -1,17 +1,10 @@
 import {ERROR, MIDNIGHT_SMOKER, OK} from '#constants';
 import {type ReporterContext} from '#reporter/reporter-context';
 import * as assert from '#util/assert';
+import {createDebug} from '#util/debug';
 import Debug from 'debug';
 import {type Except} from 'type-fest';
-import {
-  type AnyActorRef,
-  type AnyEventObject,
-  assign,
-  type EventObject,
-  type MachineContext,
-  type ParameterizedObject,
-  type ProvidedActor,
-} from 'xstate';
+import * as xs from 'xstate';
 
 /**
  * `ActorOutput` is a convention for an actor output.
@@ -47,6 +40,21 @@ export type ActorOutputOk<Ctx = unknown> = {
   actorId: string;
   type: typeof OK;
 } & Ctx;
+
+export type OmitSignal<T extends {signal: any}> = Except<
+  T,
+  'signal',
+  {requireExactProps: true}
+>;
+
+/**
+ * Used by {@link runActor} to determine if the `input` option is required for
+ * the provided logic.
+ *
+ * @internal
+ */
+type RequiredOptions<TLogic extends xs.AnyActorLogic> =
+  undefined extends xs.InputFrom<TLogic> ? never : 'input';
 
 /**
  * Asserts that the actor output is not ok and throws an error if it is.
@@ -99,7 +107,7 @@ export function assertActorOutputOk<
  *   `createActor`; it should also work with `spawn`, `spawnChild`, and/or
  *   `invoke`.
  */
-export function monkeypatchActorLogger<T extends AnyActorRef>(
+export function monkeypatchActorLogger<T extends xs.AnyActorRef>(
   actor: T,
   namespace: string,
 ): T {
@@ -111,12 +119,6 @@ export function monkeypatchActorLogger<T extends AnyActorRef>(
   return actor;
 }
 
-export type OmitSignal<T extends {signal: any}> = Except<
-  T,
-  'signal',
-  {requireExactProps: true}
->;
-
 export function reporterContextWithSignal(
   ctx: OmitSignal<ReporterContext>,
   signal: AbortSignal,
@@ -124,6 +126,44 @@ export function reporterContextWithSignal(
   Object.assign(ctx, {signal});
   return ctx as unknown as ReporterContext;
 }
+
+/**
+ * Creates an actor, starts it, and waits for it to complete.
+ *
+ * Only supports state machine and `Promise` logic
+ *
+ * @template TLogic Actor logic type
+ * @param logic Actor logic
+ * @param options Required or optional (depends on `TLogic`)
+ * @returns The output of the actor
+ */
+export async function runActor<
+  TLogic extends xs.AnyStateMachine | xs.PromiseActorLogic<any, any, any>,
+>(
+  logic: TLogic,
+  ...[options]: xs.ConditionalRequired<
+    [
+      options?: {
+        [K in RequiredOptions<TLogic>]: unknown;
+      } & xs.ActorOptions<TLogic>,
+    ],
+    xs.IsNotNever<RequiredOptions<TLogic>>
+  >
+): Promise<xs.OutputFrom<TLogic>> {
+  const actor = xs.createActor(logic, options);
+  const p = xs.toPromise(actor);
+  actor.start();
+  try {
+    return await p;
+  } catch (err) {
+    debug(`Actor %s rejected:`, actor.id, err);
+    throw err;
+  } finally {
+    actor.stop();
+  }
+}
+
+const debug = createDebug(__filename);
 
 /**
  * Action expected for all machines to implement.
@@ -137,9 +177,9 @@ export const INIT_ACTION = '__init__';
  * Default implementation for {@link INIT_ACTION}
  */
 export const DEFAULT_INIT_ACTION = <
-  TContext extends MachineContext,
-  TExpressionEvent extends AnyEventObject,
-  TParams extends ParameterizedObject['params'] | undefined,
-  TEvent extends EventObject,
-  TActor extends ProvidedActor,
->() => assign<TContext, TExpressionEvent, TParams, TEvent, TActor>({});
+  TContext extends xs.MachineContext,
+  TExpressionEvent extends xs.AnyEventObject,
+  TParams extends undefined | xs.ParameterizedObject['params'],
+  TEvent extends xs.EventObject,
+  TActor extends xs.ProvidedActor,
+>() => xs.assign<TContext, TExpressionEvent, TParams, TEvent, TActor>({});

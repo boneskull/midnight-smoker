@@ -40,7 +40,7 @@ import {
 
 import {BLESSED_PLUGINS} from './blessed';
 import {
-  type Component,
+  type ComponentMetadata,
   type ComponentObject,
   type ComponentRegistry,
   type ComponentRegistryEntries,
@@ -450,8 +450,12 @@ export class PluginRegistry implements Disposable {
     });
   }
 
+  public fileManagerIs(fileManager: FileManager): boolean {
+    return this.#fileManager === fileManager;
+  }
+
   /**
-   * Gets a {@link Component} for a {@link ComponentObject}
+   * Gets a {@link ComponentMetadata} for a {@link ComponentObject}
    *
    * @param componentObject A component object (definition)
    * @returns Component
@@ -459,9 +463,11 @@ export class PluginRegistry implements Disposable {
    */
   public getComponent<T extends ComponentKind>(
     componentObject: ComponentObject<T>,
-  ): Component<T> {
+  ): ComponentMetadata<T> {
     if (this.#componentRegistry.has(componentObject)) {
-      return this.#componentRegistry.get(componentObject) as Component<T>;
+      return this.#componentRegistry.get(
+        componentObject,
+      ) as ComponentMetadata<T>;
     }
     throw new Err.UnknownComponentError('Component not found', componentObject);
   }
