@@ -5,25 +5,27 @@
  *
  * @packageDocumentation
  */
+import type * as xs from 'xstate';
+
 import {
   type ComponentKind,
   type ComponentKinds,
   DEFAULT_EXECUTOR_ID,
-  ERROR,
-  FAILED,
-  OK,
   SYSTEM_EXECUTOR_ID,
 } from '#constants';
 import {InvalidArgError} from '#error/invalid-arg-error';
-import {UnknownError} from '#error/unknown-error';
-import {type Executor} from '#executor';
-import {guessPkgManagerLogic} from '#machine/actor/guess-pkg-manager';
-import {queryWorkspacesLogic} from '#machine/actor/query-workspaces';
-import {SmokeMachine, type SmokeMachineOutput} from '#machine/smoke-machine';
+import {type SmokeResults} from '#event/core-events';
+import {SmokeMachine} from '#machine/smoke-machine';
+import {runActor} from '#machine/util';
 import {OptionsParser} from '#options/options-parser';
-import {type Component, type ComponentObject} from '#plugin/component';
-import {type StaticPluginMetadata} from '#plugin/static-plugin-metadata';
-import {type SomeRule} from '#schema/rule';
+import {BLESSED_PLUGINS} from '#plugin/blessed';
+import {
+  type Component,
+  type ComponentMetadata,
+  type ComponentObject,
+} from '#plugin/component';
+import {type PluginMetadata} from '#plugin/plugin-metadata';
+import {PluginRegistry} from '#plugin/registry';
 import {
   type RawSmokerOptions,
   type SmokerOptions,
@@ -34,34 +36,39 @@ import {isBlessedPlugin} from '#util/guard/blessed-plugin';
 import {castArray} from '#util/util';
 import {EventEmitter} from 'events';
 import {noop} from 'lodash';
-import {
-  type AnyActorRef,
-  createActor,
-  type InspectionEvent,
-  toPromise,
-  type UnknownActorLogic,
-  type UnknownActorRef,
-} from 'xstate';
-
-import {type SmokeResults} from './event';
-import {type PkgManager} from './pkg-manager';
-import {BLESSED_PLUGINS, type PluginMetadata, PluginRegistry} from './plugin';
-import {type Reporter} from './reporter';
-
-export type {SmokeResults};
 
 /**
- * Currently, capabilities are for testing purposes because it's a huge pain to
- * make them do much more than that.
- *
- * This allows a prebuilt {@link PluginRegistry} to be provided when creating a
+ * XState inspector function; applied when creating a
+ * {@link SmokerCapabilities.logic} actor.
+ */
+export type InspectorFn = (evt: xs.InspectionEvent) => void;
+
+/**
+ * Capabilities can be used to stub or otherwise modify the behavior of a
  * {@link Smoker} instance.
  */
 export interface SmokerCapabilities {
+  /**
+   * FileManager instance; all FS operations go through this (but not module
+   * loading)
+   */
   fileManager?: FileManager;
-  inspect?: (evt: InspectionEvent) => void;
-  logic?: UnknownActorLogic;
 
+  /**
+   * An inspector for {@link logic}
+   *
+   * @param evt Inspection event
+   */
+  inspect?: InspectorFn;
+
+  /**
+   * The main actor logic
+   */
+  logic?: typeof SmokeMachine;
+
+  /**
+   * A {@link PluginRegistry} instance to use
+   */
   pluginRegistry?: PluginRegistry;
 }
 
@@ -73,17 +80,24 @@ export class Smoker extends EventEmitter {
    * FileManager instance; all FS operations go through this (including dynamic
    * imports)
    */
-  public readonly fileManager: FileManager;
+  private readonly fileManager: FileManager;
 
-  public readonly inspect: (evt: InspectionEvent) => void;
+  /**
+   * XState inspector function; applied when creating a
+   * {@link SmokerCapabilities.logic} actor.
+   */
+  private readonly inspect: InspectorFn;
 
-  public readonly logic: UnknownActorLogic;
+  /**
+   * The main actor logic
+   */
+  private readonly logic: typeof SmokeMachine;
 
   /**
    * Mapping of plugin identifiers (names) to plugin "instances", which can
    * contain a collection of rules and other stuff (in the future)
    */
-  public readonly pluginRegistry: PluginRegistry;
+  private readonly pluginRegistry: PluginRegistry;
 
   /**
    * Parsed & fully validated options
@@ -100,24 +114,21 @@ export class Smoker extends EventEmitter {
     }: SmokerCapabilities = {},
   ) {
     super();
-    const {all, workspace} = smokerOptions;
     this.smokerOptions = Object.freeze(smokerOptions);
     this.fileManager = fileManager;
     this.logic = logic;
     this.inspect = inspect;
+    this.pluginRegistry = pluginRegistry;
 
     /**
-     * Normally, the CLI will intercept this before we get here
+     * Normally, the CLI will intercept this before we get here. The "correct"
+     * place for this validation is in the {@link SmokerOptions} schema.
      */
-    if (all && workspace.length) {
+    if (smokerOptions.all && smokerOptions.workspace.length) {
       throw new InvalidArgError(
         'Option "workspace" is mutually exclusive with "all"',
       );
     }
-
-    this.pluginRegistry = pluginRegistry;
-
-    debug(`Smoker instantiated with registry: ${this.pluginRegistry}`);
   }
 
   /**
@@ -151,89 +162,6 @@ export class Smoker extends EventEmitter {
     return new Smoker(smokerOptions, {...caps, pluginRegistry});
   }
 
-  public static async getDefaultPkgManager(
-    this: void,
-    rawSmokerOptions?: RawSmokerOptions,
-  ): Promise<string> {
-    const smoker = await Smoker.create(rawSmokerOptions);
-
-    const wsActor = createActor(queryWorkspacesLogic, {
-      input: {all: true, cwd: process.cwd()},
-    });
-    const wsP = toPromise(wsActor);
-    wsActor.start();
-    const workspaceInfo = await wsP;
-
-    const guessActor = createActor(guessPkgManagerLogic, {
-      input: {
-        fileManager: FileManager.create(),
-        plugins: smoker.getAllPlugins(),
-        workspaceInfo,
-      },
-    });
-    const guessP = toPromise(guessActor);
-    guessActor.start();
-    const desiredPkgManager = await guessP;
-    return desiredPkgManager;
-  }
-
-  /**
-   * Initializes a {@link Smoker} instance and returns a list of package
-   * managers.
-   *
-   * @param rawSmokerOptions Raw smoker options
-   * @returns List of package managers
-   */
-  public static async getPkgManagers(
-    this: void,
-    rawSmokerOptions?: RawSmokerOptions,
-  ): Promise<(Component<typeof ComponentKinds.PkgManager> & PkgManager)[]> {
-    const smoker = await Smoker.create(rawSmokerOptions);
-    return smoker.getAllPkgManagers();
-  }
-
-  /**
-   * Initializes a {@link Smoker} instance and returns a list of reporteres.
-   *
-   * @param rawSmokerOptions Raw Smoker options
-   * @returns List of plugins
-   */
-  public static async getPlugins(
-    this: void,
-    rawSmokerOptions?: RawSmokerOptions,
-  ): Promise<StaticPluginMetadata[]> {
-    const smoker = await Smoker.create(rawSmokerOptions);
-    return smoker.getAllPlugins();
-  }
-
-  /**
-   * Initializes a {@link Smoker} instance and returns a list of reporters.
-   *
-   * @param rawSmokerOptions - Raw Smoker options
-   * @returns List of reporters
-   */
-  public static async getReporters(
-    this: void,
-    rawSmokerOptions?: RawSmokerOptions,
-  ): Promise<(Component<typeof ComponentKinds.Reporter> & Reporter)[]> {
-    const smoker = await Smoker.create(rawSmokerOptions);
-    return smoker.getAllReporters();
-  }
-
-  /**
-   * Initializes a {@link Smoker} instance and returns a list of rules.
-   *
-   * @param rawSmokerOptions - Raw Smoker options (including `plugin`)
-   * @returns List of rules
-   */
-  public static async getRules(
-    this: void,
-    rawSmokerOptions?: RawSmokerOptions,
-  ): Promise<(Component<typeof ComponentKinds.Rule> & SomeRule)[]> {
-    const smoker = await Smoker.create(rawSmokerOptions);
-    return smoker.getAllRules();
-  }
-
   /**
    * Instantiate `Smoker` and immediately run.
    *
@@ -249,18 +177,23 @@ export class Smoker extends EventEmitter {
   }
 
   /**
-   * Boots up the smoker with the provided options and plugin registry.
+   * Bootstraps a bunch of crap that the
+   * {@link Smoker.constructor Smoker constructor} needs.
    *
-   * Several things have to happen, in order, before we can start smoking:
+   * Several things have to happen, in order, before we can instantiate:
    *
-   * 1. Assuming we have no prebuilt registry, built-in plugins must
-   *    {@link PluginRegistry.registerPlugins be registered}
-   * 2. Assuming we have no prebuilt registry, external plugins then must be
-   *    loaded.
-   * 3. The registry must refuse further registrations.
-   * 4. Use `OptionsParser.parse()` to parse the options
+   * 1. We need a {@link FileManager} instance, since the {@link PluginRegistry}
+   *    needs it too.
+   * 2. If no {@link PluginRegistry} capability is provided, we need to instantiate
+   *    a `PluginRegistry` and register plugins ("blessed" plugins first)
+   * 3. Prevent the registry from accepting further plugin registrations.
+   * 4. Parse & validate {@link SmokerOptions}
    *
-   * @param rawSmokerOptions - The options for the smoker.
+   * Once we've done that, we return an object containing the `PluginRegistry`
+   * instance, the validated options, and the `FileManager` instance; these
+   * properties are all parameters for the `Smoker` constructor.
+   *
+   * @param rawSmokerOptions - Unvalidated options
    * @param caps - Capabilities
    * @returns An object containing the plugin registry and parsed options.
    * @internal
@@ -278,19 +211,21 @@ export class Smoker extends EventEmitter {
       (requested) => !isBlessedPlugin(requested),
     );
     if (extPlugins.length) {
-      debug('Requested external plugins: %O', extPlugins);
+      debug('Requested external plugins: %s', extPlugins.join(', '));
     }
 
     let {fileManager, pluginRegistry} = caps;
     fileManager ??= FileManager.create();
 
     if (!pluginRegistry) {
-      debug(
-        'bootstrap(): initializing new plugin registry & registering plugins',
-      );
       pluginRegistry = PluginRegistry.create({fileManager});
       await pluginRegistry.registerPlugins(BLESSED_PLUGINS);
       await pluginRegistry.registerPlugins(extPlugins);
+      debug('Instantiated new PluginRegistry & registered plugins');
+    } else if (!pluginRegistry.fileManagerIs(fileManager)) {
+      debug(
+        `⚠️ Provided plugin registry will not share a FileManager instance with the Smoker object; I hope you know what you're doing`,
+      );
     }
 
     // disable new registrations
@@ -299,31 +234,109 @@ export class Smoker extends EventEmitter {
     if (pluginRegistry.plugins.length) {
       debug('🔌 Registered %d plugin(s)', pluginRegistry.plugins.length);
     } else {
-      debug('⚠️ No plugins registered!');
+      debug('⚠️ No plugins registered! That is going to be a problem.');
     }
 
-    const finalSmokerOptions =
+    const smokerOptions =
       OptionsParser.create(pluginRegistry).parse(rawSmokerOptions);
 
     return {
       fileManager,
       pluginRegistry,
-      smokerOptions: finalSmokerOptions,
+      smokerOptions,
     };
   }
 
   /**
-   * @internal
+   * Looks up the associated `ComponentMetadata` for a given component object.
+   *
+   * @param componentObject Some component object
+   * @returns The associated `ComponentMetadata` for that component object
    */
-  private createActor(
-    fileManager: FileManager,
-    smokerOptions: Readonly<SmokerOptions>,
-    pluginRegistry: PluginRegistry,
-    defaultExecutor: Executor,
-    systemExecutor: Executor,
-    inspect: (evt: InspectionEvent) => void,
-  ): UnknownActorRef {
-    return createActor(this.logic, {
+  private getComponent<T extends ComponentKind>(
+    componentObject: ComponentObject<T>,
+  ): ComponentMetadata<T> {
+    return this.pluginRegistry.getComponent(componentObject);
+  }
+
+  /**
+   * Returns a list of package manager components.
+   *
+   * Note: these are proper {@link Component Components}, so they will contain a
+   * unique `id` and other plugin-related metadata.
+   *
+   * @returns All package managers
+   */
+  public getAllPkgManagers(): Component<typeof ComponentKinds.PkgManager>[] {
+    return this.pluginRegistry.plugins.flatMap((plugin) =>
+      plugin.pkgManagers.map((pkgManager) => ({
+        ...pkgManager,
+        ...this.getComponent(pkgManager),
+      })),
+    );
+  }
+
+  /**
+   * Returns a list of plugins.
+   *
+   * @returns All plugins
+   */
+  public getAllPlugins(): Readonly<PluginMetadata>[] {
+    return this.pluginRegistry.plugins;
+  }
+
+  /**
+   * Returns a list of reporter components.
+   *
+   * Note: these are proper {@link Component Components}, so they will contain a
+   * unique `id` and other plugin-related metadata.
+   *
+   * Also note: the consumer is responsible for filtering out hidden reporters.
+   *
+   * @returns All reporters
+   */
+  public getAllReporters(): Component<typeof ComponentKinds.Reporter>[] {
+    return this.pluginRegistry.plugins.flatMap((plugin) =>
+      plugin.reporters.map((reporter) => ({
+        ...reporter,
+        ...this.getComponent(reporter),
+      })),
+    );
+  }
+
+  /**
+   * Returns a list of rule components.
+   *
+   * Note: these are proper {@link Component Components}, so they will contain a
+   * unique `id` and other plugin-related metadata.
+   *
+   * @returns All rules
+   */
+  public getAllRules(): Component<typeof ComponentKinds.Rule>[] {
+    return this.pluginRegistry.plugins.flatMap((plugin) =>
+      plugin.rules.map((rule) => ({
+        ...rule,
+        ...this.getComponent(rule),
+      })),
+    );
+  }
+
+  /**
+   * Pack, install, run checks (optionally), and run scripts (optionally)
+   *
+   * @remarks
+   * This is the only interesting method in this class.
+   * @returns Results of linting and/or custom script execution
+   */
+  public async smoke(): Promise<SmokeResults> {
+    const {fileManager, inspect, pluginRegistry, smokerOptions} = this;
+
+    const [defaultExecutor, systemExecutor] = await Promise.all([
+      pluginRegistry.getExecutor(DEFAULT_EXECUTOR_ID),
+      pluginRegistry.getExecutor(SYSTEM_EXECUTOR_ID),
+    ]);
+
+    const output = await runActor(this.logic, {
       id: 'SmokeMachine',
       input: {
         auxEmitter: this,
@@ -337,137 +350,15 @@ export class Smoker extends EventEmitter {
       inspect,
       logger: createDebug(require.resolve('#machine/smoke-machine')),
     });
-  }
-
-  /**
-   * @internal
-   */
-  private getAllPkgManagers(): (Component<typeof ComponentKinds.PkgManager> &
-    PkgManager)[] {
-    return this.pluginRegistry.plugins.flatMap((plugin) =>
-      plugin.pkgManagers.map((pkgManager) => ({
-        ...pkgManager,
-        ...this.getComponent(pkgManager),
-      })),
-    );
-  }
-
-  /**
-   * @internal
-   */
-  private getAllPlugins(): Readonly<PluginMetadata>[] {
-    return this.pluginRegistry.plugins;
-  }
-
-  /**
-   * @internal
-   */
-  private getAllReporters(): (Component<typeof ComponentKinds.Reporter> &
-    Reporter)[] {
-    return this.pluginRegistry.plugins.flatMap((plugin) =>
-      plugin.reporters.map((reporter) => ({
-        ...reporter,
-        ...this.getComponent(reporter),
-      })),
-    );
-  }
-
-  /**
-   * @internal
-   */
-  private getAllRules(): (Component<typeof ComponentKinds.Rule> & SomeRule)[] {
-    return this.pluginRegistry.plugins.flatMap((plugin) =>
-      plugin.rules.map((rule) => ({
-        ...rule,
-        ...this.getComponent(rule),
-      })),
-    );
-  }
-
-  /**
-   * @internal
-   */
-  private getComponent<T extends ComponentKind>(
-    componentObject: ComponentObject<T>,
-  ): Component<T> {
-    return this.pluginRegistry.getComponent(componentObject);
-  }
-
-  /**
-   * @internal
-   */
-  private async runActor(actor: AnyActorRef): Promise<SmokeMachineOutput> {
-    const p = toPromise(actor);
-    actor.start();
-    let output: SmokeMachineOutput;
-    try {
-      output = (await p) as SmokeMachineOutput;
-    } catch (err) {
-      debug(`Actor %s rejected:`, actor.id, err);
-      throw err;
-    } finally {
-      actor.stop();
-    }
-    return output;
-  }
-
-  /**
-   * Pack, install, run checks (optionally), and run scripts (optionally)
-   *
-   * @returns Results of linting and/or custom script execution
-   */
-  public async smoke(): Promise<SmokeResults> {
-    const {fileManager, inspect, pluginRegistry, smokerOptions} = this;
-
-    const [defaultExecutor, systemExecutor] = await Promise.all([
-      pluginRegistry.getExecutor(DEFAULT_EXECUTOR_ID),
-      pluginRegistry.getExecutor(SYSTEM_EXECUTOR_ID),
-    ]);
-
-    const actor = this.createActor(
-      fileManager,
-      smokerOptions,
-      pluginRegistry,
-      defaultExecutor,
-      systemExecutor,
-      inspect,
-    );
-
-    const output = await this.runActor(actor);
 
     const {plugins} = pluginRegistry;
 
-    let results: SmokeResults;
-    switch (output.type) {
-      case OK:
-        results = {
-          ...output,
-          plugins,
-          smokerOptions,
-        };
-        debug('Completed successfully with results: %O', results);
-        break;
-      case FAILED:
-        results = {
-          ...output,
-          plugins,
-          smokerOptions,
-        };
-        debug('Completed with failure: %O', results);
-        break;
-      case ERROR:
-        results = {
-          ...output,
-          plugins,
-          smokerOptions,
-        };
-        debug('Completed with error(s): %O', results);
-        break;
-      default: {
-        const exhaustiveCheck: never = output;
-        throw new UnknownError(`Unhandled output case: ${exhaustiveCheck}`);
-      }
-    }
+    const results: SmokeResults = {
+      ...output,
+      plugins,
+      smokerOptions,
+    };
+    debug('Smoke results: %O', results);
     return results;
   }
 }

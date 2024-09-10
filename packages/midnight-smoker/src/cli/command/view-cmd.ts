@@ -3,7 +3,11 @@
  *
  * @packageDocumentation
  */
+import {guessPkgManagerLogic} from '#machine/actor/guess-pkg-manager';
+import {queryWorkspacesLogic} from '#machine/actor/query-workspaces';
+import {runActor} from '#machine/util';
 import {Smoker} from '#smoker';
+import {FileManager} from '#util/filemanager';
 import {bold} from 'chalk';
 // eslint-disable-next-line @typescript-eslint/no-restricted-imports
 import {inspect} from 'node:util';
@@ -30,9 +34,11 @@ export class ViewCommand extends BaseCommand {
 
   public override describe = 'View information about stuff';
 
-  public static async viewConfig(opts: ArgumentsCamelCase<ViewOptionTypes>) {
-    const smoker = await Smoker.create(opts);
-    if (opts.json) {
+  public static async viewConfig(
+    rawSmokerOptions: ArgumentsCamelCase<ViewOptionTypes>,
+  ) {
+    const smoker = await Smoker.create(rawSmokerOptions);
+    if (rawSmokerOptions.json) {
       BaseCommand.writeJson(smoker.smokerOptions);
       return;
     }
@@ -41,11 +47,22 @@ export class ViewCommand extends BaseCommand {
   }
 
   public static async viewDefaultPkgManager(
-    opts: ArgumentsCamelCase<ViewOptionTypes>,
+    rawSmokerOptions: ArgumentsCamelCase<ViewOptionTypes>,
   ) {
-    const pkgManager = await Smoker.getDefaultPkgManager(opts);
+    const smoker = await Smoker.create(rawSmokerOptions);
 
-    if (opts.json) {
+    const workspaceInfo = await runActor(queryWorkspacesLogic, {
+      input: {all: true, cwd: process.cwd()},
+    });
+    const pkgManager = await runActor(guessPkgManagerLogic, {
+      input: {
+        fileManager: FileManager.create(),
+        plugins: smoker.getAllPlugins(),
+        workspaceInfo,
+      },
+    });
+
+    if (smoker.smokerOptions.json) {
       BaseCommand.writeJson(pkgManager);
       return;
     }

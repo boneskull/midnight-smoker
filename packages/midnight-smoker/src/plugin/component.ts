@@ -20,17 +20,16 @@ export type ComponentObject<T extends ComponentKind> =
 
 export type ComponentRegistry = WeakMap<
   SomeComponentObject,
-  Readonly<Component>
+  Readonly<ComponentMetadata>
 >;
 
 export type ComponentRegistryEntries = Entries<
-  Map<SomeComponentObject, Readonly<Component>>
+  Map<SomeComponentObject, Readonly<ComponentMetadata>>
 >;
 
 export type SomeComponentObject = ComponentObject<any>;
 
-// TODO: rename to ComponentMetadata
-export interface Component<T extends ComponentKind = ComponentKind> {
+export interface ComponentMetadata<T extends ComponentKind = ComponentKind> {
   readonly componentName: string;
   readonly id: string;
   readonly isBlessed: boolean;
@@ -38,3 +37,6 @@ export interface Component<T extends ComponentKind = ComponentKind> {
   readonly plugin: StaticPluginMetadata;
   readonly pluginName: string;
 }
+
+export type Component<T extends ComponentKind> = ComponentMetadata<T> &
+  ComponentObject<T>;

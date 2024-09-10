@@ -1,5 +1,5 @@
 import type {
-  Component,
+  ComponentMetadata,
   ComponentObject,
   ComponentRegistry,
   ComponentRegistryEntries,
@@ -101,7 +101,7 @@ export const registerPluginLogic = fromPromise<
       componentId: string,
       componentName: string = DEFAULT_COMPONENT_ID,
       isBlessed = false,
-    ): Readonly<Component<T>> => {
+    ): Readonly<ComponentMetadata<T>> => {
       const pluginName = metadata.id;
       return Object.freeze({
         componentName,
@@ -138,7 +138,10 @@ export const registerPluginLogic = fromPromise<
       newComponents.set(componentObject, component);
     };
 
-    const newComponents = new Map<SomeComponentObject, Readonly<Component>>();
+    const newComponents = new Map<
+      SomeComponentObject,
+      Readonly<ComponentMetadata>
+    >();
 
     const pluginApi = createPluginAPI(registerComponent, metadata);
 
