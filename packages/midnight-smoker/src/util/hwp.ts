@@ -123,7 +123,7 @@ async function map<T, TReturn>(
   n = 16,
 ): Promise<TReturn[]> {
   const iter = mapIterator(iterator, func, n);
-  const results: Awaited<TReturn>[] = [];
+  const results: TReturn[] = [];
   for await (const item of iter) {
     results.push(item);
   }
