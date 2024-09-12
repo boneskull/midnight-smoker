@@ -367,7 +367,7 @@ export const RegistryMachine = setup({
       const {pluginIds = []} = params;
       return pluginIds.every((id) => !pluginIdToMetadataMap.has(id));
     },
-    isAborted: ({context: {aborted}}) => Boolean(aborted),
+    isAborted: ({context: {aborted}}) => !!aborted,
     isClosing: ({context: {closing}}) => closing,
     isDone: and(['isClosing', ({context: {inFlight}}) => isEmpty(inFlight)]),
     isKnownPlugin: ({context: {pluginToPluginIdMap}}, plugin: Plugin) =>

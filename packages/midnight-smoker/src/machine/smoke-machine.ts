@@ -1078,7 +1078,7 @@ export const SmokeMachine = setup({
     /**
      * Returns `true` if {@link SmokeMachineContext.error} is truthy.
      */
-    hasError: ({context: {error}}) => Boolean(error),
+    hasError: ({context: {error}}) => !!error,
 
     /**
      * Returns `true` if the `lingered` context prop is a nonempty array.
@@ -1112,7 +1112,7 @@ export const SmokeMachine = setup({
     /**
      * Returns true if the `aborted` flag has been set.
      */
-    isAborted: ({context: {aborted}}) => Boolean(aborted),
+    isAborted: ({context: {aborted}}) => !!aborted,
 
     /**
      * Returns `true` if a machine's output is

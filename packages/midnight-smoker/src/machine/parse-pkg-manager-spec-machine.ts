@@ -373,7 +373,7 @@ export const ParsePkgManagerSpecMachine = setup({
               event: {
                 output: {envelope},
               },
-            }): boolean => Boolean(envelope),
+            }): boolean => !!envelope,
             target: 'done',
           },
           {

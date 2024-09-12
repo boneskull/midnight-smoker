@@ -79,7 +79,7 @@ export const LintBusMachine = setup({
     ),
   },
   guards: {
-    hasError: ({context: {error}}) => Boolean(error),
+    hasError: ({context: {error}}) => !!error,
     isLintingComplete: ({
       context: {pkgManagerDidLintCount, pkgManagers = []},
     }) => {

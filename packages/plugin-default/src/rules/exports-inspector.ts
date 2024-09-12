@@ -455,19 +455,19 @@ export class ExportsInspector<Schema extends Rule.RuleSchemaValue> {
   }
 
   protected get shouldCheckImportConditional() {
-    return Boolean(this.opts.import);
+    return !!this.opts.import;
   }
 
   protected get shouldCheckOrder() {
-    return Boolean(this.opts.order);
+    return !!this.opts.order;
   }
 
   protected get shouldCheckRequireConditional() {
-    return Boolean(this.opts.require);
+    return !!this.opts.require;
   }
 
   protected get shouldCheckTypesConditional() {
-    return Boolean(this.opts.types);
+    return !!this.opts.types;
   }
 }
 

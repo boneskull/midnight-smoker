@@ -71,7 +71,7 @@ export const PackBusMachine = setup({
     ),
   },
   guards: {
-    hasError: ({context: {error}}) => Boolean(error),
+    hasError: ({context: {error}}) => !!error,
     isPackingComplete: ({
       context: {pkgManagerDidPackCount, pkgManagers = []},
     }) => {

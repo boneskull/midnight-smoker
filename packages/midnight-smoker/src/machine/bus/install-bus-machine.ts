@@ -39,6 +39,7 @@ export type ReportableInstallEventData = EventData<keyof InstallEventData>;
 
 export const InstallBusMachine = setup({
   actions: {
+    assignActorIds: assign({actorIds: (_, actorIds: string[]) => actorIds}),
     assignError: assign({
       // TODO: aggregate for multiple
       error: ({context}, {error}: {error?: unknown}): Error | undefined =>
@@ -77,7 +78,7 @@ export const InstallBusMachine = setup({
     ),
   },
   guards: {
-    hasError: ({context: {error}}) => Boolean(error),
+    hasError: ({context: {error}}) => !!error,
     isInstallingComplete: ({
       context: {pkgManagerDidInstallCount, pkgManagers = []},
     }) => pkgManagerDidInstallCount === pkgManagers.length,
@@ -106,7 +107,10 @@ export const InstallBusMachine = setup({
     idle: {
       on: {
         LISTEN: {
-          actions: [assign({actorIds: ({event: {actorIds}}) => actorIds})],
+          actions: {
+            params: ({event: {actorIds}}) => actorIds,
+            type: 'assignActorIds',
+          },
           target: 'working',
         },
       },

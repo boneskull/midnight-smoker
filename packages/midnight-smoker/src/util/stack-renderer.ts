@@ -101,8 +101,7 @@ const DEFAULT_CONFIG = {
   skip: [
     // this should actually skip node internals.
     // the built-in filter only works with old node versions
-    (traceLine: TraceLine) =>
-      Boolean(traceLine?.dir?.startsWith('node:internal')),
+    (traceLine: TraceLine) => !!traceLine?.dir?.startsWith('node:internal'),
   ],
   // anything coming out of xstate is gonna be useless
   skipPackages: ['xstate'],

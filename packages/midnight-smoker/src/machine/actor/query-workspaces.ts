@@ -140,7 +140,7 @@ export const queryWorkspacesLogic = fromPromise<
               pkgJson: workspacePkgJson,
               pkgJsonPath,
               pkgName: workspacePkgJson.name,
-              private: Boolean(workspacePkgJson.private),
+              private: !!workspacePkgJson.private,
               rawPkgJson,
             },
           ];
@@ -204,7 +204,7 @@ export const queryWorkspacesLogic = fromPromise<
           pkgJson: rootPkgJson,
           pkgJsonPath: rootPkgJsonPath,
           pkgName: rootPkgJson.name,
-          private: Boolean(rootPkgJson.private),
+          private: !!rootPkgJson.private,
           rawPkgJson: rawRootPkgJson,
         },
       ];

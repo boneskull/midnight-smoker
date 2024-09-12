@@ -1428,19 +1428,19 @@ export const PkgManagerMachine = setup({
     teardownPkgManager: teardownPkgManagerLogic,
   },
   guards: {
-    hasContext: ({context: {ctx}}) => Boolean(ctx),
-    hasError: ({context: {error}}) => Boolean(error),
-    hasInstallError: ({context: {installError}}) => Boolean(installError),
+    hasContext: ({context: {ctx}}) => !!ctx,
+    hasError: ({context: {error}}) => !!error,
+    hasInstallError: ({context: {installError}}) => !!installError,
     hasInstallJobs: ({context: {installQueue}}) => !isEmpty(installQueue),
     hasInstallManifests: ({context: {installManifests}}) =>
       !isEmpty(installManifests),
     hasLintJobs: ({context: {lintQueue}}) => !isEmpty(lintQueue),
     hasPackJobs: ({context: {packQueue}}) => !isEmpty(packQueue),
     hasRunScriptJobs: ({context: {runScriptQueue}}) => !isEmpty(runScriptQueue),
-    hasTempDir: ({context: {tmpdir}}) => Boolean(tmpdir),
-    isAborted: ({context: {aborted}}) => Boolean(aborted),
+    hasTempDir: ({context: {tmpdir}}) => !!tmpdir,
+    isAborted: ({context: {aborted}}) => !!aborted,
     isBootstrapped: and(['hasContext', 'hasTempDir']),
-    isImmediateMode: ({context: {immediate}}) => Boolean(immediate),
+    isImmediateMode: ({context: {immediate}}) => !!immediate,
     isInstallationComplete: and([
       'hasInstallManifests',
       not('hasInstallJobs'),
@@ -1478,7 +1478,7 @@ export const PkgManagerMachine = setup({
     shouldLinger: and([
       'hasTempDir',
       'hasContext',
-      ({context: {linger}}) => Boolean(linger),
+      ({context: {linger}}) => !!linger,
     ]),
     shouldLint: ({context: {rules, shouldLint}}) =>
       shouldLint && !isEmpty(rules),
