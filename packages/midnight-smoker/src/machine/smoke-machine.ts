@@ -1,5 +1,4 @@
 import type * as Event from '#machine/event';
-import type * as Envelope from '#plugin/component-envelope';
 import type * as Schema from '#schema/meta/for-smoke-machine';
 
 import * as Const from '#constants';
@@ -38,7 +37,7 @@ import {
   type ReporterMachineOutput,
 } from '#machine/reporter-machine';
 import * as MUtil from '#machine/util';
-import {PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
+import * as Envelope from '#plugin/component-envelope';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
 import {type PluginRegistry} from '#plugin/registry';
 import * as assert from '#util/assert';
@@ -1022,10 +1021,11 @@ export const SmokeMachine = setup({
         },
         enqueue,
       }) => {
-        const unsupportedPkgManagers = PkgManagerSpec.filterUnsupported(
-          pkgManagerEnvelopes.map(({spec}) => spec),
-          desiredPkgManagers,
-        );
+        const unsupportedPkgManagers =
+          Envelope.filterUnsupportedPkgManagersFromEnvelopes(
+            pkgManagerEnvelopes.map(({spec}) => spec),
+            desiredPkgManagers,
+          );
 
         for (const unsupported of unsupportedPkgManagers) {
           enqueue({

@@ -307,66 +307,6 @@ describe('midnight-smoker', function () {
         });
 
         describe('static method', function () {
-          describe('filterUnsupported()', function () {
-            let specs: Readonly<PkgManagerSpec>[];
-            let desiredPkgManagers: string[];
-
-            beforeEach(function () {
-              desiredPkgManagers = ['npm@7', 'yarn@1', 'foo@bar'];
-              // @ts-expect-error - urgh, decorators
-              PkgManagerSpec.create.cache = new Map();
-              specs = [
-                PkgManagerSpec.create('npm@7.0.0', {
-                  requestedAs: 'npm@7',
-                }),
-                PkgManagerSpec.create('yarn@1.22.10', {
-                  requestedAs: 'yarn@1',
-                }),
-                PkgManagerSpec.create('foo@bar', {
-                  requestedAs: 'foo@bar',
-                }),
-              ];
-            });
-
-            describe('when no desired package managers provided', function () {
-              it('should return an empty array', function () {
-                expect(PkgManagerSpec.filterUnsupported(specs), 'to be empty');
-              });
-            });
-
-            describe('when all desired package managers provided', function () {
-              it('should return an empty array', function () {
-                expect(
-                  PkgManagerSpec.filterUnsupported(specs, desiredPkgManagers),
-                  'to be empty',
-                );
-              });
-            });
-
-            describe('when not all desired package managers provided', function () {
-              it('should return a non-empty array', function () {
-                expect(
-                  PkgManagerSpec.filterUnsupported(specs, [
-                    ...desiredPkgManagers,
-                    'bar@foo',
-                  ]),
-                  'to equal',
-                  ['bar@foo'],
-                );
-              });
-            });
-
-            describe('when no specs provided', function () {
-              it('should return the desired package managers', function () {
-                expect(
-                  PkgManagerSpec.filterUnsupported([], desiredPkgManagers),
-                  'to equal',
-                  desiredPkgManagers,
-                );
-              });
-            });
-          });
-
           describe('create()', function () {
             describe('when no arguments are provided', function () {
               it('should throw');
