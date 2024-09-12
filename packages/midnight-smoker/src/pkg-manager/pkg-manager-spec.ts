@@ -5,14 +5,11 @@
  * @packageDocumentation
  */
 import {type SYSTEM} from '#constants';
-import {
-  type DesiredPkgManager,
-  parseDesiredPkgManagerSpec,
-} from '#schema/desired-pkg-manager';
+import {parseDesiredPkgManagerSpec} from '#schema/desired-pkg-manager';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import * as assert from '#util/assert';
 import {memoize} from '#util/decorator';
-import {differenceWith, isString} from 'lodash';
+import {isString} from 'lodash';
 import {parse, type SemVer} from 'semver';
 import {type Merge} from 'type-fest';
 
@@ -130,26 +127,6 @@ export class PkgManagerSpec implements StaticPkgManagerSpec {
   }
 
   /**
-   * Given specs and a list of desired package managers, matches each desired
-   * package manager to a spec, and returns the list of those items in
-   * `desiredPkgManagers` not found in a spec.
-   *
-   * @param specs Known package manager specifications
-   * @param desiredPkgManagers List of desired package managers, if any
-   * @returns Desired package managers not found in given specs
-   */
-  public static filterUnsupported(
-    specs: Readonly<PkgManagerSpec>[],
-    desiredPkgManagers: readonly DesiredPkgManager[] = [],
-  ) {
-    return differenceWith(
-      desiredPkgManagers,
-      specs,
-      (desiredPkgManager, {requestedAs}) => desiredPkgManager === requestedAs,
-    );
-  }
-
-  /**
    * Clones this {@link PkgManagerSpec} and returns a new one.
    *
    * @param opts Overrides
@@ -196,7 +173,7 @@ export class PkgManagerSpec implements StaticPkgManagerSpec {
    * This returns `true` if the version is valid semantic version.
    */
   public get hasSemVer(): boolean {
-    return Boolean(this.semver);
+    return !!this.semver;
   }
 
   /**
@@ -209,7 +186,7 @@ export class PkgManagerSpec implements StaticPkgManagerSpec {
    * Also, see {@link PkgManagerSpec.toString} for how the display differs.
    */
   get isSystem() {
-    return Boolean(this.bin);
+    return !!this.bin;
   }
 
   public get label(): string {
