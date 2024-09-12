@@ -99,7 +99,7 @@ export const ScriptBusMachine = setup({
     }) =>
       pkgManagerDidRunScriptCount ===
       pkgManagers.length * scriptCount * workspaceCount,
-    hasError: ({context: {error}}) => Boolean(error),
+    hasError: ({context: {error}}) => !!error,
   },
   types: {
     context: {} as ScriptBusMachineContext,

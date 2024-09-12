@@ -251,7 +251,7 @@ export const PkgManagerLoaderMachine = setup({
                       }),
                     ],
                     guard: ({event: {output}}) =>
-                      Boolean(output.type === OK && output.envelope),
+                      !!(output.type === OK && output.envelope),
                     target: 'nextSpec',
                   },
                   {
@@ -277,7 +277,7 @@ export const PkgManagerLoaderMachine = setup({
                       }),
                     ],
                     guard: ({event: {output}}) =>
-                      Boolean(output.type === OK && !output.envelope),
+                      !!(output.type === OK && !output.envelope),
                     target: 'nextSpec',
                   },
                   {

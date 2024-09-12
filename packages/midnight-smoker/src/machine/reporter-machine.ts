@@ -181,7 +181,7 @@ export const ReporterMachine = setup({
      */
     shouldListen: not('shouldHalt'),
 
-    shouldShutdown: ({context: {shouldShutdown}}) => Boolean(shouldShutdown),
+    shouldShutdown: ({context: {shouldShutdown}}) => !!shouldShutdown,
   },
   types: {
     context: {} as ReporterMachineContext,

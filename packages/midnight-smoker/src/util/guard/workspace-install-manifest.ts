@@ -13,5 +13,5 @@ import type {
 export function isWorkspaceInstallManifest(
   value: InstallManifest,
 ): value is WorkspaceInstallManifest {
-  return Boolean(value.installPath && value.localPath && !value.isAdditional);
+  return !!(value.installPath && value.localPath && !value.isAdditional);
 }
