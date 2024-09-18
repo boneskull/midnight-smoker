@@ -68,6 +68,8 @@ export * from './some-pack-error';
 
 export * from './some-smoker-error';
 
+export * from './spawn-error';
+
 export * from './temp-dir-error';
 
 export * from './unknown-component-error';
