@@ -7,11 +7,12 @@ import {
 import {type ComponentRegistry} from '#plugin/component';
 import {type PkgManagerEnvelope} from '#plugin/component-envelope';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
+import {type ExecFn} from '#schema/exec-result';
 import {type PkgManager} from '#schema/pkg-manager';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {parseRange, RangeSchema} from '#schema/version';
+import {exec} from '#util/exec';
 import {caseInsensitiveEquals} from '#util/util';
-import execa from 'execa';
 import {type Range, type SemVer} from 'semver';
 import which from 'which';
 import {type DoneActorEvent, type ErrorActorEvent, fromPromise} from 'xstate';
@@ -19,11 +20,18 @@ import {type DoneActorEvent, type ErrorActorEvent, fromPromise} from 'xstate';
 const normalizerMap = new WeakMap<PkgManager, VersionNormalizer>();
 const rangeMap = new WeakMap<PkgManager, Range>();
 
+export type WhichFn = (
+  bin: string,
+  options: {nothrow: boolean},
+) => Promise<string | undefined>;
+
 export type MatchSystemPkgManagerLogicInput = {
   componentRegistry: ComponentRegistry;
   defaultSystemPkgManagerEnvelope?: PkgManagerEnvelope;
+  exec?: ExecFn;
   plugins: Readonly<PluginMetadata>[];
   spec: StaticPkgManagerSpec;
+  which?: WhichFn;
 };
 
 export type MatchSystemPkgManagerLogicOutput = {
@@ -37,10 +45,15 @@ export const matchSystemPkgManagerLogic = fromPromise<
   DoneActorEvent<MatchSystemPkgManagerLogicOutput> | ErrorActorEvent
 >(
   async ({
-    input: {componentRegistry, defaultSystemPkgManagerEnvelope, plugins, spec},
+    input: {
+      componentRegistry,
+      defaultSystemPkgManagerEnvelope,
+      exec: someExec = exec,
+      plugins,
+      spec,
+      which: someWhich = which,
+    },
   }) => {
-    // assert.equal(spec.version, SYSTEM, `Unexpected non-${SYSTEM} desired spec`);
-
     /**
      * Filter callback which finds all {@link PkgManager}s which match a partial
      * spec.
@@ -66,10 +79,16 @@ export const matchSystemPkgManagerLogic = fromPromise<
         : pkgManagers;
     };
 
+    /**
+     * Finds a system package manager executable in `PATH` via a {@link WhichFn}
+     *
+     * @param bin Executable name of the system package manager
+     * @returns A promise resolving with the path or `undefined` if not found
+     */
     const findSystemPkgManagerPath = async (
       bin: string,
     ): Promise<string | undefined> => {
-      const result = await which(bin, {nothrow: true});
+      const result = await someWhich(bin, {nothrow: true});
       if (result) {
         return result;
       }
@@ -81,10 +100,9 @@ export const matchSystemPkgManagerLogic = fromPromise<
     const getSystemPkgManagerVersion = async (
       bin: string,
     ): Promise<string | undefined> => {
-      const command = `${bin} --version`;
       try {
-        const {stdout} = await execa.command(command);
-        return stdout.trim();
+        const {stdout} = await someExec(bin, ['--version']);
+        return stdout;
       } catch {}
     };
 
@@ -220,3 +238,5 @@ export const matchSystemPkgManagerLogic = fromPromise<
     return {};
   },
 );
+
+matchSystemPkgManagerLogic; //?

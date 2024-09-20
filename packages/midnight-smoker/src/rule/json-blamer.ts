@@ -2,6 +2,7 @@ import {InvalidArgError} from '#error/invalid-arg-error';
 import {SmokerReferenceError} from '#error/smoker-reference-error';
 import {memoize} from '#util/decorator';
 import {NL} from '#util/format';
+import {isString} from '#util/guard/common';
 import {
   type ArrayNode,
   type DocumentNode,
@@ -14,7 +15,7 @@ import {
   parse,
 } from '@humanwhocodes/momoa';
 import chalk from 'chalk';
-import {isString, max, toPath} from 'lodash';
+import {max, toPath} from 'lodash';
 import path from 'node:path';
 import stringWidth from 'string-width';
 import stripAnsi from 'strip-ansi';

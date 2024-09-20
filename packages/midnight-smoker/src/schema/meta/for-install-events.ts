@@ -1,4 +1,4 @@
-export {type ExecResult} from '#schema/exec-result';
+export {type ExecOutput} from '#schema/exec-result';
 
 export {type InstallManifest} from '#schema/install-manifest';
 

@@ -2,7 +2,7 @@ import {isError, pickBy} from 'lodash';
 import {ERROR, FAILED, OK, SKIPPED} from 'midnight-smoker/constants';
 import {
   type ExecError,
-  type ExecResult,
+  type ExecOutput,
   InstallError,
   type InstallManifest,
   PackError,
@@ -73,6 +73,50 @@ interface NpmPackItemFileEntry {
 }
 
 /**
+ * Installs a package using `npm`.
+ *
+ * This function can be used by specific implementations of npm package managers
+ *
+ * @param ctx Installation context
+ * @param args Command arguments
+ * @returns Result of the installation as an {@link ExecOutput}
+ */
+export async function install(
+  ctx: PkgManagerInstallContext,
+  args: string[],
+): Promise<ExecOutput> {
+  const {executor, installManifest, spec, tmpdir} = ctx;
+  const {isAdditional, pkgName, pkgSpec} = installManifest;
+
+  let err: InstallError | undefined;
+  const installArgs = ['install', pkgSpec, ...args];
+
+  let installResult: ExecOutput;
+  try {
+    installResult = await executor(spec, installArgs, {
+      nodeOptions: {cwd: tmpdir},
+      verbose: ctx.verbose,
+    });
+    err = maybeHandleInstallError(ctx, installResult, pkgSpec);
+  } catch (e) {
+    if (isExecError(e)) {
+      throw maybeHandleInstallError(ctx, e, pkgSpec);
+    }
+    throw fromUnknownError(e);
+  }
+  if (err) {
+    throw err;
+  }
+
+  if (isAdditional) {
+    debug('Installed additional dep "%s"', pkgName);
+  } else {
+    debug('Installed package "%s" from tarball', pkgName);
+  }
+  return installResult;
+}
+
+/**
  * Extracts an {@link InstallError} from an {@link ExecError} thrown when `npm`
  * failed to install something.
  *
@@ -88,7 +132,7 @@ function maybeHandleInstallError(
 ): InstallError;
 
 /**
- * _Might_ extract an {@link InstallError} from an {@link ExecResult} thrown when
+ * _Might_ extract an {@link InstallError} from an {@link ExecOutput} thrown when
  * `npm` failed to install something.
  *
  * @param ctx Installation context
@@ -99,12 +143,12 @@ function maybeHandleInstallError(
  */
 function maybeHandleInstallError(
   {spec, tmpdir}: PkgManagerInstallContext,
-  result: ExecResult,
+  result: ExecOutput,
   pkgSpec: string,
 ): InstallError | undefined;
 function maybeHandleInstallError(
   {spec, tmpdir}: PkgManagerInstallContext,
-  errOrResult: ExecError | ExecResult,
+  errOrResult: ExecError | ExecOutput,
   pkgSpec: string,
 ): InstallError | undefined {
   if (isExecError(errOrResult)) {
@@ -126,7 +170,7 @@ function maybeHandleInstallError(
         errOrResult,
       );
     }
-  } else if (errOrResult.exitCode > 0 || isError(errOrResult)) {
+  } else if (errOrResult.exitCode || isError(errOrResult)) {
     return new InstallError(
       `Use --verbose for more information`,
       spec,
@@ -135,47 +179,6 @@ function maybeHandleInstallError(
       errOrResult,
     );
   }
-}
-
-/**
- * Installs a package using `npm`.
- *
- * This function can be used by specific implementations of npm package managers
- *
- * @param ctx Installation context
- * @param args Command arguments
- * @returns Result of the installation as an {@link ExecResult}
- */
-export async function install(
-  ctx: PkgManagerInstallContext,
-  args: string[],
-): Promise<ExecResult> {
-  const {executor, installManifest, spec, tmpdir} = ctx;
-  const {isAdditional, pkgName, pkgSpec} = installManifest;
-
-  let err: InstallError | undefined;
-  const installArgs = ['install', pkgSpec, ...args];
-
-  let installResult: ExecResult;
-  try {
-    installResult = await executor(spec, installArgs, {}, {cwd: tmpdir});
-    err = maybeHandleInstallError(ctx, installResult, pkgSpec);
-  } catch (e) {
-    if (isExecError(e)) {
-      throw maybeHandleInstallError(ctx, e, pkgSpec);
-    }
-    throw fromUnknownError(e);
-  }
-  if (err) {
-    throw err;
-  }
-
-  if (isAdditional) {
-    debug('Installed additional dep "%s"', pkgName);
-  } else {
-    debug('Installed package "%s" from tarball', pkgName);
-  }
-  return installResult;
 }
 
 /**
@@ -213,26 +216,39 @@ export const BaseNpmPackageManager = Object.freeze({
   lockfile: 'package-lock.json',
 
   async pack(ctx: PkgManagerPackContext): Promise<InstallManifest> {
+    const {
+      executor,
+      localPath,
+      pkgName,
+      signal,
+      spec,
+      tmpdir,
+      useWorkspaces,
+      verbose,
+    } = ctx;
     const packArgs = [
       'pack',
       '--json',
-      `--pack-destination=${ctx.tmpdir}`,
+      `--pack-destination=${tmpdir}`,
       '--foreground-scripts=false', // suppress output of lifecycle scripts so json can be parsed
     ];
 
-    if (ctx.useWorkspaces) {
-      packArgs.push('-w', ctx.localPath);
+    if (useWorkspaces) {
+      packArgs.push('-w', localPath);
     }
 
-    let packResult: ExecResult;
+    let packResult: ExecOutput;
 
     const workspace = {
-      localPath: ctx.localPath,
-      pkgName: ctx.pkgName,
+      localPath,
+      pkgName,
     } as WorkspaceInfo;
 
     try {
-      packResult = await ctx.executor(ctx.spec, packArgs);
+      packResult = await executor(spec, packArgs, {
+        signal,
+        verbose,
+      });
     } catch (err) {
       debug('(pack) Failed: %O', err);
       if (isExecError(err)) {
@@ -240,24 +256,18 @@ export const BaseNpmPackageManager = Object.freeze({
         const parsedError = parseNpmError(err.stdout);
 
         if (parsedError) {
-          throw new PackError(
-            parsedError.summary,
-            ctx.spec,
-            workspace,
-            ctx.tmpdir,
-            {
-              error: parsedError,
-              exitCode: err.exitCode,
-              output: err.stderr,
-            },
-          );
+          throw new PackError(parsedError.summary, spec, workspace, tmpdir, {
+            error: parsedError,
+            exitCode: err.exitCode,
+            output: err.stderr,
+          });
         }
 
         throw new PackError(
           `Use --verbose for more information`,
-          ctx.spec,
+          spec,
           workspace,
-          ctx.tmpdir,
+          tmpdir,
           {error: err},
         );
       }
@@ -275,7 +285,7 @@ export const BaseNpmPackageManager = Object.freeze({
       throw isError(err)
         ? new PackParseError(
             `Failed to parse JSON result of "npm pack"`,
-            ctx.spec.label,
+            spec.label,
             workspace,
             err,
             packOutput,
@@ -288,11 +298,11 @@ export const BaseNpmPackageManager = Object.freeze({
       filename = filename.replace(/^@(.+?)\//, '$1-');
 
       return {
-        cwd: ctx.tmpdir,
-        installPath: path.join(ctx.tmpdir, 'node_modules', name),
-        localPath: ctx.localPath,
+        cwd: tmpdir,
+        installPath: path.join(tmpdir, 'node_modules', name),
+        localPath,
         pkgName: name,
-        pkgSpec: path.join(ctx.tmpdir, filename),
+        pkgSpec: path.join(tmpdir, filename),
       };
     });
 
@@ -305,10 +315,11 @@ export const BaseNpmPackageManager = Object.freeze({
     manifest,
     signal,
     spec,
+    verbose,
   }: PkgManagerRunScriptContext): Promise<RunScriptResult> {
     const {cwd, pkgName, script} = manifest;
 
-    let rawResult: ExecResult | undefined;
+    let rawResult: ExecOutput | undefined;
     let error: ScriptFailedError | undefined;
 
     const isMissingScript = (str: string) => MISSING_SCRIPT_REGEX.test(str);
@@ -316,12 +327,11 @@ export const BaseNpmPackageManager = Object.freeze({
     // we don't use --if-present because the output does not elide that the
     // script is missing
     try {
-      rawResult = await executor(
-        spec,
-        ['run', '--json', script],
-        {signal},
-        {cwd},
-      );
+      rawResult = await executor(spec, ['run', '--json', script], {
+        nodeOptions: {cwd},
+        signal,
+        verbose,
+      });
     } catch (err) {
       if (isExecError(err)) {
         if (isMissingScript(err.stderr)) {
@@ -347,7 +357,7 @@ export const BaseNpmPackageManager = Object.freeze({
       throw fromUnknownError(err);
     }
 
-    if (rawResult.failed) {
+    if (rawResult.exitCode) {
       if (isMissingScript(rawResult.stderr)) {
         return loose
           ? {
@@ -366,14 +376,14 @@ export const BaseNpmPackageManager = Object.freeze({
             };
       }
 
-      const {all, command, exitCode, stderr, stdout} = rawResult;
+      const {command, exitCode, stderr, stdout} = rawResult;
       const message = exitCode
         ? `Script "${script}" in package "${pkgName}" failed with exit code ${exitCode}`
         : `Script "${script}" in package "${pkgName}" failed`;
       error = new ScriptFailedError(message, {
         command,
         exitCode,
-        output: all || stderr || stdout,
+        output: stderr || stdout,
         pkgManager: spec.label,
         pkgName,
         script,

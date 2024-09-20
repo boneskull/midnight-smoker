@@ -1,6 +1,8 @@
 import type {ExecResult} from '#schema/exec-result';
 
 import {DEFAULT_PKG_MANAGER_NAME} from '#constants';
+import {type ExecError} from '#executor';
+import {type ExecOutput} from '#schema/exec-result';
 import {FileManager} from '#util/filemanager';
 import {resolveFrom} from '#util/importer';
 import fs from 'node:fs/promises';
@@ -102,11 +104,11 @@ describe('midnight-smoker [E2E]', function () {
             await execSmoker([], {
               cwd,
             });
+            expect.fail('should have failed');
           } catch (err) {
-            result = err as ExecResult;
+            snapshot(fixupOutput((err as ExecError).stderr));
           }
           expect(result, 'to be ok');
-          snapshot(fixupOutput(result.stderr));
         });
 
         describe('when in verbose mode', function () {
@@ -117,9 +119,8 @@ describe('midnight-smoker [E2E]', function () {
               });
               expect.fail('should have failed');
             } catch (err) {
-              result = err as ExecResult;
+              snapshot(fixupOutput((err as ExecError).stderr));
             }
-            snapshot(fixupOutput(result.stderr));
           });
         });
       });
@@ -131,7 +132,7 @@ describe('midnight-smoker [E2E]', function () {
           'general',
           'pack-error-bad-version',
         );
-        let result: ExecResult;
+        let result: ExecOutput;
 
         before(async function () {
           try {
@@ -139,7 +140,7 @@ describe('midnight-smoker [E2E]', function () {
               cwd,
             });
           } catch (err) {
-            result = err as ExecResult;
+            result = err as ExecError;
           }
           expect(result, 'to be ok');
         });
@@ -156,7 +157,7 @@ describe('midnight-smoker [E2E]', function () {
               });
               expect.fail('should have failed');
             } catch (err) {
-              result = err as ExecResult;
+              result = err as ExecError;
             }
             snapshot(fixupOutput(result.stderr));
           });
@@ -171,7 +172,7 @@ describe('midnight-smoker [E2E]', function () {
         let failed: boolean;
 
         before(async function () {
-          const {failed: f, stdout} = await execSmoker(
+          const {exitCode, stdout} = await execSmoker(
             [
               'run',
               'smoke',
@@ -185,7 +186,7 @@ describe('midnight-smoker [E2E]', function () {
             },
           );
           lingering = JSON.parse(stdout).lingering;
-          failed = f;
+          failed = exitCode !== 0;
         });
 
         it('should not fail', function () {
@@ -209,15 +210,16 @@ describe('midnight-smoker [E2E]', function () {
 
       describe('when installation fails', function () {
         const cwd = path.join(__dirname, 'fixture', 'general', 'install-error');
-        let result: ExecResult;
+        let result: ExecOutput;
 
         before(async function () {
           try {
             result = await execSmoker([], {
               cwd,
             });
+            expect.fail('should have failed');
           } catch (err) {
-            result = err as ExecResult;
+            result = err as ExecError;
           }
         });
 
@@ -233,7 +235,7 @@ describe('midnight-smoker [E2E]', function () {
               });
               expect.fail('should have failed');
             } catch (err) {
-              result = err as ExecResult;
+              result = err as ExecError;
             }
           });
 

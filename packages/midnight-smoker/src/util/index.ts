@@ -2,6 +2,8 @@ export * from './debug';
 
 export {fromUnknownError} from './error-util';
 
+export * from './exec';
+
 export * from './filemanager';
 
 export * from './format';

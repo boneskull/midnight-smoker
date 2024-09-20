@@ -1,10 +1,11 @@
 import * as assert from '#util/assert';
 import {formatStackTrace} from '#util/format';
+import {isError} from '#util/guard/common';
 import {isSomeSmokerError} from '#util/guard/some-smoker-error';
 import {serialize} from '#util/serialize';
 import {bold, cyan, yellow} from 'chalk';
 import Table from 'cli-table3';
-import {isError, mergeWith, omit} from 'lodash';
+import {mergeWith, omit} from 'lodash';
 import stringWidth from 'string-width';
 import {type Jsonifiable, type MergeDeep, type Primitive} from 'type-fest';
 
@@ -31,13 +32,10 @@ export function createTable(
   const colWidths = items.reduce<number[]>(
     (widths, item) => {
       item.forEach((col, i) => {
-        assert.ok(widths[i]);
-        assert.ok(headerWidths[i]);
-
         widths[i] = Math.max(
-          widths[i],
+          widths[i] ?? 0,
           stringWidth(String(col)) + padding * 2,
-          headerWidths[i],
+          headerWidths[i] ?? 0,
         );
       });
       return widths;

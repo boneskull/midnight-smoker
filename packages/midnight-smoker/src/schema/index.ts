@@ -6,8 +6,6 @@ export * from './errno-exception';
 
 export * from './exec-result';
 
-export * from './execa-error';
-
 export * from './executor';
 
 export * from './install-manifest';

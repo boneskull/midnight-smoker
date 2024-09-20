@@ -10,6 +10,7 @@ import type {Plugin} from '#schema/plugin';
 import {type ComponentKind, DEFAULT_COMPONENT_ID, ERROR, OK} from '#constants';
 import {ComponentCollisionError} from '#error/component-collision-error';
 import {PluginInitError} from '#error/plugin-init-error';
+import {type ActorOutputError, type ActorOutputOk} from '#machine/util';
 import {
   createPluginAPI,
   type RegisterComponentFn,
@@ -19,8 +20,6 @@ import {serialize} from '#util/serialize';
 import {type SomeUniqueId} from '#util/unique-id';
 import {type Except} from 'type-fest';
 import {fromPromise} from 'xstate';
-
-import {type ActorOutputError, type ActorOutputOk} from '../util';
 
 export type RegisterPluginLogicInput = {
   /**

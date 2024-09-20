@@ -2,6 +2,7 @@ import {FINAL, InstallEvents} from '#constants';
 import {type InstallError} from '#error/install-error';
 import {type EventData} from '#event/events';
 import {type InstallEventData} from '#event/install-events';
+import {type SmokeMachineInstallEvent} from '#machine/event/install';
 import {type SmokerOptions} from '#schema/smoker-options';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {type WorkspaceInfo} from '#schema/workspace-info';
@@ -9,7 +10,6 @@ import {fromUnknownError} from '#util/error-util';
 import {asResult, type Result} from '#util/result';
 import {type AnyActorRef, assign, enqueueActions, setup} from 'xstate';
 
-import {type SmokeMachineInstallEvent} from '../event/install';
 import {type ListenEvent} from './common-event';
 
 /**

@@ -1,6 +1,6 @@
 import {BaseSmokerError} from '#error/base-error';
 import {createDebug} from '#util/debug';
-import {isError} from 'lodash';
+import {isError} from '#util/guard/common';
 
 const debug = createDebug(__filename);
 

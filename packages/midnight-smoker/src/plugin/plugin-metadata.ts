@@ -9,7 +9,7 @@ import {InvalidArgError} from '#error/invalid-arg-error';
 import {asValidationError} from '#error/validation-error';
 import {BLESSED_PLUGINS, type BlessedPlugin} from '#plugin/blessed';
 import * as Schema from '#schema/meta/for-plugin-metadata';
-import {isString} from 'lodash';
+import {isString} from '#util/guard/common';
 import {type LiteralUnion} from 'type-fest';
 
 /**

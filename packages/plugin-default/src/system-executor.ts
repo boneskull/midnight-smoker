@@ -4,19 +4,14 @@
  * @packageDocumentation
  */
 
-import execa from 'execa';
 import {ABORT} from 'midnight-smoker/constants';
 import {AbortError, InvalidArgError} from 'midnight-smoker/error';
-import {ExecError, type Executor, isExecaError} from 'midnight-smoker/executor';
+import {type Executor} from 'midnight-smoker/executor';
+import {exec} from 'midnight-smoker/util';
 import {constants as osConstants} from 'node:os';
 
-export const systemExecutor: Executor = async (
-  spec,
-  args,
-  opts = {},
-  spawnOpts = {},
-) => {
-  const {signal, verbose} = opts;
+export const systemExecutor: Executor = async (spec, args, opts = {}) => {
+  const {nodeOptions = {}, signal, verbose} = opts;
 
   if (!spec.bin) {
     throw new InvalidArgError(
@@ -31,8 +26,10 @@ export const systemExecutor: Executor = async (
 
   const {bin} = spec;
 
-  const proc = execa(bin, args, {
-    ...spawnOpts,
+  const proc = exec(bin, args, {
+    nodeOptions,
+    signal,
+    verbose,
   });
 
   let abortListener: (() => void) | undefined = undefined;
@@ -46,14 +43,11 @@ export const systemExecutor: Executor = async (
     signal.addEventListener(ABORT, abortListener);
   }
 
-  if (verbose) {
-    proc.stdout?.pipe(process.stdout);
-    proc.stderr?.pipe(process.stderr);
-  }
-
   try {
     return await proc;
-  } catch (err) {
-    throw isExecaError(err) ? new ExecError(err) : err;
+  } finally {
+    if (signal) {
+      signal.removeEventListener(ABORT, abortListener!);
+    }
   }
 };

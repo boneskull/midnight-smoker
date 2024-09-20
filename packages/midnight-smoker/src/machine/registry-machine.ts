@@ -1,3 +1,5 @@
+import type * as Event from '#machine/event/registry';
+
 import {type LoaderCapabilities} from '#capabilities';
 import {ERROR, FINAL, OK} from '#constants';
 import {DuplicatePluginError} from '#error/duplicate-plugin-error';
@@ -14,6 +16,7 @@ import {
   type ResolvePluginLogicOutputError,
   type ResolvePluginLogicOutputOk,
 } from '#machine/actor/resolve-plugin';
+import {type AbortEvent} from '#machine/event/abort';
 import {
   type ActorOutputError,
   type ActorOutputOk,
@@ -41,10 +44,6 @@ import {
   raise,
   setup,
 } from 'xstate';
-
-import type * as Event from './event/registry';
-
-import {type AbortEvent} from './event/abort';
 
 /**
  * A function that determines if a plugin is "blessed".

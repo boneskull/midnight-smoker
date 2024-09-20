@@ -1,9 +1,9 @@
+import {BaseSmokerError} from '#error/base-error';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {formatErrorMessage, formatPackage} from '#util/format';
 import {italic, whiteBright, yellow} from 'chalk';
 import {format} from 'node:util';
 
-import {BaseSmokerError} from './base-error';
 import {type ExecError} from './exec-error';
 
 /**
@@ -12,7 +12,7 @@ import {type ExecError} from './exec-error';
 export class RunScriptError extends BaseSmokerError<
   {
     command: string;
-    exitCode: number;
+    exitCode?: number;
     output: string;
     pkgManager: string;
     pkgName: string;

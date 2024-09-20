@@ -21,9 +21,8 @@ import debug from 'debug';
  */
 
 import {MIDNIGHT_SMOKER} from '#constants';
+import {ROOT} from '#root';
 import path from 'node:path';
-
-import {ROOT} from '../root';
 
 /**
  * A function that is kind of like `debug`'s default export, but derives

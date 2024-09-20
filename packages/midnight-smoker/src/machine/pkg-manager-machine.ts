@@ -50,6 +50,10 @@ import {
 } from '#machine/actor/prepare-lint-manifest';
 import {createTempDirLogic, pruneTempDirLogic} from '#machine/actor/temp-dir';
 import {type AbortEvent} from '#machine/event/abort';
+import {
+  type CheckErrorEvent,
+  type CheckResultEvent,
+} from '#machine/event/check';
 import {type SmokeMachineLingeredEvent} from '#machine/event/lingered';
 import {type SmokeMachinePkgManagerEvent} from '#machine/event/pkg-manager';
 import {RuleMachine} from '#machine/rule-machine';
@@ -66,12 +70,13 @@ import {
 import * as assert from '#util/assert';
 import {fromUnknownError} from '#util/error-util';
 import {type FileManager} from '#util/filemanager';
+import {isEmpty} from '#util/guard/common';
 import {isSmokerError} from '#util/guard/smoker-error';
 import {isWorkspaceInstallManifest} from '#util/guard/workspace-install-manifest';
 import {asResult, type Result} from '#util/result';
 import {serialize} from '#util/serialize';
 import {uniqueId} from '#util/unique-id';
-import {head, isEmpty, keyBy, map, omit, partition} from 'lodash';
+import {head, keyBy, map, omit, partition} from 'lodash';
 import {
   type ActorRef,
   type ActorRefFrom,
@@ -87,8 +92,6 @@ import {
   setup,
   type Snapshot,
 } from 'xstate';
-
-import {type CheckErrorEvent, type CheckResultEvent} from './event/check';
 
 export type PkgManagerMachineEvent =
   | AbortEvent

@@ -1,11 +1,7 @@
-import {type ExecaError} from 'execa';
 import stringify from 'json-stable-stringify';
+import {type ExecOutput} from 'midnight-smoker';
 import {ErrorCode} from 'midnight-smoker/error';
-import {
-  ExecError,
-  type ExecResult,
-  type Executor,
-} from 'midnight-smoker/executor';
+import {ExecError, type Executor} from 'midnight-smoker/executor';
 import {
   type PkgManagerInstallContext,
   type PkgManagerPackContext,
@@ -28,7 +24,7 @@ const MOCK_TMPDIR = '/some/dir';
 describe('@midnight-smoker/plugin-default', function () {
   let sandbox: sinon.SinonSandbox;
 
-  let result: ExecResult;
+  let result: ExecOutput;
   let executor: sinon.SinonStubbedMember<Executor>;
 
   beforeEach(function () {
@@ -36,14 +32,10 @@ describe('@midnight-smoker/plugin-default', function () {
 
     result = {
       command: '',
-      escapedCommand: '',
+      cwd: '',
       exitCode: 0,
-      failed: false,
-      isCanceled: false,
-      killed: false,
       stderr: '',
       stdout: '',
-      timedOut: false,
     };
     executor = sandbox.stub().resolves(result) as typeof executor;
   });
@@ -109,31 +101,28 @@ describe('@midnight-smoker/plugin-default', function () {
                   `--pack-destination=${MOCK_TMPDIR}`,
                   '--foreground-scripts=false',
                 ],
+                {
+                  signal: expect.it('to be an', AbortSignal),
+                  verbose: undefined,
+                },
               ]);
             });
           });
 
           describe('when Npm7 failed to spawn', function () {
             beforeEach(async function () {
-              const execaError: ExecaError = {
+              const output: ExecOutput = {
                 command: '',
-                escapedCommand: '',
+                cwd: '',
                 exitCode: 0,
-                failed: false,
-                isCanceled: false,
-                killed: false,
-                message: '',
-                name: '',
-                shortMessage: '',
                 stderr: '',
                 stdout: JSON.stringify({
                   error: {
                     summary: 'foo',
                   },
                 }),
-                timedOut: false,
               };
-              executor.rejects(new ExecError(execaError));
+              executor.rejects(new ExecError('oops', output));
             });
 
             it('should reject', async function () {
@@ -200,7 +189,13 @@ describe('@midnight-smoker/plugin-default', function () {
           });
 
           describe('when Npm7 fails and outputs garbage', function () {
-            const err = new ExecError({} as ExecaError);
+            const err = new ExecError('oops', {
+              command: '',
+              cwd: '',
+              exitCode: 0,
+              stderr: '',
+              stdout: '',
+            });
 
             beforeEach(function () {
               executor.rejects(err);
@@ -230,8 +225,7 @@ describe('@midnight-smoker/plugin-default', function () {
                 '--global-style',
                 '--json',
               ],
-              {},
-              {cwd: '/some/dir'},
+              {nodeOptions: {cwd: '/some/dir'}},
             ]);
           });
 
@@ -273,9 +267,9 @@ describe('@midnight-smoker/plugin-default', function () {
           describe('when Npm7 fails', function () {
             beforeEach(function () {
               executor.rejects(
-                new ExecError({
+                new ExecError('some error', {
                   stderr: 'some error',
-                } as ExecaError),
+                } as ExecOutput),
               );
             });
 
@@ -292,16 +286,12 @@ describe('@midnight-smoker/plugin-default', function () {
 
           describe('when the script fails', function () {
             beforeEach(function () {
-              const result: ExecResult = {
+              const result: ExecOutput = {
                 command: '',
-                escapedCommand: '',
+                cwd: '',
                 exitCode: 1,
-                failed: true,
-                isCanceled: false,
-                killed: false,
                 stderr: '',
                 stdout: '',
-                timedOut: false,
               };
               executor.resolves(result);
             });
@@ -322,16 +312,12 @@ describe('@midnight-smoker/plugin-default', function () {
 
           describe('when the script was not found', function () {
             beforeEach(function () {
-              const result: ExecResult = {
+              const result: ExecOutput = {
                 command: '',
-                escapedCommand: '',
+                cwd: '',
                 exitCode: 1,
-                failed: true,
-                isCanceled: false,
-                killed: false,
                 stderr: 'missing script: some-script',
                 stdout: '',
-                timedOut: false,
               };
               executor.resolves(result);
             });

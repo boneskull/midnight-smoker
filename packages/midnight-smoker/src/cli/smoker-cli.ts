@@ -6,6 +6,7 @@
  * @module midnight-smoker/cli
  */
 
+import {GlobalOptions} from '#cli/command/global-opts';
 import {ConfigReader} from '#config/config-reader';
 import {SCRIPT_NAME} from '#constants';
 import {createDebug} from '#util/debug';
@@ -22,7 +23,6 @@ import {
   RunScriptCommand,
   ViewCommand,
 } from './command';
-import {GlobalOptions} from './command/global-opts';
 
 const debug = createDebug('cli');
 

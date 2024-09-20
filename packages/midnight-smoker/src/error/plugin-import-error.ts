@@ -1,9 +1,8 @@
+import {BaseSmokerError} from '#error/base-error';
 import {type StaticPluginMetadata} from '#plugin/static-plugin-metadata';
 import {fromUnknownError} from '#util/error-util';
+import {isString} from '#util/guard/common';
 import {serialize} from '#util/serialize';
-import {isString} from 'lodash';
-
-import {BaseSmokerError} from './base-error';
 
 export class PluginImportError extends BaseSmokerError<
   {

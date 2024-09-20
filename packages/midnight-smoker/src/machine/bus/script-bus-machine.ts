@@ -2,6 +2,10 @@ import {ERROR, FAILED, FINAL, SKIPPED} from '#constants';
 import {ScriptEvents} from '#constants/event';
 import {type EventData} from '#event/events';
 import {type ScriptEventData} from '#event/script-events';
+import {
+  type SmokeMachineScriptEvent,
+  type SomeSmokeMachineRunScriptResultEvent,
+} from '#machine/event/script';
 import {type RunScriptResult} from '#schema/run-script-result';
 import {type SmokerOptions} from '#schema/smoker-options';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
@@ -11,10 +15,6 @@ import {asResult} from '#util/result';
 import {partition} from 'lodash';
 import {type AnyActorRef, assign, enqueueActions, setup} from 'xstate';
 
-import {
-  type SmokeMachineScriptEvent,
-  type SomeSmokeMachineRunScriptResultEvent,
-} from '../event/script';
 import {type ListenEvent} from './common-event';
 
 export interface ScriptBusMachineInput {

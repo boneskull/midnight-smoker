@@ -6,7 +6,7 @@ import {asResultSchema} from '#util/result';
 import {instanceofSchema} from '#util/schema-util';
 import {z} from 'zod';
 
-import {ExecResultSchema} from './exec-result';
+import {ExecOutputSchema} from './exec-result';
 import {RunScriptManifestSchema} from './run-script-manifest';
 import {ScriptErrorSchema} from './script-error';
 
@@ -35,7 +35,7 @@ export const ScriptResultErrorSchema = ScriptErrorSchema.describe(
 /**
  * The raw result of running the script.
  */
-export const ScriptResultRawResultSchema = ExecResultSchema.describe(
+export const ScriptResultRawResultSchema = ExecOutputSchema.describe(
   'Raw result of running the script',
 );
 

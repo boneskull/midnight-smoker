@@ -1,4 +1,4 @@
-import {type ExecResult} from 'midnight-smoker/executor';
+import {type ExecOutput} from 'midnight-smoker/executor';
 import {
   type PkgManager,
   type PkgManagerInstallContext,
@@ -13,7 +13,7 @@ export const Npm7 = Object.freeze({
 
   ...BaseNpmPackageManager,
 
-  async install(ctx: PkgManagerInstallContext): Promise<ExecResult> {
+  async install(ctx: PkgManagerInstallContext): Promise<ExecOutput> {
     return install(ctx, [
       '--no-audit',
       '--no-package-lock',

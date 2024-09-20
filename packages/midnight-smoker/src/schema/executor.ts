@@ -1,18 +1,18 @@
 /**
- * Declares the {@link Executor} interface, which is a wrapper around
- * {@link execa}.
+ * Declares the {@link Executor} interface
  *
  * An implementation of `Executor` can then transform commands as needed.
  *
  * @packageDocumentation
  */
 
-import {type ExecResult, ExecResultSchema} from '#schema/exec-result';
+import {type ExecOptions, ExecOutputSchema} from '#schema/exec-result';
 import {NonEmptyStringArraySchema} from '#util/schema-util';
-import {type Options as ExecaOptions} from 'execa';
+import {type SpawnOptions as NodeOptions} from 'node:child_process';
 import {z} from 'zod';
 
 import {AbortSignalSchema} from './abort-signal';
+import {type ExecOutput} from './exec-result';
 import {
   type StaticPkgManagerSpec,
   StaticPkgManagerSpecSchema,
@@ -21,9 +21,9 @@ import {
 /**
  * Options to pass along to the underlying child process spawner
  */
-export type SpawnOpts = ExecaOptions;
+export type {NodeOptions};
 
-export const SpawnOptsSchema: z.ZodType<SpawnOpts | undefined> = z
+export const NodeOptionsSchema: z.ZodType<NodeOptions | undefined> = z
   .object({})
   .passthrough()
   .optional();
@@ -62,13 +62,7 @@ export const ExecutorOptsSchema: z.ZodType<ExecutorOpts> = z
  * Options for an {@link Executor}
  */
 
-export type ExecutorOpts =
-  | {
-      cwd?: string;
-      signal?: AbortSignal;
-      verbose?: boolean;
-    }
-  | undefined;
+export type ExecutorOpts = ExecOptions | undefined;
 
 /**
  * An `Executor` is responsible for invoking package manager commands.
@@ -80,19 +74,20 @@ export type ExecutorOpts =
  * manager process gets spawned.
  *
  * @remarks
- * Currently this is `execa`, but it may change in the future.
+ * This can be thought of as a wrapper around `exec()` from
+ * `midnight-smoker/util`, allowing greater control over the spawned process and
+ * its return value.
  * @param spec - The package manager spec
  * @param args - The arguments to the package manager executable, likely
  *   including a command
- * @param opts - Options for the `Executor`
- * @param spawnOpts - Options for the underlying child process spawner
+ * @param options - Options for the `Executor`
+ * @param nodeOptions - Options for `child_process.spawn()` by way of `exec()`
  */
 export type Executor = (
   spec: StaticPkgManagerSpec,
   args: string[],
-  opts?: ExecutorOpts,
-  spawnOpts?: SpawnOpts,
-) => Promise<ExecResult>;
+  options?: ExecutorOpts,
+) => Promise<ExecOutput>;
 
 /**
  * Schema for an {@link Executor}
@@ -109,7 +104,7 @@ export const ExecutorSchema: z.ZodType<Executor> = z.union([
       spec: typeof StaticPkgManagerSpecSchema,
       args: typeof NonEmptyStringArraySchema,
     ]),
-    z.promise(ExecResultSchema),
+    z.promise(ExecOutputSchema),
   ),
   z.function(
     z.tuple([
@@ -121,20 +116,6 @@ export const ExecutorSchema: z.ZodType<Executor> = z.union([
       args: typeof NonEmptyStringArraySchema,
       opts: typeof ExecutorOptsSchema,
     ]),
-    z.promise(ExecResultSchema),
-  ),
-  z.function(
-    z.tuple([
-      StaticPkgManagerSpecSchema,
-      NonEmptyStringArraySchema,
-      ExecutorOptsSchema,
-      SpawnOptsSchema,
-    ] as [
-      spec: typeof StaticPkgManagerSpecSchema,
-      args: typeof NonEmptyStringArraySchema,
-      opts: typeof ExecutorOptsSchema,
-      spawnOpts: typeof SpawnOptsSchema,
-    ]),
-    z.promise(ExecResultSchema),
+    z.promise(ExecOutputSchema),
   ),
 ]);

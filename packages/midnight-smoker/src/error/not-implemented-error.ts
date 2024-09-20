@@ -1,4 +1,4 @@
-import {BaseSmokerError} from './base-error';
+import {BaseSmokerError} from '#error/base-error';
 
 /**
  * Thrown when some stub code gets hit.

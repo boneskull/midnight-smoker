@@ -1,4 +1,5 @@
 import {OK, SYSTEM} from '#constants';
+import {ParsePkgManagerSpecMachine} from '#machine/parse-pkg-manager-spec-machine';
 import {
   PkgManagerLoaderMachine,
   type PkgManagerLoaderMachineInput,
@@ -8,14 +9,13 @@ import {PluginRegistry} from '#plugin/registry';
 import {type PkgManager} from '#schema/pkg-manager';
 import {type WorkspaceInfo} from '#schema/workspace-info';
 import {FileManager} from '#util/filemanager';
-import execa from 'execa';
 import {memfs} from 'memfs';
 import {type Volume} from 'memfs/lib/volume';
 import path from 'node:path';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
-import {type Actor, createActor} from 'xstate';
+import {type Actor, assign, createActor} from 'xstate';
 import {runUntilDone} from 'xstate-audition';
 
 import {createDebug} from '../../debug';
@@ -123,23 +123,32 @@ describe('midnight-smoker', function () {
 
       describe('when provided no desired package managers', function () {
         beforeEach(function () {
-          actor = createActor(PkgManagerLoaderMachine, {
-            id,
-            input: {
-              ...input,
-              desiredPkgManagers: [],
-              workspaceInfo,
+          actor = createActor(
+            PkgManagerLoaderMachine.provide({
+              actors: {
+                ParsePkgManagerSpecMachine: ParsePkgManagerSpecMachine.provide({
+                  actions: {
+                    // this just stubs the bit where we assign the result of the
+                    // matchSystemPkgManagerLogic actor to the context, which is
+                    // then output back to the PackageManagerLoaderMachine
+                    assignEnvelopes: assign({}),
+                  },
+                }),
+              },
+            }),
+            {
+              id,
+              input: {
+                ...input,
+                desiredPkgManagers: [],
+                workspaceInfo,
+              },
+              logger,
             },
-            logger,
-          });
+          );
         });
 
         describe('and no system package managers exist', function () {
-          beforeEach(function () {
-            const commandStub = sandbox.stub(execa, 'command');
-            commandStub.onFirstCall().resolves({stdout: ''} as any);
-          });
-
           it(`should fulfill with no envelopes and an unsupported ${SYSTEM} package manager`, async function () {
             await expect(
               runUntilDone(actor),
@@ -151,6 +160,27 @@ describe('midnight-smoker', function () {
                 unsupported: [SYSTEM],
               },
             );
+          });
+
+          describe('when a lockfile exists', function () {
+            beforeEach(function () {
+              vol.fromJSON({
+                '/nullpm.lock': '',
+              });
+            });
+
+            it('should result in an unsupported pkg manager', async function () {
+              await expect(
+                runUntilDone(actor),
+                'to be fulfilled with value satisfying',
+                {
+                  desiredPkgManagers: [`nullpm@${SYSTEM}`],
+                  envelopes: [],
+                  type: OK,
+                  unsupported: [`nullpm@${SYSTEM}`],
+                },
+              );
+            });
           });
         });
 
@@ -172,9 +202,6 @@ describe('midnight-smoker', function () {
               },
               logger,
             });
-
-            const commandStub = sandbox.stub(execa, 'command');
-            commandStub.onFirstCall().resolves({stdout: '1.0.0'} as any);
           });
 
           afterEach(function () {

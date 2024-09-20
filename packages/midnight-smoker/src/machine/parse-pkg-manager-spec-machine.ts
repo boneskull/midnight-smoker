@@ -1,5 +1,10 @@
 import {ERROR, FINAL, OK, SYSTEM} from '#constants';
 import {MachineError} from '#error/machine-error';
+import {
+  matchSystemPkgManagerLogic,
+  type MatchSystemPkgManagerLogicInput,
+  type MatchSystemPkgManagerLogicOutput,
+} from '#machine/actor/match-system-pkg-manager';
 import {PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
 import {getVersionNormalizer} from '#pkg-manager/pkg-manager-version';
 import {type ComponentRegistry} from '#plugin/component';
@@ -23,10 +28,6 @@ import {caseInsensitiveEquals} from '#util/util';
 import {type Range, type SemVer} from 'semver';
 import {assign, log, setup} from 'xstate';
 
-import {
-  matchSystemPkgManagerLogic,
-  type MatchSystemPkgManagerLogicInput,
-} from './actor/match-system-pkg-manager';
 import {
   type ActorOutputError,
   type ActorOutputOk,
@@ -136,12 +137,25 @@ const rangeMap = new WeakMap<PkgManager, Range>();
  */
 export const ParsePkgManagerSpecMachine = setup({
   actions: {
+    /**
+     * Assigns the result of {@link matchSystemPkgManagerLogic} to the context
+     */
+    assignEnvelopes: assign({
+      defaultSystemPkgManagerEnvelope: (
+        {context: {defaultSystemPkgManagerEnvelope}},
+        output: MatchSystemPkgManagerLogicOutput,
+      ): PkgManagerEnvelope | undefined =>
+        defaultSystemPkgManagerEnvelope ??
+        output.defaultSystemPkgManagerEnvelope,
+      envelope: (
+        {context: {envelope}},
+        output: MatchSystemPkgManagerLogicOutput,
+      ): PkgManagerEnvelope => envelope ?? output.envelope!,
+    }),
     assignError: assign({
       error: ({context, self}, {error: err}: {error: unknown}) => {
         const error = fromUnknownError(err);
         if (context.error) {
-          // this is fairly rare. afaict it only happens
-          // when both the teardown and pruneTempDir actors fail
           return context.error.cloneWith(error);
         }
 
@@ -356,18 +370,10 @@ export const ParsePkgManagerSpecMachine = setup({
                   output.envelope!.spec.label
                 }`;
               }),
-              assign({
-                defaultSystemPkgManagerEnvelope: ({
-                  context: {defaultSystemPkgManagerEnvelope},
-                  event: {output},
-                }): PkgManagerEnvelope | undefined =>
-                  defaultSystemPkgManagerEnvelope ??
-                  output.defaultSystemPkgManagerEnvelope,
-                envelope: ({
-                  context: {envelope},
-                  event: {output},
-                }): PkgManagerEnvelope => envelope ?? output.envelope!,
-              }),
+              {
+                params: ({event: {output}}) => output,
+                type: 'assignEnvelopes',
+              },
             ],
             guard: ({
               event: {

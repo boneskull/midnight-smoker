@@ -1,6 +1,6 @@
 import {ErrorCode, type SmokerErrorName} from '#error/codes';
 import {type SomeSmokerError} from '#error/some-smoker-error';
-import {isError} from 'lodash';
+import {isError} from '#util/guard/common';
 
 /**
  * Type guard for a `SmokerError`

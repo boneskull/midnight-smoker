@@ -1,9 +1,9 @@
+import {BaseSmokerError} from '#error/base-error';
 import {
   toValidationError as zodToValidationError,
   ValidationError as ZodValidationError,
 } from 'zod-validation-error';
 
-import {BaseSmokerError} from './base-error';
 import {ErrorCode} from './codes';
 import {type SmokerError} from './smoker-error';
 

@@ -815,14 +815,10 @@ describe('midnight-smoker', function () {
                     manifest: {} as RunScriptManifest,
                     rawResult: {
                       command: '',
-                      escapedCommand: '',
+                      cwd: '',
                       exitCode: 0,
-                      failed: false,
-                      isCanceled: false,
-                      killed: false,
                       stderr: '',
                       stdout: '',
-                      timedOut: false,
                     },
                     type: FAILED,
                   };

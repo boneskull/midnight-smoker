@@ -1,4 +1,4 @@
-import {BaseSmokerError} from './base-error';
+import {BaseSmokerError} from '#error/base-error';
 
 /**
  * Thrown when a plugin is disallowed by the registry.

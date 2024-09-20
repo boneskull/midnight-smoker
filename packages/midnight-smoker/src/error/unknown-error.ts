@@ -1,6 +1,5 @@
-import {isError, isString} from 'lodash';
-
-import {BaseSmokerError} from './base-error';
+import {BaseSmokerError} from '#error/base-error';
+import {isError, isString} from '#util/guard/common';
 
 export class UnknownError extends BaseSmokerError<void, unknown> {
   public readonly name = 'UnknownError';

@@ -1,7 +1,7 @@
 import {AbortError} from '#error/abort-error';
+import {isError} from '#util/guard/common';
 import {isErrnoException} from '#util/guard/errno-exception';
 import {isSmokerError} from '#util/guard/smoker-error';
-import {isError} from 'lodash';
 
 /**
  * Returns `true` if the provided `error` is, in order of precedence:

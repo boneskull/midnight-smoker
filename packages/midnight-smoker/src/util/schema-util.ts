@@ -3,7 +3,8 @@
  *
  * @packageDocumentation
  */
-import {isObject, uniq} from 'lodash';
+import {isObject} from '#util/guard/common';
+import {uniq} from 'lodash';
 import {Range, SemVer} from 'semver';
 import {type Class} from 'type-fest';
 import {z} from 'zod';

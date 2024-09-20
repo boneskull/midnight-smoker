@@ -1,7 +1,7 @@
 import {ERROR, FAILED, OK, SKIPPED} from 'midnight-smoker/constants';
 import {
   ExecError,
-  type ExecResult,
+  type ExecOutput,
   InstallError,
   type InstallManifest,
   PackError,
@@ -45,12 +45,16 @@ export async function runScript(
   ctx: PkgManagerRunScriptContext,
   isScriptNotFound: (value: string) => boolean,
 ): Promise<RunScriptResult> {
-  const {executor, loose, manifest, spec} = ctx;
+  const {executor, loose, manifest, signal, spec, verbose} = ctx;
   const {cwd, pkgName, script} = manifest;
-  let rawResult: ExecResult | undefined;
+  let rawResult: ExecOutput | undefined;
   let error: ScriptFailedError | undefined;
   try {
-    rawResult = await executor(spec, ['run', script], {}, {cwd});
+    rawResult = await executor(spec, ['run', script], {
+      nodeOptions: {cwd},
+      signal,
+      verbose,
+    });
   } catch (err) {
     if (isExecError(err)) {
       if (isScriptNotFound(err.stderr) || isScriptNotFound(err.stdout)) {
@@ -76,7 +80,7 @@ export async function runScript(
     throw err;
   }
 
-  if (rawResult.failed) {
+  if (rawResult.exitCode) {
     if (isScriptNotFound(rawResult.stderr)) {
       return loose
         ? {
@@ -95,14 +99,14 @@ export async function runScript(
           };
     }
 
-    const {all, command, exitCode, stderr, stdout} = rawResult;
+    const {command, exitCode, stderr, stdout} = rawResult;
     const message = exitCode
       ? `Script "${script}" in package "${pkgName}" failed with exit code ${exitCode}`
       : `Script "${script}" in package "${pkgName}" failed`;
     error = new ScriptFailedError(message, {
       command,
       exitCode,
-      output: all || stderr || stdout,
+      output: stderr || stdout,
       pkgManager: spec.label,
       pkgName,
       script,
@@ -117,29 +121,26 @@ export async function runScript(
 export const YarnClassic = Object.freeze({
   bin: 'yarn',
 
-  async install(ctx: PkgManagerInstallContext): Promise<ExecResult> {
-    const {executor, installManifest, spec, tmpdir} = ctx;
+  async install(ctx: PkgManagerInstallContext): Promise<ExecOutput> {
+    const {executor, installManifest, signal, spec, tmpdir, verbose} = ctx;
 
     const {pkgSpec} = installManifest;
 
     const installArgs = ['add', '--no-lockfile', '--force', pkgSpec];
 
-    let installResult: ExecResult;
+    let installResult: ExecOutput;
     try {
-      installResult = await executor(
-        spec,
-        installArgs,
-        {},
-        {
-          cwd: tmpdir,
-        },
-      );
+      installResult = await executor(spec, installArgs, {
+        nodeOptions: {cwd: tmpdir},
+        signal,
+        verbose,
+      });
     } catch (err) {
       if (isExecError(err)) {
         throw new InstallError(err.message, spec, pkgSpec, tmpdir, {
           error: err,
           exitCode: err.exitCode,
-          output: err.all || err.stderr || err.stdout,
+          output: err.stderr || err.stdout,
         });
       }
       throw err;
@@ -153,8 +154,17 @@ export const YarnClassic = Object.freeze({
   name: 'yarn-classic',
 
   async pack(ctx: PkgManagerPackContext): Promise<InstallManifest> {
-    const {executor, localPath, pkgJson, pkgJsonPath, pkgName, spec, tmpdir} =
-      ctx;
+    const {
+      executor,
+      localPath,
+      pkgJson,
+      pkgJsonPath,
+      pkgName,
+      signal,
+      spec,
+      tmpdir,
+      verbose,
+    } = ctx;
     const computeSlug = (info: YarnWorkspaceInfo) => {
       let slug = path.basename(info.location);
       for (let i = 0; i++; seenSlugs.has(slug)) {
@@ -163,13 +173,13 @@ export const YarnClassic = Object.freeze({
       seenSlugs.add(slug);
       return slug;
     };
-    const cwd = ctx.localPath;
+    const cwd = localPath;
     const slug = computeSlug({location: localPath});
     const tarball = path.join(tmpdir, `${slug}.tgz`);
     const args = ['pack', '--json', `--filename=${tarball}`];
 
     try {
-      await executor(spec, args, {}, {cwd});
+      await executor(spec, args, {nodeOptions: {cwd}, signal, verbose});
     } catch (err) {
       if (err instanceof ExecError) {
         const workspaceInfo = {
@@ -181,7 +191,7 @@ export const YarnClassic = Object.freeze({
         throw new PackError(err.message, spec, workspaceInfo, ctx.tmpdir, {
           error: err,
           exitCode: err.exitCode,
-          output: err.all || err.stderr || err.stdout,
+          output: err.stderr || err.stdout,
         });
       }
       throw err;

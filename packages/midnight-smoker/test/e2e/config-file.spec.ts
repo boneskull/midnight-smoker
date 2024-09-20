@@ -156,7 +156,8 @@ describe('midnight-smoker [E2E]', function () {
       );
 
       it('should still fail if no script argument is provided', async function () {
-        // includes json: true
+        // config includes json: true.
+        // this is NOT the same as passing {json: true} to `execSmoker`!!!
         await expect(
           execSmoker(['run', '--no-lint'], {cwd}),
           'to be rejected with error satisfying',

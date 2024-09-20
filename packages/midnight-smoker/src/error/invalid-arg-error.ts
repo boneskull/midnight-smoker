@@ -1,4 +1,4 @@
-import {BaseSmokerError} from './base-error';
+import {BaseSmokerError} from '#error/base-error';
 
 /**
  * Thrown when an invalid or missing argument is provided to a function.

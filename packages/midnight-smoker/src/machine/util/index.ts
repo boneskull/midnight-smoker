@@ -168,13 +168,17 @@ const debug = createDebug(__filename);
 /**
  * Action expected for all machines to implement.
  *
- * @remarks
- * Mainly used for testing
+ * @privateRemarks
+ * This can be thought of as a generic "hook" that can be used to provide
+ * differing behavior in tests (when no other actions are appropriate).
  */
 export const INIT_ACTION = '__init__';
 
 /**
  * Default implementation for {@link INIT_ACTION}
+ *
+ * @privateRemarks
+ * These types seem a little fragile.
  */
 export const DEFAULT_INIT_ACTION = <
   TContext extends xs.MachineContext,

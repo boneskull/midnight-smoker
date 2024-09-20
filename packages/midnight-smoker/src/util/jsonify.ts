@@ -1,13 +1,13 @@
-import {isError, isFunction, isObject, mapValues, pickBy} from 'lodash';
-import {type Jsonifiable} from 'type-fest/source/jsonifiable';
-
+import {isError, isFunction, isObject} from '#util/guard/common';
 import {
   isJsonifiable,
   isJsonifiableObject,
   isJsonPrimitive,
-} from './guard/jsonifiable';
-import {isSerializable} from './guard/serializable';
-import {serialize} from './serialize';
+} from '#util/guard/jsonifiable';
+import {isSerializable} from '#util/guard/serializable';
+import {serialize} from '#util/serialize';
+import {mapValues, pickBy} from 'lodash';
+import {type Jsonifiable} from 'type-fest/source/jsonifiable';
 
 /**
  * Coerces something into something we can output into JSON.

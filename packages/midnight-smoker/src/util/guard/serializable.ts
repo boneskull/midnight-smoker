@@ -1,5 +1,5 @@
 import {type Serializable} from '#schema/serializable';
-import {isFunction, isObject} from 'lodash';
+import {isFunction, isObject} from '#util/guard/common';
 import {type JsonifiableObject} from 'type-fest/source/jsonifiable';
 
 /**
@@ -8,7 +8,6 @@ import {type JsonifiableObject} from 'type-fest/source/jsonifiable';
  * @param value Any value
  * @returns - `true` if `value` is an object with a `toJSON` method
  */
-
 export function isSerializable<
   T,
   U extends JsonifiableObject = JsonifiableObject,

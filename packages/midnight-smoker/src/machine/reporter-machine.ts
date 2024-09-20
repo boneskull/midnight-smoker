@@ -10,6 +10,7 @@ import {
   setupReporterLogic,
   teardownReporterLogic,
 } from '#machine/actor/reporter-lifecycle';
+import {type AbortEvent} from '#machine/event/abort';
 import {
   type ActorOutput,
   DEFAULT_INIT_ACTION,
@@ -26,8 +27,6 @@ import {isEmpty} from 'lodash';
 import {type EventEmitter} from 'node:events';
 import {type PackageJson} from 'type-fest';
 import {and, assign, log, not, setup} from 'xstate';
-
-import {type AbortEvent} from './event/abort';
 
 /**
  * All events received by a `ReporterMachine`.

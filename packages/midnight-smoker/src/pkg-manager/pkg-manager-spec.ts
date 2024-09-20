@@ -9,7 +9,7 @@ import {parseDesiredPkgManagerSpec} from '#schema/desired-pkg-manager';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import * as assert from '#util/assert';
 import {memoize} from '#util/decorator';
-import {isString} from 'lodash';
+import {isString} from '#util/guard/common';
 import {parse, type SemVer} from 'semver';
 import {type Merge} from 'type-fest';
 

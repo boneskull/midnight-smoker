@@ -1,6 +1,5 @@
 import {type SmokerErrorCode, type SmokerErrorName} from '#error/codes';
 import {type SmokerError, type StaticSmokerError} from '#error/smoker-error';
-import {type ExecResult, isExecaError} from '#executor';
 import {isSmokerError} from '#util/guard/smoker-error';
 import unexpected from 'unexpected';
 
@@ -57,32 +56,32 @@ describe('midnight-smoker', function () {
         });
       });
 
-      describe('isExecaError()', function () {
-        it('should return true if error is an ExecaError', function () {
-          const execResult: ExecResult = {
-            command: '',
-            escapedCommand: '',
-            exitCode: 0,
-            failed: false,
-            isCanceled: false,
-            killed: false,
-            stderr: '',
-            stdout: '',
-            timedOut: false,
-          };
-          const error = Object.assign(new Error('herp'), {
-            ...execResult,
-            originalMessage: '',
-            shortMessage: '',
-          });
-          expect(isExecaError(error), 'to be true');
-        });
+      // describe('isExecaError()', function () {
+      //   it('should return true if error is an ExecaError', function () {
+      //     const execResult: ExecResult = {
+      //       command: '',
+      //       escapedCommand: '',
+      //       exitCode: 0,
+      //       failed: false,
+      //       isCanceled: false,
+      //       killed: false,
+      //       stderr: '',
+      //       stdout: '',
+      //       timedOut: false,
+      //     };
+      //     const error = Object.assign(new Error('herp'), {
+      //       ...execResult,
+      //       originalMessage: '',
+      //       shortMessage: '',
+      //     });
+      //     expect(isExecaError(error), 'to be true');
+      //   });
 
-        it('should return false if error is not an ExecaError', function () {
-          const error = new Error('Test error');
-          expect(isExecaError(error), 'to be false');
-        });
-      });
+      //   it('should return false if error is not an ExecaError', function () {
+      //     const error = new Error('Test error');
+      //     expect(isExecaError(error), 'to be false');
+      //   });
+      // });
     });
   });
 });

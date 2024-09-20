@@ -8,8 +8,9 @@ import {type PkgManager} from '#schema/pkg-manager';
 import {type WorkspaceInfo} from '#schema/workspace-info';
 import * as assert from '#util/assert';
 import {type FileManager} from '#util/filemanager';
+import {isString} from '#util/guard/common';
 import * as hwp from '#util/hwp';
-import {filter, groupBy, head, isString} from 'lodash';
+import {filter, groupBy, head} from 'lodash';
 import path from 'node:path';
 import {fromPromise} from 'xstate';
 

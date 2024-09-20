@@ -1,5 +1,5 @@
-import type {ExecResult} from '#schema/exec-result';
-
+import {type ExecError} from '#error/exec-error';
+import {type ExecOutput} from '#schema/exec-result';
 import path from 'node:path';
 import snapshot from 'snap-shot-it';
 import unexpected from 'unexpected';
@@ -31,7 +31,7 @@ describe('midnight-smoker [E2E]', function () {
       describe('when the script fails', function () {
         const cwd = path.join(__dirname, 'fixture', 'run-script', 'failure');
 
-        let result: ExecResult;
+        let result: ExecOutput;
 
         before(async function () {
           try {
@@ -39,7 +39,7 @@ describe('midnight-smoker [E2E]', function () {
               cwd,
             });
           } catch (e) {
-            result = e as ExecResult;
+            result = e as ExecError;
           }
         });
 

@@ -4,6 +4,7 @@ import {PackError} from '#error/pack-error';
 import {PackParseError} from '#error/pack-parse-error';
 import {type EventData} from '#event/events';
 import {type PackEventData} from '#event/pack-events';
+import {type SmokeMachinePackEvent} from '#machine/event/pack';
 import {type SmokerOptions} from '#schema/smoker-options';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {type WorkspaceInfo} from '#schema/workspace-info';
@@ -11,7 +12,6 @@ import {assertSmokerError, fromUnknownError} from '#util/error-util';
 import {asResult, type Result} from '#util/result';
 import {type AnyActorRef, assign, enqueueActions, sendTo, setup} from 'xstate';
 
-import {type SmokeMachinePackEvent} from '../event/pack';
 import {type ListenEvent} from './common-event';
 
 export interface PackBusMachineInput {

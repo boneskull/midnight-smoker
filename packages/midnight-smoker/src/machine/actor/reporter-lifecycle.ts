@@ -1,7 +1,7 @@
 import {type OmitSignal, reporterContextWithSignal} from '#machine/util';
 import {type ReporterContext} from '#reporter/reporter-context';
 import {type Reporter} from '#schema/reporter';
-import {isFunction} from 'lodash';
+import {isFunction} from '#util/guard/common';
 import {fromPromise} from 'xstate';
 
 /**

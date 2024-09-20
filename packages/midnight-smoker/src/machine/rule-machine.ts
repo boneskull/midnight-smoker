@@ -5,6 +5,13 @@ import {
   lintLogic,
   type LintLogicOutput,
 } from '#machine/actor/operation/lint-logic';
+import {type AbortEvent} from '#machine/event/abort';
+import {
+  type CheckErrorEvent,
+  type CheckResultEvent,
+} from '#machine/event/check';
+import {DEFAULT_INIT_ACTION, INIT_ACTION} from '#machine/util';
+import {type RuleEnvelope} from '#plugin/component-envelope';
 import {type LintManifest} from '#rule/lint-manifest';
 import {type StaticRuleContext} from '#rule/static-rule-context';
 import {type SomeRule} from '#schema/rule';
@@ -22,11 +29,6 @@ import {
   setup,
   type Snapshot,
 } from 'xstate';
-
-import {type RuleEnvelope} from '../plugin/component-envelope';
-import {type AbortEvent} from './event/abort';
-import {type CheckErrorEvent, type CheckResultEvent} from './event/check';
-import {DEFAULT_INIT_ACTION, INIT_ACTION} from './util';
 
 /**
  * Union of events emitted by {@link RuleMachine}
