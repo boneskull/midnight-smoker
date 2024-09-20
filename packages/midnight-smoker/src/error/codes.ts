@@ -41,6 +41,7 @@ export const ErrorCode = constant({
   ScriptFailedError: 'ESMOKER_SCRIPTFAILED',
   SmokeError: 'ESMOKER_SMOKE',
   SmokerReferenceError: 'ESMOKER_REFERENCE',
+  SpawnError: 'ESMOKER_SPAWN',
   TempDirError: 'ESMOKER_DIRCREATION',
   UnknownComponentError: 'ESMOKER_UNKNOWNCOMPONENT',
   UnknownDistTagError: 'ESMOKER_UNKNOWNDISTTAG',

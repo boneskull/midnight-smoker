@@ -78,7 +78,7 @@ export type PkgInstallFailedEventData = {
 } & PkgInstallEventDataBase;
 
 export type PkgInstallOkEventData = {
-  rawResult: Schema.ExecResult;
+  rawResult: Schema.ExecOutput;
 } & PkgInstallEventDataBase;
 
 export type PkgManagerInstallBeginEventData = PkgManagerInstallEventDataBase;

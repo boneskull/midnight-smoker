@@ -1,7 +1,6 @@
+import {BaseSmokerError} from '#error/base-error';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
-import {isString} from 'lodash';
-
-import {BaseSmokerError} from './base-error';
+import {isString} from '#util/guard/common';
 
 /**
  * @group Errors

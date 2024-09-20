@@ -2,6 +2,7 @@ import {FAILED, FINAL} from '#constants';
 import {LintEvents} from '#constants/event';
 import {type EventData} from '#event/events';
 import {type LintEventData} from '#event/lint-events';
+import {type SmokeMachineLintEvent} from '#machine/event/lint';
 import {type LintResult, type LintResultOk} from '#rule/lint-result';
 import {type SomeRule} from '#schema/rule';
 import {type SmokerOptions} from '#schema/smoker-options';
@@ -11,7 +12,6 @@ import {fromUnknownError} from '#util/error-util';
 import {asResult, type Result} from '#util/result';
 import {type AnyActorRef, assign, enqueueActions, setup} from 'xstate';
 
-import {type SmokeMachineLintEvent} from '../event/lint';
 import {type ListenEvent} from './common-event';
 
 export interface LintBusMachineInput {

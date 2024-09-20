@@ -24,6 +24,7 @@ import {
   type ReadPkgJsonOptions,
   type ReadPkgJsonStrictOptions,
 } from '#util/fs-api';
+import {isSmokerError} from '#util/guard/smoker-error';
 import {
   glob,
   globIterate,
@@ -40,7 +41,6 @@ import {type PackageJson} from 'type-fest';
 import {createDebug} from './debug';
 import {memoize} from './decorator';
 import {fromUnknownError} from './error-util';
-import {isSmokerError} from './guard/smoker-error';
 
 export type ReadPkgJsonResult<T> = {
   packageJson: T;

@@ -4,10 +4,9 @@
  * @packageDocumentation
  */
 import {MIDNIGHT_SMOKER} from '#constants';
+import {SOURCE_ROOT} from '#root';
 import {memoize} from 'lodash';
 import PrettyError from 'pretty-error';
-
-import {SOURCE_ROOT} from '../root';
 
 /**
  * All possible styles supported by {@link https://npm.im renderkid}

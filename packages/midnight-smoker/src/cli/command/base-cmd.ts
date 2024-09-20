@@ -13,6 +13,9 @@ import {type GlobalOptionTypes} from './global-opts';
 /**
  * A base class for implementing commands in the CLI.
  *
+ * @privateRemarks
+ * Refactor to an object instead--the instances aren't doing anything helpful,
+ * really--and commands can just use composition
  * @template T - Command options which extend {@link GlobalOptionTypes}.
  */
 export abstract class BaseCommand<

@@ -1,9 +1,13 @@
+import {
+  type SomeSmokerError,
+  type SomeSmokerErrorClass,
+} from '#error/some-smoker-error';
 import {UnknownError} from '#error/unknown-error';
 import {asValidationError, type ValidationError} from '#error/validation-error';
 import * as assert from '#util/assert';
+import {isError} from '#util/guard/common';
 import {isSmokerError} from '#util/guard/smoker-error';
 import {isSomeSmokerError} from '#util/guard/some-smoker-error';
-import {isError} from 'lodash';
 import stringify from 'stringify-object';
 import {type TupleToUnion} from 'type-fest';
 import {ZodError} from 'zod';
@@ -12,10 +16,6 @@ import {
   type ValidationError as ZodValidationError,
 } from 'zod-validation-error';
 
-import {
-  type SomeSmokerError,
-  type SomeSmokerErrorClass,
-} from '../error/some-smoker-error';
 import {createDebug} from './debug';
 
 /**

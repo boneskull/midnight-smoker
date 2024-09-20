@@ -7,6 +7,7 @@
 import {SYSTEM} from '#constants';
 import {type SmokerErrorCode} from '#error/codes';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
+import {isError, isString} from '#util/guard/common';
 import {
   black,
   cyan,
@@ -19,7 +20,6 @@ import {
   redBright,
   whiteBright,
 } from 'chalk';
-import {isError, isString} from 'lodash';
 
 import {getStackRenderer, type Styles} from './stack-renderer';
 

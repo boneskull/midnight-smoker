@@ -1,6 +1,6 @@
 import {type PluginAPI} from '#plugin/plugin-api';
+import {isObject} from '#util/guard/common';
 import {NonEmptyStringSchema, VoidOrPromiseVoidSchema} from '#util/schema-util';
-import {isObject} from 'lodash';
 import {z} from 'zod';
 
 /**

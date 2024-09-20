@@ -1,3 +1,4 @@
+import {type LoaderCapabilities} from '#capabilities';
 import {ERROR, OK, TRANSIENT} from '#constants';
 import {type DisallowedPluginError} from '#error/disallowed-plugin-error';
 import {PluginImportError} from '#error/plugin-import-error';
@@ -5,6 +6,7 @@ import {PluginManifestError} from '#error/plugin-manifest-error';
 import {PluginResolutionError} from '#error/plugin-resolution-error';
 import {UnresolvablePluginError} from '#error/unresolvable-plugin-error';
 import {asValidationError, type ValidationError} from '#error/validation-error';
+import {type ActorOutputError, type ActorOutputOk} from '#machine/util';
 import {PluginMetadata} from '#plugin/plugin-metadata';
 import {type NormalizedPackageJson} from '#schema/package-json';
 import {type Plugin, PluginSchema} from '#schema/plugin';
@@ -14,9 +16,6 @@ import {mimport, resolveFrom} from '#util/importer';
 import {type SomeUniqueId} from '#util/unique-id';
 import path from 'node:path';
 import {fromPromise} from 'xstate';
-
-import {type LoaderCapabilities} from '../../capabilities';
-import {type ActorOutputError, type ActorOutputOk} from '../util';
 
 export type ResolvePluginLogicOutputOk = ActorOutputOk<{
   id: SomeUniqueId;

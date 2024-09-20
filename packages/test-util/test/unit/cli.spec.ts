@@ -1,9 +1,9 @@
-import {type ExecaError} from 'execa';
-import {type ExecResult} from 'midnight-smoker/executor';
-import sinon from 'sinon';
+import stringify from 'json-stable-stringify';
+import {ExecError} from 'midnight-smoker';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
 
+import {createExecMock} from '../../src';
 import {execSmoker} from '../../src/cli';
 import {CLI_PATH} from '../../src/constants';
 
@@ -13,121 +13,102 @@ describe('midnight-smoker', function () {
   describe('test-util', function () {
     describe('cli', function () {
       describe('execSmoker()', function () {
-        let sandbox: sinon.SinonSandbox;
-        let execaStub: sinon.SinonStub;
-
-        beforeEach(function () {
-          sandbox = sinon.createSandbox();
-          execaStub = sandbox.stub().resolves({
-            stdout: JSON.stringify({success: true}),
-          } as ExecResult);
-        });
-
-        afterEach(function () {
-          sandbox.restore();
-        });
+        const execStub = createExecMock();
 
         it('should execute smoker with given arguments', async function () {
           const args = ['run', 'smoke'];
-          const opts = {cwd: '/some/path', execa: {node: execaStub}};
-          await execSmoker(args, opts);
-          const {execa: _execa, ...rest} = opts;
-          expect(execaStub, 'to have a call satisfying', [
+          await execSmoker(args, {cwd: '/some/path', exec: execStub});
+          expect(execStub, 'to have a call satisfying', [
             CLI_PATH,
             args,
             {
-              env: {...process.env, DEBUG: ''},
-              ...rest,
+              nodeOptions: {
+                cwd: '/some/path',
+                env: {...process.env, DEBUG: ''},
+              },
             },
           ]);
         });
 
         it('should add --json flag if json option is true', async function () {
           const args = ['run', 'smoke'];
-          const opts = {
+          await execSmoker(args, {
             cwd: '/some/path',
-            execa: {node: execaStub},
+            exec: execStub,
             json: true,
-          };
-          await execSmoker(args, opts);
-          const {execa: _execa, json: _json, ...rest} = opts;
+          });
 
-          expect(execaStub, 'to have a call satisfying', [
+          expect(execStub, 'to have a call satisfying', [
             CLI_PATH,
             [...args, '--json'],
             {
-              env: {...process.env, DEBUG: ''},
-              ...rest,
+              nodeOptions: {
+                cwd: '/some/path',
+                env: {...process.env, DEBUG: ''},
+              },
             },
           ]);
         });
 
         it('should parse JSON output if json option is true', async function () {
           const args = ['run', 'smoke'];
-          const opts = {
+          const result = await execSmoker(args, {
             cwd: '/some/path',
-            execa: {node: execaStub},
+            exec: execStub,
             json: true,
-          };
-          const result = await execSmoker(args, opts);
+          });
 
-          expect(result, 'to equal', {success: true});
+          expect(result, 'to equal', {key: 'value'});
         });
 
         it('should throw an error if execution fails', async function () {
           const args = ['run', 'smoke'];
-          const opts = {cwd: '/some/path', execa: {node: execaStub}};
           const error = new Error('Execution failed');
-          execaStub.rejects(error);
+          execStub.rejects(error);
 
-          await expect(execSmoker(args, opts), 'to be rejected with', error);
-        });
-
-        it('should fulfill with JSON error output if `json` option is true and some rando error ius thrown', async function () {
-          const args = ['run', 'smoke'];
-          const opts = {
-            cwd: '/some/path',
-            execa: {node: execaStub},
-            json: true,
-          };
-
-          const error = new Error('Execution failed');
-          execaStub.rejects(error);
-
-          await expect(execSmoker(args, opts), 'to be rejected with', error);
-        });
-
-        it('should fulfill with JSON error output if `json` option is true and execa throws', async function () {
-          const args = ['run', 'smoke'];
-          const opts = {
-            cwd: '/some/path',
-            execa: {node: execaStub},
-            json: true,
-          };
-
-          // JSON will only be parsed if the error thrown is an ExecaError
-          const error: ExecaError = Object.assign(
-            new Error('Execution failed'),
-            {
-              all: '',
-              command: '',
-              escapedCommand: '',
-              exitCode: 1,
-              failed: true,
-              isCanceled: false,
-              killed: false,
-              originalMessage: '',
-              shortMessage: '',
-              stderr: '',
-              stdout: JSON.stringify({error: 'Something went wrong'}),
-              timedOut: false,
-            },
+          await expect(
+            execSmoker(args, {cwd: '/some/path', exec: execStub}),
+            'to be rejected with',
+            error,
           );
-          execaStub.rejects(error);
+        });
 
-          await expect(execSmoker(args, opts), 'to be fulfilled with', {
-            error: 'Something went wrong',
+        it('should fulfill with JSON error output if `json` option is true and some rando error is thrown', async function () {
+          const args = ['run', 'smoke'];
+
+          const error = new Error('Execution failed');
+          execStub.rejects(error);
+
+          await expect(
+            execSmoker(args, {
+              cwd: '/some/path',
+              exec: execStub,
+              json: true,
+            }),
+            'to be rejected with',
+            error,
+          );
+        });
+
+        it('should fulfill with JSON error output if `json` option is true and exec throws an ExecError', async function () {
+          const args = ['run', 'smoke'];
+          const opts = {
+            cwd: '/some/path',
+            exec: execStub,
+            json: true,
+          };
+
+          const errJson = {error: {something: 'went wrong'}};
+          const error = new ExecError('oh no', {
+            command: '',
+            cwd: '/some/path',
+            exitCode: 1,
+            stderr: '',
+            stdout: stringify(errJson),
           });
+          execStub.rejects(error);
+
+          await expect(execSmoker(args, opts), 'to be fulfilled with', errJson);
         });
       });
     });

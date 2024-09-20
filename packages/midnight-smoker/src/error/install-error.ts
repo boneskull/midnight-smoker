@@ -1,13 +1,11 @@
+import {BaseSmokerError} from '#error/base-error';
 import {ExecError} from '#error/exec-error';
-import {type ExecResult} from '#schema/exec-result';
+import {type ExecOutput} from '#schema/exec-result';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {fromUnknownError} from '#util/error-util';
 import {formatPackage, formatPkgManager} from '#util/format';
-import {isExecResult} from '#util/guard/exec-result';
-import {isExecaError} from '#util/guard/execa-error';
-import {isSmokerError} from '#util/guard/smoker-error';
-
-import {BaseSmokerError} from './base-error';
+import {isExecOutput} from '#util/guard/exec-output';
+import {isSmokerError} from '#util/index';
 
 /**
  * @group Errors
@@ -18,7 +16,7 @@ export class InstallError extends BaseSmokerError<
     originalMessage: string;
     pkgManager: StaticPkgManagerSpec;
     pkgSpec: string;
-    result?: ExecResult;
+    result?: ExecOutput;
   },
   Error | ExecError | undefined
 > {
@@ -32,17 +30,17 @@ export class InstallError extends BaseSmokerError<
     rawResult: unknown,
   ) {
     let error: Error | ExecError | undefined;
-    let result: ExecResult | undefined;
+    let result: ExecOutput | undefined;
 
-    if (isExecaError(rawResult)) {
-      error = isSmokerError(ExecError, rawResult)
-        ? rawResult
-        : new ExecError(rawResult);
-    } else if (!isExecResult(rawResult)) {
-      error = fromUnknownError(rawResult);
-    } else {
+    if (isSmokerError(ExecError, rawResult)) {
+      error = rawResult;
       result = rawResult;
+    } else if (isExecOutput(rawResult)) {
+      result = rawResult;
+    } else {
+      error = fromUnknownError(rawResult);
     }
+
     super(
       `${pkgManager.label} failed to install "${pkgSpec}" in dir ${cwd}`,
       {

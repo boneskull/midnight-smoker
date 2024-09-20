@@ -16,7 +16,8 @@ import {
 import {createDebug} from '#util/debug';
 import {fromUnknownError} from '#util/error-util';
 import {isAbortError} from '#util/guard/abort-error';
-import {invert, isFunction, mapValues} from 'lodash';
+import {isFunction} from '#util/guard/common';
+import {invert, mapValues} from 'lodash';
 import {type EventEmitter} from 'node:stream';
 import {fromPromise} from 'xstate';
 

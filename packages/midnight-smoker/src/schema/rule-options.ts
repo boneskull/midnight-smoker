@@ -1,10 +1,9 @@
+import {createRuleOptionsSchema} from '#options/create-rule-options';
+import {JsonValueSchema} from '#schema/json';
+import {type RuleSchemaValue} from '#schema/rule-schema-value';
 import {type RuleSeverity, RuleSeveritySchema} from '#schema/rule-severity';
 import {type EmptyObject} from '#util/schema-util';
 import {z} from 'zod';
-
-import {createRuleOptionsSchema} from '../options/create-rule-options';
-import {JsonValueSchema} from './json';
-import {type RuleSchemaValue} from './rule-schema-value';
 
 /**
  * The base type of `SmokerOptions.rules`

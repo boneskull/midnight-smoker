@@ -1,58 +1,38 @@
-import {type ExecResult} from '#schema/exec-result';
-import {type ExecaError} from 'execa';
-
-import {BaseSmokerError} from './base-error';
+import {BaseSmokerError} from '#error/base-error';
+import {type ExecOutput} from '#schema/exec-result';
+import {isNumber} from 'lodash';
 
 /**
- * This mainly just wraps an {@link ExecaError}.
+ * Thrown by `util.exec`
  *
  * @group Errors
  */
 export class ExecError
-  extends BaseSmokerError<ExecResult>
-  implements ExecResult
+  extends BaseSmokerError<ExecOutput>
+  implements ExecOutput
 {
-  public readonly all?: string;
-
   public readonly command: string;
 
-  public readonly escapedCommand: string;
+  public readonly cwd: string;
 
-  public readonly exitCode: number;
-
-  public readonly failed: boolean;
-
-  public readonly isCanceled: boolean;
-
-  public readonly killed: boolean;
+  public readonly exitCode?: number;
 
   public readonly name = 'ExecError';
-
-  public readonly originalMessage?: string;
-
-  public readonly shortMessage: string;
 
   public readonly stderr: string;
 
   public readonly stdout: string;
 
-  public readonly timedOut: boolean;
+  constructor(message: string, output: ExecOutput) {
+    super(message, output);
+    this.command = output.command;
+    this.exitCode = output.exitCode;
+    this.stderr = output.stderr;
+    this.stdout = output.stdout;
+    this.cwd = output.cwd;
+  }
 
-  constructor(error: ExecaError) {
-    // avoid empty message
-    const message = error.shortMessage || error.message;
-    super(message, error);
-    this.command = error.command;
-    this.exitCode = error.exitCode;
-    this.all = error.all;
-    this.stderr = error.stderr;
-    this.stdout = error.stdout;
-    this.failed = error.failed;
-    this.shortMessage = error.shortMessage;
-    this.originalMessage = error.originalMessage;
-    this.timedOut = error.timedOut;
-    this.isCanceled = error.isCanceled;
-    this.escapedCommand = error.escapedCommand;
-    this.killed = error.killed;
+  get failed() {
+    return isNumber(this.exitCode) && this.exitCode !== 0;
   }
 }

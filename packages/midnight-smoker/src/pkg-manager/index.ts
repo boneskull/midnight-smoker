@@ -12,7 +12,7 @@ export * from '#error/pkg-manager';
 
 export * from '#schema/desired-pkg-manager';
 
-export type {ExecResult} from '#schema/exec-result';
+export type {ExecOutput, ExecResult} from '#schema/exec-result';
 
 export * from '#schema/install-manifest';
 

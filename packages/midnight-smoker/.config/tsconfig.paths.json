@@ -3,6 +3,7 @@
     "paths": {
       "@midnight-smoker/plugin-default": ["../../plugin-default/src/index.js"],
       "#cli/*": ["../src/cli/*.js"],
+      "#cli/command/*": ["../src/cli/command/*.js"],
       "#capabilities": ["../src/capabilities.js"],
       "#config": ["../src/config/index.js"],
       "#config/*": ["../src/config/*.js"],
@@ -24,6 +25,7 @@
       "#pkg-manager/*": ["../src/pkg-manager/*.js"],
       "#plugin/*": ["../src/plugin/*.js"],
       "#reporter/*": ["../src/reporter/*.js"],
+      "#root": ["../src/root.js"],
       "#rule/*": ["../src/rule/*.js"],
       "#schema/*": ["../src/schema/*.js"],
       "#schema/meta/*": ["../src/schema/meta/*.js"],

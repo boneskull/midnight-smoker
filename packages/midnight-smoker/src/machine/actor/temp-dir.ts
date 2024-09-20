@@ -28,7 +28,7 @@ export interface PruneTempDirInput {
 
 export const createTempDirLogic = fromPromise<string, CreateTempDirInput>(
   async ({input: {fileManager, spec}, signal}) => {
-    return fileManager.createTempDir(`${spec.bin}-${spec.version}`, signal);
+    return fileManager.createTempDir(`${spec.name}-${spec.version}`, signal);
   },
 );
 

@@ -1,6 +1,5 @@
+import {BaseSmokerError} from '#error/base-error';
 import {cyanBright, italic} from 'chalk';
-
-import {BaseSmokerError} from './base-error';
 
 /**
  * Thrown when a plugin fails to load because it could not be found.

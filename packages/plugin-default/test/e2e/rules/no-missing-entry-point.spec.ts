@@ -55,7 +55,7 @@ describe('@midnight-smoker/plugin-default', function () {
                       workspace: {pkgJson: expect.it('to be an object')},
                     },
                     message:
-                      'No entry point found for package "no-missing-entry-point"; file from field "main" unreadable at path: index.js',
+                      'File from field "main" unreadable at path: index.js',
                     rule: {name},
                   },
                 ],
@@ -99,7 +99,7 @@ describe('@midnight-smoker/plugin-default', function () {
                       workspace: {pkgJson: expect.it('to be an object')},
                     },
                     message:
-                      'No entry point found for package "no-missing-entry-point"; file from field "main" unreadable at path: index.js',
+                      'File from field "main" unreadable at path: index.js',
                     rule: {name},
                   },
                 ],

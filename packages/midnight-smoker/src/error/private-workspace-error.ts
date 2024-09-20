@@ -1,6 +1,5 @@
+import {BaseSmokerError} from '#error/base-error';
 import {type WorkspaceInfo} from '#schema/workspace-info';
-
-import {BaseSmokerError} from './base-error';
 
 /**
  * @group Errors

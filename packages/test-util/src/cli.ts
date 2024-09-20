@@ -4,91 +4,151 @@
  * @packageDocumentation
  * @see {@link execSmoker}
  */
-import Debug from 'debug';
-import _execa, {type NodeOptions} from 'execa';
-import * as Executor from 'midnight-smoker/executor';
+
+import {ExecError} from 'midnight-smoker/error';
+import {
+  type ExecFn,
+  type ExecOptions,
+  type ExecResult,
+} from 'midnight-smoker/schema';
+import {exec, isSmokerError} from 'midnight-smoker/util';
+import {type Merge} from 'type-fest';
 
 import {CLI_PATH} from './constants';
+import {createDebug} from './debug';
 
-const debug = Debug('midnight-smoker:test-util:e2e');
+const debug = createDebug(__filename);
 
 /**
  * Options for {@link execSmoker}
+ *
+ * @see {@link ExecSmokerOptionsWithJson}
  */
-export interface ExecSmokerOpts extends NodeOptions {
-  execa?: Pick<typeof _execa, 'node'>;
+export interface ExecSmokerOptions<Exec extends ExecFn = ExecFn>
+  extends ExecOptions {
+  cwd?: string;
+  env?: NodeJS.ProcessEnv;
+  exec?: Exec;
+
   json?: boolean;
 }
 
 /**
  * Options for {@link execSmoker} that will always parse the result as JSON.
  */
-export type ExecSmokerOptsWithJson = {json: true} & ExecSmokerOpts;
+export type ExecSmokerOptionsWithJson<Exec extends ExecFn = ExecFn> = Merge<
+  ExecSmokerOptions<Exec>,
+  {
+    json: true;
+  }
+>;
+
+/**
+ * Execute `smoker` with the given `args` and `opts`
+ *
+ * If the command exits with a non-zero code, an {@link ExecError} will be thrown
+ * by {@link ExecSmokerOptions.exec exec}. _If and only if_ the
+ * {@link ExecSmokerOptions.json `json` flag} is `true`, `execSmoker` will catch
+ * this error and fulfill with the result.
+ *
+ * If the command fails to spawn, `execSmoker` will reject with a `SpawnError`
+ * thrown out of {@link ExecSmokerOptions.exec exec}.
+ *
+ * This will disable the `DEBUG` env variable unless it was explicitly passed.
+ *
+ * The default `exec` implementation is {@link exec here}.
+ *
+ * @param args - Args to `smoker`
+ * @param opts - Options
+ * @returns Result of running the `smoker` executable
+ */
+export function execSmoker<Exec extends ExecFn = ExecFn>(
+  args: string[],
+  opts?: ExecSmokerOptions<Exec>,
+): ExecResult;
 
 /**
  * Execute `smoker`, but parse the result as JSON.
  *
- * If `smoker` exits with a non-zero exit code or otherwise fails, the result
- * will be parsed as JSON and returned. The only way for this to reject would be
- * if parsing JSON fails.
+ * If the command exits with a non-zero code, an {@link ExecError} will be thrown
+ * by {@link ExecSmokerOptions.exec exec}. _If and only if_ the
+ * {@link ExecSmokerOptions.json `json` flag} is `true`, `execSmoker` will catch
+ * this error and fulfill with the result.
  *
- * @template T - The type of the returned JSON
- * @param args - Args to `smoker`
- * @param opts - Options, mostly for `execa`, but must have `json: true`
- * @returns The `stdout` of the `smoker` execution, parsed as JSON
- * @see {@link https://npm.im/execa}
- */
-export async function execSmoker<T = unknown>(
-  args: string[],
-  opts: ExecSmokerOptsWithJson,
-): Promise<T>;
-
-/**
- * Execute `smoker` with the given `args` and `opts` using
- * {@link _execa.node execa.node}.
- *
- * @param args - Args to `smoker`
- * @param opts - Options, mostly for `execa`
- * @returns Result of running the `smoker` executable
- * @see {@link https://npm.im/execa}
- */
-export async function execSmoker(
-  args: string[],
-  opts?: ExecSmokerOpts,
-): Promise<Executor.ExecResult>;
-
-/**
- * Runs the `smoker` executable with the given `args` and `opts` using
- * {@link execa.node}.
+ * If the command fails to spawn, `execSmoker` will reject with a `SpawnError`
+ * thrown out of {@link ExecSmokerOptions.exec exec}.
  *
  * This will disable the `DEBUG` env variable unless it was explicitly passed.
  *
- * @param args - Arguments to `smoker`
- * @param opts - Options to pass to `execa`
- * @returns Result of running the `smoker` executable
- * @see {@link https://npm.im/execa}
+ * The default `exec` implementation is {@link exec here}.
+ *
+ * @template T - The type of the returned JSON
+ * @param args - Args to `smoker`
+ * @param opts - Options, but must have `json: true`
+ * @returns The `stdout` of the `smoker` execution, parsed as JSON
  */
-export async function execSmoker(args: string[], opts: ExecSmokerOpts = {}) {
-  const {execa = _execa, json, ...execaOpts} = opts;
+export function execSmoker<T = unknown, Exec extends ExecFn = ExecFn>(
+  args: string[],
+  opts: ExecSmokerOptionsWithJson<Exec>,
+): Promise<T>;
+
+/**
+ * Runs the `smoker` executable with the given `args` and `opts`.
+ *
+ * If the command exits with a non-zero code, an {@link ExecError} will be thrown
+ * by {@link ExecSmokerOptions.exec exec}. _If and only if_ the
+ * {@link ExecSmokerOptions.json `json` flag} is `true`, `execSmoker` will catch
+ * this error and fulfill with the result.
+ *
+ * If the command fails to spawn, `execSmoker` will reject with a `SpawnError`
+ * thrown out of {@link ExecSmokerOptions.exec exec}.
+ *
+ * This will disable the `DEBUG` env variable unless it was explicitly passed.
+ *
+ * The default `exec` implementation is {@link exec here}.
+ *
+ * @param args - Arguments to `smoker`
+ * @param opts - Options to pass to `exec`
+ * @returns Result of running the `smoker` executable
+ */
+export function execSmoker(args: string[], opts: ExecSmokerOptions = {}) {
+  const {
+    cwd = process.cwd(),
+    env,
+    exec: someExec = exec,
+    json,
+    nodeOptions,
+    signal,
+    timeout,
+    trim,
+    verbose,
+    ...extra
+  } = opts;
   if (json) {
     args = [...new Set(args).add('--json')];
   }
-  debug(`Executing: ${CLI_PATH} ${args.join(' ')}`);
-  debug(`CWD: ${opts.cwd}`);
-  let result: Executor.ExecResult;
-  try {
-    result = await execa.node(CLI_PATH, args, {
-      env: {...process.env, DEBUG: ''},
-      ...execaOpts,
-    });
-    if (json) {
-      return JSON.parse(result.stdout) as unknown;
-    }
-  } catch (err) {
-    if (Executor.isExecaError(err) && json) {
-      return JSON.parse(err.stdout) as unknown;
-    }
-    throw err;
-  }
-  return result;
+  debug(`Executing in CWD ${cwd}: ${CLI_PATH} ${args.join(' ')}`);
+
+  const finalEnvOpts = {...process.env, DEBUG: '', ...env};
+  const finalNodeOpts = {cwd, env: finalEnvOpts, ...nodeOptions};
+  const options: ExecOptions = {
+    nodeOptions: finalNodeOpts,
+    signal,
+    timeout,
+    trim,
+    verbose,
+    ...extra,
+  };
+
+  return someExec(CLI_PATH, args, options).then(
+    (output) => {
+      return json ? (JSON.parse(output.stdout) as unknown) : output;
+    },
+    (err) => {
+      if (isSmokerError(ExecError, err) && json) {
+        return JSON.parse(err.stdout) as unknown;
+      }
+      throw err;
+    },
+  );
 }

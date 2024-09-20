@@ -1,5 +1,5 @@
 import {type PkgManager, type PkgManagerContext} from '#schema/pkg-manager';
-import {isFunction} from 'lodash';
+import {isFunction} from '#util/guard/common';
 import {fromPromise} from 'xstate';
 
 /**

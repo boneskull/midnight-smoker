@@ -7,8 +7,8 @@ import {
   SmokerOptionsSchema,
 } from '#schema/smoker-options';
 import {createDebug} from '#util/debug';
+import {isEmpty} from '#util/guard/common';
 import {EmptyObjectSchema} from '#util/schema-util';
-import {isEmpty} from 'lodash';
 import {z} from 'zod';
 
 import {createRuleOptionsSchema} from './create-rule-options';

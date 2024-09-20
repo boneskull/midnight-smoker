@@ -13,6 +13,4 @@ export * from '#schema/exec-result';
 
 export * from '#schema/executor';
 
-export {isExecResult} from '#util/guard/exec-result';
-
-export {isExecaError} from '#util/guard/execa-error';
+export {isExecOutput} from '#util/guard/exec-output';

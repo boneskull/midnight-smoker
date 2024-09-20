@@ -4,10 +4,12 @@
  * @packageDocumentation
  */
 
-import {node as execa} from 'execa';
+import {defaultsDeep} from 'lodash';
 import {ABORT, constant} from 'midnight-smoker/constants';
 import {AbortError} from 'midnight-smoker/error';
-import {ExecError, type Executor, isExecaError} from 'midnight-smoker/executor';
+import {type Executor} from 'midnight-smoker/executor';
+import {exec} from 'midnight-smoker/util';
+import {type SpawnOptions} from 'node:child_process';
 import {constants as osConstants} from 'node:os';
 import path from 'node:path';
 
@@ -32,21 +34,20 @@ const COREPACK_PATH = path.resolve(
   'corepack',
 );
 
-export const corepackExecutor: Executor = async (
-  spec,
-  args,
-  opts = {},
-  spawnOpts = {},
-) => {
-  const {signal, verbose} = opts;
+export const corepackExecutor: Executor = async (spec, args, opts = {}) => {
+  const {nodeOptions = {}, signal, verbose} = opts;
 
   if (signal?.aborted) {
     throw new AbortError(signal.reason);
   }
 
-  const proc = execa(COREPACK_PATH, [spec.label, ...args], {
-    env: {...DEFAULT_ENV, ...spawnOpts.env},
-    ...spawnOpts,
+  const proc = exec(COREPACK_PATH, [spec.label, ...args], {
+    nodeOptions: defaultsDeep(
+      {...nodeOptions},
+      {env: DEFAULT_ENV},
+    ) as SpawnOptions,
+    signal,
+    verbose,
   });
 
   let abortListener: (() => void) | undefined = undefined;
@@ -60,18 +61,11 @@ export const corepackExecutor: Executor = async (
     signal.addEventListener(ABORT, abortListener);
   }
 
-  if (verbose) {
-    proc.stdout?.pipe(process.stdout);
-    proc.stderr?.pipe(process.stderr);
-  }
-
   try {
     return await proc;
-  } catch (err) {
-    throw isExecaError(err) ? new ExecError(err) : err;
   } finally {
-    if (signal && abortListener) {
-      signal.removeEventListener(ABORT, abortListener);
+    if (signal) {
+      signal.removeEventListener(ABORT, abortListener!);
     }
   }
 };

@@ -1,6 +1,7 @@
 import {OK} from '#constants';
-import {type ExecResult, type Executor} from '#executor';
+import {type Executor} from '#executor';
 import {PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
+import {type ExecOutput} from '#schema/exec-result';
 import {type PkgManager} from '#schema/pkg-manager';
 import {type Reporter} from '#schema/reporter';
 import {type Rule} from '#schema/rule';
@@ -16,18 +17,14 @@ export const nullPkgManager: PkgManager = {
   bin: 'nullpm',
   async install() {
     await scheduler.wait(DELAY);
-    const result: ExecResult = {
+    const output: ExecOutput = {
       command: '',
-      escapedCommand: '',
+      cwd: '',
       exitCode: 0,
-      failed: false,
-      isCanceled: false,
-      killed: false,
       stderr: '',
       stdout: '',
-      timedOut: false,
     };
-    return result;
+    return output;
   },
   lockfile: 'nullpm.lock',
   name: 'nullpm',
@@ -42,16 +39,12 @@ export const nullPkgManager: PkgManager = {
   },
   async runScript({manifest}) {
     await scheduler.wait(DELAY);
-    const rawResult: ExecResult = {
+    const rawResult: ExecOutput = {
       command: '',
-      escapedCommand: '',
+      cwd: '',
       exitCode: 0,
-      failed: false,
-      isCanceled: false,
-      killed: false,
       stderr: '',
       stdout: '',
-      timedOut: false,
     };
     const result: RunScriptResultOk = {
       manifest,
@@ -82,17 +75,13 @@ export const nullRule: Rule = {
   name: 'test-rule',
 };
 
-export const nullExecutor: Executor = async (): Promise<ExecResult> => {
-  const result: ExecResult = {
+export const nullExecutor: Executor = async (): Promise<ExecOutput> => {
+  const result: ExecOutput = {
     command: '',
-    escapedCommand: '',
+    cwd: '',
     exitCode: 0,
-    failed: false,
-    isCanceled: false,
-    killed: false,
     stderr: '',
     stdout: '',
-    timedOut: false,
   };
   return result;
 };

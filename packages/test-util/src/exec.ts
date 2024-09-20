@@ -1,23 +1,21 @@
 /**
- * Provides utilities for mocking the `execa` package.
+ * Provides a mock `ExecFn` for testing
  *
- * @remarks
- * For package managers which choose to use `execa`.
  * @packageDocumentation
- * @see {@link createExecaMock}
+ * @see {@link createExecMock}
  */
-
-import type {ExecaChildProcess, ExecaReturnValue, NodeOptions} from 'execa';
-
+import stringify from 'json-stable-stringify';
+import {
+  type ExecFn,
+  type ExecOptions,
+  type ExecOutput,
+  type ExecResult,
+} from 'midnight-smoker/schema';
+import {NL} from 'midnight-smoker/util';
 import {Readable} from 'node:stream';
 import sinon from 'sinon';
 
-/**
- * Represents a mock object for the {@link execa.node} function.
- */
-export interface ExecaMock {
-  node: sinon.SinonStub<[string, string[]?, NodeOptions?], ExecaChildProcess>;
-}
+export type ExecMock = ExecFn & sinon.SinonStubbedMember<ExecFn>;
 
 /**
  * Creates a mock instance of a {@link Readable}
@@ -34,55 +32,58 @@ export interface ReadableMocks {
 }
 
 /**
- * Creates a mock for the {@link execa.node} function, which is
- * {@link ExecaMock an object} containing a {@link sinon.SinonStub}.
+ * Creates a mock for `midnight-smoker`'s `exec` function.
  *
  * This stub is useful for testing streams. It will emit a little bit of dummy
  * data. `stdout` will look like some JSON.
  *
  * @param readableMocks - Optional; mocks for the `stdout` and `stderr` streams.
- * @returns The `ExecaMock` object.
+ * @returns The `ExecMock` object.
  */
-export function createExecaMock(
+export function createExecMock(
   readableMocks: Partial<ReadableMocks> = {},
-): ExecaMock {
+): ExecMock {
   const stdout = (readableMocks.stdout =
     readableMocks.stdout ?? createReadableMock());
   const stderr = (readableMocks.stderr =
     readableMocks.stderr ?? createReadableMock());
-  const node = sinon.stub().callsFake(
+  const exec = sinon.stub().callsFake(
     // this function should _not_ be async for reasons
-    (command: string, args: string[] = []): Promise<ExecaReturnValue> => {
-      const promise = new Promise((resolve) => {
+    (
+      command: string,
+      args: string[] = [],
+      options: ExecOptions = {},
+    ): ExecResult => {
+      const promise: ExecResult = new Promise((resolve) => {
         setImmediate(() => {
-          const retval = {
-            all: '',
+          const stdoutValue = stringify({key: 'value'});
+          const stderrValue = 'stderr';
+          const retval: ExecOutput = {
             command: `${command} ${args.join(' ')}`.trim(),
+            cwd: `${options?.nodeOptions?.cwd ?? '/some/path'}`,
             exitCode: 0,
-            failed: false,
-            stderr: '',
-            stdout: '',
+            stderr: 'stderr',
+            stdout: stdoutValue,
           };
           stdout.on('data', (value) => {
             retval.stdout += value;
-            retval.all += value;
           });
           stderr.on('data', (value) => {
             retval.stderr += value;
-            retval.all += value;
           });
-          stdout.emit('data', '[{"key": "<stdout from command>"}]\n');
-          stderr.emit('data', '<stderr from command>\n');
+          stdout.emit('data', `${stdoutValue}${NL}`);
+          stderr.emit('data', `${stderrValue}${NL}`);
           resolve(retval);
         });
       });
       void Object.assign(promise, {
-        command: `${command} ${args.join(' ')}`.trim(),
-        stderr,
-        stdout,
+        process: {
+          stderr,
+          stdout,
+        },
       });
-      return promise as ExecaChildProcess;
+      return promise;
     },
   );
-  return {node} as ExecaMock;
+  return exec as ExecMock;
 }

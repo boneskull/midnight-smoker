@@ -1,5 +1,5 @@
 import {
-  type ExecResult,
+  type ExecOutput,
   InstallError,
   type PkgManager,
   type PkgManagerInstallContext,
@@ -28,8 +28,8 @@ const isMissingScript = (value: string) =>
 export const YarnBerry = Object.freeze({
   ...YarnClassic,
 
-  async install(ctx: PkgManagerInstallContext): Promise<ExecResult> {
-    const {executor, installManifest, spec, tmpdir} = ctx;
+  async install(ctx: PkgManagerInstallContext): Promise<ExecOutput> {
+    const {executor, installManifest, signal, spec, tmpdir, verbose} = ctx;
 
     /*
 
@@ -72,45 +72,36 @@ export const YarnBerry = Object.freeze({
 */
     // NO PACKAGE.JSON? NO LOCKFILE? YOU SHALL NOT PASS
     try {
-      await executor(
-        spec,
-        ['init', '--private'],
-        {},
-        {
-          cwd: tmpdir,
-        },
-      );
+      await executor(spec, ['init', '--private'], {
+        nodeOptions: {cwd: tmpdir},
+        signal,
+        verbose,
+      });
     } catch (err) {
       debug('(install): Failed to initialize package.json', err);
     }
     // this tells it to use "ol' reliable" instead of the "pnp linker"
-    await executor(
-      spec,
-      ['config', 'set', 'nodeLinker', 'node-modules'],
-      {},
-      {
-        cwd: tmpdir,
-      },
-    );
+    await executor(spec, ['config', 'set', 'nodeLinker', 'node-modules'], {
+      nodeOptions: {cwd: tmpdir},
+      signal,
+      verbose,
+    });
 
     const {pkgSpec} = installManifest;
 
-    let installResult: ExecResult;
+    let installResult: ExecOutput;
     try {
-      installResult = await executor(
-        spec,
-        ['add', pkgSpec],
-        {},
-        {
-          cwd: tmpdir,
-        },
-      );
+      installResult = await executor(spec, ['add', pkgSpec], {
+        nodeOptions: {cwd: tmpdir},
+        signal,
+        verbose,
+      });
     } catch (err) {
       if (isExecError(err)) {
         throw new InstallError(err.message, spec, pkgSpec, tmpdir, {
           error: err,
           exitCode: err.exitCode,
-          output: err.all || err.stderr || err.stdout,
+          output: err.stderr || err.stdout,
         });
       }
       throw err;

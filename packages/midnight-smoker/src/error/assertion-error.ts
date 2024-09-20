@@ -1,6 +1,5 @@
-import {isError} from 'lodash';
-
-import {BaseSmokerError} from './base-error';
+import {BaseSmokerError} from '#error/base-error';
+import {isError} from '#util/guard/common';
 
 /**
  * An error for assertions.

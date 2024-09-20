@@ -1,4 +1,4 @@
-import {type ExecResult, ExecResultSchema} from '#schema/exec-result';
+import {type ExecOutput, ExecOutputSchema} from '#schema/exec-result';
 import {type Executor, ExecutorSchema} from '#schema/executor';
 import {
   type InstallManifest,
@@ -155,7 +155,7 @@ export type PkgManagerInstallContext = {
  */
 export type PkgManagerInstallFn = (
   context: PkgManagerInstallContext,
-) => Promise<ExecResult>;
+) => Promise<ExecOutput>;
 
 /**
  * Extra options for package manager operations.
@@ -292,7 +292,7 @@ export const PkgManagerInstallFnSchema: z.ZodType<PkgManagerInstallFn> = z
     z.tuple([PkgManagerInstallContextSchema] as [
       context: typeof PkgManagerInstallContextSchema,
     ]),
-    z.promise(ExecResultSchema).describe('Result of installation attempt'),
+    z.promise(ExecOutputSchema).describe('Result of installation attempt'),
   )
   .describe('Installs a package');
 

@@ -1,5 +1,6 @@
-import type {ExecResult} from '#schema/exec-result';
+import type {ExecOutput} from '#schema/exec-result';
 
+import {type ExecError} from '#error/exec-error';
 import path from 'node:path';
 import snapshot from 'snap-shot-it';
 import unexpected from 'unexpected';
@@ -14,15 +15,16 @@ describe('midnight-smoker [E2E]', function () {
     describe('when a rule fails', function () {
       describe('when the rule severity is "error"', function () {
         const cwd = path.join(__dirname, 'fixture', 'lint', 'lint-error');
-        let result: ExecResult;
+        let result: ExecOutput;
 
         before(async function () {
           try {
             result = await execSmoker([], {
               cwd,
             });
+            expect.fail('should have rejected');
           } catch (e) {
-            result = e as ExecResult;
+            result = e as ExecError;
           }
         });
 
@@ -37,7 +39,7 @@ describe('midnight-smoker [E2E]', function () {
 
       describe('when the rule severity is "warn"', function () {
         const cwd = path.join(__dirname, 'fixture', 'lint', 'lint-warn');
-        let result: ExecResult;
+        let result: ExecOutput;
 
         before(async function () {
           result = await execSmoker([], {
@@ -56,7 +58,7 @@ describe('midnight-smoker [E2E]', function () {
 
       describe('when the rule severity is "off"', function () {
         const cwd = path.join(__dirname, 'fixture', 'lint', 'lint-off');
-        let result: ExecResult;
+        let result: ExecOutput;
 
         before(async function () {
           result = await execSmoker([], {

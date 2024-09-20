@@ -2,8 +2,9 @@ import {DEFAULT_RULE_SEVERITY} from '#constants';
 import {getDefaultRuleOptions} from '#options/default-rule-options';
 import {type RuleSchemaValue} from '#schema/rule-schema-value';
 import {type RuleSeverity, RuleSeveritySchema} from '#schema/rule-severity';
+import {isEmpty} from '#util/guard/common';
 import {dualCasedObjectSchema} from '#util/schema-util';
-import {isEmpty, memoize} from 'lodash';
+import {memoize} from 'lodash';
 import z from 'zod';
 
 /**

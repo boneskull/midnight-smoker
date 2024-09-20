@@ -1,7 +1,6 @@
+import {BaseSmokerError} from '#error/base-error';
 import {type StaticPluginMetadata} from '#plugin/static-plugin-metadata';
 import {fromUnknownError} from '#util/error-util';
-
-import {BaseSmokerError} from './base-error';
 
 /**
  * Thrown when a plugin fails to initialize--when its `PluginFactory` throws or

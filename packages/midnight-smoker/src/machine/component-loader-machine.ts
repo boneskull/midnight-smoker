@@ -1,6 +1,7 @@
 import {ERROR, FINAL, OK, PARALLEL} from '#constants';
 import {MachineError} from '#error/machine-error';
 import {type ReporterError} from '#error/reporter-error';
+import {type AbortEvent} from '#machine/event/abort';
 import {
   type ActorOutputError,
   type ActorOutputOk,
@@ -21,7 +22,6 @@ import {type FileManager} from '#util/filemanager';
 import {type PackageJson} from 'type-fest';
 import {assign, enqueueActions, log, not, raise, setup} from 'xstate';
 
-import {type AbortEvent} from './event/abort';
 import {
   PkgManagerLoaderMachine,
   type PkgManagerLoaderMachineInput,

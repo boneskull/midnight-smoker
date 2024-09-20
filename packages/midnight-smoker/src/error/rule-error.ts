@@ -1,10 +1,9 @@
+import {BaseSmokerError} from '#error/base-error';
 import {type LintManifest} from '#rule/lint-manifest';
 import {type SomeRuleConfig} from '#schema/rule-options';
 import {fromUnknownError} from '#util/error-util';
 import {type Result} from '#util/result';
 import {type Simplify} from 'type-fest';
-
-import {BaseSmokerError} from './base-error';
 
 /**
  * Context for a {@link RuleError}

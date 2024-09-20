@@ -69,8 +69,7 @@ describe('@midnight-smoker/plugin-default', function () {
                 '--install-strategy=shallow',
                 '--json',
               ],
-              {},
-              {cwd: '/some/dir'},
+              {nodeOptions: {cwd: '/some/dir'}},
             ]);
           });
         });

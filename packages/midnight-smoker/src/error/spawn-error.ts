@@ -1,6 +1,5 @@
+import {BaseSmokerError} from '#error/base-error';
 import {fromUnknownError} from '#util/error-util';
-
-import {BaseSmokerError} from './base-error';
 
 /**
  * This exception is thrown when a process fails to spawn.

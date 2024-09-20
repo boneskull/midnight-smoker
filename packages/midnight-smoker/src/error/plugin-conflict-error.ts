@@ -1,7 +1,6 @@
+import {BaseSmokerError} from '#error/base-error';
 import {type StaticPluginMetadata} from '#plugin/static-plugin-metadata';
 import {serialize} from '#util/serialize';
-
-import {BaseSmokerError} from './base-error';
 
 /**
  * Thrown when a plugin is registered with a name or entry point that is already

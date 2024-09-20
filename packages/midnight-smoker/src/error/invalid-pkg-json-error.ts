@@ -1,6 +1,6 @@
+import {BaseSmokerError} from '#error/base-error';
 import {type ZodError} from 'zod';
 
-import {BaseSmokerError} from './base-error';
 import {ValidationError} from './validation-error';
 
 /**

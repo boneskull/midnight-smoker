@@ -2,7 +2,7 @@ import type {SomeSmokerErrorClass} from '#error/some-smoker-error';
 import type {TupleToUnion} from 'type-fest';
 
 import {ErrorCode, type SmokerErrorName} from '#error/codes';
-import {isError, isFunction} from 'lodash';
+import {isError, isFunction} from '#util/guard/common';
 
 /**
  * Returns `true` if the provided value is an instance of a class implementing

@@ -1,9 +1,8 @@
+import {BaseSmokerError} from '#error/base-error';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {type WorkspaceInfo} from '#schema/workspace-info';
 import {formatPackage, formatPkgManager} from '#util/format';
-import {isError} from 'lodash';
-
-import {BaseSmokerError} from './base-error';
+import {isError} from '#util/guard/common';
 
 /**
  * @group Errors

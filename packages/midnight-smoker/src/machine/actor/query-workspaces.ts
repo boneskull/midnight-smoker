@@ -8,10 +8,11 @@ import {
 } from '#schema/package-json';
 import {type WorkspaceInfo} from '#schema/workspace-info';
 import {FileManager} from '#util/filemanager';
+import {isEmpty} from '#util/guard/common';
 import * as hwp from '#util/hwp';
 import {hrRelativePath} from '#util/util';
 import assert from 'assert';
-import {isEmpty, partition, uniqBy} from 'lodash';
+import {partition, uniqBy} from 'lodash';
 import {minimatch} from 'minimatch';
 import path from 'path';
 import {fromPromise} from 'xstate';

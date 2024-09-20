@@ -4,11 +4,17 @@ export * from './actor-output';
 
 export * from './blessed-plugin';
 
+export * from './common';
+
+export * from './common';
+
 export * from './errno-exception';
 
-export * from './exec-result';
+export * from './exec-output';
 
-export * from './execa-error';
+export * from './jsonifiable';
+
+export * from './nonzero-exit-error';
 
 export * from './serializable';
 

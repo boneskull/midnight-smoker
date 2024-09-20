@@ -1,5 +1,7 @@
 import {ERROR, FINAL, OK} from '#constants';
 import {MachineError} from '#error/machine-error';
+import {guessPkgManagerLogic} from '#machine/actor/guess-pkg-manager';
+import {type AbortEvent} from '#machine/event/abort';
 import {type ComponentRegistry} from '#plugin/component';
 import {type PkgManagerEnvelope} from '#plugin/component-envelope';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
@@ -8,11 +10,10 @@ import {type WorkspaceInfo} from '#schema/workspace-info';
 import * as assert from '#util/assert';
 import {fromUnknownError} from '#util/error-util';
 import {type FileManager} from '#util/filemanager';
-import {isEmpty, uniq} from 'lodash';
+import {isEmpty} from '#util/guard/common';
+import {uniq} from 'lodash';
 import {assign, enqueueActions, log, setup} from 'xstate';
 
-import {guessPkgManagerLogic} from './actor/guess-pkg-manager';
-import {type AbortEvent} from './event/abort';
 import {
   ParsePkgManagerSpecMachine,
   type ParsePkgManagerSpecMachineInput,

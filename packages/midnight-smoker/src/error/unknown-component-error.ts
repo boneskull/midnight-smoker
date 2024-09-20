@@ -1,4 +1,4 @@
-import {BaseSmokerError} from './base-error';
+import {BaseSmokerError} from '#error/base-error';
 
 export class UnknownComponentError extends BaseSmokerError<{
   value: unknown;

@@ -1,4 +1,4 @@
-import {BaseSmokerError} from './base-error';
+import {BaseSmokerError} from '#error/base-error';
 
 /**
  * Like a {@link ReferenceError}, but with an error code.

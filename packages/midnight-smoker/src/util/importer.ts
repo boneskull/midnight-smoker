@@ -1,4 +1,4 @@
-import {isObject} from 'lodash';
+import {isObject} from '#util/guard/common';
 import {Module} from 'node:module';
 import path from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';

@@ -1,7 +1,6 @@
+import {BaseSmokerError} from '#error/base-error';
 import {fromUnknownError} from '#util/error-util';
 import {cyanBright} from 'chalk';
-
-import {BaseSmokerError} from './base-error';
 
 /**
  * Thrown when a plugin fails to load and the reason is not because it could not
