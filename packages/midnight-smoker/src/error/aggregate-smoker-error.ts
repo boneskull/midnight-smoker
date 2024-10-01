@@ -1,9 +1,9 @@
 import {BaseSmokerError} from '#error/base-error';
-import {fromUnknownError} from '#util/error-util';
+import {castArray} from '#util/common';
 import {DOUBLE_NL, indent, joinLines} from '#util/format';
+import {fromUnknownError} from '#util/from-unknown-error';
 import {isSomeSmokerError} from '#util/guard/some-smoker-error';
 import {jsonify} from '#util/jsonify';
-import {castArray} from '#util/util';
 
 import {type SmokerErrorCode, type SmokerErrorName} from './codes';
 import {

@@ -2,7 +2,7 @@
  * Normalizes package manager versions.
  *
  * @packageDocumentation
- * @see {@link normalizeVersion}
+ * @see {@link normalizeVersionAgainstData}
  */
 import {asValidationError} from '#error/validation-error';
 import {type PkgManager} from '#schema/pkg-manager';
@@ -22,29 +22,6 @@ import {maxSatisfying, parse, type SemVer} from 'semver';
  * be matched to a known version
  */
 export type VersionNormalizer = (value: string) => SemVer | undefined;
-
-/**
- * Creates a version normalizer from the `versions` field of a package manager
- * and caches it.
- *
- * The function. It caches the function.
- *
- * @param pkgManager `PkgManager` instance
- * @returns Version normalizer function accepting an alleged version or tag
- *   string
- */
-export function getVersionNormalizer(
-  pkgManager: PkgManager,
-): VersionNormalizer {
-  let normalize: VersionNormalizer;
-  if (normalizerMap.has(pkgManager)) {
-    normalize = normalizerMap.get(pkgManager)!;
-  } else {
-    normalize = normalizeVersion(pkgManager.versions);
-    normalizerMap.set(pkgManager, normalize);
-  }
-  return normalize;
-}
 
 /**
  * Normalizes a valid tag by retrieving its corresponding version from a map of
@@ -109,29 +86,27 @@ function matchVersionFromRange(
  * 2. Range
  * 3. Tag
  *
- * To be used by `PkgManager.accepts`
- *
  * @remarks
  * This exists because `corepack` expects a SemVer version and not a _range_.
  * Something like `8` is considered a range.
- *
- * Also: `curry` from `lodash` wasn't cutting it due to its flimsy type-safety.
+ * @privateRemarks
+ * `curry` from `lodash` wasn't cutting it due to its flimsy type-safety.
  * @param versionData - Object containing known versions and optionally dist
  *   tags
  * @param value - The version, range, or tag to normalize
  * @returns If `value` is omitted, returns a function which accepts a value;
  *   otherwise normalizes the value and returns the result.
  */
-export function normalizeVersion(
+export function normalizeVersionAgainstData(
   versionData: RawPkgManagerVersionData,
 ): VersionNormalizer;
 
-export function normalizeVersion(
+export function normalizeVersionAgainstData(
   versionData: RawPkgManagerVersionData,
   value: string,
 ): SemVer | undefined;
 
-export function normalizeVersion(
+export function normalizeVersionAgainstData(
   rawVersionData: RawPkgManagerVersionData,
   value?: string,
 ) {
@@ -175,5 +150,60 @@ export function normalizeVersion(
   return normalizer(value as string);
 }
 
+/**
+ * Creates a version normalizer from the `versions` field of a package manager
+ * and caches it.
+ *
+ * The function. It caches the function.
+ *
+ * @param pkgManager `PkgManager` instance
+ * @returns Version normalizer function accepting an alleged version or tag
+ *   string
+ */
+export function normalizeVersionAgainstPkgManager(
+  pkgManager: PkgManager,
+  allegedVersion: string,
+): SemVer | undefined;
+
+/**
+ * Creates a version normalizer from the `versions` field of a package manager,
+ * then uses it to normalize
+ *
+ * @param pkgManager `PkgManager` instance
+ * @returns Version normalizer function accepting an alleged version or tag
+ *   string
+ */
+export function normalizeVersionAgainstPkgManager(
+  pkgManager: PkgManager,
+): VersionNormalizer;
+
+/**
+ * Creates a version normalizer from the `versions` field of a package manager
+ * and caches it.
+ *
+ * The function. It caches the function.
+ *
+ * @param pkgManager `PkgManager` instance
+ * @returns Version normalizer function accepting an alleged version or tag
+ *   string
+ */
+export function normalizeVersionAgainstPkgManager(
+  pkgManager: PkgManager,
+  allegedVersion?: string,
+) {
+  let normalize: VersionNormalizer;
+  if (normalizerCache.has(pkgManager)) {
+    normalize = normalizerCache.get(pkgManager)!;
+  } else {
+    normalize = normalizeVersionAgainstData(pkgManager.versions);
+    normalizerCache.set(pkgManager, normalize);
+  }
+  return arguments.length >= 2 ? normalize(allegedVersion!) : normalize;
+}
+
 const debug = createDebug(__filename);
-const normalizerMap = new WeakMap<PkgManager, VersionNormalizer>();
+
+/**
+ * Cache for {@link normalizeVersionAgainstPkgManager}
+ */
+const normalizerCache = new WeakMap<PkgManager, VersionNormalizer>();

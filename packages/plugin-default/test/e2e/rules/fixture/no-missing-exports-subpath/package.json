@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "exports": {
     ".": "./index.js",
-    "./missing.js": "./index-missing.js"
+    "./missing.js": "./index-missing.js",
+    "./package.json": "./package.json"
   },
   "type": "module"
 }

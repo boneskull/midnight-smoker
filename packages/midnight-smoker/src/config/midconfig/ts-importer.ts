@@ -1,9 +1,9 @@
 import {TS_CONFIG_EXTENSIONS} from '#constants';
 import {createDebug} from '#util/debug';
 import {FileManager} from '#util/filemanager';
+import {hrRelativePath} from '#util/format';
 import {isError} from '#util/guard/common';
 import {mimport} from '#util/importer';
-import {hrRelativePath} from '#util/util';
 import path from 'node:path';
 import {type TranspileOptions} from 'typescript';
 

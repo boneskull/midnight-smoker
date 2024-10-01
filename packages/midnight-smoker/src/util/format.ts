@@ -20,6 +20,7 @@ import {
   redBright,
   whiteBright,
 } from 'chalk';
+import path from 'node:path';
 
 import {getStackRenderer, type Styles} from './stack-renderer';
 
@@ -199,4 +200,18 @@ export function formatStackTrace(err: Error, level = 1): string {
   }
 
   return joinLines(output);
+}
+
+/**
+ * Returns a relative path suitable for display (with leading `.` and
+ * `path.sep`)
+ *
+ * @param value Path
+ * @param cwd Path from which to make the path relative
+ * @returns A relative path, prepended with a `.` and path separator
+ */
+
+export function hrRelativePath(value: string, cwd = process.cwd()): string {
+  const relative = path.relative(cwd, value);
+  return relative.startsWith('..') ? relative : `.${path.sep}${relative}`;
 }

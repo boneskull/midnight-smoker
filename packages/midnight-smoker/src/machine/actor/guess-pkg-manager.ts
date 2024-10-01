@@ -1,14 +1,12 @@
 import {SYSTEM} from '#constants';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
-import {
-  type DesiredPkgManager,
-  isDesiredPkgManager,
-} from '#schema/desired-pkg-manager';
+import {type DesiredPkgManager} from '#schema/desired-pkg-manager';
 import {type PkgManager} from '#schema/pkg-manager';
 import {type WorkspaceInfo} from '#schema/workspace-info';
 import * as assert from '#util/assert';
 import {type FileManager} from '#util/filemanager';
 import {isString} from '#util/guard/common';
+import {isDesiredPkgManager} from '#util/guard/desired-pkg-manager';
 import * as hwp from '#util/hwp';
 import {filter, groupBy, head} from 'lodash';
 import path from 'node:path';

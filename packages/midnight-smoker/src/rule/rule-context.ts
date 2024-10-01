@@ -1,3 +1,12 @@
+/**
+ * Provides {@link RuleContext}, which is the object which `RuleCheckFn`s
+ * interact with.
+ *
+ * Importantly: {@link RuleContext.addIssue}
+ *
+ * @packageDocumentation
+ */
+
 import {FAILED, OK} from '#constants';
 import {type CheckResultFailed, type CheckResultOk} from '#rule/check-result';
 import {type NormalizedPackageJson} from '#schema/package-json';
@@ -10,6 +19,15 @@ import {serialize} from '#util/serialize';
 import {RuleIssue} from './rule-issue';
 import {type StaticRuleContext} from './static-rule-context';
 
+/**
+ * Unused within `midnight-smoker` proper, but can be helpful for hairy `Rule`
+ * implementations.
+ */
+export type AddIssueFn = typeof RuleContext.prototype.addIssue;
+
+/**
+ * Options for {@link RuleContext.addIssue}
+ */
 export interface AddIssueOptions {
   /**
    * Arbitrary data. I'm not sure what this is for.
@@ -39,7 +57,7 @@ export class RuleContext implements StaticRuleContext {
    * List of any issues which were raised by the execution of this
    * {@link ruleId}.
    */
-  readonly #issues: RuleIssue[] = [];
+  private readonly _issues: RuleIssue[] = [];
 
   /**
    * The {@link StaticRuleContext} object which was provided to the constructor;
@@ -47,14 +65,14 @@ export class RuleContext implements StaticRuleContext {
    */
   private readonly staticCtx: StaticRuleContext;
 
-  public readonly staticRuleDef: StaticRule;
+  public readonly staticRule: StaticRule;
 
   protected constructor(
     public readonly ruleId: string,
-    staticRuleDef: StaticRule,
+    staticRule: StaticRule,
     staticCtx: StaticRuleContext,
   ) {
-    this.staticRuleDef = staticRuleDef;
+    this.staticRule = staticRule;
     this.staticCtx = Object.freeze(serialize(staticCtx));
     // TODO: decorator
     this.addIssue = this.addIssue.bind(this);
@@ -72,15 +90,6 @@ export class RuleContext implements StaticRuleContext {
   }
 
   /**
-   * Adds a RuleIssue to the list of issues.
-   *
-   * @param issue The RuleIssue to add.
-   */
-  #addIssue(issue: RuleIssue): void {
-    this.#issues.push(issue);
-  }
-
-  /**
    * Adds an issue to the list of issues for this context.
    *
    * This should be called by the {@link RuleCheckFn} when it detects a problem.
@@ -92,26 +101,33 @@ export class RuleContext implements StaticRuleContext {
     message: string,
     {data, filepath, jsonField}: AddIssueOptions = {},
   ) {
-    this.#addIssue(
+    if (Object.isFrozen(this._issues)) {
+      throw new Error('Cannot add issues to a finalized RuleContext');
+    }
+    this._issues.push(
       RuleIssue.create({
         ctx: serialize(this),
         data,
         filepath,
         jsonField,
         message,
-        rule: this.staticRuleDef,
+        rule: this.staticRule,
       }),
     );
   }
 
   /**
-   * Finalizes the rule context and returns a result object.
+   * Finalizes the rule context and returns a {@link FinalRuleContextResult}
+   * object.
+   *
+   * After this is called, no issues can be added, and the `RuleContext`
+   * shouldn't be mutated.
    *
    * @returns A {@link FinalRuleContextResult} object, discriminated on prop
    *   `type`.
    */
   public finalize(): FinalRuleContextResult {
-    const issues = Object.freeze(this.#issues);
+    const issues = Object.freeze(this._issues);
     if (issues.length) {
       const checkRuleFailures = serialize<RuleIssue>([...issues]);
       return Object.freeze({
@@ -121,14 +137,17 @@ export class RuleContext implements StaticRuleContext {
     }
     return Object.freeze({
       ctx: asResult(serialize(this)),
-      rule: this.staticRuleDef,
+      rule: this.staticRule,
       type: OK,
     });
   }
 
   /**
-   * Omits the {@link RuleContext.pkgJson} property (too big).
+   * Returns a {@link StaticRuleContext} object.
    *
+   * @remarks
+   * `RuleContext` _implements_ `StaticRuleContext`, but it isn't suitable for
+   * serialization.
    * @returns A JSON-serializable representation of this object
    */
   public toJSON(): StaticRuleContext {
@@ -150,7 +169,7 @@ export class RuleContext implements StaticRuleContext {
    * @returns An array of issues.
    */
   public get issues(): RuleIssue[] {
-    return [...this.#issues];
+    return [...this._issues];
   }
 
   public get localPath(): string {
@@ -158,11 +177,9 @@ export class RuleContext implements StaticRuleContext {
   }
 
   /**
-   * The parsed `package.json` for the package being checked.
+   * The normalized `package.json` for the package being checked.
    *
-   * _Not_ normalized.
-   *
-   * @returns The parsed `package.json` for the package being checked.
+   * @returns The normalized `package.json` for the package being checked.
    */
   public get pkgJson(): NormalizedPackageJson {
     return this.staticCtx.pkgJson;
@@ -184,7 +201,7 @@ export class RuleContext implements StaticRuleContext {
   }
 
   public get ruleName(): string {
-    return this.staticRuleDef.name;
+    return this.staticRule.name;
   }
 
   /**

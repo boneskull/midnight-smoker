@@ -8,7 +8,8 @@ import {type SmokeMachinePackEvent} from '#machine/event/pack';
 import {type SmokerOptions} from '#schema/smoker-options';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {type WorkspaceInfo} from '#schema/workspace-info';
-import {assertSmokerError, fromUnknownError} from '#util/error-util';
+import {fromUnknownError} from '#util/from-unknown-error';
+import {assertSmokerError} from '#util/guard/assert/smoker-error';
 import {asResult, type Result} from '#util/result';
 import {type AnyActorRef, assign, enqueueActions, sendTo, setup} from 'xstate';
 

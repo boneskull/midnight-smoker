@@ -1,5 +1,6 @@
 /**
- * Provides {@link txExec} and {@link ExecResult} for executing shell commands.
+ * Provides a default {@link exec} implementation based on
+ * {@link https://npm.im/tinyexec tinyexec} for executing shell commands.
  *
  * @packageDocumentation
  */
@@ -13,7 +14,7 @@ import {
   type ExecResult,
 } from '#schema/exec-result';
 import {createDebug} from '#util/debug';
-import {fromUnknownError} from '#util/error-util';
+import {fromUnknownError} from '#util/from-unknown-error';
 import {defaultsDeep} from 'lodash';
 import * as tx from 'tinyexec';
 
@@ -70,10 +71,6 @@ export const tsExec: ExecFn<tx.Output, tx.OutputApi, Partial<tx.Options>> = (
   >;
   const proc = tx.exec(command, args, opts);
   debug('Executing command in %s: %s', opts.nodeOptions.cwd, commandString);
-  if (verbose) {
-    proc.process?.stdout?.pipe(process.stdout);
-    proc.process?.stderr?.pipe(process.stderr);
-  }
 
   /**
    * This proxy wraps `_waitForOutput`, which is the internal function
@@ -104,6 +101,10 @@ export const tsExec: ExecFn<tx.Output, tx.OutputApi, Partial<tx.Options>> = (
               `Failed to spawn command: ${commandString}`,
               fromUnknownError(err),
             );
+          }
+          if (verbose) {
+            console.log(output.stdout);
+            console.error(output.stderr);
           }
           const execOutput: ExecOutput = {
             ...output,

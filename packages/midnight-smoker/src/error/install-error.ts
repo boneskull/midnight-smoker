@@ -2,10 +2,10 @@ import {BaseSmokerError} from '#error/base-error';
 import {ExecError} from '#error/exec-error';
 import {type ExecOutput} from '#schema/exec-result';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
-import {fromUnknownError} from '#util/error-util';
 import {formatPackage, formatPkgManager} from '#util/format';
+import {fromUnknownError} from '#util/from-unknown-error';
 import {isExecOutput} from '#util/guard/exec-output';
-import {isSmokerError} from '#util/index';
+import {isSmokerError} from '#util/guard/smoker-error';
 
 /**
  * @group Errors

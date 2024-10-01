@@ -1,3 +1,11 @@
+/**
+ * Provides {@link jsonify}, which converts an arbitrary value into something
+ * `JSON`-serializable.
+ *
+ * @packageDocumentation
+ * @see {@link serialize}
+ */
+
 import {isError, isFunction, isObject} from '#util/guard/common';
 import {
   isJsonifiable,

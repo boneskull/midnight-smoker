@@ -36,6 +36,6 @@ export * from '#util/result';
 
 export * from './pkg-manager-spec';
 
-export * from './pkg-manager-version';
+export * from './version-normalizer';
 
 export {SemVer} from 'semver';

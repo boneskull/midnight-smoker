@@ -16,7 +16,8 @@ import {type LintManifest} from '#rule/lint-manifest';
 import {type StaticRuleContext} from '#rule/static-rule-context';
 import {type SomeRule} from '#schema/rule';
 import {type SomeRuleConfig} from '#schema/rule-options';
-import {assertSmokerError, fromUnknownError} from '#util/error-util';
+import {fromUnknownError} from '#util/from-unknown-error';
+import {assertSmokerError} from '#util/guard/assert/smoker-error';
 import {uniqueId} from '#util/unique-id';
 import {isNumber} from 'lodash';
 import {

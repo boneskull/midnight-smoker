@@ -5,7 +5,7 @@ import {
   type ExecResult,
 } from '#schema/exec-result';
 import {exec} from '#util/exec';
-import {isSmokerError} from '#util/index';
+import {isSmokerError} from '#util/guard/smoker-error';
 import stripAnsi from 'strip-ansi';
 import {type Merge} from 'type-fest';
 

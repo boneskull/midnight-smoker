@@ -47,18 +47,6 @@ export interface Rule<Schema extends RuleSchemaValue | void = void>
 }
 
 /**
- * Type guard for a {@link Rule}
- *
- * @param value Any value
- * @returns `true` if `value` is a `Rule`
- */
-export function isRule<Schema extends RuleSchemaValue | void = void>(
-  value: unknown,
-): value is Rule<Schema> {
-  return RuleSchema.safeParse(value).success;
-}
-
-/**
  * XXX: Unclear how to check the return type, since it can be async; Zod throws
  * an exception and I'm unsure why.
  */

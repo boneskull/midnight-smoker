@@ -11,7 +11,6 @@ import {ConfigReader} from '#config/config-reader';
 import {SCRIPT_NAME} from '#constants';
 import {createDebug} from '#util/debug';
 import {FileManager} from '#util/filemanager';
-import {omit} from 'lodash';
 import terminalLink from 'terminal-link';
 import {hideBin} from 'yargs/helpers';
 import yargs from 'yargs/yargs';
@@ -48,8 +47,7 @@ async function main(args: string[]): Promise<void> {
     .command(new ViewCommand())
     .middleware(async (argv) => {
       const config = await ConfigReader.read({configFile: argv.config});
-      // ensure "config" cannot be set using the config file.
-      mergeOptions(argv, omit(config, ['config', 'c']));
+      mergeOptions(argv, config ?? {});
     })
     // this is the USA dammit
     .epilog(

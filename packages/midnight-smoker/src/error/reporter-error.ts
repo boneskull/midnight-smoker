@@ -1,6 +1,6 @@
 import {BaseSmokerError} from '#error/base-error';
 import {type Reporter} from '#schema/reporter';
-import {fromUnknownError} from '#util/error-util';
+import {fromUnknownError} from '#util/from-unknown-error';
 
 /**
  * @group Errors

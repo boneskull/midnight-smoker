@@ -20,12 +20,12 @@ import {
 } from '#plugin/component-envelope';
 import {PluginMetadata} from '#plugin/plugin-metadata';
 import * as assert from '#util/assert';
+import {caseInsensitiveEquals} from '#util/common';
 import {createDebug} from '#util/debug';
 import {once} from '#util/decorator';
 import {FileManager} from '#util/filemanager';
 import {isEmpty, isFunction, isString} from '#util/guard/common';
 import {uniqueId, type UniqueId} from '#util/unique-id';
-import {caseInsensitiveEquals} from '#util/util';
 import {type Debugger} from 'debug';
 import {cloneDeep, head} from 'lodash';
 import util from 'node:util';

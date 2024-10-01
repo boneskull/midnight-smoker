@@ -17,8 +17,8 @@ import {type PluginRegistry} from '#plugin/registry';
 import {type SmokerOptions} from '#schema/smoker-options';
 import {type WorkspaceInfo} from '#schema/workspace-info';
 import * as assert from '#util/assert';
-import {fromUnknownError} from '#util/error-util';
 import {type FileManager} from '#util/filemanager';
+import {fromUnknownError} from '#util/from-unknown-error';
 import {type PackageJson} from 'type-fest';
 import {assign, enqueueActions, log, not, raise, setup} from 'xstate';
 

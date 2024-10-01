@@ -51,9 +51,11 @@ export type RuleRunnerOptions = {
  *
  * @see {@link createRuleRunner}
  */
-export type NamedRuleRunner = (
+export type NamedRuleRunner<T extends SomeRule = SomeRule> = (
   installPath: string,
-  ruleOptions?: SomeRuleConfig | SomeRuleOptions,
+  ruleOptions?:
+    | Partial<RuleConfig<T['schema']>>
+    | Partial<RuleOptions<T['schema']>>,
   ruleRunnerOptions?: RuleRunnerOptions,
 ) => Promise<LintLogicOutput>;
 

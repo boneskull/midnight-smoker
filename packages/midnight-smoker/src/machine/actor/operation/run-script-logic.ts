@@ -10,7 +10,7 @@ import {
   type RunScriptResultError,
   type RunScriptResultFailed,
 } from '#schema/run-script-result';
-import {fromUnknownError} from '#util/error-util';
+import {fromUnknownError} from '#util/from-unknown-error';
 import {isAbortError} from '#util/guard/abort-error';
 import {isSmokerError} from '#util/guard/smoker-error';
 import {fromPromise} from 'xstate';

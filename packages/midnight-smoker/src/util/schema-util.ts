@@ -9,7 +9,7 @@ import {Range, SemVer} from 'semver';
 import {type Class} from 'type-fest';
 import {z} from 'zod';
 
-import {castArray, toDualCasedObject} from './util';
+import {castArray, toDualCasedObject} from './common';
 
 /**
  * Schema representing a non-empty string

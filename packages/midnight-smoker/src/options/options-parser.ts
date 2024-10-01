@@ -176,6 +176,7 @@ export class OptionsParser {
    * @returns Parsed & normalized options.
    */
   public parse(opts?: RawSmokerOptions | SmokerOptions): SmokerOptions {
+    // TODO: check if this ever happens
     if (this.#parseResultCache.has(opts as SmokerOptions)) {
       return opts as SmokerOptions;
     }

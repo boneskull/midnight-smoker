@@ -25,6 +25,7 @@ export default function noMissingPkgFiles({
   z,
 }: PluginAPI) {
   const {DefaultTrueSchema, NonEmptyStringToArraySchema} = schemaUtils;
+
   defineRule({
     async check({addIssue, installPath, pkgJson}, opts) {
       let {fields} = opts;

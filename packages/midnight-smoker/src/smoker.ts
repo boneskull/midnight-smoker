@@ -30,10 +30,10 @@ import {
   type RawSmokerOptions,
   type SmokerOptions,
 } from '#schema/smoker-options';
+import {castArray} from '#util/common';
 import {createDebug} from '#util/debug';
 import {FileManager} from '#util/filemanager';
 import {isBlessedPlugin} from '#util/guard/blessed-plugin';
-import {castArray} from '#util/util';
 import {EventEmitter} from 'events';
 import {noop} from 'lodash';
 

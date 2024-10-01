@@ -11,9 +11,9 @@ export class ExecError
   extends BaseSmokerError<ExecOutput>
   implements ExecOutput
 {
-  public readonly command: string;
+  public readonly command?: string;
 
-  public readonly cwd: string;
+  public readonly cwd?: string;
 
   public readonly exitCode?: number;
 

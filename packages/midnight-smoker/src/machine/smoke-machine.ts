@@ -41,9 +41,10 @@ import * as Envelope from '#plugin/component-envelope';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
 import {type PluginRegistry} from '#plugin/registry';
 import * as assert from '#util/assert';
+import {hrRelativePath} from '#util/format';
 import {isActorOutputNotOk, isActorOutputOk} from '#util/guard/actor-output';
+import {assertActorOutputNotOk} from '#util/guard/assert/actor-output';
 import * as Util from '#util/meta/for-smoke-machine';
-import {hrRelativePath} from '#util/util';
 import {compact, isEmpty, map} from 'lodash';
 import {type EventEmitter} from 'node:events';
 import {type PackageJson, type ValueOf} from 'type-fest';
@@ -1285,7 +1286,7 @@ export const SmokeMachine = setup({
         actions: [
           {
             params: ({event: {output}}) => {
-              MUtil.assertActorOutputNotOk(output);
+              assertActorOutputNotOk(output);
               return output.error;
             },
             type: 'assignError',
@@ -1309,7 +1310,7 @@ export const SmokeMachine = setup({
         actions: [
           {
             params: ({event: {output}}) => {
-              MUtil.assertActorOutputNotOk(output);
+              assertActorOutputNotOk(output);
               return output.error;
             },
             type: 'assignError',

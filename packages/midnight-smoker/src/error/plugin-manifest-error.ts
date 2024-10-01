@@ -1,5 +1,5 @@
 import {BaseSmokerError} from '#error/base-error';
-import {fromUnknownError} from '#util/error-util';
+import {fromUnknownError} from '#util/from-unknown-error';
 
 /**
  * Thrown when a plugin's manifest cannot be found or is otherwise invalid.

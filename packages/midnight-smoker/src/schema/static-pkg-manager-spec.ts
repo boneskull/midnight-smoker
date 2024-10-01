@@ -3,6 +3,13 @@ import {NonEmptyStringSchema} from '#util/schema-util';
 import {type LiteralUnion, type Merge, type SetRequired} from 'type-fest';
 import {z} from 'zod';
 
+export type KnownStaticPkgManagerSpec = Merge<
+  StaticPkgManagerSpec,
+  {
+    readonly name: typeof ALLOWED_DEFAULT_PKG_MANAGERS;
+  }
+>;
+
 export type PartialStaticPkgManagerSpec = Partial<StaticPkgManagerSpec>;
 
 export type PartialStaticSystemPkgManagerSpec = Merge<
@@ -47,31 +54,10 @@ export type SystemStaticPkgManagerSpec = SetRequired<
   'bin'
 >;
 
-export type KnownStaticPkgManagerSpec = Merge<
-  StaticPkgManagerSpec,
-  {
-    readonly name: typeof ALLOWED_DEFAULT_PKG_MANAGERS;
-  }
->;
-
-export function isPartialStaticSystemPkgManagerSpec(
-  value: unknown,
-): value is PartialStaticSystemPkgManagerSpec {
-  return PartialStaticSystemPkgManagerSpecSchema.safeParse(value).success;
-}
-
-export function isKnownStaticPkgManagerSpec(
-  value: unknown,
-): value is KnownStaticPkgManagerSpec {
-  return KnownStaticPkgManagerSpecSchema.safeParse(value).success;
-}
-
-export function isStaticPkgManagerSpec(
-  value: unknown,
-): value is StaticPkgManagerSpec {
-  return StaticPkgManagerSpecSchema.safeParse(value).success;
-}
-
+/**
+ * The schema for the {@link SYSTEM} constant, which functions as both a package
+ * manager name _and_ a version.
+ */
 export const SystemConstantSchema = z.literal(SYSTEM);
 
 const BaseStaticPkgManagerSpecSchema = z.object({
@@ -88,12 +74,6 @@ const BaseStaticPkgManagerSpecSchema = z.object({
  */
 export const StaticPkgManagerSpecSchema =
   BaseStaticPkgManagerSpecSchema.readonly();
-
-export const SystemStaticPkgManagerSpecSchema: z.ZodType<SystemStaticPkgManagerSpec> =
-  BaseStaticPkgManagerSpecSchema.extend({
-    bin: NonEmptyStringSchema,
-    version: NonEmptyStringSchema.refine((value) => value !== SYSTEM),
-  }).readonly();
 
 export const AllowedDefaultPkgManagerNamesSchema = z.enum([
   ...ALLOWED_DEFAULT_PKG_MANAGERS,

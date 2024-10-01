@@ -1,7 +1,7 @@
 import {BaseSmokerError} from '#error/base-error';
 import {type LintManifest} from '#rule/lint-manifest';
 import {type SomeRuleConfig} from '#schema/rule-options';
-import {fromUnknownError} from '#util/error-util';
+import {fromUnknownError} from '#util/from-unknown-error';
 import {type Result} from '#util/result';
 import {type Simplify} from 'type-fest';
 

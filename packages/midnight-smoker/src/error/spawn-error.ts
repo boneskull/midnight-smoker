@@ -1,9 +1,11 @@
 import {BaseSmokerError} from '#error/base-error';
-import {fromUnknownError} from '#util/error-util';
+import {fromUnknownError} from '#util/from-unknown-error';
 
 /**
  * This exception is thrown when a process fails to spawn.
  *
+ * @remarks
+ * Should be thrown by an `ExecFn` implementation
  * @group Errors
  */
 

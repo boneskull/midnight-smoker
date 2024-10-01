@@ -1,3 +1,11 @@
+/**
+ * Provides a default {@link ImportFn} as {@link mimport} and a default
+ * {@link ResolveFn} as {@link resolveFrom}.
+ *
+ * @packageDocumentation
+ */
+
+import {type ImportFn, type ResolveFn} from '#capabilities';
 import {isObject} from '#util/guard/common';
 import {Module} from 'node:module';
 import path from 'node:path';
@@ -6,11 +14,6 @@ import {fileURLToPath, pathToFileURL} from 'node:url';
 import {createDebug} from './debug';
 
 const debug = createDebug(__filename);
-
-/**
- * A function that imports a module asynchronously (like `import()`)
- */
-export type ImportFn = (moduleId: string | URL) => Promise<unknown>;
 
 /**
  * Attempts to gracefully load an unknown module.
@@ -64,10 +67,10 @@ export const mimport: ImportFn = async (
  * @returns Resolved module path
  */
 
-export function resolveFrom(
+export const resolveFrom: ResolveFn = (
   moduleId: string | URL,
   fromDir: string | URL = process.cwd(),
-): string {
+): string => {
   if (moduleId instanceof URL) {
     moduleId = fileURLToPath(moduleId);
   }
@@ -75,4 +78,4 @@ export function resolveFrom(
     fromDir = fileURLToPath(fromDir);
   }
   return Module.createRequire(path.join(fromDir, 'index.js')).resolve(moduleId);
-}
+};

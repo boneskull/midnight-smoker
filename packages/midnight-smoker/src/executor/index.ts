@@ -13,4 +13,6 @@ export * from '#schema/exec-result';
 
 export * from '#schema/executor';
 
+export {assertExecOutput} from '#util/guard/assert/exec-output';
+
 export {isExecOutput} from '#util/guard/exec-output';

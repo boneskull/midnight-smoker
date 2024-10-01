@@ -38,12 +38,6 @@ export const DesiredPkgManagerSchema = SystemConstantSchema.or(
   ),
 );
 
-export function isDesiredPkgManager(
-  value: unknown,
-): value is DesiredPkgManager {
-  return DesiredPkgManagerSchema.safeParse(value).success;
-}
-
 const RawDesiredPkgManagerSchema =
   NonEmptyStringSchema.or(SystemConstantSchema);
 

@@ -27,11 +27,11 @@ import {type ComponentRegistry} from '#plugin/component';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
 import {type Plugin} from '#schema/plugin';
 import * as assert from '#util/assert';
-import {fromUnknownError} from '#util/error-util';
+import {castArray} from '#util/common';
 import {FileManager} from '#util/filemanager';
+import {fromUnknownError} from '#util/from-unknown-error';
 import {isActorOutputNotOk, isActorOutputOk} from '#util/guard/actor-output';
 import {type SomeUniqueId, uniqueId} from '#util/unique-id';
-import {castArray} from '#util/util';
 import {isEmpty} from 'lodash';
 import {type ValueOf} from 'type-fest';
 import {

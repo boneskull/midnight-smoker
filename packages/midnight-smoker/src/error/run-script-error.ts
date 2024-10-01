@@ -7,11 +7,16 @@ import {format} from 'node:util';
 import {type ExecError} from './exec-error';
 
 /**
+ * A generic error thrown if a custom script fails, but we don't have a more
+ * specific error.
+ *
+ * This is thrown by `midnight-smoker` itself
+ *
  * @group Errors
  */
 export class RunScriptError extends BaseSmokerError<
   {
-    command: string;
+    command?: string;
     exitCode?: number;
     output: string;
     pkgManager: string;

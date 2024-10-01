@@ -1,5 +1,5 @@
 {
-  "name": "no-missing-exports-no-exports",
+  "name": "no-missing-exports-main-export",
   "version": "1.0.0",
   "exports": "./index.js",
   "type": "module"

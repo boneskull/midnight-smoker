@@ -6,7 +6,7 @@ import {type SmokeMachineInstallEvent} from '#machine/event/install';
 import {type SmokerOptions} from '#schema/smoker-options';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {type WorkspaceInfo} from '#schema/workspace-info';
-import {fromUnknownError} from '#util/error-util';
+import {fromUnknownError} from '#util/from-unknown-error';
 import {asResult, type Result} from '#util/result';
 import {type AnyActorRef, assign, enqueueActions, setup} from 'xstate';
 

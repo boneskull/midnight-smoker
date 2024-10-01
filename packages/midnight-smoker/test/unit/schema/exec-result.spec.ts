@@ -1,9 +1,6 @@
 import {AssertionError} from '#error/assertion-error';
-import {
-  assertExecOutput,
-  type ExecOutput,
-  ExecOutputSchema,
-} from '#schema/exec-result';
+import {type ExecOutput, ExecOutputSchema} from '#schema/exec-result';
+import {assertExecOutput} from '#util/guard/assert/exec-output';
 import unexpected from 'unexpected';
 
 const expect = unexpected.clone();
@@ -35,12 +32,14 @@ describe('midnight-smoker', function () {
 
     describe('assertExecOutput()', function () {
       it('should not throw an error for valid ExecOutput objects', function () {
-        const validExecResult = ExecOutputSchema.parse({
+        const output: ExecOutput = {
           command: 'echo "Hello World"',
+          cwd: '/some/path',
           exitCode: 0,
           stderr: '',
           stdout: 'Hello World',
-        });
+        };
+        const validExecResult = ExecOutputSchema.parse(output);
         expect(() => {
           assertExecOutput(validExecResult);
         }, 'not to throw');

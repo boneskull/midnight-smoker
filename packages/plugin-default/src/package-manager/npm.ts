@@ -85,7 +85,7 @@ export async function install(
   ctx: PkgManagerInstallContext,
   args: string[],
 ): Promise<ExecOutput> {
-  const {executor, installManifest, spec, tmpdir} = ctx;
+  const {executor, installManifest, signal, spec, tmpdir} = ctx;
   const {isAdditional, pkgName, pkgSpec} = installManifest;
 
   let err: InstallError | undefined;
@@ -95,6 +95,7 @@ export async function install(
   try {
     installResult = await executor(spec, installArgs, {
       nodeOptions: {cwd: tmpdir},
+      signal,
       verbose: ctx.verbose,
     });
     err = maybeHandleInstallError(ctx, installResult, pkgSpec);

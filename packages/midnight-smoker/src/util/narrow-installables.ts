@@ -1,5 +1,6 @@
 /**
- * Provides {@link narrowInstallables}
+ * Provides {@link narrowInstallables}, which attempts to determine what version
+ * of additional dependencies (the `--add` option) to install.
  *
  * @packageDocumentation
  * @todo This might want to move out of `util` and into `machine`

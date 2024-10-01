@@ -3,13 +3,13 @@ import {
   type BaseRuleConfigRecord,
   RawRuleOptionsRecordSchema,
 } from '#schema/rule-options';
+import {type DualCasedObject, toDualCasedObject} from '#util/common';
 import {
   DefaultFalseSchema,
   DefaultTrueSchema,
   NonEmptyStringSchema,
   UniqueNonEmptyStringToArraySchema,
 } from '#util/schema-util';
-import {type DualCasedObject, toDualCasedObject} from '#util/util';
 import {type ReadonlyDeep, type Simplify} from 'type-fest';
 import {z} from 'zod';
 
@@ -45,6 +45,8 @@ const smokerOptionsShape = {
    * Fail on first script failure
    */
   bail: DefaultFalseSchema.describe('Fail on first script failure'),
+
+  config: NonEmptyStringSchema.optional().describe('Path to config file'),
 
   cwd: NonEmptyStringSchema.describe('Path to workspace root').default(
     process.cwd(),
@@ -167,6 +169,7 @@ type NormalizedSmokerOptions = DualCasedObject<{
   all: boolean;
   allowPrivate: boolean;
   bail: boolean;
+  config?: string;
   cwd: string;
   executor: string;
   json: boolean;
@@ -202,6 +205,7 @@ export type RawSmokerOptions = Partial<
     all: boolean;
     allowPrivate: boolean;
     bail: boolean;
+    config?: string;
     cwd: string;
     executor: string;
     json: boolean;

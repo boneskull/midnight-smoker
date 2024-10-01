@@ -3,7 +3,7 @@
  *
  * @packageDocumentation
  */
-import {castArray} from '#util/util';
+import {castArray} from '#util/common';
 import pluralize from 'pluralize';
 
 import {AggregateSmokerError} from './aggregate-smoker-error';

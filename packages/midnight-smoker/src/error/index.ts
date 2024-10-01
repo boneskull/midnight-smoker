@@ -1,5 +1,3 @@
-export * from '../util/stack-renderer';
-
 export * from './abort-error';
 
 export * from './aggregate-smoker-error';

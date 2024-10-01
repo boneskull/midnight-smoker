@@ -12,7 +12,6 @@ import {
   kebabCase,
   mapKeys,
 } from 'lodash';
-import path from 'node:path';
 import {type CamelCase, type KebabCase} from 'type-fest';
 
 /**
@@ -40,20 +39,6 @@ export const castArray = flow(_castArray, compact);
  */
 export function delta(startTime: number): string {
   return ((performance.now() - startTime) / 1000).toFixed(2);
-}
-
-/**
- * Returns a relative path suitable for display (with leading `.` and
- * `path.sep`)
- *
- * @param value Path
- * @param cwd Path from which to make the path relative
- * @returns A relative path, prepended with a `.` and path separator
- */
-
-export function hrRelativePath(value: string, cwd = process.cwd()): string {
-  const relative = path.relative(cwd, value);
-  return relative.startsWith('..') ? relative : `.${path.sep}${relative}`;
 }
 
 /**

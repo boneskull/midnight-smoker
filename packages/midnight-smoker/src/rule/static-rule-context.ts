@@ -5,6 +5,8 @@ import {type WorkspaceInfo} from '#schema/workspace-info';
 /**
  * The bits of a {@link RuleContext} suitable for serialization.
  *
+ * @privateRemarks
+ * This is not user-provided and doesn't need a schema
  * @public
  */
 

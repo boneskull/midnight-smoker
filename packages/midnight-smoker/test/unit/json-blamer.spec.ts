@@ -97,7 +97,7 @@ describe('midnight-smoker', function () {
               const result = jsonBlamer.find('foo.0.bar');
 
               expect(result, 'to satisfy', {
-                keypath: 'foo.0.bar',
+                keypath: 'foo[0].bar',
                 loc: {
                   end: {
                     column: 19,
@@ -119,7 +119,7 @@ describe('midnight-smoker', function () {
               const result = jsonBlamer.find('foo[0].bar');
 
               expect(result, 'to satisfy', {
-                keypath: 'foo.0.bar',
+                keypath: 'foo[0].bar',
                 loc: {
                   end: {
                     column: 19,

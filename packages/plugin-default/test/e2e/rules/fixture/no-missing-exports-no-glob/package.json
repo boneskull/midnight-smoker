@@ -2,7 +2,16 @@
   "name": "no-missing-exports-no-glob",
   "version": "1.0.0",
   "exports": {
-    "./*.js": "./lib/*.js"
+    "./*.js": "./lib/*.js",
+    "./package.json": "./package.json"
+  },
+  "smoker": {
+    "rules": {
+      "no-missing-exports": [
+        "error", {
+          "glob": false
+      }]
+    }
   },
   "type": "module"
 }

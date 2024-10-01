@@ -14,7 +14,7 @@ import {
   type ReporterListener,
 } from '#schema/reporter';
 import {createDebug} from '#util/debug';
-import {fromUnknownError} from '#util/error-util';
+import {fromUnknownError} from '#util/from-unknown-error';
 import {isAbortError} from '#util/guard/abort-error';
 import {isFunction} from '#util/guard/common';
 import {invert, mapValues} from 'lodash';

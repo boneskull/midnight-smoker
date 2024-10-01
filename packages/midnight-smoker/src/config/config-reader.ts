@@ -7,9 +7,9 @@
 import {SCRIPT_NAME} from '#constants';
 import {constant} from '#constants/create-constant';
 import {type RawSmokerOptions} from '#schema/smoker-options';
+import {toDualCasedObject} from '#util/common';
 import {createDebug} from '#util/debug';
 import {FileManager} from '#util/filemanager';
-import {toDualCasedObject} from '#util/util';
 
 import {Midconfig, type MidconfigOptions} from './midconfig';
 
@@ -60,6 +60,9 @@ export type ConfigReaderReadOptions = {
  * config file (if possible).
  *
  * Instantiate via {@link ConfigReader.create}; constructor is private
+ *
+ * @privateRemarks
+ * Why is this even a class
  */
 export class ConfigReader {
   readonly #midconfig: Midconfig;
@@ -118,7 +121,12 @@ export class ConfigReader {
         opts = opts.default as RawSmokerOptions;
       }
 
-      return toDualCasedObject(opts);
+      // we set "config" here which overwrites whatever the user provided. if a
+      // config file contains a `config` field (which seems silly), it will be
+      // overwritten by this.
+      return toDualCasedObject({...opts, config: result.filepath});
+    } else {
+      debug('Found no config file');
     }
     return opts;
   }

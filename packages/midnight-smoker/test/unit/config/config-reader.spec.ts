@@ -143,9 +143,10 @@ describe('midnight-smoker', function () {
                 it('should fulfill with a dual-cased config object', async function () {
                   const result = await reader.read({configFile: name});
 
-                  expect(result, 'to equal', {
+                  expect(result, 'to satisfy', {
                     'allow-private': true,
                     allowPrivate: true,
+                    config: expect.it('to start with', CWD), // added automatically by config reader
                   });
                 });
               });
@@ -167,9 +168,10 @@ describe('midnight-smoker', function () {
                   reader = ConfigReader.create(fileManager);
                   vol.fromJSON({[name]: content});
                   const result = await reader.read({cwd: CWD});
-                  expect(result, 'to equal', {
+                  expect(result, 'to satisfy', {
                     'allow-private': true,
                     allowPrivate: true,
+                    config: expect.it('to start with', CWD), // added automatically by config reader
                   });
                 });
               });

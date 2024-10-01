@@ -3,6 +3,7 @@ import {SmokerReferenceError} from '#error/smoker-reference-error';
 import {memoize} from '#util/decorator';
 import {NL} from '#util/format';
 import {isString} from '#util/guard/common';
+import {formatKeypath} from '#util/keypath';
 import {
   type ArrayNode,
   type DocumentNode,
@@ -153,7 +154,7 @@ export class JSONBlamer {
         found.loc.end,
       );
       // normalize it
-      const keypath = toKeypath(path);
+      const keypath = formatKeypath(path);
       // get the actual value at the keypath
       const value = evaluate(getValue(found));
 
@@ -326,16 +327,6 @@ function getValue(node: ContainerNode) {
  */
 function isValueNode(node: Node): node is ValueNode {
   return node.type === OBJECT || node.type === ARRAY;
-}
-
-/**
- * Converts a keypath array to a keypath string.
- *
- * @param path Components of keypath
- * @returns Normalized keypath
- */
-function toKeypath(path: string[]): string {
-  return path.join('.');
 }
 
 /**

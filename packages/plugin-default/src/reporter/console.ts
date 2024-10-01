@@ -11,11 +11,7 @@ import {
   RuleSeverities,
   type StaticRule,
 } from 'midnight-smoker/rule';
-import {
-  formatErrorMessage,
-  formatPkgManager,
-  hrRelativePath,
-} from 'midnight-smoker/util';
+import {formatErrorMessage, formatPkgManager} from 'midnight-smoker/util';
 import ora, {type Ora} from 'ora';
 
 import {ELLIPSIS, plural, preface} from './util';
@@ -85,7 +81,7 @@ export const ConsoleReporter: Reporter<ConsoleReporterContext> = {
       const ruleNameWarning = (rule: StaticRule) =>
         `${dim('[')}${yellow(rule.name)}${dim(']')}`;
       for (const [filepath, failed] of Object.entries(failedByFilepath)) {
-        lines.push(`│ ${yellow(bold(hrRelativePath(filepath)))}:`);
+        lines.push(`│ ${yellow(bold(filepath))}:`);
         for (const {
           ctx,
           filepath = PACKAGE_JSON,

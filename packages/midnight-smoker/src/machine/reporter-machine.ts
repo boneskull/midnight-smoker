@@ -21,7 +21,7 @@ import {type PluginMetadata} from '#plugin/plugin-metadata';
 import {type ReporterContext} from '#reporter/reporter-context';
 import {type Reporter} from '#schema/reporter';
 import {type SmokerOptions} from '#schema/smoker-options';
-import {fromUnknownError} from '#util/error-util';
+import {fromUnknownError} from '#util/from-unknown-error';
 import {serialize} from '#util/serialize';
 import {isEmpty} from 'lodash';
 import {type EventEmitter} from 'node:events';

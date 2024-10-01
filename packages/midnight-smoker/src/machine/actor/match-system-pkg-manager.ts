@@ -1,24 +1,19 @@
 import {DEFAULT_PKG_MANAGER_NAME, SYSTEM} from '#constants';
 import {PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
-import {
-  normalizeVersion,
-  type VersionNormalizer,
-} from '#pkg-manager/pkg-manager-version';
+import {normalizeVersionAgainstPkgManager} from '#pkg-manager/version-normalizer';
 import {type ComponentRegistry} from '#plugin/component';
 import {type PkgManagerEnvelope} from '#plugin/component-envelope';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
 import {type ExecFn} from '#schema/exec-result';
 import {type PkgManager} from '#schema/pkg-manager';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
-import {parseRange, RangeSchema} from '#schema/version';
+import {parseRange} from '#schema/version';
+import {caseInsensitiveEquals} from '#util/common';
 import {exec} from '#util/exec';
-import {caseInsensitiveEquals} from '#util/util';
-import {type Range, type SemVer} from 'semver';
+import {memoize} from 'lodash';
+import {type SemVer} from 'semver';
 import which from 'which';
 import {type DoneActorEvent, type ErrorActorEvent, fromPromise} from 'xstate';
-
-const normalizerMap = new WeakMap<PkgManager, VersionNormalizer>();
-const rangeMap = new WeakMap<PkgManager, Range>();
 
 export type WhichFn = (
   bin: string,
@@ -97,33 +92,14 @@ export const matchSystemPkgManagerLogic = fromPromise<
     /**
      * Gget the version of a system package manager.
      */
-    const getSystemPkgManagerVersion = async (
-      bin: string,
-    ): Promise<string | undefined> => {
-      try {
-        const {stdout} = await someExec(bin, ['--version']);
-        return stdout;
-      } catch {}
-    };
-
-    /**
-     * Parses the range of versions supported by a package manager from the
-     * `supportedVesrionRange` field and caches it.
-     *
-     * @param pkgManager `PkgManager` instance
-     * @returns SemVer {@link Range}
-     * @todo Use `_.memoize()`?
-     */
-    const getRange = (pkgManager: PkgManager): Range => {
-      let range: Range;
-      if (rangeMap.has(pkgManager)) {
-        range = rangeMap.get(pkgManager)!;
-      } else {
-        range = RangeSchema.parse(pkgManager.supportedVersionRange);
-        rangeMap.set(pkgManager, range);
-      }
-      return range;
-    };
+    const getSystemPkgManagerVersion = memoize(
+      async (bin: string): Promise<string | undefined> => {
+        try {
+          const {stdout} = await someExec(bin, ['--version']);
+          return stdout;
+        } catch {}
+      },
+    );
 
     /**
      * Returns a `SemVer` if the `pkgManager` can support `allegedVersion`.
@@ -137,35 +113,22 @@ export const matchSystemPkgManagerLogic = fromPromise<
       pkgManager: PkgManager,
       allegedVersion: string,
     ): SemVer | undefined => {
-      const range = getRange(pkgManager);
-      const normalize = getNormalizer(pkgManager);
-      const version = normalize(allegedVersion);
+      // the pkgManager should already have been validated, so it's
+      // safe to parse the range with `strict: true`
+      const range = parseRange(pkgManager.supportedVersionRange, {
+        strict: true,
+      });
+      const version = normalizeVersionAgainstPkgManager(
+        pkgManager,
+        allegedVersion,
+      );
       return version && range.test(version) ? version : undefined;
-    };
-
-    /**
-     * Creates a version normalizer from the `versions` field of a package
-     * manager and caches it.
-     *
-     * The function. It caches the function.
-     *
-     * @param pkgManager `PkgManager` instance
-     * @returns Version normalizer function accepting an alleged version or tag
-     *   string
-     */
-    const getNormalizer = (pkgManager: PkgManager): VersionNormalizer => {
-      let normalize: VersionNormalizer;
-      if (normalizerMap.has(pkgManager)) {
-        normalize = normalizerMap.get(pkgManager)!;
-      } else {
-        normalize = normalizeVersion(pkgManager.versions);
-        normalizerMap.set(pkgManager, normalize);
-      }
-      return normalize;
     };
 
     for (const plugin of plugins) {
       const {pkgManagers} = plugin;
+
+      // find the package manager(s) that match the PkgManagerrSpec
       for (const pkgManager of filterMatchingPkgManagers(spec, pkgManagers)) {
         const {bin} = pkgManager;
 
@@ -176,27 +139,38 @@ export const matchSystemPkgManagerLogic = fromPromise<
           const reportedVersion = await getSystemPkgManagerVersion(binPath);
           if (reportedVersion) {
             // does the pkg manager accept the reported version?
-            const version = accepts(pkgManager, reportedVersion);
+            const acceptedVersion = accepts(pkgManager, reportedVersion);
 
-            if (version && spec.version !== SYSTEM) {
-              // and if set, is the spec version the same major version of the reported version?
-              const range = parseRange(spec.version);
-              if (!range?.test(version)) {
-                continue;
+            if (acceptedVersion) {
+              // a "system" range means "whatever's there"
+              if (spec.version !== SYSTEM) {
+                // `spec.version` is an unknown at this point, but we can now
+                // attempt to normalize it against known package manager versions
+                // (even if it's a dist tag)
+                const desiredVersion = normalizeVersionAgainstPkgManager(
+                  pkgManager,
+                  spec.version,
+                );
+                // this wants an exact match. if the user wants different behavior,
+                // then provide "system" as the version
+                if (desiredVersion?.compare(acceptedVersion) !== 0) {
+                  continue;
+                }
               }
-            }
-            // now: does this PkgManager accept the reported version?
-            if (version) {
+
+              // read: we are essentially _replacing_ the partial `spec` with
+              // this new one.
               const systemSpec = PkgManagerSpec.create({
                 // PkgManager.bin is the common name. PkgManager.name is the
                 // unique name of the package manager component definition (e.g.
-                bin: binPath,
                 // npm9)
+                bin: binPath,
                 name: bin,
                 requestedAs: spec.requestedAs,
-                version,
+                version: acceptedVersion,
               });
 
+              // to build the envelope, we need the pkg manager component's ID.
               const pkgManagerComponent = componentRegistry.get(pkgManager);
               if (pkgManagerComponent) {
                 const {id} = pkgManagerComponent;
@@ -214,19 +188,20 @@ export const matchSystemPkgManagerLogic = fromPromise<
                 // because the order in which the PkgManagers are iterated is
                 // nondeterministic, `npm` may not be the first one found; we
                 // overwrite `defaultSystemPkgManagerEnvelope` in that case.
+                // it's also highly unlikely that `npm` won't exist.
 
-                // TODO: we could be more specific by checking the `id`, I suppose
-
-                // TODO: I need to be convinced this works. test it
                 if (
                   !defaultSystemPkgManagerEnvelope ||
                   (systemSpec.name === DEFAULT_PKG_MANAGER_NAME &&
                     defaultSystemPkgManagerEnvelope.spec.name !==
                       DEFAULT_PKG_MANAGER_NAME)
                 ) {
-                  // 🚨
                   defaultSystemPkgManagerEnvelope = envelope;
                 }
+
+                // it's expected that the caller sends
+                // `defaultSystemPkgManagerEnvelope` back to us on subsequent
+                // calls
                 return {defaultSystemPkgManagerEnvelope, envelope};
               }
             }
@@ -238,5 +213,3 @@ export const matchSystemPkgManagerLogic = fromPromise<
     return {};
   },
 );
-
-matchSystemPkgManagerLogic; //?

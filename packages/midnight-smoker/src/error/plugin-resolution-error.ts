@@ -1,5 +1,5 @@
 import {BaseSmokerError} from '#error/base-error';
-import {fromUnknownError} from '#util/error-util';
+import {fromUnknownError} from '#util/from-unknown-error';
 import {cyanBright} from 'chalk';
 
 /**

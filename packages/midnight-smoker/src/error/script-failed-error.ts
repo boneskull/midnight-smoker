@@ -5,7 +5,7 @@ import {BaseSmokerError} from '#error/base-error';
  */
 
 export type ScriptFailedContext = {
-  command: string;
+  command?: string;
   exitCode: number;
   output: string;
   pkgManager: string;
@@ -13,6 +13,14 @@ export type ScriptFailedContext = {
   script: string;
 };
 
+/**
+ * The error that is thrown when a custom script runs but fails (typically with
+ * a non-zero exit code).
+ *
+ * `PkgManager`s should throw this.
+ *
+ * @group Errors
+ */
 export class ScriptFailedError extends BaseSmokerError<
   ScriptFailedContext,
   Error | undefined

@@ -1,3 +1,10 @@
+/**
+ * Provides {@link Result} and {@link asResult} for trimming objects before
+ * display/output
+ *
+ * @packageDocumentation
+ */
+
 import type {WorkspaceInfoSchema} from '#schema/workspace-info';
 
 import {type NormalizedPackageJson} from '#schema/package-json';

@@ -1,5 +1,8 @@
 /**
- * Provides {@link RuleIssue}, which is how rule implementations report problems
+ * Provides {@link RuleIssue}, which is kind of like a _lint error_.
+ *
+ * `Reporter`s receive `RuleIssue`s, and can call
+ * {@link RuleIssue.getSourceContext}.
  *
  * @packageDocumentation
  */
@@ -8,6 +11,7 @@ import {type RuleError} from '#error/rule-error';
 import {type CheckResultFailed} from '#rule/check-result';
 import {type StaticRule} from '#schema/static-rule';
 import {type WorkspaceInfo} from '#schema/workspace-info';
+import {NL} from '#util/format';
 import {asResult, type Result} from '#util/result';
 import {serialize} from '#util/serialize';
 import {uniqueId, type UniqueId} from '#util/unique-id';
@@ -133,12 +137,25 @@ export class RuleIssue implements CheckResultFailed {
     return Object.freeze(new RuleIssue(params));
   }
 
+  /**
+   * Given a workspace, JSON filepath (absolute or relative to the workspace's
+   * `localPath`), and a JSON field keypath, return a string which contains the
+   * context (previous lines) in the source file (with line numbers),
+   * highlighting the problem field.
+   *
+   * @param workspace Workspace information
+   * @param jsonFilepath Path to file (usually `package.json`)
+   * @param jsonField Field in the JSON file
+   * @returns A string pointing to the source of the issue
+   */
   public static async getSourceContext(
     workspace: WorkspaceInfo,
-    filepath: string,
+    jsonFilepath: string,
     jsonField: string,
   ) {
-    if (filepath === PACKAGE_JSON) {
+    if (
+      path.resolve(workspace.localPath, jsonFilepath) === workspace.pkgJsonPath
+    ) {
       const blamer = new JSONBlamer(
         workspace.rawPkgJson,
         workspace.pkgJsonPath,
@@ -146,7 +163,7 @@ export class RuleIssue implements CheckResultFailed {
       const res = blamer.find(jsonField);
       if (res) {
         const context = await blamer.getContext(res);
-        return `${context}\n`;
+        return `${context}${NL}`;
       }
       return '';
     } else {

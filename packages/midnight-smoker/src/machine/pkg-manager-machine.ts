@@ -68,8 +68,8 @@ import {
   type RuleEnvelope,
 } from '#plugin/component-envelope';
 import * as assert from '#util/assert';
-import {fromUnknownError} from '#util/error-util';
 import {type FileManager} from '#util/filemanager';
+import {fromUnknownError} from '#util/from-unknown-error';
 import {isEmpty} from '#util/guard/common';
 import {isSmokerError} from '#util/guard/smoker-error';
 import {isWorkspaceInstallManifest} from '#util/guard/workspace-install-manifest';

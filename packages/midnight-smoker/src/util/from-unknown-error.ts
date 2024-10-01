@@ -1,15 +1,16 @@
-import {
-  type SomeSmokerError,
-  type SomeSmokerErrorClass,
-} from '#error/some-smoker-error';
+/**
+ * Provides {@link fromUnknownError} which converts anything to an `Error` (or
+ * optionally an {@link UnknownError})
+ *
+ * @packageDocumentation
+ */
+
+import {type SomeSmokerError} from '#error/some-smoker-error';
 import {UnknownError} from '#error/unknown-error';
 import {asValidationError, type ValidationError} from '#error/validation-error';
-import * as assert from '#util/assert';
 import {isError} from '#util/guard/common';
-import {isSmokerError} from '#util/guard/smoker-error';
 import {isSomeSmokerError} from '#util/guard/some-smoker-error';
 import stringify from 'stringify-object';
-import {type TupleToUnion} from 'type-fest';
 import {ZodError} from 'zod';
 import {
   isValidationErrorLike,
@@ -17,52 +18,6 @@ import {
 } from 'zod-validation-error';
 
 import {createDebug} from './debug';
-
-/**
- * Asserts that the provided error is an instance of a class implementing
- * `SmokerError`.
- *
- * @template T Class implementing `SmokerError`
- * @param ctor Constructor of a class implementing `SmokerError`
- * @param error Error value
- */
-export function assertSmokerError<T extends SomeSmokerErrorClass>(
-  ctor: T,
-  error: unknown,
-): asserts error is InstanceType<T>;
-
-/**
- * Asserts that the provided error is an instance of any provided class
- * implementing `SmokerError`.
- *
- * @template T One or more classes implementing `SmokerError`
- * @param ctors Constructor(s) of class(es) implementing `SmokerError`
- * @param error Error value
- */
-export function assertSmokerError<
-  T extends readonly [SomeSmokerErrorClass, ...SomeSmokerErrorClass[]],
->(ctor: T, error: unknown): asserts error is InstanceType<TupleToUnion<T>>;
-
-export function assertSmokerError<
-  T extends
-    | readonly [SomeSmokerErrorClass, ...SomeSmokerErrorClass[]]
-    | SomeSmokerErrorClass,
->(ctorOrCtors: T, error: unknown) {
-  if (Array.isArray(ctorOrCtors)) {
-    const ctors = ctorOrCtors as readonly [
-      SomeSmokerErrorClass,
-      ...SomeSmokerErrorClass[],
-    ] &
-      T;
-    assert.ok(
-      isSmokerError(ctors, error),
-      `Expected one of: ${ctors.map((ctor) => ctor.name).join(', ')}`,
-    );
-  } else {
-    const ctor = ctorOrCtors as SomeSmokerErrorClass & T;
-    assert.ok(isSmokerError(ctor, error), `Expected ${ctor.name}`);
-  }
-}
 
 /**
  * Identity

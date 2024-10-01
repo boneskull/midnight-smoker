@@ -40,7 +40,7 @@ describe('@midnight-smoker/plugin-default', function () {
             `${__dirname}/fixture/no-missing-exports-main-export`,
           );
 
-          it('should return a failure', async function () {
+          it('should return a single failure for the missing file', async function () {
             await expect(
               runRule(fixture),
               'to be fulfilled with value satisfying',
@@ -158,7 +158,7 @@ describe('@midnight-smoker/plugin-default', function () {
                   result: [
                     {
                       message:
-                        "Export exports['./*.js'] contains a glob pattern",
+                        "Export exports['./*.js'] contains a glob pattern; glob patterns are disallowed by rule options",
                     },
                   ],
                 },
@@ -176,13 +176,13 @@ describe('@midnight-smoker/plugin-default', function () {
 
           it('should return a failure', async function () {
             await expect(
-              runRule(fixture),
+              runRule(fixture, {packageJson: false}),
               'to be fulfilled with value satisfying',
               {
                 result: [
                   {
                     message:
-                      "./index-missing.js unreadable at field exports['require']",
+                      './index-missing.js unreadable at field exports.require',
                     rule: {name},
                   },
                 ],
@@ -198,13 +198,13 @@ describe('@midnight-smoker/plugin-default', function () {
 
           it('should return a failure', async function () {
             await expect(
-              runRule(fixture),
+              runRule(fixture, {packageJson: false}),
               'to be fulfilled with value satisfying',
               {
                 result: [
                   {
                     message:
-                      "./index-missing.js unreadable at field exports['default'][1]",
+                      './index-missing.js unreadable at field exports.default[1]',
                     rule: {name},
                   },
                 ],
@@ -220,7 +220,7 @@ describe('@midnight-smoker/plugin-default', function () {
 
           it('should not return a failure', async function () {
             await expect(
-              runRule(fixture),
+              runRule(fixture, {packageJson: false}),
               'to be fulfilled with value satisfying',
               {type: OK},
             );
@@ -234,13 +234,13 @@ describe('@midnight-smoker/plugin-default', function () {
             describe('when the file is ESM', function () {
               it('should return a failure', async function () {
                 await expect(
-                  runRule(fixture),
+                  runRule(fixture, {packageJson: false}),
                   'to be fulfilled with value satisfying',
                   {
                     result: [
                       {
                         message:
-                          "./index.js is not a CJS script at field exports['require']",
+                          './index.js is not a CommonJS script at field exports.require',
                         rule: {name},
                       },
                     ],
@@ -258,13 +258,13 @@ describe('@midnight-smoker/plugin-default', function () {
             describe('when the file is not ESM', function () {
               it('should return a failure', async function () {
                 await expect(
-                  runRule(fixture),
+                  runRule(fixture, {packageJson: false}),
                   'to be fulfilled with value satisfying',
                   {
                     result: [
                       {
                         message:
-                          "./index.js is not a ES module at field exports['import']",
+                          './index.js is not an EcmaScript module at field exports.import',
                         rule: {name},
                       },
                     ],
@@ -282,13 +282,13 @@ describe('@midnight-smoker/plugin-default', function () {
             describe('when the file does not have a .d.ts extension', function () {
               it('should return a failure', async function () {
                 await expect(
-                  runRule(fixture),
+                  runRule(fixture, {packageJson: false}),
                   'to be fulfilled with value satisfying',
                   {
                     result: [
                       {
                         message:
-                          "./index.js is not a .d.ts file at field exports['types']",
+                          './index.js is not a .d.ts file at field exports.types',
                         rule: {name},
                       },
                     ],
@@ -306,7 +306,7 @@ describe('@midnight-smoker/plugin-default', function () {
 
               it('should return a failure', async function () {
                 await expect(
-                  runRule(fixture),
+                  runRule(fixture, {packageJson: false}),
                   'to be fulfilled with value satisfying',
                   {
                     result: [
@@ -327,7 +327,7 @@ describe('@midnight-smoker/plugin-default', function () {
 
               it('should not return a failure', async function () {
                 await expect(
-                  runRule(fixture),
+                  runRule(fixture, {packageJson: false}),
                   'to be fulfilled with value satisfying',
                   {type: OK},
                 );
@@ -341,7 +341,7 @@ describe('@midnight-smoker/plugin-default', function () {
 
               it('should not return a failure', async function () {
                 await expect(
-                  runRule(fixture, {order: false}),
+                  runRule(fixture, {order: false, packageJson: false}),
                   'to be fulfilled with value satisfying',
                   {type: OK},
                 );

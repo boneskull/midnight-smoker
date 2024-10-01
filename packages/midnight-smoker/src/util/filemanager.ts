@@ -9,21 +9,12 @@
  */
 
 /* eslint-disable @typescript-eslint/no-var-requires */
-
 import {type FsCapabilities, type OsCapabilties} from '#capabilities';
 import {DEFAULT_TMPDIR_PREFIX, MIDNIGHT_SMOKER, PACKAGE_JSON} from '#constants';
 import {AbortError} from '#error/abort-error';
 import {MissingPackageJsonError} from '#error/missing-pkg-json-error';
 import {UnreadablePackageJsonError} from '#error/unreadable-pkg-json-error';
 import {type NormalizedPackageJson} from '#schema/package-json';
-import {
-  type FileManagerOptions,
-  type FindPkgJsonResult,
-  type ReadPkgJsonNormalizedResult,
-  type ReadPkgJsonNormalizeOptions,
-  type ReadPkgJsonOptions,
-  type ReadPkgJsonStrictOptions,
-} from '#util/fs-api';
 import {isSmokerError} from '#util/guard/smoker-error';
 import {
   glob,
@@ -40,16 +31,47 @@ import {type PackageJson} from 'type-fest';
 
 import {createDebug} from './debug';
 import {memoize} from './decorator';
-import {fromUnknownError} from './error-util';
+import {fromUnknownError} from './from-unknown-error';
 
 export type ReadPkgJsonResult<T> = {
   packageJson: T;
   rawPackageJson: string;
 };
 
+export interface FileManagerOptions {
+  fs?: FsCapabilities;
+  os?: Partial<OsCapabilties>;
+}
+
+export interface FindPkgJsonResult {
+  packageJson: PackageJson;
+  path: string;
+  rawPackageJson: string;
+}
+
 export interface FindUpOptions {
   followSymlinks?: boolean;
   signal?: AbortSignal;
+}
+
+export interface ReadPkgJsonNormalizeOptions extends ReadPkgJsonOptions {
+  normalize: true;
+}
+
+export interface ReadPkgJsonNormalizedResult {
+  packageJson: NormalizedPackageJson;
+  path: string;
+  rawPackageJson: string;
+}
+
+export interface ReadPkgJsonOptions {
+  normalize?: boolean;
+  signal?: AbortSignal;
+  strict?: boolean;
+}
+
+export interface ReadPkgJsonStrictOptions extends ReadPkgJsonOptions {
+  strict: true;
 }
 
 export interface ReadSmokerPkgJsonOptions {
@@ -112,12 +134,10 @@ export class FileManager {
     cwd: string,
     options: ReadPkgJsonNormalizeOptions & ReadPkgJsonStrictOptions,
   ): Promise<ReadPkgJsonNormalizedResult>;
-
   public async findPkgUp(
     cwd: string,
     options: ReadPkgJsonNormalizeOptions,
   ): Promise<ReadPkgJsonNormalizedResult | undefined>;
-
   public async findPkgUp(
     cwd: string,
     options: ReadPkgJsonStrictOptions,

@@ -1,5 +1,5 @@
 import {ErrorCode} from '#error/codes';
-import {normalizeVersion} from '#pkg-manager/pkg-manager-version';
+import {normalizeVersionAgainstData} from '#pkg-manager/version-normalizer';
 import {parse, type SemVer} from 'semver';
 import unexpected from 'unexpected';
 const expect = unexpected.clone();
@@ -44,7 +44,7 @@ describe('midnight-smoker', function () {
           let normalize: (value: string) => SemVer | undefined;
 
           beforeEach(function () {
-            normalize = normalizeVersion(npmVersionData);
+            normalize = normalizeVersionAgainstData(npmVersionData);
           });
 
           describe('when provided a version range', function () {
@@ -105,7 +105,7 @@ describe('midnight-smoker', function () {
       describe('when provided both version data and a value', function () {
         it('should return a SemVer or undefined', function () {
           expect(
-            normalizeVersion(npmVersionData, '10.2.1'),
+            normalizeVersionAgainstData(npmVersionData, '10.2.1'),
             'to equal',
             parse('10.2.1'),
           );
@@ -115,19 +115,27 @@ describe('midnight-smoker', function () {
       describe('when provided invalid version data', function () {
         describe('when provided an empty array of versions', function () {
           it('should throw', function () {
-            expect(() => normalizeVersion({versions: []}), 'to throw', {
-              message:
-                /Validation error: Array must contain at least 1 element/,
-            });
+            expect(
+              () => normalizeVersionAgainstData({versions: []}),
+              'to throw',
+              {
+                message:
+                  /Validation error: Array must contain at least 1 element/,
+              },
+            );
           });
         });
 
         describe('when provided an nonempty array of empty strings', function () {
           it('should throw', function () {
-            expect(() => normalizeVersion({versions: ['', '']}), 'to throw', {
-              message:
-                /Validation error: String must contain at least 1 character/,
-            });
+            expect(
+              () => normalizeVersionAgainstData({versions: ['', '']}),
+              'to throw',
+              {
+                message:
+                  /Validation error: String must contain at least 1 character/,
+              },
+            );
           });
         });
 
@@ -137,7 +145,7 @@ describe('midnight-smoker', function () {
               versions: ['winken', 'blinken', 'nod'],
             };
 
-            expect(() => normalizeVersion(versionData), 'to throw', {
+            expect(() => normalizeVersionAgainstData(versionData), 'to throw', {
               code: ErrorCode.ZodValidationError,
             });
           });

@@ -5,8 +5,8 @@
  */
 import {handleRejection} from '#cli/cli-util';
 import {Smoker} from '#smoker';
+import {castArray} from '#util/common';
 import {createDebug} from '#util/debug';
-import {castArray} from '#util/util';
 import {
   type ArgumentsCamelCase,
   type Argv,
