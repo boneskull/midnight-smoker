@@ -1,5 +1,5 @@
 import {type FAILED, type OK} from '#constants';
-import {type CheckResult, type CheckResultOk} from '#rule/check-result';
+import {type CheckOk, type CheckResult} from '#rule/issue';
 import {type LintManifest} from '#rule/lint-manifest';
 import {type Result} from '#util/result';
 
@@ -9,7 +9,7 @@ export interface LintResultFailed extends Result<LintManifest> {
 }
 
 export interface LintResultOk extends Result<LintManifest> {
-  results: CheckResultOk[];
+  results: CheckOk[];
   type: typeof OK;
 }
 

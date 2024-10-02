@@ -76,7 +76,10 @@ export const queryWorkspacesLogic = fromPromise<
       rootPkgJson = normalizePkgJson(rootPackageJson, rootPkgJsonPath);
     } catch (err) {
       throw new InvalidPkgJsonError(
-        `Invalid ${PACKAGE_JSON} at ${hrRelativePath(rootPkgJsonPath)}`,
+        `Invalid ${PACKAGE_JSON} at ${hrRelativePath(
+          rootPkgJsonPath,
+          path.dirname(rootPkgJsonPath),
+        )}`,
         err as ZodError,
         rootPkgJsonPath,
       );

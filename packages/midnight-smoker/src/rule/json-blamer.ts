@@ -1,5 +1,5 @@
 import {InvalidArgError} from '#error/invalid-arg-error';
-import {SmokerReferenceError} from '#error/smoker-reference-error';
+import {ok} from '#util/assert';
 import {memoize} from '#util/decorator';
 import {NL} from '#util/format';
 import {isString} from '#util/guard/common';
@@ -16,6 +16,7 @@ import {
   parse,
 } from '@humanwhocodes/momoa';
 import chalk from 'chalk';
+import {highlight} from 'cli-highlight';
 import {max, toPath} from 'lodash';
 import path from 'node:path';
 import stringWidth from 'string-width';
@@ -27,6 +28,13 @@ import {JSONLocation} from './json-location';
  * A {@link Node} which can contain one or more {@link ValueNode ValueNodes}.
  */
 type ContainerNode = DocumentNode | ElementNode | MemberNode;
+
+export type GetContextOptions = {
+  /**
+   * Number of lines of context to show before the highlighted line
+   */
+  before?: number;
+};
 
 /**
  * The result of a successful call to {@link JSONBlamer.find}.
@@ -62,6 +70,8 @@ export type BlameInfo = {
  */
 type ValueNode = ArrayNode | ObjectNode;
 
+const DEFAULT_BEFORE_LINES = 3;
+
 export class JSONBlamer {
   /**
    * Root {@link DocumentNode} of the AST
@@ -73,27 +83,25 @@ export class JSONBlamer {
    *
    * @param json Raw JSON
    * @param jsonPath Path to JSON file
+   * @param beforeLines Number of lines of context to show before the
+   *   highlighted line. Default is 3
    */
   constructor(
     public readonly json: string,
 
     public readonly jsonPath: string,
+
+    public readonly beforeLines: number = DEFAULT_BEFORE_LINES,
   ) {}
 
   /**
    * Applies ANSI syntax highlighting to {@link JSONBlamer.json}.
    *
-   * @privateRemarks
-   * I do not like that this is async. Maybe I should find a different dep to
-   * help
    * @returns Syntax-highlighted JSON
    */
   @memoize()
-  private async highlight() {
-    const emphasize = await import('emphasize');
-    return emphasize
-      .createEmphasize({json: emphasize.common.json!})
-      .highlight('json', this.json).value;
+  private highlight() {
+    return highlight(this.json, {language: 'json'});
   }
 
   /**
@@ -104,7 +112,7 @@ export class JSONBlamer {
    * I'm not sure what {@link evaluate} is doing under the hood, and I should be
    * sure.
    * @param keypath A keypath contains obj keys or array indices delimited by
-   *   `.`. Indices can also be expressed using `[n]`
+   *   `.`. Indices can also be expressed using `[n]` or `['m']`
    * @returns If found, a {@link BlameInfo} object containing juicy bits of
    *   information
    */
@@ -182,20 +190,20 @@ export class JSONBlamer {
    *   {@link JSONBlamer.find}
    * @returns A nice thing to print to the console
    */
-  @memoize((result: BlameInfo) => `${result?.loc}`)
-  public async getContext(blameInfo: BlameInfo): Promise<string> {
+  @memoize((result: BlameInfo) => `${result.filepath}:${result.keypath}`)
+  public getContext(blameInfo: BlameInfo): string {
     if (!blameInfo) {
       throw new InvalidArgError('blameInfo is required', {
         argName: 'blameInfo',
         position: 0,
       });
     }
-    const highlighted = await this.highlight();
+    const highlighted = this.highlight();
 
     /**
      * Number of lines of context to appear before the highlighted line
      */
-    const before = 2;
+    const before = this.beforeLines;
     const lines = highlighted.split('\n');
     const startLine = Math.max(blameInfo.loc.start.line - 1 - before, 0);
     const endLine = blameInfo.loc.end.line;
@@ -209,12 +217,7 @@ export class JSONBlamer {
     // the start line?).
     if (blameInfo.loc.start.line === blameInfo.loc.end.line) {
       let line = lines[blameInfo.loc.start.line - 1];
-      if (!line) {
-        throw new SmokerReferenceError(
-          'Unexpected start line not found in BlameInfo',
-          blameInfo,
-        );
-      }
+      ok(line, 'Unexpected start line not found in BlameInfo. This is a bug');
       line = stripAnsi(line);
       const highlightedLine =
         line.slice(0, blameInfo.loc.start.column - 1) +
@@ -230,7 +233,12 @@ export class JSONBlamer {
       const strippedLines = lines
         .slice(blameInfo.loc.start.line - 1, blameInfo.loc.end.line)
         .map(stripAnsi);
-      const maxCol = max(strippedLines.map(stringWidth))!;
+      const maxCol = max(strippedLines.map(stringWidth));
+      ok(
+        maxCol,
+        // typeof maxCol !== 'undefined',
+        'Unexpected empty array of highlighted lines. This is a bug',
+      );
       contextLines = [
         ...lines.slice(startLine, blameInfo.loc.start.line - 1),
         ...strippedLines.map((line, idx) => {
@@ -263,11 +271,11 @@ export class JSONBlamer {
       max(contextLines.map((line) => stringWidth(line))) ?? 40;
     contextLines = [
       `${`— ${path.basename(blameInfo.filepath)} `.padEnd(
-        maxLineLength - 1,
+        maxLineLength,
         '—',
       )}✂`,
       ...contextLines,
-      `${'—'.padEnd(maxLineLength - 1, '—')}✂`,
+      `${'—'.padEnd(maxLineLength, '—')}✂`,
     ];
     return `${contextLines.join(NL)}`;
   }

@@ -30,6 +30,7 @@ describe('midnight-smoker', function () {
           pkgJsonPath: '/path/to/example-package/package.json',
           pkgManager: 'smthing',
           pkgName: 'example-package',
+          rawPkgJson: '{}',
           ruleId,
           severity: 'error',
           workspace: {

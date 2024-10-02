@@ -166,6 +166,25 @@ describe('midnight-smoker', function () {
               );
             });
           });
+
+          describe('when called with an invalid BlameInfo', function () {
+            it('should fail with an AssertionError', async function () {
+              await expect(
+                jsonBlamer.getContext({
+                  loc: {
+                    end: {
+                      line: 0,
+                    },
+                    start: {
+                      line: 0,
+                    },
+                  },
+                } as any),
+                'to be rejected with error satisfying',
+                {code: ErrorCode.AssertionError},
+              );
+            });
+          });
         });
       });
     });

@@ -36,7 +36,8 @@
     "#smoker": "./smoker.ts",
     "#util/*": "./util/*.ts",
     "#util/meta/*": "./util/meta/*.ts",
-    "#util/guard/*": "./util/guard/*.ts"
+    "#util/guard/*": "./util/guard/*.ts",
+    "#util/guard/assert/*": "./util/guard/assert/*.ts"
   },
   "exports": {
     ".": "./index.ts",

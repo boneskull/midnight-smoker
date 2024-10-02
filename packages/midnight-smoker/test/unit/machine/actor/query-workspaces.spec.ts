@@ -1,8 +1,10 @@
+import {ErrorCode} from '#error/codes';
 import {
   queryWorkspacesLogic,
   type QueryWorkspacesLogicInput,
 } from '#machine/actor/query-workspaces';
 import {FileManager} from '#util/filemanager';
+import stringify from 'json-stable-stringify';
 import {type IFs, memfs} from 'memfs';
 import {type Volume} from 'memfs/lib/volume';
 import unexpected from 'unexpected';
@@ -27,6 +29,60 @@ describe('midnight-smoker', function () {
           ({fs, vol} = memfs());
           fileManager = FileManager.create({fs: fs as any});
           vol.fromJSON(monorepoStructure);
+        });
+
+        describe('when root package.json is missing', function () {
+          beforeEach(async function () {
+            await vol.promises.unlink('/package.json');
+          });
+
+          it('should fail with a MissingPackageJsonError', async function () {
+            input = {
+              all: true,
+              cwd: '/',
+              fileManager,
+            };
+
+            actor = createActor(queryWorkspacesLogic, {input});
+            await expect(
+              runUntilDone(actor),
+              'to be rejected with error satisfying',
+              {
+                code: ErrorCode.MissingPackageJsonError,
+                message: `Could not find package.json from ${input.cwd}`,
+              },
+            );
+          });
+        });
+
+        describe('when root package.json is invalid', function () {
+          beforeEach(function () {
+            vol.fromJSON({
+              '/package.json': stringify({
+                private: true,
+                version: '1.0.0',
+                workspaces: ['packages/*'],
+              }),
+            });
+          });
+
+          it('should fail with an InvalidPkgJsonError', async function () {
+            input = {
+              all: true,
+              cwd: '/',
+              fileManager,
+            };
+
+            actor = createActor(queryWorkspacesLogic, {input});
+            await expect(
+              runUntilDone(actor),
+              'to be rejected with error satisfying',
+              {
+                code: ErrorCode.InvalidPkgJsonError,
+                message: /Invalid package\.json at \.\/package\.json/,
+              },
+            );
+          });
         });
 
         describe('when handling a monorepo', function () {

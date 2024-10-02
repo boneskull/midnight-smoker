@@ -4,26 +4,24 @@ import {type Result} from '#util/result';
 
 import {type StaticRuleContext} from './static-rule-context';
 
-export interface BaseCheckResult {
+export interface CheckOk {
   ctx: Result<StaticRuleContext>;
   rule: StaticRule;
-}
-
-export interface CheckResultOk extends BaseCheckResult {
   type: typeof OK;
 }
 
-export interface CheckResultFailed extends BaseCheckResult {
+export interface Issue {
+  ctx: Result<StaticRuleContext>;
   data?: unknown;
   error?: Error;
   filepath?: string;
-
   id: string;
   isError: boolean;
   jsonField?: string;
   localFilepath?: string;
   message: string;
+  rule: StaticRule;
   type: typeof FAILED;
 }
 
-export type CheckResult = CheckResultFailed | CheckResultOk;
+export type CheckResult = CheckOk | Issue;

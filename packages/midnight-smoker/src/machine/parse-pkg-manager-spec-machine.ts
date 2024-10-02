@@ -6,6 +6,7 @@ import {
   type MatchSystemPkgManagerLogicOutput,
 } from '#machine/actor/match-system-pkg-manager';
 import {PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
+import {getRange} from '#pkg-manager/range';
 import {normalizeVersionAgainstPkgManager} from '#pkg-manager/version-normalizer';
 import {type ComponentRegistry} from '#plugin/component';
 import {type PkgManagerEnvelope} from '#plugin/component-envelope';
@@ -19,13 +20,12 @@ import {
   type PartialStaticPkgManagerSpec,
   type StaticPkgManagerSpec,
 } from '#schema/static-pkg-manager-spec';
-import {RangeSchema} from '#schema/version';
 import * as assert from '#util/assert';
 import {caseInsensitiveEquals} from '#util/common';
 import {fromUnknownError} from '#util/from-unknown-error';
 import {isKnownPkgManagerSpec} from '#util/guard/known-pkg-manager-spec';
 import {isStaticPkgManagerSpec} from '#util/guard/static-pkg-manager-spec';
-import {type Range, type SemVer} from 'semver';
+import {type SemVer} from 'semver';
 import {assign, log, setup} from 'xstate';
 
 import {
@@ -110,27 +110,6 @@ function filterMatchingPkgManagers(
       )
     : pkgManagers;
 }
-
-/**
- * Parses the range of versions supported by a package manager from the
- * `supportedVesrionRange` field and caches it.
- *
- * @param pkgManager `PkgManager` instance
- * @returns SemVer {@link Range}
- * @todo Use `_.memoize()`?
- */
-function getRange(pkgManager: PkgManager): Range {
-  let range: Range;
-  if (rangeMap.has(pkgManager)) {
-    range = rangeMap.get(pkgManager)!;
-  } else {
-    range = RangeSchema.parse(pkgManager.supportedVersionRange);
-    rangeMap.set(pkgManager, range);
-  }
-  return range;
-}
-
-const rangeMap = new WeakMap<PkgManager, Range>();
 
 /**
  * @internal

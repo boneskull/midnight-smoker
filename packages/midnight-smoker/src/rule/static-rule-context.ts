@@ -16,6 +16,7 @@ export type StaticRuleContext = Readonly<{
   pkgJsonPath: string;
   pkgManager: string;
   pkgName: string;
+  rawPkgJson: string;
   ruleId: string;
   severity: RuleSeverity;
   workspace: WorkspaceInfo;

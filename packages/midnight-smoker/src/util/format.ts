@@ -3,7 +3,6 @@
  *
  * @packageDocumentation
  */
-
 import {SYSTEM} from '#constants';
 import {type SmokerErrorCode} from '#error/codes';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
@@ -21,8 +20,12 @@ import {
   whiteBright,
 } from 'chalk';
 import path from 'node:path';
+import stringWidth from 'string-width';
+import wrapAnsi from 'wrap-ansi';
 
 import {getStackRenderer, type Styles} from './stack-renderer';
+
+const DEFAULT_WRAP = process.stderr.columns ?? 80;
 
 /**
  * Given the name of a thing and optionally a version, return a formatted string
@@ -70,13 +73,48 @@ export function joinLines(lines: string[], separator = NL): string {
 }
 
 /**
+ * Options for {@link indent}
+ */
+export type IndentOptions = {
+  /**
+   * Number of spaces to indent by
+   */
+  level?: number;
+
+  /**
+   * Prefix to prepend to each line
+   */
+  prefix?: string;
+
+  wrap?: number;
+};
+
+/**
+ * Indents all lines in a string
+ *
+ * @param value String to indent
+ * @param options Options
+ * @returns New string indented
+ */
+export function indent(value: string, options?: IndentOptions): string;
+
+/**
  * Indents all lines in a string by `level` spaces
  *
  * @param value String to indent
- * @param level Number of spaces to indent by
+ * @param level Number of spaces to indent by (default: 1)
  * @returns New string indented
  */
 export function indent(value: string, level?: number): string;
+
+/**
+ * Indents all lines in a string by `level` spaces
+ *
+ * @param value String to indent
+ * @param level Number of spaces to indent by (default: 1)
+ * @returns New string indented
+ */
+export function indent(value: readonly string[], level?: number): string[];
 
 /**
  * Indents all lines in a string array by `level * 2` spaces
@@ -85,15 +123,31 @@ export function indent(value: string, level?: number): string;
  * @param level Number of spaces to indent by
  * @returns New array with all strings indented
  */
-export function indent(value: readonly string[], level?: number): string[];
+export function indent(
+  value: readonly string[],
+  options?: IndentOptions,
+): string[];
 
 export function indent(
   value: readonly string[] | string,
-  level = 1,
+  optionsOrLevel?: IndentOptions | number,
 ): string | string[] {
-  return isString(value)
-    ? value.replace(LINE_REGEX, ' '.repeat(2 * level))
-    : value.map((line) => indent(line, level));
+  const options =
+    typeof optionsOrLevel === 'number'
+      ? {level: optionsOrLevel}
+      : optionsOrLevel ?? {};
+  const {level = 1, prefix = ''} = options;
+  const indentStr = prefix + ' '.repeat(2 * level);
+  const {wrap = DEFAULT_WRAP} = options;
+
+  if (isString(value)) {
+    const result = wrapAnsi(value, wrap - stringWidth(indentStr), {hard: true})
+      .split(NL)
+      .map((line) => indentStr + line)
+      .join(NL);
+    return result;
+  }
+  return value.map((line) => indent(line, {level, prefix, wrap}));
 }
 
 /**

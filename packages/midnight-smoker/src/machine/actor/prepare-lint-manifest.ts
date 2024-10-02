@@ -26,17 +26,24 @@ export const prepareLintManifestLogic = fromPromise<
   PrepareLintManifestLogicInput
 >(async ({input: {fileManager, installPath, workspace}, signal}) => {
   debug('Searching for package.json from %s', installPath);
-  const {packageJson: installedPkgJson, path: installedPkgJsonPath} =
-    await fileManager.findPkgUp(installPath, {
-      normalize: true,
-      signal,
-      strict: true,
-    });
-  return {
+  const {
+    packageJson: installedPkgJson,
+    path: installedPkgJsonPath,
+    rawPackageJson: rawPkgJson,
+  } = await fileManager.findPkgUp(installPath, {
+    normalize: true,
+    signal,
+    strict: true,
+  });
+
+  const manifest: LintManifest = {
     installPath,
     pkgJson: installedPkgJson,
     pkgJsonPath: installedPkgJsonPath,
     pkgName: installedPkgJson.name ?? workspace.pkgName,
+    rawPkgJson,
     workspace,
   };
+
+  return manifest;
 });

@@ -24,9 +24,11 @@ export * from '#schema/rule-severity';
 
 export * from '#schema/static-rule';
 
-export * from './check-result';
+export * from './issue';
 
 export * from './lint-manifest';
+
+export * from './lint-result';
 
 export * from './rule-context';
 

@@ -32,7 +32,8 @@
       "#smoker": ["../src/smoker.js"],
       "#util/*": ["../src/util/*.js"],
       "#util/meta/*": ["../src/util/meta/*.js"],
-      "#util/guard/*": ["../src/util/guard/*.js"]
+      "#util/guard/*": ["../src/util/guard/*.js"],
+      "#util/guard/assert/*": ["../src/util/guard/assert/*.js"]
     }
   }
 }

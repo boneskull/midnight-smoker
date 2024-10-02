@@ -1,4 +1,7 @@
-export type {CheckResultFailed, CheckResultOk} from '#rule/check-result';
+export type {
+  Issue as CheckResultFailed,
+  CheckOk as CheckResultOk,
+} from '#rule/issue';
 
 export {type LintManifest} from '#rule/lint-manifest';
 

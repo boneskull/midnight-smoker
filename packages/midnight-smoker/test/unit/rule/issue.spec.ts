@@ -1,6 +1,6 @@
 import {FAILED, RuleSeverities} from '#constants';
 import {RuleError} from '#error/rule-error';
-import {type CheckResultFailed} from '#rule/check-result';
+import {type Issue} from '#rule/issue';
 import {RuleIssue, type RuleIssueParams} from '#rule/rule-issue';
 import {type StaticRuleContext} from '#rule/static-rule-context';
 import {type StaticRule} from '#schema/static-rule';
@@ -32,6 +32,7 @@ describe('midnight-smoker', function () {
           pkgJsonPath: '/path/to/example-package/package.json',
           pkgManager: 'bebebebebee',
           pkgName: 'example-package',
+          rawPkgJson: '{}',
           ruleId,
           severity: RuleSeverities.Error,
           workspace: {
@@ -163,7 +164,7 @@ describe('midnight-smoker', function () {
         describe('instance method', function () {
           describe('toJSON()', function () {
             it('should return a StaticRuleIssue', function () {
-              const expected: CheckResultFailed = {
+              const expected: Issue = {
                 ctx: asResult(params.ctx),
                 data: params.data,
                 error: params.error,

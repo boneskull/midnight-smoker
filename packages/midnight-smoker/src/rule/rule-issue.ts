@@ -8,9 +8,8 @@
  */
 import {FAILED, PACKAGE_JSON, RuleSeverities} from '#constants';
 import {type RuleError} from '#error/rule-error';
-import {type CheckResultFailed} from '#rule/check-result';
+import {type Issue} from '#rule/issue';
 import {type StaticRule} from '#schema/static-rule';
-import {type WorkspaceInfo} from '#schema/workspace-info';
 import {NL} from '#util/format';
 import {asResult, type Result} from '#util/result';
 import {serialize} from '#util/serialize';
@@ -64,7 +63,7 @@ export interface RuleIssueParams {
 /**
  * An issue raised by a {@link RuleCheckFn}
  */
-export class RuleIssue implements CheckResultFailed {
+export class RuleIssue implements Issue {
   /**
    * {@inheritDoc RuleIssueParams.ctx}
    */
@@ -143,26 +142,20 @@ export class RuleIssue implements CheckResultFailed {
    * context (previous lines) in the source file (with line numbers),
    * highlighting the problem field.
    *
-   * @param workspace Workspace information
-   * @param jsonFilepath Path to file (usually `package.json`)
-   * @param jsonField Field in the JSON file
+   * @param result Failed check result
    * @returns A string pointing to the source of the issue
    */
-  public static async getSourceContext(
-    workspace: WorkspaceInfo,
-    jsonFilepath: string,
-    jsonField: string,
-  ) {
-    if (
-      path.resolve(workspace.localPath, jsonFilepath) === workspace.pkgJsonPath
-    ) {
-      const blamer = new JSONBlamer(
-        workspace.rawPkgJson,
-        workspace.pkgJsonPath,
-      );
+  public static getSourceContext(result: Issue) {
+    const {
+      ctx: {rawPkgJson},
+      filepath,
+      jsonField,
+    } = result;
+    if (filepath && path.extname(filepath) === '.json' && jsonField) {
+      const blamer = new JSONBlamer(rawPkgJson, filepath);
       const res = blamer.find(jsonField);
       if (res) {
-        const context = await blamer.getContext(res);
+        const context = blamer.getContext(res);
         return `${context}${NL}`;
       }
       return '';
@@ -176,7 +169,7 @@ export class RuleIssue implements CheckResultFailed {
    *
    * @returns The JSON representation of the {@link RuleIssue} object.
    */
-  public toJSON(): CheckResultFailed {
+  public toJSON(): Issue {
     const {ctx, data, error, filepath, id, isError, jsonField, message, rule} =
       this;
     return {

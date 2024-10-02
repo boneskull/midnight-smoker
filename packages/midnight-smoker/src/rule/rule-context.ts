@@ -8,7 +8,7 @@
  */
 
 import {FAILED, OK} from '#constants';
-import {type CheckResultFailed, type CheckResultOk} from '#rule/check-result';
+import {type CheckOk, type Issue} from '#rule/issue';
 import {type NormalizedPackageJson} from '#schema/package-json';
 import {type RuleSeverity} from '#schema/rule-severity';
 import {type StaticRule} from '#schema/static-rule';
@@ -200,6 +200,10 @@ export class RuleContext implements StaticRuleContext {
     return this.staticCtx.pkgName;
   }
 
+  public get rawPkgJson(): string {
+    return this.staticCtx.rawPkgJson;
+  }
+
   public get ruleName(): string {
     return this.staticRule.name;
   }
@@ -221,7 +225,7 @@ export class RuleContext implements StaticRuleContext {
  */
 export type FinalRuleContextResult =
   | Readonly<{
-      result: readonly CheckResultFailed[];
+      result: readonly Issue[];
       type: typeof FAILED;
     }>
-  | Readonly<CheckResultOk>;
+  | Readonly<CheckOk>;

@@ -52,7 +52,8 @@
     "#smoker": "./dist/src/smoker.js",
     "#util/*": "./dist/src/util/*.js",
     "#util/meta/*": "./dist/src/util/meta/*.js",
-    "#util/guard/*": "./dist/src/util/guard/*.js"
+    "#util/guard/*": "./dist/src/util/guard/*.js",
+    "#util/guard/assert/*": "./dist/src/util/guard/assert/*.js"
   },
   "exports": {
     ".": {
@@ -167,9 +168,9 @@
     "@midnight-smoker/plugin-default": "file:../plugin-default",
     "@types/semver": "7.5.6",
     "chalk": "4.1.2",
+    "cli-highlight": "2.1.11",
     "cli-table3": "0.6.3",
     "debug": "4.3.4",
-    "emphasize": "7.0.0",
     "glob": "10.3.10",
     "json-stable-stringify": "1.0.2",
     "lodash": "4.17.21",
@@ -186,6 +187,7 @@
     "tinyexec": "0.3.0",
     "type-fest": "4.19.0",
     "which": "4.0.0",
+    "wrap-ansi": "7.0.0",
     "xstate": "5.17.4",
     "yargs": "17.7.2",
     "zod": "3.22.4",
@@ -198,6 +200,7 @@
     "@types/pluralize": "0.0.33",
     "@types/stringify-object": "3.3.1",
     "@types/which": "3.0.4",
+    "@types/wrap-ansi": "3.0.0",
     "@types/yargs": "17.0.32",
     "memfs": "4.6.0",
     "strip-ansi": "5.2.0",

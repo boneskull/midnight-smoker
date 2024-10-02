@@ -1,7 +1,7 @@
 import {type ERROR, FAILED, OK} from '#constants';
 import {AbortError} from '#error/abort-error';
 import {RuleError} from '#error/rule-error';
-import {type CheckResultFailed, type CheckResultOk} from '#rule/check-result';
+import {type CheckOk, type Issue} from '#rule/issue';
 import {type LintManifest} from '#rule/lint-manifest';
 import {RuleContext} from '#rule/rule-context';
 import {type StaticRuleContext} from '#rule/static-rule-context';
@@ -51,7 +51,7 @@ export interface LintLogicOutputError extends BaseLintLogicOutput {
  */
 export interface LintLogicOutputFailed extends BaseLintLogicOutput {
   actorId: string;
-  result: CheckResultFailed[];
+  result: Issue[];
   type: typeof FAILED;
 }
 
@@ -60,7 +60,7 @@ export interface LintLogicOutputFailed extends BaseLintLogicOutput {
  */
 export interface LintLogicOutputOk extends BaseLintLogicOutput {
   actorId: string;
-  result: CheckResultOk;
+  result: CheckOk;
   type: typeof OK;
 }
 

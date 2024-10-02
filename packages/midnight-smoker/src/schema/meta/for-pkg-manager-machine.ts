@@ -1,8 +1,11 @@
 export {type StaticPluginMetadata} from '#plugin/static-plugin-metadata';
 
-export {type CheckResult} from '#rule/check-result';
+export {type CheckResult} from '#rule/issue';
 
-export {type CheckResultFailed, type CheckResultOk} from '#rule/check-result';
+export {
+  type Issue as CheckResultFailed,
+  type CheckOk as CheckResultOk,
+} from '#rule/issue';
 
 export {type LintManifest} from '#rule/lint-manifest';
 
