@@ -2,9 +2,11 @@ import {CoreEvents} from '#constants';
 import {ErrorCode} from '#error/codes';
 import {type SomeDataForEvent} from '#event/events';
 import {flushQueueLogic} from '#machine/actor/flush-queue';
-import {type OmitSignal} from '#machine/util/index';
 import {type StaticPluginMetadata} from '#plugin/static-plugin-metadata';
-import {type ReporterContext} from '#reporter/reporter-context';
+import {
+  type ReporterContext,
+  ReporterContextSubject,
+} from '#reporter/reporter-context';
 import {type Reporter} from '#schema/reporter';
 import {type SmokerOptions} from '#schema/smoker-options';
 import {EventEmitter} from 'node:events';
@@ -23,18 +25,20 @@ describe('midnight-smoker', function () {
       let actor: Actor<typeof flushQueueLogic>;
       let sandbox: sinon.SinonSandbox;
       let reporter: Reporter;
-      let ctx: OmitSignal<ReporterContext>;
+      let ctx: ReporterContext;
+      let subject: ReporterContextSubject;
       let queue: SomeDataForEvent[];
 
       beforeEach(function () {
         sandbox = createSandbox();
         reporter = {...nullReporter};
         queue = [{type: CoreEvents.Noop} as const];
-        ctx = {
-          opts: {} as SmokerOptions,
-          pkgJson: {name: 'foo', version: '1.0.0'},
-          plugin: {} as StaticPluginMetadata,
-        };
+        subject = ReporterContextSubject.create();
+        ctx = subject.createReporterContext(
+          {} as SmokerOptions,
+          {name: 'foo', version: '1.0.0'},
+          {} as StaticPluginMetadata,
+        );
         actor = createActor(flushQueueLogic, {input: {ctx, queue, reporter}});
       });
 

@@ -6,8 +6,10 @@ import {
   type EventName,
   type SomeDataForEvent,
 } from '#event/events';
-import {type OmitSignal, reporterContextWithSignal} from '#machine/util';
-import {type ReporterContext} from '#reporter/reporter-context';
+import {
+  type ReporterContext,
+  ReporterContextSubject,
+} from '#reporter/reporter-context';
 import {
   type EventToListenerNameMap,
   type Reporter,
@@ -43,7 +45,7 @@ export interface FlushQueueLogicInput {
   /**
    * The reporter context belonging to {@link FlushQueueLogicInput.reporter}
    */
-  ctx: OmitSignal<ReporterContext>;
+  ctx: ReporterContext;
 
   /**
    * The entire event queue
@@ -108,20 +110,26 @@ export const flushQueueLogic = fromPromise<void, FlushQueueLogicInput>(
         }
       }
 
+      const subject = ReporterContextSubject.getSubject(ctx);
+      try {
+        subject.next(event);
+      } catch (err) {
+        // XXX: I'm not sure this is the right thing to do
+        if (isAbortError(err)) {
+          return;
+        }
+        throw new ReporterError(err, reporter);
+      }
+
       if (isFunction(reporter[listenerName])) {
         try {
-          await invokeListener(
-            reporter,
-            reporterContextWithSignal(ctx, signal),
-            event,
-          );
+          await invokeListener(reporter, ctx, event);
         } catch (err) {
+          // XXX: I'm not sure this is the right thing to do
           if (isAbortError(err)) {
             return;
           }
           throw new ReporterError(err, reporter);
-        } finally {
-          delete ctx.signal;
         }
       }
     }

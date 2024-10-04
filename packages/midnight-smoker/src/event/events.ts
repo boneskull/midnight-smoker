@@ -23,7 +23,7 @@ export type AllEventData = Simplify<
  *
  * @template T - The event name
  */
-export type EventData<T extends EventName> = {
+export type EventData<T extends EventName = EventName> = {
   [K in T]: {type: K} & Omit<AllEventData[K], 'type'>;
 }[T];
 
@@ -32,4 +32,4 @@ export type EventData<T extends EventName> = {
  */
 export type EventName = Simplify<keyof AllEventData>;
 
-export type SomeDataForEvent = EventData<EventName>;
+export type SomeDataForEvent = EventData;

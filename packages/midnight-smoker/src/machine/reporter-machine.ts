@@ -15,14 +15,15 @@ import {
   type ActorOutput,
   DEFAULT_INIT_ACTION,
   INIT_ACTION,
-  type OmitSignal,
 } from '#machine/util';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
-import {type ReporterContext} from '#reporter/reporter-context';
+import {
+  type ReporterContext,
+  ReporterContextSubject,
+} from '#reporter/reporter-context';
 import {type Reporter} from '#schema/reporter';
 import {type SmokerOptions} from '#schema/smoker-options';
 import {fromUnknownError} from '#util/from-unknown-error';
-import {serialize} from '#util/serialize';
 import {isEmpty} from 'lodash';
 import {type EventEmitter} from 'node:events';
 import {type PackageJson} from 'type-fest';
@@ -54,7 +55,7 @@ export interface ReporterMachineContext
    * The object passed to {@link flushQueueLogic} which `Reporter` listeners
    * receive.
    */
-  ctx: OmitSignal<ReporterContext>;
+  ctx: ReporterContext;
   error?: MachineError;
 
   /**
@@ -74,6 +75,8 @@ export interface ReporterMachineContext
    * happening. If it _does_ happen, it will be ignored.
    */
   shouldShutdown: boolean;
+
+  subject?: ReporterContextSubject;
 }
 
 export interface ReporterMachineSmokeMachineEvent {
@@ -191,17 +194,22 @@ export const ReporterMachine = setup({
 }).createMachine({
   context: ({
     input: {plugin, smokerOptions, smokerPkgJson, ...input},
-  }): ReporterMachineContext => ({
-    ...input,
-    ctx: {
-      opts: smokerOptions,
-      pkgJson: smokerPkgJson,
-      plugin: serialize(plugin),
-    },
-    plugin,
-    queue: [],
-    shouldShutdown: false,
-  }),
+  }): ReporterMachineContext => {
+    const subject = ReporterContextSubject.create();
+    const ctx = subject.createReporterContext(
+      smokerOptions,
+      smokerPkgJson,
+      plugin,
+    );
+    return {
+      ...input,
+      ctx,
+      plugin,
+      queue: [],
+      shouldShutdown: false,
+      subject,
+    };
+  },
   entry: [
     INIT_ACTION,
     log(
@@ -328,6 +336,15 @@ export const ReporterMachine = setup({
     },
     teardown: {
       description: 'Runs teardown lifecycle hook for the reporter',
+      entry: [
+        assign({
+          subject: ({context: {subject}}) => {
+            subject?.complete();
+            subject?.[Symbol.dispose]();
+            return undefined;
+          },
+        }),
+      ],
       invoke: {
         input: ({context: {ctx, reporter}}) => ({ctx, reporter}),
         onDone: {

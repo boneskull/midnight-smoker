@@ -1,4 +1,4 @@
-import {type OmitSignal, reporterContextWithSignal} from '#machine/util';
+import {joinSignal} from '#machine/util';
 import {type ReporterContext} from '#reporter/reporter-context';
 import {type Reporter} from '#schema/reporter';
 import {isFunction} from '#util/guard/common';
@@ -9,7 +9,7 @@ import {fromPromise} from 'xstate';
  */
 
 export interface ReporterLifecycleHookInput {
-  ctx: OmitSignal<ReporterContext>;
+  ctx: ReporterContext;
   reporter: Reporter;
 }
 
@@ -21,11 +21,8 @@ export const setupReporterLogic = fromPromise<void, ReporterLifecycleHookInput>(
   async ({input: {ctx, reporter}, signal}) => {
     const {setup} = reporter;
     if (isFunction(setup)) {
-      try {
-        await setup(reporterContextWithSignal(ctx, signal));
-      } finally {
-        delete ctx.signal;
-      }
+      using _ = joinSignal(signal, ctx);
+      await setup(ctx);
     }
   },
 );
@@ -40,10 +37,7 @@ export const teardownReporterLogic = fromPromise<
 >(async ({input: {ctx, reporter}, signal}) => {
   const {teardown} = reporter;
   if (isFunction(teardown)) {
-    try {
-      await teardown(reporterContextWithSignal(ctx, signal));
-    } finally {
-      delete ctx.signal;
-    }
+    using _ = joinSignal(signal, ctx);
+    await teardown(ctx);
   }
 });

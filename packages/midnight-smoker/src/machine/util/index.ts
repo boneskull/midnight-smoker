@@ -1,9 +1,21 @@
 import {type ERROR, MIDNIGHT_SMOKER, type OK} from '#constants';
-import {type ReporterContext} from '#reporter/reporter-context';
+import {ok} from '#util/assert';
 import {createDebug} from '#util/debug';
 import Debug from 'debug';
-import {type Except} from 'type-fest';
 import * as xs from 'xstate';
+
+export function joinSignal(
+  signal: AbortSignal,
+  obj: {signal?: AbortSignal},
+): Disposable {
+  ok(obj.signal === undefined, 'obj.signal must be undefined');
+  obj.signal = signal;
+  const disposable = Object.create(null) as Disposable;
+  disposable[Symbol.dispose] = () => {
+    obj.signal = undefined;
+  };
+  return disposable;
+}
 
 /**
  * `ActorOutput` is a convention for an actor output.
@@ -40,12 +52,6 @@ export type ActorOutputOk<Ctx = unknown> = {
   type: typeof OK;
 } & Ctx;
 
-export type OmitSignal<T extends {signal: any}> = Except<
-  T,
-  'signal',
-  {requireExactProps: true}
->;
-
 /**
  * Used by {@link runActor} to determine if the `input` option is required for
  * the provided logic.
@@ -77,14 +83,6 @@ export function monkeypatchActorLogger<T extends xs.AnyActorRef>(
     `${MIDNIGHT_SMOKER}:actor:${namespace}`,
   );
   return actor;
-}
-
-export function reporterContextWithSignal(
-  ctx: OmitSignal<ReporterContext>,
-  signal: AbortSignal,
-): ReporterContext {
-  Object.assign(ctx, {signal});
-  return ctx as unknown as ReporterContext;
 }
 
 /**

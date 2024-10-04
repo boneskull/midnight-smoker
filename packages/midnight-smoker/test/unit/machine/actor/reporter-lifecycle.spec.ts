@@ -2,9 +2,11 @@ import {
   setupReporterLogic,
   teardownReporterLogic,
 } from '#machine/actor/reporter-lifecycle';
-import {type OmitSignal} from '#machine/util/index';
 import {type StaticPluginMetadata} from '#plugin/static-plugin-metadata';
-import {type ReporterContext} from '#reporter/reporter-context';
+import {
+  type ReporterContext,
+  ReporterContextSubject,
+} from '#reporter/reporter-context';
 import {type Reporter} from '#schema/reporter';
 import {type SmokerOptions} from '#schema/smoker-options';
 import {createSandbox} from 'sinon';
@@ -20,16 +22,17 @@ describe('midnight-smoker', function () {
   describe('actor', function () {
     let sandbox: sinon.SinonSandbox;
     let reporter: Reporter;
-    let ctx: OmitSignal<ReporterContext>;
+    let ctx: ReporterContext;
 
     beforeEach(function () {
       sandbox = createSandbox();
       reporter = {...nullReporter};
-      ctx = {
-        opts: {} as SmokerOptions,
-        pkgJson: {name: 'foo', version: '1.0.0'},
-        plugin: {} as StaticPluginMetadata,
-      };
+      const subject = ReporterContextSubject.create();
+      ctx = subject.createReporterContext(
+        {} as SmokerOptions,
+        {name: 'foo', version: '1.0.0'},
+        {} as StaticPluginMetadata,
+      );
     });
 
     afterEach(function () {
