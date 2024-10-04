@@ -1,22 +1,30 @@
-import {bold, dim, italic, magentaBright, red, yellow} from 'chalk';
+import {bold, dim, italic, red, yellow} from 'chalk';
 import spinners from 'cli-spinners';
 import Debug from 'debug';
 import {groupBy, head, isEmpty} from 'lodash';
 import {error, info, warning} from 'log-symbols';
-import {FAILED, PACKAGE_JSON} from 'midnight-smoker/constants';
-import {type Reporter} from 'midnight-smoker/reporter';
+import {FAILED} from 'midnight-smoker/constants';
+import {type Reporter, type Subscription} from 'midnight-smoker/reporter';
 import {
-  type CheckResultFailed,
+  type Issue,
   RuleIssue,
   RuleSeverities,
   type StaticRule,
 } from 'midnight-smoker/rule';
-import {formatErrorMessage, formatPkgManager} from 'midnight-smoker/util';
+import {
+  formatPackage,
+  formatPkgManager,
+  indent,
+  joinLines,
+} from 'midnight-smoker/util';
 import ora, {type Ora} from 'ora';
 
 import {ELLIPSIS, plural, preface} from './util';
 
-const debug = Debug('midnight-smoker:plugin-default:reporter:console');
+type ConsoleReporterContext = {
+  spinner: Ora;
+  subscription: Subscription;
+};
 
 /**
  * Picks a random item from a list
@@ -24,15 +32,92 @@ const debug = Debug('midnight-smoker:plugin-default:reporter:console');
  * @param items List of items
  * @returns Some item, assuming `items` is not empty
  */
-function randomItem<T>(items: [T, ...T[]] | readonly [T, ...T[]] | T[]): T {
+const randomItem = <T>(items: [T, ...T[]] | readonly [T, ...T[]] | T[]): T => {
   const index = Math.floor(Math.random() * items.length);
   return items[index]!;
-}
-
-type ConsoleReporterContext = {
-  spinner: Ora;
 };
 
+const debug = Debug('midnight-smoker:plugin-default:reporter:console');
+
+/**
+ * Prefix symbol for column 0 when reporting issues
+ */
+const PIPE = '│';
+
+/**
+ * Separator used in various places
+ */
+const SEPARATOR = '─';
+
+/**
+ * Formats a rule name when there's an `error`-severity issue
+ *
+ * @param rule Rule to format
+ * @returns Formatted rule name
+ */
+const lintErrorRuleName = (rule: StaticRule): string =>
+  [dim('['), red(rule.name), dim(']')].join('');
+
+/**
+ * Formats a rule name when there's a `warning`-severity issue
+ *
+ * @param rule Rule to format
+ * @returns Formatted rule name
+ */
+const lintWarningRuleName = (rule: StaticRule): string =>
+  [dim('['), yellow(rule.name), dim(']')].join('');
+
+/**
+ * Returns a line containing filepath, prefixed and indented
+ *
+ * @param filepath Path to file
+ * @returns Formatted line
+ */
+const lintFilepathLine = (filepath: string): string => {
+  const filepathWords = [yellow(filepath), ':'];
+  const filepathLine = filepathWords.join('');
+  return indent(filepathLine, {
+    level: 1,
+    prefix: PIPE,
+  });
+};
+
+/**
+ * Returns a line containing the issue message, rule message and severity
+ *
+ * @param issue Issue to to format
+ * @returns Formatted issue
+ */
+const lintIssueLine = ({ctx, message, rule}: Issue): string => {
+  let issueWords = [SEPARATOR, message];
+  issueWords =
+    ctx.severity === RuleSeverities.Error
+      ? [error, lintErrorRuleName(rule), ...issueWords]
+      : [warning, lintWarningRuleName(rule), ...issueWords];
+  const issueLine = issueWords.join(' ');
+  return indent(issueLine, {
+    level: 2,
+    prefix: PIPE,
+  });
+};
+
+/**
+ * If the issue has enough information to provide a source context, return the
+ * formatted source contexgt
+ *
+ * @param issue Issue to get the source context for
+ * @returns Formatted string or `undefined` if no source context available
+ */
+const lintSourceContextLines = (issue: Issue): string | undefined => {
+  const sourceCtx = RuleIssue.getSourceContext(issue);
+  if (sourceCtx.trim()) {
+    return indent(sourceCtx, {level: 3, prefix: PIPE});
+  }
+};
+
+/**
+ * Random messages for the spinner
+ */
 const spinnerMsgs = [
   `Jokin' and smokin'`,
   `Pickin' and grinnin'`,
@@ -46,70 +131,67 @@ export const ConsoleReporter: Reporter<ConsoleReporterContext> = {
   onAborted() {
     // pop a spinner
   },
-  onInstallFailed({spinner}, {error: err}) {
-    spinner.fail(`${err}`);
+  onInstallFailed({opts: {verbose}, spinner}, {error}) {
+    spinner.fail(error.format(verbose));
   },
-  onLingered(_, {directories: dirs}) {
+  onLingered(_, {directories}) {
     console.error(
-      `${warning} Lingering ${plural('temp directory', dirs.length)}:\n`,
+      `${warning} Lingering ${plural('temp directory', directories.length)}:\n`,
     );
-    for (const dir of dirs) {
-      console.error(yellow(dir));
-    }
+    const dirs = joinLines(indent(directories.map(yellow)));
+    console.error(dirs);
   },
   async onLintFailed({spinner}, {results: lintResults}) {
-    for (const {pkgName, results} of lintResults) {
-      const failed = results.filter(
-        ({type}) => type === FAILED,
-      ) as CheckResultFailed[];
-      const lines = [
-        `${plural('Issue', failed.length)} found in package ${magentaBright(
-          pkgName,
-        )}:`,
-      ];
-      const isError = failed.some(
-        ({ctx: {severity}}) => severity === RuleSeverities.Error,
-      );
+    // TODO: should we show successful results?
 
-      const failedByFilepath = groupBy(
-        failed,
+    // results will be a combination of passed and failed results.
+    // all we know is that there is at least one failed result.
+    const maybeIssuesForPackage = lintResults.filter(
+      (result) => result.type === FAILED,
+    );
+
+    // grouping by package
+    for (const {pkgName, results} of maybeIssuesForPackage) {
+      const issues = results.filter((result) => result.type === FAILED);
+
+      const headerLine = [
+        plural('Issue', issues.length),
+        'found in package',
+        `${formatPackage(pkgName)}:`,
+      ].join(' ');
+
+      const lines = [headerLine];
+
+      // now grouping by file within the package
+      const issuesByFilepath = groupBy(
+        issues,
         ({ctx: {pkgJsonPath}, filepath}) => filepath ?? pkgJsonPath,
       );
 
-      const ruleNameError = (rule: StaticRule) =>
-        `${dim('[')}${red(rule.name)}${dim(']')}`;
-      const ruleNameWarning = (rule: StaticRule) =>
-        `${dim('[')}${yellow(rule.name)}${dim(']')}`;
-      for (const [filepath, failed] of Object.entries(failedByFilepath)) {
-        lines.push(`│ ${yellow(bold(filepath))}:`);
-        for (const {
-          ctx,
-          filepath = PACKAGE_JSON,
-          jsonField,
-          message,
-          rule,
-        } of failed) {
-          if (ctx.severity === RuleSeverities.Error) {
-            lines.push(`│   ${error} ${ruleNameError(rule)} — ${message}`);
-          } else {
-            lines.push(`│   ${warning} ${ruleNameWarning(rule)} — ${message}`);
+      /**
+       * Tracks if _any_ issue has `error` severity
+       */
+      let isError = false;
+
+      for (const [filepath, issues] of Object.entries(issuesByFilepath)) {
+        lines.push(lintFilepathLine(filepath));
+
+        for (const issue of issues) {
+          lines.push(lintIssueLine(issue));
+
+          // set isError to true so later we can call `spinner.fail()`
+          if (!isError && issue.ctx.severity === RuleSeverities.Error) {
+            isError = true;
           }
-          if (jsonField) {
-            let sourceCtx = await RuleIssue.getSourceContext(
-              ctx.workspace,
-              filepath,
-              jsonField,
-            );
-            sourceCtx = sourceCtx
-              .split('\n')
-              .map((line) => `│     ${line}`)
-              .join('\n');
-            lines.push(sourceCtx);
+
+          const sourceCtxLines = lintSourceContextLines(issue);
+          if (sourceCtxLines) {
+            lines.push(sourceCtxLines);
           }
         }
       }
 
-      const msg = lines.join('\n');
+      const msg = joinLines(lines);
       if (isError) {
         spinner.fail(msg);
       } else {
@@ -117,24 +199,26 @@ export const ConsoleReporter: Reporter<ConsoleReporterContext> = {
       }
     }
   },
-  onPackFailed({spinner}, {error: err}) {
-    spinner.fail(`${err}`);
+  onPackFailed({opts: {verbose}, spinner}, {error}) {
+    spinner.fail(error.format(verbose));
   },
-  onRuleError({spinner}, {error: err}) {
-    spinner.fail(formatErrorMessage(err.message));
+  onRuleError({opts: {verbose}, spinner}, {error}) {
+    spinner.fail(error.format(verbose));
   },
-  onRunScriptsFailed({opts, spinner}, {results}) {
-    for (const result of results) {
-      if (result.type === FAILED) {
-        // TODO this is not verbose enough
-        // TODO test what happens when there are multiple failed results
-        const details = result.error.format(opts.verbose);
-        spinner.warn(
-          `Script execution failure details for package ${bold(
-            magentaBright(result.manifest.pkgName),
-          )}:\n- ${details}\n`,
-        );
-      }
+  onRunScriptsFailed({opts: {verbose}, spinner}, {results}) {
+    const failedResults = results.filter((result) => result.type === FAILED);
+    for (const result of failedResults) {
+      // TODO this is not verbose enough
+      // TODO test what happens when there are multiple failed results
+      const details = result.error.format(verbose);
+      const warning = joinLines([
+        [
+          'Script execution failure details for package',
+          `${formatPackage(result.manifest.pkgName)}:`,
+        ].join(' '),
+        [SEPARATOR, details].join(' '),
+      ]);
+      spinner.warn(warning);
     }
   },
   onSmokeBegin(
@@ -174,7 +258,7 @@ export const ConsoleReporter: Reporter<ConsoleReporterContext> = {
     if (workspaceInfo.length > 1) {
       msg += plural('workspace', workspaceInfo.length, true);
     } else {
-      msg += magentaBright(head(workspaceInfo)!.pkgName);
+      msg += formatPackage(head(workspaceInfo)!.pkgName);
     }
     if (pkgManagers.length > 1) {
       msg += ` using ${plural('package manager', pkgManagers.length, true)}`;

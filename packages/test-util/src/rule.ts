@@ -216,12 +216,15 @@ export async function runRule<T extends SomeRule>(
   }
   const workspace = workspaces[0]!;
 
+  const {pkgJson, pkgJsonPath, pkgName, rawPkgJson} = workspace;
+
   const ctx: StaticRuleContext = {
     installPath: cwd,
-    pkgJson: workspace.pkgJson,
-    pkgJsonPath: workspace.pkgJsonPath,
+    pkgJson,
+    pkgJsonPath,
     pkgManager: DEFAULT_PKG_MANAGER_SPEC,
-    pkgName: workspace.pkgName,
+    pkgName,
+    rawPkgJson,
     severity: config.severity,
     ...ruleContext,
     ruleId,
@@ -230,9 +233,10 @@ export async function runRule<T extends SomeRule>(
 
   const manifest: LintManifest = {
     installPath: cwd,
-    pkgJson: workspace.pkgJson,
-    pkgJsonPath: workspace.pkgJsonPath,
-    pkgName: workspace.pkgName,
+    pkgJson,
+    pkgJsonPath,
+    pkgName,
+    rawPkgJson,
     ...lintManifest,
     workspace,
   };

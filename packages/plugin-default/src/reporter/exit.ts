@@ -32,6 +32,7 @@ export const ExitListener: Reporter = {
   description: 'Determines when to set the process exit code to 1',
   isHidden: true,
   name: 'exit',
+  onAborted: nonZeroExitListener,
   onInstallFailed: nonZeroExitListener,
   onPackFailed: nonZeroExitListener,
   onRunScriptsFailed: nonZeroExitListener,

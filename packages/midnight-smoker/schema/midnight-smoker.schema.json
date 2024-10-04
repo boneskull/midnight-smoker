@@ -28,6 +28,10 @@
       "default": false,
       "description": "Fail on first script failure"
     },
+    "config": {
+      "$ref": "#/$defs/arrayOfNonEmptyStrings/allOf/0/anyOf/0",
+      "description": "Path to config file"
+    },
     "cwd": {
       "type": "string",
       "minLength": 1,
@@ -257,22 +261,30 @@
                     "import": {
                       "$ref": "#/$defs/defaultTrue",
                       "default": true,
-                      "description": "Assert an \"import\" conditional export matches a ESM module"
+                      "description": "Assert an \"import\" conditional export references a ESM module"
                     },
                     "order": {
                       "$ref": "#/$defs/defaultTrue",
                       "default": true,
                       "description": "Assert conditional export \"default\", if present, is the last export"
                     },
+                    "packageJson": {
+                      "$ref": "#/$defs/defaultTrue",
+                      "default": true,
+                      "description": "Assert package.json is exported"
+                    },
                     "require": {
                       "$ref": "#/$defs/defaultTrue",
                       "default": true,
-                      "description": "Assert a \"require\" conditional export matches a CJS script"
+                      "description": "Assert a \"require\" conditional export references a CJS script"
                     },
                     "types": {
                       "$ref": "#/$defs/defaultTrue",
                       "default": true,
-                      "description": "Assert a \"types\" conditional export matches a file with a .d.ts extension"
+                      "description": "Assert a \"types\" conditional export references a file with a .d.ts extension"
+                    },
+                    "package-json": {
+                      "$ref": "#/properties/rules/properties/no-missing-exports/allOf/0/anyOf/0/properties/packageJson"
                     }
                   },
                   "additionalProperties": false,
@@ -281,6 +293,7 @@
                     "glob": true,
                     "import": true,
                     "order": true,
+                    "packageJson": true,
                     "require": true,
                     "types": true
                   }
@@ -516,6 +529,7 @@
           "glob": true,
           "import": true,
           "order": true,
+          "packageJson": true,
           "require": true,
           "types": true
         },

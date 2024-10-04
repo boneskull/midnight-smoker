@@ -3,7 +3,7 @@ import {error, info, warning} from 'log-symbols';
 import {FAILED, MIDNIGHT_SMOKER} from 'midnight-smoker/constants';
 import {type Reporter} from 'midnight-smoker/reporter';
 import {
-  type CheckResultFailed,
+  type Issue,
   RuleSeverities,
   type StaticRule,
 } from 'midnight-smoker/rule';
@@ -98,9 +98,7 @@ export const SimpleReporter: Reporter = {
   },
   onLintFailed(_, {results: lintResults}) {
     for (const {pkgName, results} of lintResults) {
-      const failed = results.filter(
-        ({type}) => type === FAILED,
-      ) as CheckResultFailed[];
+      const failed = results.filter(({type}) => type === FAILED) as Issue[];
       const lines = [
         `${plural('Issue', failed.length)} found in package ${pkgName}:`,
       ];
