@@ -26,15 +26,10 @@ import {JSONLocation} from './json-location';
 
 /**
  * A {@link Node} which can contain one or more {@link ValueNode ValueNodes}.
+ *
+ * @see {@link https://github.com/humanwhocodes/momoa/pull/134}
  */
 type ContainerNode = DocumentNode | ElementNode | MemberNode;
-
-export type GetContextOptions = {
-  /**
-   * Number of lines of context to show before the highlighted line
-   */
-  before?: number;
-};
 
 /**
  * The result of a successful call to {@link JSONBlamer.find}.
@@ -72,6 +67,11 @@ type ValueNode = ArrayNode | ObjectNode;
 
 const DEFAULT_BEFORE_LINES = 3;
 
+/**
+ * A class which creates a "source context string" for a JSON file, which
+ * contains a few lines of source, line numbers, and a highlighted key/value
+ * pair somewhere within.
+ */
 export class JSONBlamer {
   /**
    * Root {@link DocumentNode} of the AST
@@ -93,6 +93,14 @@ export class JSONBlamer {
 
     public readonly beforeLines: number = DEFAULT_BEFORE_LINES,
   ) {}
+
+  public static create(
+    rawJson: string,
+    jsonPath: string,
+    beforeLines?: number,
+  ) {
+    return new JSONBlamer(rawJson, jsonPath, beforeLines);
+  }
 
   /**
    * Applies ANSI syntax highlighting to {@link JSONBlamer.json}.
@@ -156,7 +164,7 @@ export class JSONBlamer {
     }, root);
 
     if (found) {
-      const loc = new JSONLocation(
+      const loc = JSONLocation.create(
         this.jsonPath,
         found.loc.start,
         found.loc.end,
@@ -190,7 +198,9 @@ export class JSONBlamer {
    *   {@link JSONBlamer.find}
    * @returns A nice thing to print to the console
    */
-  @memoize((result: BlameInfo) => `${result.filepath}:${result.keypath}`)
+  @memoize(
+    (result: BlameInfo) => result && `${result.filepath}:${result.keypath}`,
+  )
   public getContext(blameInfo: BlameInfo): string {
     if (!blameInfo) {
       throw new InvalidArgError('blameInfo is required', {
@@ -234,11 +244,7 @@ export class JSONBlamer {
         .slice(blameInfo.loc.start.line - 1, blameInfo.loc.end.line)
         .map(stripAnsi);
       const maxCol = max(strippedLines.map(stringWidth));
-      ok(
-        maxCol,
-        // typeof maxCol !== 'undefined',
-        'Unexpected empty array of highlighted lines. This is a bug',
-      );
+      ok(maxCol, 'Unexpected empty array of highlighted lines. This is a bug');
       contextLines = [
         ...lines.slice(startLine, blameInfo.loc.start.line - 1),
         ...strippedLines.map((line, idx) => {

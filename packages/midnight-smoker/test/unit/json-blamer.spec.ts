@@ -1,5 +1,8 @@
 import {ErrorCode} from '#error/codes';
-import {JSONBlamer} from '#rule/json-blamer';
+import {type BlameInfo, JSONBlamer} from '#rule/json-blamer';
+import {JSONLocation} from '#rule/json-location';
+import {NL} from '#util/format';
+import {type Location} from '@humanwhocodes/momoa';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
 
@@ -155,33 +158,67 @@ describe('midnight-smoker', function () {
 
         describe('getContext()', function () {
           describe('when called without a BlameInfo', function () {
-            it('should reject', async function () {
+            it('should throw', function () {
               const result = jsonBlamer.find('papa.smurf');
-              await expect(
-                jsonBlamer.getContext(result!),
-                'to be rejected with error satisfying',
-                {
-                  code: ErrorCode.InvalidArgError,
-                },
-              );
+              expect(() => jsonBlamer.getContext(result!), 'to throw error', {
+                code: ErrorCode.InvalidArgError,
+              });
             });
           });
 
           describe('when called with an invalid BlameInfo', function () {
-            it('should fail with an AssertionError', async function () {
-              await expect(
-                jsonBlamer.getContext({
-                  loc: {
-                    end: {
-                      line: 0,
+            it('should fail with an AssertionError', function () {
+              expect(
+                () =>
+                  jsonBlamer.getContext({
+                    loc: {
+                      end: {
+                        line: 0,
+                      },
+                      start: {
+                        line: 0,
+                      },
                     },
-                    start: {
-                      line: 0,
-                    },
-                  },
-                } as any),
-                'to be rejected with error satisfying',
+                  } as any),
+                'to throw error',
                 {code: ErrorCode.AssertionError},
+              );
+            });
+          });
+
+          describe('when BlameInfo represents a range', function () {
+            let info: BlameInfo;
+
+            beforeEach(function () {
+              const start: Location = {
+                column: 1,
+                line: 1,
+                offset: 0,
+              };
+              const end: Location = {
+                column: 10,
+                line: 1,
+                offset: 0,
+              };
+              info = {
+                filepath: 'some.json',
+                keypath: 'foo.bar',
+                loc: JSONLocation.create('some.json', start, end),
+                value: 'baz',
+              };
+            });
+
+            it('should return a formatted source context string (no color)', function () {
+              const context = jsonBlamer.getContext(info);
+              // note the silly string formatting here
+              expect(
+                `${NL}${context}${NL}`,
+                'to equal',
+                `
+— some.json ——————————————✂
+1: {"foo": {"bar": "baz"}}
+——————————————————————————✂
+`,
               );
             });
           });
