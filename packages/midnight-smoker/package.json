@@ -164,7 +164,7 @@
     "update-schema": "tsx ./scripts/generate-schema.ts"
   },
   "dependencies": {
-    "@humanwhocodes/momoa": "3.2.1",
+    "@humanwhocodes/momoa": "3.2.2",
     "@midnight-smoker/plugin-default": "file:../plugin-default",
     "@types/semver": "7.5.6",
     "chalk": "4.1.2",
