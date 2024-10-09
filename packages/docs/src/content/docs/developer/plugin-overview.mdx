@@ -1,0 +1,144 @@
+---
+title: Developing Plugins
+description: How to create your own plugins for `midnight-smoker`
+---
+
+import {LinkCard, CardGrid} from '@astrojs/starlight/components';
+
+This guide describes how to create your own plugins for `midnight-smoker`.
+
+:::tip[STFU & Give Me Examples]
+
+Here: [example plugins for `midnight-smoker`](https://github.com/boneskull/midnight-smoker/tree/main/example).
+
+:::
+
+## Who This Guide is For
+
+If you like `midnight-smoker`, but it doesn't do _quite_ what you want, you could bridge the gap by creating a plugin. For exampled, if you want to:
+
+- Create custom rules (automated lint checks) to run against your package artifacts
+- Add support for an unsupported package manager
+- Create a reporter for a custom file format
+- Create a different strategy for invoking custom scripts (e.g., run them in parallel)
+
+...then this guide is for _you_.
+
+## What is a Plugin?
+
+Pedantically speaking, a plugin is an object implementing the this interface:
+
+```ts
+interface Plugin {
+  /**
+   * Defines the plugin
+   */
+  plugin: (api: PluginAPI) => void | Promise<void>;
+
+  /**
+   * Custom name; otherwise derived from closest `package.json`
+   */
+  name?: string;
+
+  /**
+   * Custom description; otherwise derived from closest `package.json`
+   */
+  description?: string;
+}
+```
+
+Typically, an [_ECMAScript Module_](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/export) or a _CommonJS script_ will implement this interface. For ESM, these may be named exports; for CJS, they may be properties on the [`exports`](https://nodejs.org/api/modules.html#exports-shortcut) object.
+
+Such an object implementing this interface could instead be the _default_ export in a ES module, or the value of `module.exports` in a CommonJS script (or even an `exports.default` value, because everything is terrible).
+
+The implementation of a `Plugin` is expected to use the `PluginAPI` object to register one or more [_components_](#whats-a-component).
+
+:::tip[Use the Types]
+
+It's _strongly recommended_ to use TypeScript (either TS proper or [JSDoc](https://www.typescriptlang.org/docs/handbook/type-checking-javascript-files.html)) when writing plugins, as it will help you navigate the `PluginAPI` object.
+
+`midnight-smoker` _can_ load a TypeScript plugin directly—but this feature should only be used for development!
+
+:::
+
+### What's a Component?
+
+`midnight-smoker` is ~~overengineered~~ modular, and most functionality is provided by _components_. A component is typically a function or object implementing one of a handful of interfaces defined by `midnight-smoker`.
+
+A component may be one of:
+
+- A lint **rule** — analyzes the installed package artifact
+- A **reporter** — emits output
+- A **package manager** adapter — logic for packing, installing, and running custom scripts
+- A **script runner** — orchestrates custom script runs
+- A **rule runner** — invokes rules (dubious use-case)
+- An **executor** — spawns processes
+
+:::note[Mea Culpa]
+
+A "component" means something entirely different in the context of `midnight-smoker` than it does in a web context. Please [send suggestions](https://github.com/boneskull/midnight-smoker/issues/new) for a better word.
+
+:::
+
+Next, let's [take a closer look](#the-plugin-api) at the `PluginAPI` object.
+
+## The Plugin API
+
+The `PluginAPI` object is the "glue" between a plugin and `midnight-smoker`. It contains functions for defining new components, utilities, and creating object schemas.
+
+### Component Definition Functions
+
+`PluginAPI` contains `define*` functions for each [component kind](#whats-a-component). A plugin calls these to register its components.
+
+These functions are all synchronous.
+
+### Plugin Metadata
+
+The `PluginAPI.metadata` property contains metadata (a `PluginMetadata` object) about _this_ plugin. This object will be updated _as the [component definition functions](#component-definition-functions) are called_.
+
+It contains information such as the parsed `package.json`, any custom name and description, the user-requested module identifier and its corresponding resolved module path.
+
+Of note, it contains `Map`s for each component kind, where the key is the component _name_. The value of each entry depends on the component kind. It will contain an `id` property created and assigned by `midnight-smoker`.
+
+:::note[Component Names]
+
+Rule and package manager components _must_ be explicitly named, but others will receive a name of `default` if not otherwise specified. See [scoped names](#scoped-names) for more information.
+
+:::
+
+Since the most common use case will probably be a custom rule, let's take a look at that first.
+
+### Other Plugins
+
+While integration with other plugins isn't well-defined (yet), a plugin can get basic information about the other plugins which have been loaded via the `PluginAPI.plugins` property. This property is computed, so its value depends on _when_ the plugin accesses it; other plugins may be loaded before or after yours!
+
+### Component-Specific Namespaces
+
+These properties are TS _namespaces_ corresponding to each component kind. They're useful for accessing types and helpers specific to a component implementation.
+
+### Errors, Events
+
+Certain component kind expect certain `Error`s to be thrown and certain events to be emitted. Plugins may subclass `midnight-smoker`'s `Error`s, if needed--but it's recommended to _not_ throw vanilla or other random `Error`s, as `midnight-smoker`'s `Error`s contain custom behavior and formatting.
+
+### Junk Drawer
+
+There's handful of utilities in there, too. Poke around, I guess?
+
+Next, we'll learn how to [create a plugin which registers a custom rule](/developer/writing-rules).
+
+## Going Further
+
+From here, you might want to:
+
+<CardGrid>
+  <LinkCard
+    title="Creating a Rule"
+    description="Learn how to implement a custom lint rule"
+    href="/developer/plugin-rule"
+  />
+  <LinkCard
+    title="Creating a Reporter"
+    description="Learn how to implement a custom reporter"
+    href="/developer/plugin-reporter"
+  />
+</CardGrid>
