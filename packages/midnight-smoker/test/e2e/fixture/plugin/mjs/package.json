@@ -1,0 +1,9 @@
+{
+  "name": "mjs-plugin",
+  "version": "1.0.0",
+  "description": "Example of a midnight-smoker plugin as a .mjs file with default export",
+  "main": "index.mjs",
+  "scripts": {
+    "postinstall": "echo \"Do not install this fixture\"; exit 1"
+  }
+}

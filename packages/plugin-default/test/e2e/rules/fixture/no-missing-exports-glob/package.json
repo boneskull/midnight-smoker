@@ -1,0 +1,9 @@
+{
+  "name": "no-missing-exports-glob",
+  "version": "1.0.0",
+  "exports": {
+    "./*.js": "./lib/*.js",
+    "./package.json": "./package.json"
+  },
+  "type": "module"
+}

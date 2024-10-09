@@ -1,9 +1,0 @@
-{
-  "name": "no-missing-exports-subpath-ok",
-  "version": "1.0.0",
-  "exports": {
-    ".": "./index.js",
-    "./missing.js": "./index-missing.js"
-  },
-  "type": "module"
-}

@@ -1,7 +1,10 @@
 'use strict';
 
+/**
+ * @type {import('mocha').MochaOptions}
+ */
 module.exports = {
-  require: 'ts-node/register',
+  require: ['tsx'],
   timeout: '2s',
   color: true,
   slow: '1s',

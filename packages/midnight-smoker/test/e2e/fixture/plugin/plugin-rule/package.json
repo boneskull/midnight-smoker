@@ -1,0 +1,24 @@
+{
+  "name": "example-rule-plugin",
+  "version": "1.0.0",
+  "description": "Example of a midnight-smoker plugin providing a custom rule",
+  "files": [
+    "index.js",
+    "index.ts"
+  ],
+  "keywords": [
+    "midnight-smoker-plugin"
+  ],
+  "scripts": {
+    "prepare": "tsc",
+    "start": "smoker --plugin ./index.js"
+  },
+  "peerDependencies": {
+    "midnight-smoker": "file:../.."
+  },
+  "devDependencies": {
+    "@tsconfig/node18": "^18.2.2",
+    "midnight-smoker": "file:../..",
+    "typescript": "^5.3.2"
+  }
+}

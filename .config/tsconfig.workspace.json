@@ -1,0 +1,13 @@
+{
+  "extends": "@tsconfig/node18/tsconfig.json",
+  "compilerOptions": {
+    "isolatedModules": true,
+    "types": ["node"],
+    "composite": true,
+    "customConditions": ["typedoc"],
+    "resolveJsonModule": true,
+    "resolvePackageJsonImports": true,
+    "noImplicitOverride": true,
+    "noUncheckedIndexedAccess": true
+  }
+}

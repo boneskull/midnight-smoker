@@ -1,40 +1,64 @@
-#!/usr/bin/env ts-node
+#!/usr/bin/env tsx
 
 /**
  * Script to generate/update the JSON schema for `SmokerOptions`
+ *
+ * **This overwrites `../schema/midnight-smoker.schema.json`**
+ *
+ * Uses {@link https://npm.im/zod-to-json-schema zod-to-json-schema} and
+ * {@link https://npm.im/prettier prettier}.
+ *
  * @packageDocumentation
  */
 
-import {writeFileSync} from 'node:fs';
-import path from 'node:path';
-import {zodToJsonSchema} from 'zod-to-json-schema';
-import {zRawSmokerOptions} from '../src/options';
-import {zCheckSeverity} from '../src/rules/severity';
+import {OptionsParser} from '#options/options-parser';
+import {BLESSED_PLUGINS} from '#plugin/blessed';
+import {PluginRegistry} from '#plugin/registry';
+import {RuleSeveritySchema} from '#schema/rule-severity';
 import {
-  zFalse,
-  zNonEmptyStringArray,
-  zStringOrArray,
-  zTrue,
-} from '../src/schema-util';
+  DefaultFalseSchema,
+  DefaultTrueSchema,
+  NonEmptyStringToArraySchema,
+} from '#util/schema-util';
+import {writeFile} from 'node:fs/promises';
+import {normalize} from 'node:path';
+import prettier from 'prettier';
+import {zodToJsonSchema} from 'zod-to-json-schema';
 
-const DEST = path.join(
-  __dirname,
-  '..',
-  'schema',
-  'midnight-smoker.schema.json',
-);
+const DEST = normalize(`${__dirname}/../schema/midnight-smoker.schema.json`);
 
-const jsonSchema = zodToJsonSchema(zRawSmokerOptions, {
-  definitions: {
-    defaultTrue: zTrue,
-    defaultFalse: zFalse,
-    stringOrStringArray: zStringOrArray,
-    arrayOfNonEmptyStrings: zNonEmptyStringArray,
-    severity: zCheckSeverity,
-  },
-  definitionPath: '$defs',
-});
+async function main() {
+  const registry = PluginRegistry.create();
+  await registry.registerPlugins(BLESSED_PLUGINS);
+  const SmokerOptsSchema = OptionsParser.buildSmokerOptionsSchema(registry);
 
-writeFileSync(DEST, JSON.stringify(jsonSchema, null, 2), 'utf8');
+  const jsonSchema = zodToJsonSchema(SmokerOptsSchema, {
+    definitionPath: '$defs',
+    definitions: {
+      arrayOfNonEmptyStrings: NonEmptyStringToArraySchema,
+      defaultFalse: DefaultFalseSchema,
+      defaultTrue: DefaultTrueSchema,
+      severity: RuleSeveritySchema,
+    },
+  });
 
-console.error(`Generated options schema at ${DEST}`);
+  const prettierCfg = await prettier.resolveConfig(DEST);
+  if (!prettierCfg) {
+    throw new Error(`Could not resolve prettier config for ${DEST}`);
+  }
+  const json = JSON.stringify(jsonSchema, null, 2);
+  const prettyJson = await prettier.format(json, {
+    ...prettierCfg,
+    filepath: DEST,
+  });
+  await writeFile(DEST, prettyJson, 'utf8');
+
+  console.debug(`Generated options schema at ${DEST}`);
+}
+
+if (require.main === module) {
+  main().catch((err) => {
+    console.error(err);
+    process.exitCode = 1;
+  });
+}

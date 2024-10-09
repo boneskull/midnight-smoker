@@ -1,0 +1,7 @@
+{
+  "extends": "./tsconfig.workspace.json",
+  "compilerOptions": {
+    "types": ["node", "mocha"],
+    "noEmit": true
+  }
+}

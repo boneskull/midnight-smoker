@@ -8,10 +8,10 @@ module.exports = {
    *
    * @returns Command to update schema
    */
-  '(./packages/plugin-default/src/**/*.ts|packages/midnight-smoker/src/options.ts|./packages/midnight-smoker/scripts/generate-schema.ts|package.json|package-lock.json)':
+  '(./packages/plugin-default/src/**/*.ts|packages/midnight-smoker/src/schema/smoker-options.ts|./packages/midnight-smoker/scripts/generate-schema.ts|package.json|package-lock.json)':
     () => [
       'npm run update-schema',
       'git add -A packages/midnight-smoker/schema/midnight-smoker.schema.json',
     ],
-  '*.json': ['prettier --write'],
+  '*.{json,json5}': ['prettier --write'],
 };

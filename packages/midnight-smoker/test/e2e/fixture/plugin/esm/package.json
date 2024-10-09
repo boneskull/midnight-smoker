@@ -1,0 +1,12 @@
+{
+  "name": "esm-plugin",
+  "version": "1.0.0",
+  "description": "Example of a midnight-smoker plugin as ESM",
+  "type": "module",
+  "exports": {
+    ".": "./index.js"
+  },
+  "scripts": {
+    "postinstall": "echo \"Do not install this fixture\"; exit 1"
+  }
+}

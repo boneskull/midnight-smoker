@@ -1,0 +1,24 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "workspaces": {
+    ".": {
+      "entry": ["scripts/*.js", ".wallaby.js"],
+      "project": "scripts/**/*.js",
+      "ignoreDependencies": ["markdownlint-cli2-formatter-pretty"]
+    },
+    "packages/midnight-smoker": {
+      "entry": ["src/index.ts", "src/cli/index.ts"],
+      "project": [
+        "src/**/*.ts!",
+        "test/**/*.ts",
+        "script/**/*.ts",
+        "!dist/**/*"
+      ]
+    }
+  },
+  "ignore": ["**/fixture/**", "**/__snapshots__/**"],
+  "mocha": {
+    "config": ".mocharc.js",
+    "entry": ["**/*.spec.ts"]
+  }
+}
