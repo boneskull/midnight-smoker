@@ -1,11 +1,23 @@
-export {type StaticPluginMetadata} from '#plugin/static-plugin-metadata';
+export {
+  type InstallManifest,
+  type WorkspaceInstallManifest,
+} from '#defs/pkg-manager';
+
+export {
+  type PkgManager,
+  type PkgManagerContext,
+  type PkgManagerOpts,
+} from '#defs/pkg-manager';
+
+export {type RunScriptManifest} from '#defs/pkg-manager';
+
+export {type StaticPluginMetadata} from '#defs/plugin';
+
+export {type SomeRule} from '#defs/rule';
 
 export {type CheckResult} from '#rule/issue';
 
-export {
-  type Issue as CheckResultFailed,
-  type CheckOk as CheckResultOk,
-} from '#rule/issue';
+export type {CheckOk, Issue} from '#rule/issue';
 
 export {type LintManifest} from '#rule/lint-manifest';
 
@@ -17,27 +29,13 @@ export {
 
 export {type StaticRuleContext} from '#rule/static-rule-context';
 
-export {
-  type InstallManifest,
-  type WorkspaceInstallManifest,
-} from '#schema/install-manifest';
-
 export {type InstallResult} from '#schema/install-result';
 
-export {
-  PkgManagerContextSchema,
-  type PkgManager,
-  type PkgManagerContext,
-  type PkgManagerOpts,
-} from '#schema/pkg-manager';
-
-export {type SomeRule} from '#schema/rule';
+export {PkgManagerContextSchema} from '#schema/pkg-manager';
 
 export {type BaseRuleConfigRecord} from '#schema/rule-options';
 
 export {type SomeRuleConfig} from '#schema/rule-options';
-
-export {type RunScriptManifest} from '#schema/run-script-manifest';
 
 export {type RunScriptResult} from '#schema/run-script-result';
 

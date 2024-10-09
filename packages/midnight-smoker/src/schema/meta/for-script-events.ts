@@ -1,4 +1,4 @@
-export {type RunScriptManifest} from '#schema/run-script-manifest';
+export {type RunScriptManifest} from '#defs/pkg-manager';
 
 export {
   type RunScriptResult,

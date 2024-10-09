@@ -275,9 +275,7 @@ export class PluginMetadata implements Schema.StaticPluginMetadata {
    * @param value Rule definition
    * @internal
    */
-  public addRule<Schema extends Schema.RuleSchemaValue | void = void>(
-    rule: Schema.Rule<Schema>,
-  ): void {
+  public addRule(rule: Schema.SomeRule): void {
     const {name} = rule;
     this.ruleMap.set(name, rule);
   }

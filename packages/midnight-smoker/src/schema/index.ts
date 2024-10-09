@@ -1,3 +1,7 @@
+export * from '../defs/reporter';
+
+export * from '../defs/rule';
+
 export * from './abort-signal';
 
 export * from './desired-pkg-manager';

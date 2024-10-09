@@ -1,4 +1,4 @@
-export {type InstallManifest} from '#schema/install-manifest';
+export {type InstallManifest} from '#defs/pkg-manager';
 
 export {type PackOptions} from '#schema/pack-options';
 

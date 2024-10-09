@@ -1,4 +1,4 @@
-import {type NormalizedPackageJson} from '#schema/package-json';
+import {type PackageJson} from '#schema/package-json';
 import {type WorkspaceInfo} from '#schema/workspace-info';
 import {narrowInstallables} from '#util/narrow-installables';
 import stringify from 'json-stable-stringify';
@@ -10,7 +10,7 @@ describe('midnight-smoker', function () {
   describe('util', function () {
     describe('narrow-installables', function () {
       describe('narrowInstallables', function () {
-        const pkgJson: NormalizedPackageJson = {
+        const pkgJson: PackageJson = {
           dependencies: {},
           devDependencies: {
             'example-package': '1.0.0',

@@ -1,3 +1,10 @@
+/**
+ * Provides {@link StaticRule}, which is a representation of a `Rule` suitable
+ * for JSON serialization.
+ *
+ * @packageDocumentation
+ */
+
 import {NonEmptyStringSchema} from '#util/schema-util';
 import {z} from 'zod';
 
@@ -34,13 +41,19 @@ export type StaticRule = {
 };
 
 /**
+ * Used for extending the shape of a {@link StaticRuleSchema}, which cannot be
+ * extended directly because it is declared a `z.ZodType`.
+ */
+export const StaticRuleSchemaShape = {
+  defaultSeverity: RuleSeveritySchema.optional(),
+  description: NonEmptyStringSchema,
+  name: NonEmptyStringSchema,
+  url: NonEmptyStringSchema.optional(),
+};
+
+/**
  * The bits of a `Rule` suitable for passing the API edge
  */
-export const StaticRuleSchema = z
-  .strictObject({
-    defaultSeverity: RuleSeveritySchema.optional(),
-    description: NonEmptyStringSchema,
-    name: NonEmptyStringSchema,
-    url: NonEmptyStringSchema.optional(),
-  })
+export const StaticRuleSchema: z.ZodType<StaticRule> = z
+  .strictObject(StaticRuleSchemaShape)
   .describe('Static representation of a Rule, suitable for serialization');

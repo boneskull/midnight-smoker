@@ -11,8 +11,8 @@
  * @packageDocumenation
  * @todo Need `meta` modules for error and schema
  */
+import {type PkgManagerContext} from '#defs/pkg-manager';
 import {type PkgManagerEnvelope} from '#plugin/component-envelope';
-import {type PkgManagerContext} from '#schema/pkg-manager';
 
 /**
  * Common input for various actors

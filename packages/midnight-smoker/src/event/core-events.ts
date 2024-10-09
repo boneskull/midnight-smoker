@@ -1,7 +1,7 @@
 import {type ERROR, type FAILED, type OK} from '#constants';
 import {CoreEvents} from '#constants/event';
+import {type StaticPluginMetadata} from '#defs/plugin';
 import {type SmokeError} from '#error/smoke-error';
-import {type StaticPluginMetadata} from '#plugin/static-plugin-metadata';
 import {type LintResult, type LintResultFailed} from '#rule/lint-result';
 import {
   type RunScriptResult,

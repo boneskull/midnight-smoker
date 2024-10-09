@@ -3,7 +3,7 @@ import {
   ComponentKinds,
   DEFAULT_COMPONENT_ID,
 } from '#constants';
-import {asValidationError} from '#error/validation-error';
+import {type Rule} from '#defs/rule';
 import {type ComponentObject} from '#plugin/component';
 import {
   type DefineExecutorFn,
@@ -13,12 +13,14 @@ import {
   type PluginAPI,
 } from '#plugin/plugin-api';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
-import {ExecutorSchema} from '#schema/executor';
-import {PkgManagerSchema} from '#schema/pkg-manager';
-import {ReporterSchema} from '#schema/reporter';
-import {type Rule, RuleSchema} from '#schema/rule';
 import {type RuleSchemaValue} from '#schema/rule-schema-value';
 import {createDebug} from '#util/debug';
+import {
+  assertExecutor,
+  assertPkgManager,
+  assertReporter,
+  assertRule,
+} from '#util/guard/assert/component';
 import * as SchemaUtils from '#util/schema-util';
 import {z} from 'zod';
 
@@ -46,23 +48,19 @@ export const createPluginAPI = (
   >(
     rule: Rule<Schema>,
   ) => {
-    try {
-      RuleSchema.parse(rule);
-    } catch (err) {
-      throw asValidationError(err);
-    }
+    // 1. Validate the rule
+    assertRule(rule);
+    // 2. Add the rule to the plugin metadata
     metadata.addRule(rule);
+    // 3. Register the component so that it has a unique ID
     registerComponent(ComponentKinds.Rule, rule, rule.name);
+
     debug('%s: created rule "%s"', metadata, rule.name);
     return pluginApi;
   };
 
   const definePackageManager: DefinePackageManagerFn = (pkgManager) => {
-    try {
-      PkgManagerSchema.parse(pkgManager);
-    } catch (err) {
-      throw asValidationError(err);
-    }
+    assertPkgManager(pkgManager);
     metadata.addPkgManager(pkgManager);
     registerComponent(ComponentKinds.PkgManager, pkgManager, pkgManager.name);
     debug('%s: created package manager "%s"', metadata, pkgManager.name);
@@ -73,11 +71,7 @@ export const createPluginAPI = (
     executor,
     name = DEFAULT_COMPONENT_ID,
   ) => {
-    try {
-      ExecutorSchema.parse(executor);
-    } catch (err) {
-      throw asValidationError(err);
-    }
+    assertExecutor(executor);
     metadata.addExecutor(name, executor);
     registerComponent(ComponentKinds.Executor, executor, name);
     debug('%s: created executor "%s"', metadata, name);
@@ -85,11 +79,7 @@ export const createPluginAPI = (
   };
 
   const defineReporter: DefineReporterFn = (reporter) => {
-    try {
-      ReporterSchema.parse(reporter);
-    } catch (err) {
-      throw asValidationError(err);
-    }
+    assertReporter(reporter);
     metadata.addReporter(reporter);
     registerComponent(ComponentKinds.Reporter, reporter, reporter.name);
     debug('%s: created reporter "%s"', metadata, reporter.name);

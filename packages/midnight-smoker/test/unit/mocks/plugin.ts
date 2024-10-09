@@ -1,9 +1,9 @@
 import {DEFAULT_EXECUTOR_ID, SYSTEM_EXECUTOR_ID} from '#constants';
-import {type Executor} from '#schema/executor';
-import {type PkgManager} from '#schema/pkg-manager';
+import {type Executor} from '#defs/executor';
+import {type PkgManager} from '#defs/pkg-manager';
+import {type Reporter} from '#defs/reporter';
+import {type Rule} from '#defs/rule';
 import {type Plugin} from '#schema/plugin';
-import {type Reporter} from '#schema/reporter';
-import {type Rule} from '#schema/rule';
 
 import {
   nullExecutor,

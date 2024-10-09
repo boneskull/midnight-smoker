@@ -1,5 +1,5 @@
+import {type PackageJson} from '#schema/package-json';
 import {type FileManager} from '#util/filemanager';
-import {type PackageJson} from 'type-fest';
 import {fromPromise} from 'xstate';
 
 export interface ReadSmokerPkgJsonLogicInput {

@@ -1,8 +1,6 @@
+import {type InstallManifest} from '#defs/pkg-manager';
 import {ExecOutputSchema} from '#schema/exec-result';
-import {
-  type InstallManifest,
-  InstallManifestSchema,
-} from '#schema/install-manifest';
+import {InstallManifestSchema} from '#schema/install-manifest';
 import {z} from 'zod';
 
 import {type ExecOutput} from './exec-result';

@@ -1,8 +1,8 @@
+import {type PkgManagerInstallContext} from '#defs/pkg-manager';
 import {AbortError} from '#error/abort-error';
 import {InstallError} from '#error/install-error';
 import {assertExecOutput} from '#executor';
 import {type InstallResult, InstallResultSchema} from '#schema/install-result';
-import {type PkgManagerInstallContext} from '#schema/pkg-manager';
 import {isSmokerError} from '#util/guard/smoker-error';
 import {fromPromise} from 'xstate';
 

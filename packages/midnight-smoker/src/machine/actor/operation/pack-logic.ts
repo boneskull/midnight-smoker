@@ -1,11 +1,11 @@
+import {
+  type InstallManifest,
+  type PkgManagerPackContext,
+} from '#defs/pkg-manager';
 import {AbortError} from '#error/abort-error';
 import {PackError} from '#error/pack-error';
 import {PackParseError} from '#error/pack-parse-error';
-import {
-  type InstallManifest,
-  InstallManifestSchema,
-} from '#schema/install-manifest';
-import {type PkgManagerPackContext} from '#schema/pkg-manager';
+import {InstallManifestSchema} from '#schema/install-manifest';
 import {isSmokerError} from '#util/guard/smoker-error';
 import {fromPromise} from 'xstate';
 

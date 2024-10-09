@@ -1,11 +1,11 @@
 import {type ERROR, FAILED, OK} from '#constants';
+import {type SomeRule} from '#defs/rule';
 import {AbortError} from '#error/abort-error';
 import {RuleError} from '#error/rule-error';
 import {type CheckOk, type Issue} from '#rule/issue';
 import {type LintManifest} from '#rule/lint-manifest';
 import {RuleContext} from '#rule/rule-context';
 import {type StaticRuleContext} from '#rule/static-rule-context';
-import {type SomeRule} from '#schema/rule';
 import {type SomeRuleConfig} from '#schema/rule-options';
 import {isAbortError} from '#util/guard/abort-error';
 import {isSmokerError} from '#util/guard/smoker-error';

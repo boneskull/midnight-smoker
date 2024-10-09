@@ -1,10 +1,10 @@
 import {FAILED, FINAL} from '#constants';
 import {LintEvents} from '#constants/event';
+import {type SomeRule} from '#defs/rule';
 import {type EventData} from '#event/events';
 import {type LintEventData} from '#event/lint-events';
 import {type SmokeMachineLintEvent} from '#machine/event/lint';
 import {type LintResult, type LintResultOk} from '#rule/lint-result';
-import {type SomeRule} from '#schema/rule';
 import {type SmokerOptions} from '#schema/smoker-options';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {type WorkspaceInfo} from '#schema/workspace-info';

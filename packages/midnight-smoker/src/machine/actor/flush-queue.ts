@@ -1,20 +1,11 @@
 import {Events} from '#constants';
 import {AbortError} from '#error/abort-error';
 import {ReporterError} from '#error/reporter-error';
-import {
-  type EventData,
-  type EventName,
-  type SomeDataForEvent,
-} from '#event/events';
+import {type EventData, type EventType} from '#event/events';
 import {
   type ReporterContext,
   ReporterContextSubject,
 } from '#reporter/reporter-context';
-import {
-  type EventToListenerNameMap,
-  type Reporter,
-  type ReporterListener,
-} from '#schema/reporter';
 import {createDebug} from '#util/debug';
 import {fromUnknownError} from '#util/from-unknown-error';
 import {isAbortError} from '#util/guard/abort-error';
@@ -22,6 +13,12 @@ import {isFunction} from '#util/guard/common';
 import {invert, mapValues} from 'lodash';
 import {type EventEmitter} from 'node:stream';
 import {fromPromise} from 'xstate';
+
+import {
+  type EventToListenerNameMap,
+  type Reporter,
+  type ReporterListener,
+} from '../../defs/reporter';
 
 const debug = createDebug(__filename);
 
@@ -50,7 +47,7 @@ export interface FlushQueueLogicInput {
   /**
    * The entire event queue
    */
-  queue: SomeDataForEvent[];
+  queue: EventData[];
 
   /**
    * The reporter definition
@@ -65,7 +62,7 @@ export interface FlushQueueLogicInput {
  * @param ctx Reporter definition's context
  * @param event Event data
  */
-async function invokeListener<T extends EventName>(
+async function invokeListener<T extends EventType>(
   reporter: Reporter,
   ctx: ReporterContext,
   event: EventData<T>,

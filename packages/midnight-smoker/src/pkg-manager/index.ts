@@ -8,6 +8,8 @@
  * @todo Audit these exports--what does `plugin-default` actually need?
  */
 
+export * from '#defs/pkg-manager';
+
 export * from '#error/pkg-manager';
 
 export * from '#schema/desired-pkg-manager';
@@ -19,8 +21,6 @@ export * from '#schema/install-manifest';
 export * from '#schema/install-result';
 
 export * from '#schema/pack-options';
-
-export * from '#schema/pkg-manager';
 
 export * from '#schema/run-script-manifest';
 

@@ -1,8 +1,8 @@
-export {type StaticPluginMetadata} from '#plugin/static-plugin-metadata';
+export {type Executor} from '#defs/executor';
+
+export {type StaticPluginMetadata} from '#defs/plugin';
 
 export {type LintResult, type LintResultFailed} from '#rule/lint-result';
-
-export {type Executor} from '#schema/executor';
 
 export {type RuleSeverity} from '#schema/rule-severity';
 

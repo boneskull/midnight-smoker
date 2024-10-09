@@ -1,11 +1,12 @@
 import type {Entries} from 'type-fest';
 
 import {type ComponentKind, type ComponentKinds} from '#constants';
-import {type StaticPluginMetadata} from '#plugin/static-plugin-metadata';
-import {type Executor} from '#schema/executor';
-import {type PkgManager} from '#schema/pkg-manager';
-import {type SomeReporter} from '#schema/reporter';
-import {type SomeRule} from '#schema/rule';
+import {type Executor} from '#defs/executor';
+import {type PkgManager} from '#defs/pkg-manager';
+import {type StaticPluginMetadata} from '#defs/plugin';
+import {type SomeRule} from '#defs/rule';
+
+import {type SomeReporter} from '../defs/reporter';
 
 export type ComponentObject<T extends ComponentKind> =
   T extends typeof ComponentKinds.Rule

@@ -7,11 +7,11 @@
  * @public
  */
 
+export * from '#defs/executor';
+
 export {ExecError} from '#error/exec-error';
 
 export * from '#schema/exec-result';
-
-export * from '#schema/executor';
 
 export {assertExecOutput} from '#util/guard/assert/exec-output';
 

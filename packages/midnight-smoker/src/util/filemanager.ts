@@ -14,7 +14,11 @@ import {DEFAULT_TMPDIR_PREFIX, MIDNIGHT_SMOKER, PACKAGE_JSON} from '#constants';
 import {AbortError} from '#error/abort-error';
 import {MissingPackageJsonError} from '#error/missing-pkg-json-error';
 import {UnreadablePackageJsonError} from '#error/unreadable-pkg-json-error';
-import {type NormalizedPackageJson} from '#schema/package-json';
+import {
+  type DenormalizedPackageJson,
+  NormalizedPackageJsonSchema,
+  type PackageJson,
+} from '#schema/package-json';
 import {isSmokerError} from '#util/guard/smoker-error';
 import {
   glob,
@@ -27,7 +31,6 @@ import {
 } from 'glob';
 import path from 'node:path';
 import normalizePkgData from 'normalize-package-data';
-import {type PackageJson} from 'type-fest';
 
 import {createDebug} from './debug';
 import {memoize} from './decorator';
@@ -44,7 +47,7 @@ export interface FileManagerOptions {
 }
 
 export interface FindPkgJsonResult {
-  packageJson: PackageJson;
+  packageJson: DenormalizedPackageJson;
   path: string;
   rawPackageJson: string;
 }
@@ -59,7 +62,7 @@ export interface ReadPkgJsonNormalizeOptions extends ReadPkgJsonOptions {
 }
 
 export interface ReadPkgJsonNormalizedResult {
-  packageJson: NormalizedPackageJson;
+  packageJson: PackageJson;
   path: string;
   rawPackageJson: string;
 }
@@ -130,6 +133,10 @@ export class FileManager {
     return tempDir;
   }
 
+  /**
+   * @privateRemarks
+   * TODO: make strict and normalize the default behavior
+   */
   public async findPkgUp(
     cwd: string,
     options: ReadPkgJsonNormalizeOptions & ReadPkgJsonStrictOptions,
@@ -324,20 +331,20 @@ export class FileManager {
   public async readPkgJson(
     filepath: string,
     options: {normalize: true} & ReadPkgJsonOptions,
-  ): Promise<ReadPkgJsonResult<NormalizedPackageJson>>;
-  public async readPkgJson(
-    filepath: string,
-    options: {normalize?: false} & ReadPkgJsonOptions,
   ): Promise<ReadPkgJsonResult<PackageJson>>;
   public async readPkgJson(
     filepath: string,
+    options: {normalize?: false} & ReadPkgJsonOptions,
+  ): Promise<ReadPkgJsonResult<DenormalizedPackageJson>>;
+  public async readPkgJson(
+    filepath: string,
     options?: ReadPkgJsonOptions,
-  ): Promise<ReadPkgJsonResult<NormalizedPackageJson | PackageJson>>;
+  ): Promise<ReadPkgJsonResult<DenormalizedPackageJson>>;
   @memoize((filepath, opts) => JSON.stringify({filepath, opts}))
   public async readPkgJson(
     filepath: string,
     options: ReadPkgJsonOptions = {},
-  ): Promise<ReadPkgJsonResult<NormalizedPackageJson | PackageJson>> {
+  ): Promise<ReadPkgJsonResult<PackageJson>> {
     const {normalize, signal} = options;
     if (signal?.aborted) {
       throw new AbortError(signal.reason);
@@ -352,7 +359,7 @@ export class FileManager {
         normalizePkgData(packageJson);
         debug('Read & normalized JSON at %s', filepath);
         return {
-          packageJson: packageJson as NormalizedPackageJson,
+          packageJson: NormalizedPackageJsonSchema.parse(packageJson),
           rawPackageJson: file,
         };
       }
@@ -374,7 +381,11 @@ export class FileManager {
   public async readSmokerPkgJson({
     signal,
   }: ReadSmokerPkgJsonOptions = {}): Promise<PackageJson> {
-    const result = await this.findPkgUp(__dirname, {signal, strict: true});
+    const result = await this.findPkgUp(__dirname, {
+      normalize: true,
+      signal,
+      strict: true,
+    });
     return result.packageJson;
   }
 

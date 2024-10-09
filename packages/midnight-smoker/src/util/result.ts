@@ -7,9 +7,9 @@
 
 import type {WorkspaceInfoSchema} from '#schema/workspace-info';
 
-import {type NormalizedPackageJson} from '#schema/package-json';
+import {type PackageJson} from '#schema/package-json';
 import {omit} from 'lodash';
-import {type PackageJson, type TupleToUnion} from 'type-fest';
+import {type TupleToUnion} from 'type-fest';
 
 /**
  * Props which are not allowed in a {@link Result}.
@@ -22,7 +22,7 @@ const OmittedResultProps = ['pkgJson'] as const;
 type OmittedResultProp = TupleToUnion<typeof OmittedResultProps>;
 
 export type ResultLike = {
-  pkgJson?: NormalizedPackageJson | PackageJson;
+  pkgJson?: PackageJson;
 };
 
 /**

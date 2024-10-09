@@ -14,12 +14,12 @@ import {
   type RuleEnvelope,
 } from '#plugin/component-envelope';
 import {type PluginRegistry} from '#plugin/registry';
+import {type PackageJson} from '#schema/package-json';
 import {type SmokerOptions} from '#schema/smoker-options';
 import {type WorkspaceInfo} from '#schema/workspace-info';
 import * as assert from '#util/assert';
 import {type FileManager} from '#util/filemanager';
 import {fromUnknownError} from '#util/from-unknown-error';
-import {type PackageJson} from 'type-fest';
 import {assign, enqueueActions, log, not, raise, setup} from 'xstate';
 
 import {

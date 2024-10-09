@@ -1,9 +1,10 @@
 import {bold, cyanBright, whiteBright} from 'chalk';
 import {MIDNIGHT_SMOKER} from 'midnight-smoker/constants';
 import {type StaticPluginMetadata} from 'midnight-smoker/plugin';
+import {type PackageJson} from 'midnight-smoker/schema';
 import {formatNameAndVersion, isBlessedPlugin} from 'midnight-smoker/util';
 import pluralize from 'pluralize';
-import {type LiteralUnion, type PackageJson} from 'type-fest';
+import {type LiteralUnion} from 'type-fest';
 
 export const ELLIPSIS = '…';
 

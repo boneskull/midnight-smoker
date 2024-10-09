@@ -1,4 +1,5 @@
 import {ERROR, FINAL, OK, SYSTEM} from '#constants';
+import {type PkgManager} from '#defs/pkg-manager';
 import {MachineError} from '#error/machine-error';
 import {
   matchSystemPkgManagerLogic,
@@ -15,7 +16,6 @@ import {
   type DesiredPkgManager,
   parseDesiredPkgManagerSpec,
 } from '#schema/desired-pkg-manager';
-import {type PkgManager} from '#schema/pkg-manager';
 import {
   type PartialStaticPkgManagerSpec,
   type StaticPkgManagerSpec,

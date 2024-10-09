@@ -16,12 +16,12 @@
  * @todo Copy license notice
  */
 import {PACKAGE_JSON} from '#constants';
+import {type DenormalizedPackageJson as PackageJson} from '#schema/package-json';
 import * as assert from '#util/assert';
 import {createDebug} from '#util/debug';
 import {FileManager} from '#util/filemanager';
 import {mimport} from '#util/importer';
 import path from 'node:path';
-import {type PackageJson} from 'type-fest';
 
 import {
   type AsyncSearcher,

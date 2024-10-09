@@ -1,4 +1,4 @@
-import {type NormalizedPackageJson} from '#schema/package-json';
+import {type PackageJson} from '#schema/package-json';
 import {type RuleSeverity} from '#schema/rule-severity';
 import {type WorkspaceInfo} from '#schema/workspace-info';
 
@@ -12,7 +12,7 @@ import {type WorkspaceInfo} from '#schema/workspace-info';
 
 export type StaticRuleContext = Readonly<{
   installPath: string;
-  pkgJson: NormalizedPackageJson;
+  pkgJson: PackageJson;
   pkgJsonPath: string;
   pkgManager: string;
   pkgName: string;

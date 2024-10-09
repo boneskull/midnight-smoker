@@ -1,4 +1,4 @@
-import {type PkgManager, type PkgManagerContext} from '#schema/pkg-manager';
+import {type PkgManager, type PkgManagerContext} from '#defs/pkg-manager';
 import {isFunction} from '#util/guard/common';
 import {fromPromise} from 'xstate';
 

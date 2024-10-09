@@ -1,4 +1,5 @@
 import {ERROR, OK} from '#constants';
+import {type PkgManager} from '#defs/pkg-manager';
 import {ErrorCode} from '#error/codes';
 import {
   registerPluginLogic,
@@ -6,7 +7,6 @@ import {
 } from '#machine/actor/register-plugin';
 import {type ComponentRegistry} from '#plugin/component';
 import {PluginMetadata} from '#plugin/plugin-metadata';
-import {type PkgManager} from '#schema/pkg-manager';
 import {type Plugin} from '#schema/plugin';
 import {uniqueId} from '#util/unique-id';
 import {createSandbox} from 'sinon';

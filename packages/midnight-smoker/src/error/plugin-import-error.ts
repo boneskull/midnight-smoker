@@ -1,5 +1,5 @@
+import {type StaticPluginMetadata} from '#defs/plugin';
 import {BaseSmokerError} from '#error/base-error';
-import {type StaticPluginMetadata} from '#plugin/static-plugin-metadata';
 import {fromUnknownError} from '#util/from-unknown-error';
 import {isString} from '#util/guard/common';
 import {serialize} from '#util/serialize';

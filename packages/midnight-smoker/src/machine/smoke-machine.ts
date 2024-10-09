@@ -40,6 +40,7 @@ import * as MUtil from '#machine/util';
 import * as Envelope from '#plugin/component-envelope';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
 import {type PluginRegistry} from '#plugin/registry';
+import {type PackageJson} from '#schema/package-json';
 import * as assert from '#util/assert';
 import {hrRelativePath} from '#util/format';
 import {isActorOutputNotOk, isActorOutputOk} from '#util/guard/actor-output';
@@ -47,7 +48,7 @@ import {assertActorOutputNotOk} from '#util/guard/assert/actor-output';
 import * as Util from '#util/meta/for-smoke-machine';
 import {compact, isEmpty, map} from 'lodash';
 import {type EventEmitter} from 'node:events';
-import {type PackageJson, type ValueOf} from 'type-fest';
+import {type ValueOf} from 'type-fest';
 import {
   type ActorRefFrom,
   and,

@@ -1,7 +1,7 @@
 import {SYSTEM} from '#constants';
+import {type PkgManager} from '#defs/pkg-manager';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
 import {type DesiredPkgManager} from '#schema/desired-pkg-manager';
-import {type PkgManager} from '#schema/pkg-manager';
 import {type WorkspaceInfo} from '#schema/workspace-info';
 import * as assert from '#util/assert';
 import {type FileManager} from '#util/filemanager';

@@ -1,10 +1,12 @@
 import {ERROR, FAILED} from '#constants';
+import {
+  type PkgManagerRunScriptContext,
+  type RunScriptManifest,
+} from '#defs/pkg-manager';
 import {AbortError} from '#error/abort-error';
 import {RunScriptError} from '#error/run-script-error';
 import {ScriptFailedError} from '#error/script-failed-error';
 import {UnknownScriptError} from '#error/unknown-script-error';
-import {type PkgManagerRunScriptContext} from '#schema/pkg-manager';
-import {type RunScriptManifest} from '#schema/run-script-manifest';
 import {
   type RunScriptResult,
   type RunScriptResultError,

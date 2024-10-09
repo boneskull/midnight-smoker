@@ -1,4 +1,10 @@
 /**
+ * Provides {@link StaticPluginMetadata}, which plugins have access to.
+ *
+ * @packageDocumentation
+ */
+
+/**
  * Public information about a plugin suitable for serialization.
  */
 export interface StaticPluginMetadata {

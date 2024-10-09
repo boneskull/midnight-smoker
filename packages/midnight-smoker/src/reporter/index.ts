@@ -8,7 +8,7 @@ export {DEFAULT_RULE_SEVERITY, RuleSeverities} from '#constants';
 
 export {ReporterError} from '#error/reporter-error';
 
-export type * from '#schema/reporter';
+export type * from '../defs/reporter';
 
 export * from './reporter-context';
 

@@ -1,161 +1,98 @@
-/**
- * Defines the {@link Reporter} type, which plugins may use to create a reporter.
- *
- * @packageDocumentation
- */
-import {type Events} from '#constants/event';
-import {type EventData, type EventName} from '#event/events';
-import {type ReporterContext} from '#reporter/reporter-context';
-import {type SmokerOptions, SmokerOptionsSchema} from '#schema/smoker-options';
+import {
+  type ReporterSetupFn,
+  type ReporterTeardownFn,
+  type ReporterWhenFn,
+} from '#defs/reporter';
+import {ReporterCtx} from '#reporter/reporter-context';
+import {SmokerOptionsSchema} from '#schema/smoker-options';
 import {
   AnyObjectSchema,
   asObjectSchema,
   DefaultFalseSchema,
+  instanceofSchema,
+  multiColorFnSchema,
   NonEmptyStringSchema,
-  VoidOrPromiseVoidSchema,
 } from '#util/schema-util';
 import {z} from 'zod';
 
-import {NormalizedPackageJsonSchema} from './package-json';
-
 /**
- * Before instantiation of `Smoker`, this callback will be executed with a
- * `SmokerOptions` object. If this returns `true`, the reporter will be used. If
- * it returns `false`, it will not be used.
+ * Approximation of a `ReporterContext` object:
  *
- * Use this to automatically enable or disable itself based on options passed to
- * `Smoker`. **Do not use this to strip users of agency.**
+ * - It's a {@link ReporterCtx} instance
+ * - It also contains whatever the object `Ctx` type argument contains
+ * - It's readonly
  */
-
-export type ReporterWhenCallback = (smokerOptions: SmokerOptions) => boolean;
-
-export type ReporterListener<Evt extends EventName, Ctx = unknown> = (
-  this: void,
-  ctx: ReporterContext<Ctx>,
-  data: EventData<Evt>,
-) => Promise<void> | void;
-
-export type ReporterSetupFn<Ctx = unknown> = (
-  ctx: ReporterContext<Ctx>,
-) => Promise<void> | void;
-
-export type ReporterTeardownFn<Ctx = unknown> = (
-  ctx: ReporterContext<Ctx>,
-) => Promise<void> | void;
+export const ReporterContextSchema = instanceofSchema(
+  ReporterCtx,
+  AnyObjectSchema,
+).readonly();
 
 /**
- * All of the functions which a reporter can implement which map to events
- * raised by `midnight-smoker`.
+ * Approximation of a `ReporterListenerFn`.
+ *
+ * Does not validate the `event` parameter.
  */
-
-export type ReporterListeners<Ctx = unknown> = {
-  -readonly [K in keyof typeof Events as `on${K}`]: ReporterListener<
-    (typeof Events)[K],
-    Ctx
-  >;
-};
-
-type InvertMap<T extends Record<keyof T, keyof any>> = {
-  [K in keyof T as T[K]]: K;
-};
-
-type InvertedEventsMap = InvertMap<typeof Events>;
-
-/**
- * Mapping of event types to listener method names
- */
-export type EventToListenerNameMap = {
-  [K in keyof InvertedEventsMap]: `on${InvertedEventsMap[K]}`;
-};
-
-export type SomeReporter = Reporter<any>;
-
-/**
- * A reporter definition, as provided by a plugin author.
- */
-
-export interface Reporter<Ctx = unknown>
-  extends Partial<ReporterListeners<Ctx>> {
-  /**
-   * Reporter description.
-   *
-   * Required
-   */
-  description: string;
-
-  /**
-   * If `true`, this reporter will be hidden from the list of reporters.
-   */
-  isHidden?: boolean;
-
-  /**
-   * Reporter name.
-   *
-   * Required
-   */
-  name: string;
-
-  /**
-   * Setup function; called before `Smoker` emits any events
-   */
-  setup?: ReporterSetupFn<Ctx>;
-
-  /**
-   * Teardown function; called just before `Smoker` exits
-   */
-  teardown?: ReporterTeardownFn<Ctx>;
-
-  /**
-   * Before instantiation of `Smoker`, this callback will be executed with a
-   * `SmokerOptions` object. If this returns `true`, the reporter will be used.
-   * If it returns `false`, it will not be used.
-   *
-   * Use this to automatically enable or disable itself based on options passed
-   * to `Smoker`. **Do not use this to strip users of agency.**
-   */
-  when?: ReporterWhenCallback;
-}
-
-/**
- * Parameters passed to a {@link ReporterFn} by `midnight-smoker`
- */
-export const ReporterContextSchema = z
-  .object({
-    /**
-     * Options for `midnight-smoker`
-     */
-    opts: SmokerOptionsSchema,
-
-    /**
-     * `midnight-smoker`'s `package.json`
-     */
-    pkgJson: NormalizedPackageJsonSchema,
-  })
-  .passthrough();
-
-/**
- * Schema representing a {@link ReporterWhenCallback} function
- */
-export const ReporterWhenCallbackSchema: z.ZodType<ReporterWhenCallback> =
+export const ReporterListenerSchema = multiColorFnSchema(
   z.function(
-    z.tuple([SmokerOptionsSchema] as [
-      smokerOptions: typeof SmokerOptionsSchema,
-    ]),
-    z.boolean(),
+    z.tuple(
+      [ReporterContextSchema, AnyObjectSchema] as [
+        context: typeof ReporterContextSchema,
+        event: typeof AnyObjectSchema, // this is whatever EventData is
+      ],
+      z.void(),
+    ),
+  ),
+).or(
+  multiColorFnSchema(
+    z.function(
+      z.tuple(
+        [ReporterContextSchema] as [context: typeof ReporterContextSchema],
+        z.void(),
+      ),
+    ),
+  ),
+);
+
+/**
+ * Schema representing a {@link ReporterWhenFn} function
+ */
+export const ReporterWhenFnSchema: z.ZodType<ReporterWhenFn> = z.function(
+  z.tuple([SmokerOptionsSchema] as [smokerOptions: typeof SmokerOptionsSchema]),
+  z.boolean(),
+);
+
+/**
+ * Schema for a `ReporterSetupFn` function
+ */
+export const ReporterSetupFnSchema: z.ZodType<ReporterSetupFn> =
+  multiColorFnSchema(
+    z.function(
+      z.tuple([ReporterContextSchema] as [
+        context: typeof ReporterContextSchema,
+      ]),
+      z.void(),
+    ),
   );
 
-export const ReporterSetupFnSchema = z.function(
-  z.tuple([ReporterContextSchema] as [context: typeof ReporterContextSchema]),
-  VoidOrPromiseVoidSchema,
-);
-
-export const ReporterTeardownFnSchema = z.function(
-  z.tuple([ReporterContextSchema] as [context: typeof ReporterContextSchema]),
-  VoidOrPromiseVoidSchema,
-);
+/**
+ * Schema for a `ReporterTeardownFn` function
+ */
+export const ReporterTeardownFnSchema: z.ZodType<ReporterTeardownFn> =
+  multiColorFnSchema(
+    z.function(
+      z.tuple([ReporterContextSchema] as [
+        context: typeof ReporterContextSchema,
+      ]),
+      z.void(),
+    ),
+  );
 
 /**
  * Schema for a {@link Reporter} as defined by a plugin
+ *
+ * @remarks
+ * This must be inferred--I think because of the {@link asObjectSchema}
+ * preprocessor.
  */
 export const ReporterSchema = asObjectSchema(
   z
@@ -197,15 +134,7 @@ export const ReporterSchema = asObjectSchema(
        * Use this to automatically enable or disable itself based on options
        * passed to `Smoker`. **Do not use this to strip users of agency.**
        */
-      when: ReporterWhenCallbackSchema.optional(),
+      when: ReporterWhenFnSchema.optional(),
     })
-    .catchall(
-      z.function(
-        z.tuple([ReporterContextSchema, AnyObjectSchema] as [
-          context: typeof ReporterContextSchema,
-          event: typeof AnyObjectSchema,
-        ]),
-        VoidOrPromiseVoidSchema,
-      ),
-    ),
+    .catchall(ReporterListenerSchema.or(z.unknown())),
 );

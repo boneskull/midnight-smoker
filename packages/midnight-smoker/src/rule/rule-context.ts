@@ -9,7 +9,7 @@
 
 import {FAILED, OK} from '#constants';
 import {type CheckOk, type Issue} from '#rule/issue';
-import {type NormalizedPackageJson} from '#schema/package-json';
+import {type PackageJson} from '#schema/package-json';
 import {type RuleSeverity} from '#schema/rule-severity';
 import {type StaticRule} from '#schema/static-rule';
 import {type WorkspaceInfo} from '#schema/workspace-info';
@@ -181,7 +181,7 @@ export class RuleContext implements StaticRuleContext {
    *
    * @returns The normalized `package.json` for the package being checked.
    */
-  public get pkgJson(): NormalizedPackageJson {
+  public get pkgJson(): PackageJson {
     return this.staticCtx.pkgJson;
   }
 

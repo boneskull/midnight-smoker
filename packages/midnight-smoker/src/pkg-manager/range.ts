@@ -1,4 +1,4 @@
-import type {PkgManager} from '#schema/pkg-manager';
+import type {PkgManager} from '#defs/pkg-manager';
 
 import {RangeSchema} from '#schema/version';
 import {memoize} from 'lodash';

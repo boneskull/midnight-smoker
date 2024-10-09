@@ -25,6 +25,7 @@
     "#capabilities": "./dist/src/capabilities.js",
     "#cli/*": "./dist/src/cli/*.js",
     "#cli/command/*": "./dist/src/cli/command/*.js",
+    "#defs/*": "./dist/src/defs/*.js",
     "#config": "./dist/src/config/index.js",
     "#config/*": "./dist/src/config/*.js",
     "#constants": "./dist/src/constants/index.js",

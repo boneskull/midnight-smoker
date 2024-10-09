@@ -1,7 +1,7 @@
 import type * as Rule from 'midnight-smoker/rule';
 import type {PackageJson as PackageJsonNS} from 'type-fest';
 
-import {type NormalizedPackageJson} from 'midnight-smoker/schema';
+import {type PackageJson} from 'midnight-smoker/schema';
 import {type Keypath} from 'midnight-smoker/util';
 
 import {type EXPORTS_FIELD} from './constants';
@@ -46,7 +46,7 @@ export interface BaseNMEContext<
   exportsValue: T;
   installPath: string;
   keypath: Keypath;
-  pkgJson: NormalizedPackageJson;
+  pkgJson: PackageJson;
   pkgJsonPath: string;
   shouldAllowGlobs: boolean;
   shouldCheckImportConditional: boolean;

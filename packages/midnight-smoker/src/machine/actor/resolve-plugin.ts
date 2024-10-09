@@ -8,7 +8,7 @@ import {UnresolvablePluginError} from '#error/unresolvable-plugin-error';
 import {asValidationError, type ValidationError} from '#error/validation-error';
 import {type ActorOutputError, type ActorOutputOk} from '#machine/util';
 import {PluginMetadata} from '#plugin/plugin-metadata';
-import {type NormalizedPackageJson} from '#schema/package-json';
+import {type PackageJson} from '#schema/package-json';
 import {type Plugin, PluginSchema} from '#schema/plugin';
 import {type FileManager} from '#util/filemanager';
 import {isErrnoException} from '#util/guard/errno-exception';
@@ -100,7 +100,7 @@ export const resolvePluginLogic = fromPromise<
         }
         entryPoint = maybeEntryPoint;
 
-        let pkgJson: NormalizedPackageJson;
+        let pkgJson: PackageJson;
         try {
           ({packageJson: pkgJson} = await fileManager.findPkgUp(
             path.dirname(entryPoint),

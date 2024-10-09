@@ -32,23 +32,23 @@ describe('midnight-smoker [E2E]', function () {
         result = jsonBlamer.find('foo.bar')!;
       });
 
-      it('should return the correct context around the keypath location [snapshot]', async function () {
-        const output = await jsonBlamer.getContext(result);
+      it('should return the correct context around the keypath location [snapshot]', function () {
+        const output = jsonBlamer.getContext(result);
         debug(output);
         snapshot(output);
       });
 
-      it('should return a multiline highlighted value [snapshot]', async function () {
+      it('should return a multiline highlighted value [snapshot]', function () {
         result = jsonBlamer.find('baz')!;
-        const output = await jsonBlamer.getContext(result);
+        const output = jsonBlamer.getContext(result);
         debug(output);
         snapshot(output);
         expect(output.split('\n'), 'to have length', 6);
       });
 
-      it('should return the correct context when the keypath is at the end of the JSON [snapshot]', async function () {
+      it('should return the correct context when the keypath is at the end of the JSON [snapshot]', function () {
         result = jsonBlamer.find('baz.qux')!;
-        const output = await jsonBlamer.getContext(result);
+        const output = jsonBlamer.getContext(result);
         debug(output);
         snapshot(output);
       });

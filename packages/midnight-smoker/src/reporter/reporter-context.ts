@@ -1,7 +1,8 @@
+import {type StaticPluginMetadata} from '#defs/plugin';
+import {type BaseReporterContext} from '#defs/reporter';
 import {type EventData} from '#event/events';
-import {type StaticPluginMetadata} from '#plugin/static-plugin-metadata';
+import {type PackageJson} from '#schema/package-json';
 import {type SmokerOptions} from '#schema/smoker-options';
-import {type PackageJson} from 'type-fest';
 import {
   type Observer,
   type Subscribable,
@@ -15,7 +16,8 @@ import {
  * The context has some base properties that are always available, and the
  * implementor can define extra properties as desired.
  */
-export type ReporterContext<Ctx = unknown> = Ctx & Readonly<ReporterCtx>;
+export type ReporterContext<Ctx extends object = object> = Ctx &
+  Readonly<ReporterCtx>;
 
 const subjects = new WeakMap<ReporterContext, ReporterContextSubject>();
 
@@ -46,7 +48,7 @@ export class ReporterContextSubject implements Disposable {
     this.observers = new Set();
   }
 
-  public createReporterContext<Ctx = unknown>(
+  public createReporterContext<Ctx extends object = object>(
     opts: SmokerOptions,
     pkgJson: PackageJson,
     plugin: StaticPluginMetadata,
@@ -78,7 +80,7 @@ export class ReporterContextSubject implements Disposable {
 
 export type SubscribableEventData = Subscribable<EventData>;
 
-export class ReporterCtx implements SubscribableEventData {
+export class ReporterCtx implements SubscribableEventData, BaseReporterContext {
   constructor(
     public opts: SmokerOptions,
     public pkgJson: PackageJson,

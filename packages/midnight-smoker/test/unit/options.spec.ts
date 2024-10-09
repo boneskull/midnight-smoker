@@ -1,7 +1,7 @@
 import {RuleSeverities} from '#constants';
+import {type SomeRule} from '#defs/rule';
 import {OptionsParser} from '#options/options-parser';
 import {PluginRegistry} from '#plugin/registry';
-import {type SomeRule} from '#schema/rule';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import {z} from 'zod';

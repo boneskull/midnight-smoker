@@ -1,6 +1,7 @@
 import {DEFAULT_COMPONENT_ID} from '#constants';
 import {
   type BaseRuleConfigRecord,
+  BaseRuleConfigSchema,
   RawRuleOptionsRecordSchema,
 } from '#schema/rule-options';
 import {type DualCasedObject, toDualCasedObject} from '#util/common';
@@ -159,12 +160,36 @@ export const SmokerOptionsSchema: z.ZodObject<
   .object(dualCasedSmokerOptionsShape)
   .describe('Pre-plugin midnight-smoker options schema');
 
+export const NormalizedSmokerOptionsSchema: z.ZodType<NormalizedSmokerOptions> =
+  z.object(
+    toDualCasedObject({
+      add: z.array(z.string()).readonly(),
+      all: z.boolean(),
+      allowPrivate: z.boolean(),
+      bail: z.boolean(),
+      config: z.string().optional(),
+      cwd: z.string(),
+      executor: z.string(),
+      json: z.boolean(),
+      linger: z.boolean(),
+      lint: z.boolean(),
+      loose: z.boolean(),
+      pkgManager: z.array(DesiredPkgManagerSchema).readonly(),
+      plugin: z.array(z.string()).readonly(),
+      reporter: z.array(z.string()).readonly(),
+      rules: z.record(BaseRuleConfigSchema).readonly(),
+      script: z.array(z.string()).readonly(),
+      verbose: z.boolean(),
+      workspace: z.array(z.string()).readonly(),
+    }),
+  );
+
 /**
  * Normalized options for `midnight-smoker`.
  *
  * This is the output of {@link SmokerOptionsSchema}.
  */
-type NormalizedSmokerOptions = DualCasedObject<{
+export type NormalizedSmokerOptions = DualCasedObject<{
   add: readonly string[];
   all: boolean;
   allowPrivate: boolean;

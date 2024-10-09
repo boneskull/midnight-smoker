@@ -1,7 +1,7 @@
 import {OK} from '#constants';
+import {type SomeRule} from '#defs/rule';
 import {RuleContext} from '#rule/rule-context';
 import {type StaticRuleContext} from '#rule/static-rule-context';
-import {type SomeRule} from '#schema/rule';
 import stringify from 'json-stable-stringify';
 import {omit} from 'lodash';
 import unexpected from 'unexpected';

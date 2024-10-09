@@ -1,5 +1,5 @@
+import {type StaticPluginMetadata} from '#defs/plugin';
 import {BaseSmokerError} from '#error/base-error';
-import {type StaticPluginMetadata} from '#plugin/static-plugin-metadata';
 import {serialize} from '#util/serialize';
 
 /**

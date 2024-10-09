@@ -4,10 +4,7 @@ import path from 'node:path';
 import {type LiteralUnion, type SetRequired} from 'type-fest';
 import {z} from 'zod';
 
-import {
-  type NormalizedPackageJson,
-  NormalizedPackageJsonSchema,
-} from './package-json';
+import {NormalizedPackageJsonSchema, type PackageJson} from './package-json';
 
 export type PluginMetadataOpts = {
   description?: string;
@@ -17,7 +14,7 @@ export type PluginMetadataOpts = {
    */
   entryPoint: LiteralUnion<typeof TRANSIENT, string>;
   id?: string;
-  pkgJson?: NormalizedPackageJson;
+  pkgJson?: PackageJson;
   requestedAs?: string;
   version?: string;
 };

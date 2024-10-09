@@ -1,12 +1,13 @@
 import {BaseSmokerError} from '#error/base-error';
-import {type Reporter} from '#schema/reporter';
 import {fromUnknownError} from '#util/from-unknown-error';
+
+import {type Reporter} from '../defs/reporter';
 
 /**
  * @group Errors
  */
 
-export class ReporterError<Ctx = unknown> extends BaseSmokerError<
+export class ReporterError<Ctx extends object = object> extends BaseSmokerError<
   {
     reporter: Reporter<Ctx>;
   },

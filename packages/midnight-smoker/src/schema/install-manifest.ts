@@ -1,32 +1,7 @@
 import {NonEmptyStringSchema} from '#util/schema-util';
-import {type Merge, type SetOptional} from 'type-fest';
 import {z} from 'zod';
 
-import {type WorkspaceInfo, WorkspaceInfoSchema} from './workspace-info';
-
-export type InstallManifest = Readonly<
-  {
-    cwd: string;
-    installPath?: string;
-    isAdditional?: boolean;
-    pkgSpec: string;
-  } & SetOptional<
-    WorkspaceInfo,
-    'localPath' | 'pkgJson' | 'pkgJsonPath' | 'rawPkgJson'
-  >
->;
-
-/**
- * An install manifest referencing a workspace (_not_ an additional dependency)
- */
-export type WorkspaceInstallManifest = Merge<
-  InstallManifest,
-  {
-    installPath: string;
-    isAdditional?: false;
-    localPath: string;
-  }
->;
+import {WorkspaceInfoSchema} from './workspace-info';
 
 /**
  * The `pack` implementation of a `PkgManager` should return this value.

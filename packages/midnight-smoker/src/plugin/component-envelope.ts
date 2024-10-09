@@ -1,13 +1,14 @@
 import type {DesiredPkgManager} from '#schema/desired-pkg-manager';
 
 import {type ComponentKind, type ComponentKinds} from '#constants';
+import {type PkgManager} from '#defs/pkg-manager';
+import {type SomeRule} from '#defs/rule';
 import {type PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
-import {type PkgManager} from '#schema/pkg-manager';
-import {type Reporter} from '#schema/reporter';
-import {type SomeRule} from '#schema/rule';
 import {type SomeRuleConfig} from '#schema/rule-options';
 import {differenceWith} from 'lodash';
+
+import {type Reporter} from '../defs/reporter';
 
 /**
  * A component envelope is a wrapper around a component which provides metadata

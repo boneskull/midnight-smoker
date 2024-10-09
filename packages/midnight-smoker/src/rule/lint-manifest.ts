@@ -1,4 +1,4 @@
-import {type NormalizedPackageJson} from '#schema/package-json';
+import {type PackageJson} from '#schema/package-json';
 import {type WorkspaceInfo} from '#schema/workspace-info';
 
 /**
@@ -6,7 +6,7 @@ import {type WorkspaceInfo} from '#schema/workspace-info';
  */
 export type LintManifest = Readonly<{
   installPath: string;
-  pkgJson: NormalizedPackageJson;
+  pkgJson: PackageJson;
   pkgJsonPath: string;
   pkgName: string;
   rawPkgJson: string;

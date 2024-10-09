@@ -1,13 +1,13 @@
 import {CoreEvents} from '#constants';
+import {type StaticPluginMetadata} from '#defs/plugin';
+import {type Reporter} from '#defs/reporter';
 import {ErrorCode} from '#error/codes';
-import {type SomeDataForEvent} from '#event/events';
+import {type EventData} from '#event/events';
 import {flushQueueLogic} from '#machine/actor/flush-queue';
-import {type StaticPluginMetadata} from '#plugin/static-plugin-metadata';
 import {
   type ReporterContext,
   ReporterContextSubject,
 } from '#reporter/reporter-context';
-import {type Reporter} from '#schema/reporter';
 import {type SmokerOptions} from '#schema/smoker-options';
 import {EventEmitter} from 'node:events';
 import {createSandbox} from 'sinon';
@@ -27,7 +27,7 @@ describe('midnight-smoker', function () {
       let reporter: Reporter;
       let ctx: ReporterContext;
       let subject: ReporterContextSubject;
-      let queue: SomeDataForEvent[];
+      let queue: EventData[];
 
       beforeEach(function () {
         sandbox = createSandbox();

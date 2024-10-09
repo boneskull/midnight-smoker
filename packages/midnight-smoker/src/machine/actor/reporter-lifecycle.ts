@@ -1,8 +1,9 @@
 import {joinSignal} from '#machine/util';
 import {type ReporterContext} from '#reporter/reporter-context';
-import {type Reporter} from '#schema/reporter';
 import {isFunction} from '#util/guard/common';
 import {fromPromise} from 'xstate';
+
+import {type Reporter} from '../../defs/reporter';
 
 /**
  * Input for {@link setupReporterLogic} and {@link teardownReporterLogic}

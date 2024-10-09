@@ -4,6 +4,8 @@
  * @module midnight-smoker/plugin
  */
 
+export * from '../defs/plugin';
+
 export * from './blessed';
 
 export * from './component';
@@ -21,5 +23,3 @@ export * from './plugin-api';
 export * from './plugin-metadata';
 
 export * from './registry';
-
-export * from './static-plugin-metadata';

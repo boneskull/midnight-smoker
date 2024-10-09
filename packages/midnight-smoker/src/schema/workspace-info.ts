@@ -1,6 +1,6 @@
 import {
-  type NormalizedPackageJson,
   NormalizedPackageJsonSchema,
+  type PackageJson,
 } from '#schema/package-json';
 import {NonEmptyStringSchema} from '#util/schema-util';
 import {z} from 'zod';
@@ -35,7 +35,7 @@ export type WorkspaceInfo = Readonly<{
   /**
    * The `package.json` for the workspace, or some subset thereof.
    */
-  pkgJson: NormalizedPackageJson;
+  pkgJson: PackageJson;
 
   /**
    * The absolute path to the workspace's `package.json`

@@ -1,7 +1,7 @@
 import type {
   InstallManifest,
   WorkspaceInstallManifest,
-} from '#schema/install-manifest';
+} from '#defs/pkg-manager';
 
 /**
  * Type guard for an {@link WorkspaceInstallManifest} which originated in a

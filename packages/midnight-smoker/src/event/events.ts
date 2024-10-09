@@ -19,17 +19,15 @@ export type AllEventData = Simplify<
 
 /**
  * Data associated with a specific event with an additional `type` field
- * containing the event name
+ * containing the {@link EventType event type}
  *
- * @template T - The event name
+ * @template T - The event type
  */
-export type EventData<T extends EventName = EventName> = {
+export type EventData<T extends EventType = EventType> = {
   [K in T]: {type: K} & Omit<AllEventData[K], 'type'>;
 }[T];
 
 /**
- * Names of all events emitted by `midnight-smoker`
+ * Type of all events emitted by `midnight-smoker`
  */
-export type EventName = Simplify<keyof AllEventData>;
-
-export type SomeDataForEvent = EventData;
+export type EventType = Simplify<keyof AllEventData>;

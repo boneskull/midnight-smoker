@@ -1,4 +1,5 @@
 import {OK, RuleSeverities} from '#constants';
+import {type SomeRule} from '#defs/rule';
 import {ErrorCode} from '#error/codes';
 import {
   type CheckErrorEvent,
@@ -8,7 +9,6 @@ import {RuleMachine, type RuleMachineInput} from '#machine/rule-machine';
 import {PluginRegistry} from '#plugin/registry';
 import {type LintManifest} from '#rule/lint-manifest';
 import {type StaticRuleContext} from '#rule/static-rule-context';
-import {type SomeRule} from '#schema/rule';
 import {type SomeRuleConfig} from '#schema/rule-options';
 import {FileManager} from '#util/filemanager';
 import {memfs} from 'memfs';

@@ -1,10 +1,10 @@
 import {ErrorCode} from '#error/codes';
+import {type PackageJson} from '#schema/package-json';
 import {FileManager} from '#util/filemanager';
 import stringify from 'json-stable-stringify';
 import {memfs} from 'memfs';
 import {type Volume} from 'memfs/lib/volume';
 import sinon from 'sinon';
-import {type PackageJson} from 'type-fest';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
 
@@ -94,6 +94,7 @@ describe('midnight-smoker', function () {
           it('should call findPkgUp with the correct args', async function () {
             const packageJson = {
               name: 'midnight-smoker',
+              version: '1.0.0',
             } as PackageJson;
             const rawPackageJson = stringify(packageJson);
             sandbox
@@ -110,6 +111,7 @@ describe('midnight-smoker', function () {
           it('should cache the result, per instance', async function () {
             const packageJson = {
               name: 'midnight-smoker',
+              version: '1.0.0',
             } as PackageJson;
             const rawPackageJson = stringify(packageJson);
             sandbox

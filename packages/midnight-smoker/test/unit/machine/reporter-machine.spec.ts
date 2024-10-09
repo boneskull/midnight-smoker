@@ -1,16 +1,16 @@
 import {ERROR, Events} from '#constants';
+import {type Reporter} from '#defs/reporter';
 import {ErrorCode} from '#error/codes';
 import {ReporterMachine} from '#machine/reporter-machine';
 import {OptionsParser} from '#options/options-parser';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
 import {PluginRegistry} from '#plugin/registry';
-import {type Reporter} from '#schema/reporter';
+import {type PackageJson} from '#schema/package-json';
 import {type SmokerOptions} from '#schema/smoker-options';
 import {FileManager} from '#util/filemanager';
 import {memfs} from 'memfs';
 import {type Volume} from 'memfs/lib/volume';
 import {createSandbox} from 'sinon';
-import {type PackageJson} from 'type-fest';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
 import {type Actor, createActor} from 'xstate';

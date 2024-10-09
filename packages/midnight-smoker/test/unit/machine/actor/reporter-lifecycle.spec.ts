@@ -1,13 +1,13 @@
+import {type StaticPluginMetadata} from '#defs/plugin';
+import {type Reporter} from '#defs/reporter';
 import {
   setupReporterLogic,
   teardownReporterLogic,
 } from '#machine/actor/reporter-lifecycle';
-import {type StaticPluginMetadata} from '#plugin/static-plugin-metadata';
 import {
   type ReporterContext,
   ReporterContextSubject,
 } from '#reporter/reporter-context';
-import {type Reporter} from '#schema/reporter';
 import {type SmokerOptions} from '#schema/smoker-options';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';

@@ -3,13 +3,12 @@
  *
  * @packageDocumentation
  */
+import {castArray, toDualCasedObject} from '#util/common';
 import {isObject} from '#util/guard/common';
-import {uniq} from 'lodash';
+import {isPlainObject, uniq} from 'lodash';
 import {Range, SemVer} from 'semver';
 import {type Class} from 'type-fest';
 import {z} from 'zod';
-
-import {castArray, toDualCasedObject} from './common';
 
 /**
  * Schema representing a non-empty string
@@ -134,15 +133,19 @@ export const VoidOrPromiseVoidSchema = z
  *
  * Zod wants to operate on plain objects.
  *
- * @param schema - Any schema
+ * It's not recommended to use {@link z.ZodType.parse} with this schema; use
+ * {@link z.ZodType.safeParse} instead.
+ *
+ * @template T - A Zod object schema
+ * @param schema - Zod object schema
  * @returns A new schema which preprocesses the input value
  */
-export function asObjectSchema<T extends z.AnyZodObject>(schema: T) {
-  return z.preprocess(
-    (value) => (isObject(value) ? {...value} : value),
+export const asObjectSchema = <T extends z.AnyZodObject>(schema: T) =>
+  z.preprocess(
+    (value) =>
+      isPlainObject(value) ? value : isObject(value) ? {...value} : value,
     schema,
   );
-}
 
 /**
  * Safe implementation of {@link z.instanceof}.
@@ -197,10 +200,18 @@ export function instanceofSchema<T extends Class<any>, U extends z.ZodTypeAny>(
   return z.instanceof(ctor);
 }
 
-export const AnyObjectSchema: z.ZodObject<
-  Record<string, z.ZodTypeAny>,
-  'passthrough'
-> = z.object({}).passthrough().describe('Any object');
+/**
+ * An object containing string keys an unknown values
+ */
+export type AnyObject = Record<string, unknown>;
+
+/**
+ * Schema for {@link AnyObject}
+ */
+export const AnyObjectSchema: z.ZodType<AnyObject> = z
+  .object({})
+  .passthrough()
+  .describe('Any object');
 
 /**
  * Given a function schema returning a Promise schema, returns a union of the

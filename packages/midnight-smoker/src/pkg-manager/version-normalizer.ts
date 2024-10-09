@@ -4,8 +4,8 @@
  * @packageDocumentation
  * @see {@link normalizeVersionAgainstData}
  */
+import {type PkgManager} from '#defs/pkg-manager';
 import {asValidationError} from '#error/validation-error';
-import {type PkgManager} from '#schema/pkg-manager';
 import {
   parseRange,
   type PkgManagerVersionData,

@@ -55,11 +55,6 @@ export const NL = '\n';
 export const DOUBLE_NL = NL.repeat(2);
 
 /**
- * Matches the start of a line
- */
-const LINE_REGEX = /^(?!\s*$)/gm;
-
-/**
  * Joins an array into a string (by newlines, by default)
  *
  * The point of this is to have a default string to join by.

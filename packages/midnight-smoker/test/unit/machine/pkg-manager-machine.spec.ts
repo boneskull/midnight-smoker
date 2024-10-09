@@ -8,6 +8,8 @@ import {
   ScriptEvents,
   SKIPPED,
 } from '#constants';
+import {type Executor} from '#defs/executor';
+import {type PkgManager, type RunScriptManifest} from '#defs/pkg-manager';
 import {ErrorCode} from '#error/codes';
 import {ScriptFailedError} from '#error/script-failed-error';
 import {
@@ -22,9 +24,6 @@ import {
 } from '#plugin/component-envelope';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
 import {PluginRegistry} from '#plugin/registry';
-import {type Executor} from '#schema/executor';
-import {type PkgManager} from '#schema/pkg-manager';
-import {type RunScriptManifest} from '#schema/run-script-manifest';
 import {type RunScriptResultFailed} from '#schema/run-script-result';
 import {type SmokerOptions} from '#schema/smoker-options';
 import {type WorkspaceInfo} from '#schema/workspace-info';

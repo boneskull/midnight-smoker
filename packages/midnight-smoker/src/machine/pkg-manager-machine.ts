@@ -982,7 +982,7 @@ export const PkgManagerMachine = setup({
             const results = [...resultMap.values()].flat();
             const [okResults, failedResults] = partition(results, {
               type: OK,
-            }) as [Schema.CheckResultOk[], Schema.CheckResultFailed[]];
+            }) as [Schema.CheckOk[], Schema.Issue[]];
             hasIssues = hasIssues || !isEmpty(failedResults);
 
             assert.ok(

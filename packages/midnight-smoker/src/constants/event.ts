@@ -83,7 +83,7 @@ export const LintEvents = constant({
 });
 
 /**
- * Core event names
+ * Mapping of core event names to event types
  *
  * @enum
  */
@@ -101,7 +101,7 @@ export const CoreEvents = constant({
 });
 
 /**
- * All event names
+ * Mapping of event names to event types
  *
  * @enum
  */

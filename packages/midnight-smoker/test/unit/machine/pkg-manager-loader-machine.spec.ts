@@ -1,4 +1,5 @@
 import {OK, SYSTEM} from '#constants';
+import {type PkgManager} from '#defs/pkg-manager';
 import {ParsePkgManagerSpecMachine} from '#machine/parse-pkg-manager-spec-machine';
 import {
   PkgManagerLoaderMachine,
@@ -6,7 +7,6 @@ import {
 } from '#machine/pkg-manager-loader-machine';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
 import {PluginRegistry} from '#plugin/registry';
-import {type PkgManager} from '#schema/pkg-manager';
 import {type WorkspaceInfo} from '#schema/workspace-info';
 import {FileManager} from '#util/filemanager';
 import {memfs} from 'memfs';

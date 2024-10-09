@@ -1,11 +1,11 @@
 import {DEFAULT_PKG_MANAGER_NAME, SYSTEM} from '#constants';
+import {type PkgManager} from '#defs/pkg-manager';
 import {PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
 import {normalizeVersionAgainstPkgManager} from '#pkg-manager/version-normalizer';
 import {type ComponentRegistry} from '#plugin/component';
 import {type PkgManagerEnvelope} from '#plugin/component-envelope';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
 import {type ExecFn} from '#schema/exec-result';
-import {type PkgManager} from '#schema/pkg-manager';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {parseRange} from '#schema/version';
 import {caseInsensitiveEquals} from '#util/common';

@@ -1,10 +1,10 @@
 import {OK} from '#constants';
+import {type PkgManager} from '#defs/pkg-manager';
+import {type Reporter} from '#defs/reporter';
+import {type Rule} from '#defs/rule';
 import {type Executor} from '#executor';
 import {PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
 import {type ExecOutput} from '#schema/exec-result';
-import {type PkgManager} from '#schema/pkg-manager';
-import {type Reporter} from '#schema/reporter';
-import {type Rule} from '#schema/rule';
 import {type RunScriptResultOk} from '#schema/run-script-result';
 import {scheduler} from 'node:timers/promises';
 

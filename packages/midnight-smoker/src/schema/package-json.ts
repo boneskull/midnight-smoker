@@ -27,24 +27,26 @@ import {VersionStringSchema} from './version';
  * `normalize-package-data` ignores.
  *
  * The two fields `normalize-package-data` adds, `readme` and `_id`, are unused
- * by `midnight-smoker`, and we can safely ignore them.
+ * by `midnight-smoker`.
  */
-export type NormalizedPackageJson = SetOptional<
+export type PackageJson = SetOptional<
   Merge<_PackageJson, _NormalizedPackageJson>,
   '_id' | 'readme'
 >;
 
+export type NormalizedPackageJson = PackageJson;
+
 /**
- * An un-normalized (a "non-normalized?") `package.json` file.
+ * A de-normalized (a "non-normalized?") `package.json` file.
  *
  * This type reconciles the {@link _PackageJson PackageJson} type from
- * `type-fest` with {@link NormalizedPackageJson}; in some cases the latter
+ * `type-fest` with {@link our normalized PackageJson}; in some cases the latter
  * claims a possible type where the former does not.
  */
-export type PackageJson = Merge<
+export type DenormalizedPackageJson = Merge<
   _PackageJson,
   Pick<
-    _PackageJson | NormalizedPackageJson,
+    _PackageJson | PackageJson,
     'author' | 'bundleDependencies' | 'contributors' | 'maintainers'
   >
 >;
@@ -52,7 +54,7 @@ export type PackageJson = Merge<
 /**
  * The value of the `type` field of a `package.json` file.
  *
- * @see {@link PackageJson}
+ * @see {@link DenormalizedPackageJson}
  */
 export type PkgJsonType = 'commonjs' | 'module';
 
@@ -110,7 +112,7 @@ export const PkgJsonWorkspacesSchema: z.ZodType<PkgJsonWorkspaces> =
 /**
  * {@inheritDoc NormalizedPackageJson}
  */
-export const NormalizedPackageJsonSchema: z.ZodType<NormalizedPackageJson> = z
+export const NormalizedPackageJsonSchema: z.ZodType<PackageJson> = z
   .object({
     _id: z.string().optional().describe('Label'),
     description: z.string().optional().describe('Package description'),

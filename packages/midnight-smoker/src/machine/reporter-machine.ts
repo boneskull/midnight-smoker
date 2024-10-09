@@ -1,7 +1,7 @@
 import {ERROR, FINAL, OK} from '#constants';
 import {LifecycleError} from '#error/lifecycle-error';
 import {MachineError} from '#error/machine-error';
-import {type SomeDataForEvent} from '#event/events';
+import {type EventData} from '#event/events';
 import {
   flushQueueLogic,
   type FlushQueueLogicInput,
@@ -21,13 +21,14 @@ import {
   type ReporterContext,
   ReporterContextSubject,
 } from '#reporter/reporter-context';
-import {type Reporter} from '#schema/reporter';
+import {type PackageJson} from '#schema/package-json';
 import {type SmokerOptions} from '#schema/smoker-options';
 import {fromUnknownError} from '#util/from-unknown-error';
 import {isEmpty} from 'lodash';
 import {type EventEmitter} from 'node:events';
-import {type PackageJson} from 'type-fest';
 import {and, assign, log, not, setup} from 'xstate';
+
+import {type Reporter} from '../defs/reporter';
 
 /**
  * All events received by a `ReporterMachine`.
@@ -64,7 +65,7 @@ export interface ReporterMachineContext
    * The machine uses a guard to check if the queue is non-empty; if it is, it
    * transitions to the `flushing` state, which invokes {@link flushQueueLogic}.
    */
-  queue: SomeDataForEvent[];
+  queue: EventData[];
 
   /**
    * If this is `true`, then the reporter will halt after flushing its queue via
@@ -80,7 +81,7 @@ export interface ReporterMachineContext
 }
 
 export interface ReporterMachineSmokeMachineEvent {
-  event: SomeDataForEvent;
+  event: EventData;
   type: 'EVENT';
 }
 
@@ -146,7 +147,7 @@ export const ReporterMachine = setup({
      * Enqueues any event emitted by the event bus machines
      */
     enqueue: assign({
-      queue: ({context: {queue}}, {event}: {event: SomeDataForEvent}) => [
+      queue: ({context: {queue}}, {event}: {event: EventData}) => [
         ...queue,
         event,
       ],

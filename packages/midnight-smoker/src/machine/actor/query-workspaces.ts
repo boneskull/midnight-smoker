@@ -1,7 +1,7 @@
 import {PACKAGE_JSON} from '#constants';
 import {InvalidPkgJsonError} from '#error/invalid-pkg-json-error';
 import {
-  type NormalizedPackageJson,
+  type DenormalizedPackageJson,
   NormalizedPackageJsonSchema,
   type PackageJson,
   PkgJsonWorkspacesSchema,
@@ -36,9 +36,9 @@ export interface QueryWorkspacesLogicInput {
  * @returns A "normalized" `package.json` obj
  */
 function normalizePkgJson(
-  pkgJson: PackageJson,
+  pkgJson: DenormalizedPackageJson,
   pkgJsonPath: string,
-): NormalizedPackageJson {
+): PackageJson {
   return NormalizedPackageJsonSchema.parse(pkgJson, {
     errorMap: (issue, ctx) => {
       return {
@@ -70,7 +70,7 @@ export const queryWorkspacesLogic = fromPromise<
       strict: true,
     });
 
-    let rootPkgJson: NormalizedPackageJson;
+    let rootPkgJson: PackageJson;
 
     try {
       rootPkgJson = normalizePkgJson(rootPackageJson, rootPkgJsonPath);
@@ -112,12 +112,14 @@ export const queryWorkspacesLogic = fromPromise<
 
           const fullpath = workspacePath.fullpath();
           const pkgJsonPath = path.join(fullpath, PACKAGE_JSON);
+          // it appears we're not sending `normalize: true` here so that we can
+          // trap the errors and display them a certain way
           const {packageJson, rawPackageJson: rawPkgJson} =
             await fileManager.readPkgJson(pkgJsonPath, {
               signal,
             });
 
-          let workspacePkgJson: NormalizedPackageJson;
+          let workspacePkgJson: PackageJson;
           try {
             workspacePkgJson = normalizePkgJson(packageJson, pkgJsonPath);
           } catch (err) {

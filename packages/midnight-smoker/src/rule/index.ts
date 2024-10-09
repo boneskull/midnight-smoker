@@ -8,13 +8,13 @@
 
 export {DEFAULT_RULE_SEVERITY, RuleSeverities} from '#constants';
 
+export * from '#defs/rule';
+
 export * from '#options/default-rule-options';
 
 export {getDefaultRuleOptions} from '#options/default-rule-options';
 
 export * from '#rule/static-rule-context';
-
-export * from '#schema/rule';
 
 export * from '#schema/rule-options';
 
