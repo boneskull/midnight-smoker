@@ -142,26 +142,6 @@ module.exports = {
         // HATE IT
         '@typescript-eslint/no-non-null-assertion': 'off',
 
-        // node's util.inspect() seems to be either nondeterministic across platforms,
-        // which makes it difficult to take snapshots of its output
-        '@typescript-eslint/no-restricted-imports': [
-          'warn',
-          {
-            paths: [
-              {
-                importNames: ['inspect'],
-                message: 'Use stringify-object package if possible',
-                name: 'util',
-              },
-              {
-                importNames: ['inspect'],
-                message: 'Use stringify-object package if possible',
-                name: 'node:util',
-              },
-            ],
-          },
-        ],
-
         '@typescript-eslint/no-unnecessary-boolean-literal-compare': [
           'error',
           {
