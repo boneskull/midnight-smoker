@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-
-require('source-map-support').install();
+try {
+  require('source-map-support').install();
+} catch {}
 
 require('../dist/src/cli/index.js');
