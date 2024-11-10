@@ -1,3 +1,9 @@
+/**
+ * Provides {@link isBlessedPlugin}.
+ *
+ * @packageDocumentation
+ */
+
 import {BLESSED_PLUGINS, type BlessedPlugin} from '#plugin/blessed';
 
 /**
@@ -10,6 +16,5 @@ import {BLESSED_PLUGINS, type BlessedPlugin} from '#plugin/blessed';
  *   otherwise.
  */
 
-export function isBlessedPlugin(id: unknown): id is BlessedPlugin {
-  return BLESSED_PLUGINS.includes(id as BlessedPlugin);
-}
+export const isBlessedPlugin = (id: unknown): id is BlessedPlugin =>
+  BLESSED_PLUGINS.includes(id as BlessedPlugin);

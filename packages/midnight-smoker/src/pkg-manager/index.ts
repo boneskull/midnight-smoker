@@ -14,7 +14,7 @@ export * from '#error/pkg-manager';
 
 export * from '#schema/desired-pkg-manager';
 
-export type {ExecOutput, ExecResult} from '#schema/exec-result';
+export type {ExecOutput} from '#schema/exec-output';
 
 export * from '#schema/install-manifest';
 

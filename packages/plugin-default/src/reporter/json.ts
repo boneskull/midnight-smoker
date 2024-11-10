@@ -14,7 +14,7 @@ import {
   type SmokeResults,
 } from 'midnight-smoker/event';
 import {type Reporter} from 'midnight-smoker/reporter';
-import stripAnsi from 'strip-ansi';
+import {stripAnsi} from 'midnight-smoker/util';
 
 import {type SmokerJsonOutput, type SmokerStats} from '../json-types';
 
@@ -53,7 +53,7 @@ export const JSONReporter: Reporter<JSONReporterContext> = {
     let {lingering, output} = ctx;
     if (!output) {
       throw new SmokerReferenceError(
-        'JSON listener has nothing to output! This is a bug.',
+        `Reporter ${JSONReporter.name} has nothing to output!`,
       );
     }
     output = {...output, lingering};

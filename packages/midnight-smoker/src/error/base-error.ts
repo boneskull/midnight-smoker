@@ -1,9 +1,11 @@
+import {BUGS_URL} from '#constants';
 import {type Serializable} from '#schema/serializable';
 import {
   DOUBLE_NL,
   formatCode,
   formatErrorMessage,
   formatStackTrace,
+  formatUrl,
   indent,
   joinLines,
 } from '#util/format';
@@ -36,6 +38,8 @@ export abstract class BaseSmokerError<
   implements SmokerError<Context, Cause>, Serializable
 {
   public readonly code: SmokerErrorCode;
+
+  public readonly shouldAskForBugReport?: boolean;
 
   constructor(
     message: string,
@@ -84,11 +88,18 @@ export abstract class BaseSmokerError<
   }
 
   public formatMessage(verbose = false): string {
-    return format(
+    let msg = format(
       '%s %s',
       formatErrorMessage(this.message),
       this.formatCode(verbose),
     );
+    if (this.shouldAskForBugReport) {
+      msg = `${msg} — This looks like a bug. Please create a ${formatUrl(
+        'bug report',
+        BUGS_URL,
+      )}`;
+    }
+    return msg;
   }
 
   public toJSON(): StaticSmokerError {

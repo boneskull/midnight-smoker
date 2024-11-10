@@ -65,6 +65,36 @@ describe('midnight-smoker', function () {
           );
         });
       });
+
+      describe('deepEqual()', function () {
+        it('should not throw an error for deeply equal values', function () {
+          expect(() => {
+            assert.deepEqual({a: 1}, {a: 1});
+          }, 'not to throw');
+        });
+
+        it('should throw an AssertionError for non-deeply equal values', function () {
+          expect(
+            () => {
+              assert.deepEqual({a: 1}, {a: 2});
+            },
+            'to throw an',
+            AssertionError,
+          );
+        });
+
+        it('should throw an AssertionError with the custom message for non-deeply equal values', function () {
+          expect(
+            () => {
+              assert.deepEqual({a: 1}, {a: 2}, 'Values are not deeply equal');
+            },
+            'to throw',
+            {
+              message: 'Values are not deeply equal',
+            },
+          );
+        });
+      });
     });
   });
 });

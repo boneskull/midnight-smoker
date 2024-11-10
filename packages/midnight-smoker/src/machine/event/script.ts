@@ -16,10 +16,10 @@ import {
   type PkgManagerRunScriptsFailedEventData,
   type PkgManagerRunScriptsOkEventData,
   type RunScriptBeginEventData,
+  type RunScriptEndEventData,
   type RunScriptErrorEventData,
   type RunScriptFailedEventData,
   type RunScriptOkEventData,
-  type RunScriptResultEventData,
   type RunScriptSkippedEventData,
   type ScriptEvents,
 } from '#event/script-events';
@@ -89,7 +89,7 @@ export type SmokeMachineRunScriptBeginEvent = MachineEvent<
  */
 export type SmokeMachineRunScriptEndEvent = MachineEvent<
   typeof ScriptEvents.RunScriptEnd,
-  Omit<RunScriptResultEventData, ComputedRunScriptFields>
+  Omit<RunScriptEndEventData, ComputedRunScriptFields>
 >;
 
 /**

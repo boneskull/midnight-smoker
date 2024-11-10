@@ -20,7 +20,7 @@ export * from './known-pkg-manager-spec';
 
 export * from './non-empty-array';
 
-export * from './nonzero-exit-error';
+export * from './reporter-listener';
 
 export * from './serializable';
 

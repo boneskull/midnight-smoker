@@ -47,17 +47,6 @@ export const ProgressReporter: Reporter<ProgressReporterContext> = {
     }
     multiBar.stop();
   },
-
-  //    ▄███████▄    ▄████████  ▄████████    ▄█   ▄█▄
-  //   ███    ███   ███    ███ ███    ███   ███ ▄███▀
-  //   ███    ███   ███    ███ ███    █▀    ███▐██▀
-  //   ███    ███   ███    ███ ███         ▄█████▀
-  // ▀█████████▀  ▀███████████ ███        ▀▀█████▄
-  //   ███          ███    ███ ███    █▄    ███▐██▄
-  //   ███          ███    ███ ███    ███   ███ ▀███▄
-  //  ▄████▀        ███    █▀  ████████▀    ███   ▀█▀
-  //                                        ▀
-
   onInstallBegin({bars, multiBar}, {pkgManagers}) {
     if (pkgManagers.length === 1) {
       return;
@@ -123,17 +112,6 @@ export const ProgressReporter: Reporter<ProgressReporterContext> = {
       }),
     );
   },
-
-  // ▄█  ███▄▄▄▄      ▄████████     ███        ▄████████  ▄█        ▄█
-  // ███  ███▀▀▀██▄   ███    ███ ▀█████████▄   ███    ███ ███       ███
-  // ███▌ ███   ███   ███    █▀     ▀███▀▀██   ███    ███ ███       ███
-  // ███▌ ███   ███   ███            ███   ▀   ███    ███ ███       ███
-  // ███▌ ███   ███ ▀███████████     ███     ▀███████████ ███       ███
-  // ███  ███   ███          ███     ███       ███    ███ ███       ███
-  // ███  ███   ███    ▄█    ███     ███       ███    ███ ███▌    ▄ ███▌    ▄
-  // █▀    ▀█   █▀   ▄████████▀     ▄████▀     ███    █▀  █████▄▄██ █████▄▄██
-  //                                                       ▀         ▀
-
   onPackFailed({bars, log, opts}, {error}) {
     const text = error.format(opts.verbose);
     log.push(text);
@@ -152,7 +130,7 @@ export const ProgressReporter: Reporter<ProgressReporterContext> = {
   },
   onPkgManagerInstallBegin(
     {bars, multiBar},
-    {pkgManager, totalPkgManagers, workspaceInfo: {length: totalPkgs}},
+    {pkgManager, totalPkgManagers, totalPkgs},
   ) {
     const spec = formatPkgManager(pkgManager);
     const operation =
@@ -185,17 +163,6 @@ export const ProgressReporter: Reporter<ProgressReporterContext> = {
     });
     bars.set(`lint-${spec}`, bar);
   },
-
-  //  ▄█        ▄█  ███▄▄▄▄       ███
-  // ███       ███  ███▀▀▀██▄ ▀█████████▄
-  // ███       ███▌ ███   ███    ▀███▀▀██
-  // ███       ███▌ ███   ███     ███   ▀
-  // ███       ███▌ ███   ███     ███
-  // ███       ███  ███   ███     ███
-  // ███▌    ▄ ███  ███   ███     ███
-  // █████▄▄██ █▀    ▀█   █▀     ▄████▀
-  // ▀
-
   onPkgManagerLintFailed({bars}, {pkgManager}) {
     bars.get('lint')?.increment();
     const spec = formatPkgManager(pkgManager);
@@ -255,17 +222,6 @@ export const ProgressReporter: Reporter<ProgressReporterContext> = {
     const spec = formatPkgManager(pkgManager);
     bars.get(`scripts-${spec}`)?.stop();
   },
-
-  //    ▄████████  ▄████████    ▄████████  ▄█     ▄███████▄     ███        ▄████████
-  //   ███    ███ ███    ███   ███    ███ ███    ███    ███ ▀█████████▄   ███    ███
-  //   ███    █▀  ███    █▀    ███    ███ ███▌   ███    ███    ▀███▀▀██   ███    █▀
-  //   ███        ███         ▄███▄▄▄▄██▀ ███▌   ███    ███     ███   ▀   ███
-  // ▀███████████ ███        ▀▀███▀▀▀▀▀   ███▌ ▀█████████▀      ███     ▀███████████
-  //          ███ ███    █▄  ▀███████████ ███    ███            ███              ███
-  //    ▄█    ███ ███    ███   ███    ███ ███    ███            ███        ▄█    ███
-  //  ▄████████▀  ████████▀    ███    ███ █▀    ▄████▀         ▄████▀    ▄████████▀
-  //                           ███    ███
-
   onPkgPackFailed({bars}, {pkgManager}) {
     const spec = formatPkgManager(pkgManager);
     bars.get(`pack-${spec}`)?.increment();
@@ -334,17 +290,6 @@ export const ProgressReporter: Reporter<ProgressReporterContext> = {
   onRunScriptsFailed({bars}) {
     bars.get('scripts')?.stop();
   },
-
-  //    ▄████████   ▄▄▄▄███▄▄▄▄    ▄██████▄     ▄█   ▄█▄    ▄████████
-  //   ███    ███ ▄██▀▀▀███▀▀▀██▄ ███    ███   ███ ▄███▀   ███    ███
-  //   ███    █▀  ███   ███   ███ ███    ███   ███▐██▀     ███    █▀
-  //   ███        ███   ███   ███ ███    ███  ▄█████▀     ▄███▄▄▄
-  // ▀███████████ ███   ███   ███ ███    ███ ▀▀█████▄    ▀▀███▀▀▀
-  //          ███ ███   ███   ███ ███    ███   ███▐██▄     ███    █▄
-  //    ▄█    ███ ███   ███   ███ ███    ███   ███ ▀███▄   ███    ███
-  //  ▄████████▀   ▀█   ███   █▀   ▀██████▀    ███   ▀█▀   ██████████
-  //                                           ▀
-
   onRunScriptsOk({bars}) {
     bars.get('scripts')?.stop();
   },

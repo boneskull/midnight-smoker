@@ -56,14 +56,18 @@ describe('midnight-smoker', function () {
       beforeEach(async function () {
         ({vol} = memfs());
         fileManager = FileManager.create({fs: vol as any});
+        sandbox = createSandbox();
+
         pkgManager = {...nullPkgManager};
+
         const pluginDef = createPlugin({
           pkgManager,
         });
-        sandbox = createSandbox();
+
         pluginRegistry = PluginRegistry.create({
           fileManager,
         });
+
         plugin = await pluginRegistry.registerPlugin('test-plugin', pluginDef);
 
         workspaceInfo = [
@@ -77,9 +81,11 @@ describe('midnight-smoker', function () {
             pkgName: 'example-package',
           } as WorkspaceInfo,
         ];
+
         vol.fromJSON({
           '/package.json': JSON.stringify(workspaceInfo[0]!.pkgJson),
         });
+
         input = {
           componentRegistry: pluginRegistry.componentRegistry,
           desiredPkgManagers: [],

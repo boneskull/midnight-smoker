@@ -85,6 +85,7 @@ export type PkgManagerInstallBeginEventData = PkgManagerInstallEventDataBase;
 
 export type PkgManagerInstallEventDataBase = {
   manifests: Schema.InstallManifest[];
+  totalPkgs: number;
 } & PkgManagerEventBase;
 
 export type PkgManagerInstallFailedEventData = {

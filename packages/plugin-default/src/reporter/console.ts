@@ -1,6 +1,5 @@
 import {bold, dim, italic, red, yellow} from 'chalk';
 import spinners from 'cli-spinners';
-import Debug from 'debug';
 import {groupBy, head, isEmpty} from 'lodash';
 import {error, info, warning} from 'log-symbols';
 import {FAILED} from 'midnight-smoker/constants';
@@ -19,6 +18,7 @@ import {
 } from 'midnight-smoker/util';
 import ora, {type Ora} from 'ora';
 
+import {createDebug} from '../debug';
 import {ELLIPSIS, plural, preface} from './util';
 
 type ConsoleReporterContext = {
@@ -37,7 +37,7 @@ const randomItem = <T>(items: [T, ...T[]] | readonly [T, ...T[]] | T[]): T => {
   return items[index]!;
 };
 
-const debug = Debug('midnight-smoker:plugin-default:reporter:console');
+const debug = createDebug(__filename);
 
 /**
  * Prefix symbol for column 0 when reporting issues
@@ -89,7 +89,7 @@ const lintFilepathLine = (filepath: string): string => {
  * @returns Formatted issue
  */
 const lintIssueLine = ({ctx, message, rule}: Issue): string => {
-  let issueWords = [SEPARATOR, message];
+  let issueWords = [SEPARATOR, yellow(message)];
   issueWords =
     ctx.severity === RuleSeverities.Error
       ? [error, lintErrorRuleName(rule), ...issueWords]
@@ -128,9 +128,6 @@ const spinnerMsgs = [
 export const ConsoleReporter: Reporter<ConsoleReporterContext> = {
   description: 'Default console reporter (for humans)',
   name: 'console',
-  onAborted() {
-    // pop a spinner
-  },
   onInstallFailed({opts: {verbose}, spinner}, {error}) {
     spinner.fail(error.format(verbose));
   },

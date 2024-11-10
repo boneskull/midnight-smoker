@@ -8,7 +8,7 @@ export * from './desired-pkg-manager';
 
 export * from './errno-exception';
 
-export * from './exec-result';
+export * from './exec-output';
 
 export * from './executor';
 

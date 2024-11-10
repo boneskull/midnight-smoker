@@ -64,6 +64,8 @@ export interface ReporterMachineContext
    *
    * The machine uses a guard to check if the queue is non-empty; if it is, it
    * transitions to the `flushing` state, which invokes {@link flushQueueLogic}.
+   *
+   * **This should never be overwriten**.
    */
   queue: EventData[];
 
@@ -77,7 +79,7 @@ export interface ReporterMachineContext
    */
   shouldShutdown: boolean;
 
-  subject?: ReporterContextSubject;
+  subject: ReporterContextSubject;
 }
 
 export interface ReporterMachineSmokeMachineEvent {
@@ -144,14 +146,13 @@ export const ReporterMachine = setup({
     }),
 
     /**
-     * Enqueues any event emitted by the event bus machines
+     * Enqueues any event emitted by the event bus machines.
+     *
+     * **Do not overwrite `queue`**
      */
-    enqueue: assign({
-      queue: ({context: {queue}}, {event}: {event: EventData}) => [
-        ...queue,
-        event,
-      ],
-    }),
+    enqueue: ({context: {queue}}, {event}: {event: EventData}) => {
+      queue.push(event);
+    },
 
     [INIT_ACTION]: DEFAULT_INIT_ACTION(),
     shouldShutdown: assign({shouldShutdown: true}),
@@ -162,6 +163,8 @@ export const ReporterMachine = setup({
     teardownReporter: teardownReporterLogic,
   },
   guards: {
+    hasError: ({context: {error}}) => !!error,
+
     /**
      * If the queue contains events, this guard will return `true`.
      */
@@ -221,6 +224,7 @@ export const ReporterMachine = setup({
   exit: [log('Stopped')],
   id: 'ReporterMachine',
   initial: 'setup',
+
   on: {
     EVENT: [
       {
@@ -273,10 +277,13 @@ export const ReporterMachine = setup({
     flushing: {
       description: 'Drains the event queue by emitting events to the reporter',
       invoke: {
-        input: ({context: {ctx, queue, reporter}}): FlushQueueLogicInput => ({
+        input: ({
+          context: {ctx, queue, reporter, subject},
+        }): FlushQueueLogicInput => ({
           ctx,
           queue,
           reporter,
+          subject,
         }),
         onDone: {
           target: 'listening',
@@ -286,6 +293,9 @@ export const ReporterMachine = setup({
             {
               params: ({event: {error}}) => ({error}),
               type: 'assignError',
+            },
+            ({context: {error, subject}}) => {
+              subject.error(error!);
             },
           ],
           target: 'teardown',
@@ -337,12 +347,12 @@ export const ReporterMachine = setup({
     },
     teardown: {
       description: 'Runs teardown lifecycle hook for the reporter',
-      entry: [
+      exit: [
         assign({
           subject: ({context: {subject}}) => {
-            subject?.complete();
-            subject?.[Symbol.dispose]();
-            return undefined;
+            subject.complete();
+            subject[Symbol.dispose]();
+            return subject;
           },
         }),
       ],

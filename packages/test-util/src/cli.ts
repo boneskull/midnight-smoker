@@ -9,7 +9,7 @@ import {ExecError} from 'midnight-smoker/error';
 import {
   type ExecFn,
   type ExecOptions,
-  type ExecResult,
+  type ExecOutput,
 } from 'midnight-smoker/schema';
 import {exec, isSmokerError} from 'midnight-smoker/util';
 import {type Merge} from 'type-fest';
@@ -65,7 +65,7 @@ export type ExecSmokerOptionsWithJson<Exec extends ExecFn = ExecFn> = Merge<
 export function execSmoker<Exec extends ExecFn = ExecFn>(
   args: string[],
   opts?: ExecSmokerOptions<Exec>,
-): ExecResult;
+): Promise<ExecOutput>;
 
 /**
  * Execute `smoker`, but parse the result as JSON.
@@ -118,7 +118,6 @@ export function execSmoker(args: string[], opts: ExecSmokerOptions = {}) {
     exec: someExec = exec,
     json,
     nodeOptions,
-    signal,
     timeout,
     trim,
     verbose,
@@ -133,7 +132,6 @@ export function execSmoker(args: string[], opts: ExecSmokerOptions = {}) {
   const finalNodeOpts = {cwd, env: finalEnvOpts, ...nodeOptions};
   const options: ExecOptions = {
     nodeOptions: finalNodeOpts,
-    signal,
     timeout,
     trim,
     verbose,

@@ -10,7 +10,7 @@ import {UnknownError} from '#error/unknown-error';
 import {asValidationError, type ValidationError} from '#error/validation-error';
 import {isError} from '#util/guard/common';
 import {isSomeSmokerError} from '#util/guard/some-smoker-error';
-import stringify from 'stringify-object';
+import {inspect} from 'node:util';
 import {ZodError} from 'zod';
 import {
   isValidationErrorLike,
@@ -80,7 +80,7 @@ export function fromUnknownError(err?: unknown, wrap = false) {
   if (isError(err)) {
     return err;
   }
-  return new Error(stringify(err, {indent: '  '}));
+  return new Error(inspect(err, {sorted: true}));
 }
 
 const debug = createDebug(__filename);

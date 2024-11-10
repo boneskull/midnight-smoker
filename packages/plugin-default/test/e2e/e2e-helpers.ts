@@ -1,5 +1,5 @@
 import {execSmoker} from '@midnight-smoker/test-util';
-import stripAnsi from 'strip-ansi';
+import {stripAnsi} from 'midnight-smoker/util';
 import unexpected from 'unexpected';
 
 import type {SmokerJsonOutput} from '../../src/json-types';

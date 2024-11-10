@@ -94,8 +94,7 @@ export async function install(
   let installResult: ExecOutput;
   try {
     installResult = await executor(spec, installArgs, {
-      nodeOptions: {cwd: tmpdir},
-      signal,
+      nodeOptions: {cwd: tmpdir, signal},
       verbose: ctx.verbose,
     });
     err = maybeHandleInstallError(ctx, installResult, pkgSpec);
@@ -247,9 +246,10 @@ export const BaseNpmPackageManager = Object.freeze({
 
     try {
       packResult = await executor(spec, packArgs, {
-        signal,
+        nodeOptions: {signal},
         verbose,
       });
+      debug('(pack) got result');
     } catch (err) {
       debug('(pack) Failed: %O', err);
       if (isExecError(err)) {
@@ -329,8 +329,7 @@ export const BaseNpmPackageManager = Object.freeze({
     // script is missing
     try {
       rawResult = await executor(spec, ['run', '--json', script], {
-        nodeOptions: {cwd},
-        signal,
+        nodeOptions: {cwd, signal},
         verbose,
       });
     } catch (err) {

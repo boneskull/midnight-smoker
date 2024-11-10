@@ -1,7 +1,7 @@
 import {ErrorCode} from '#error/codes';
 import {type BlameInfo, JSONBlamer} from '#rule/json-blamer';
 import {JSONLocation} from '#rule/json-location';
-import {NL} from '#util/format';
+import {NL, stripAnsi} from '#util/format';
 import {type Location} from '@humanwhocodes/momoa';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
@@ -208,11 +208,11 @@ describe('midnight-smoker', function () {
               };
             });
 
-            it('should return a formatted source context string (no color)', function () {
+            it('should return a formatted source context string', function () {
               const context = jsonBlamer.getContext(info);
               // note the silly string formatting here
               expect(
-                `${NL}${context}${NL}`,
+                `${NL}${stripAnsi(context)}${NL}`,
                 'to equal',
                 `
 — some.json ——————————————✂

@@ -51,8 +51,7 @@ export async function runScript(
   let error: ScriptFailedError | undefined;
   try {
     rawResult = await executor(spec, ['run', script], {
-      nodeOptions: {cwd},
-      signal,
+      nodeOptions: {cwd, signal},
       verbose,
     });
   } catch (err) {
@@ -131,8 +130,7 @@ export const YarnClassic = Object.freeze({
     let installResult: ExecOutput;
     try {
       installResult = await executor(spec, installArgs, {
-        nodeOptions: {cwd: tmpdir},
-        signal,
+        nodeOptions: {cwd: tmpdir, signal},
         verbose,
       });
     } catch (err) {
@@ -179,7 +177,7 @@ export const YarnClassic = Object.freeze({
     const args = ['pack', '--json', `--filename=${tarball}`];
 
     try {
-      await executor(spec, args, {nodeOptions: {cwd}, signal, verbose});
+      await executor(spec, args, {nodeOptions: {cwd, signal}, verbose});
     } catch (err) {
       if (err instanceof ExecError) {
         const workspaceInfo = {

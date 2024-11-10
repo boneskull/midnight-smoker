@@ -1,8 +1,6 @@
-import type {ExecResult} from '#schema/exec-result';
-
 import {DEFAULT_PKG_MANAGER_NAME} from '#constants';
 import {type ExecError} from '#executor';
-import {type ExecOutput} from '#schema/exec-result';
+import {type ExecOutput} from '#schema/exec-output';
 import {FileManager} from '#util/filemanager';
 import {resolveFrom} from '#util/importer';
 import fs from 'node:fs/promises';
@@ -97,7 +95,7 @@ describe('midnight-smoker [E2E]', function () {
     describe('when packing fails', function () {
       describe('when the package.json is missing a version field', function () {
         const cwd = path.join(__dirname, 'fixture', 'general', 'pack-error');
-        let result: ExecResult;
+        let output: ExecOutput;
 
         it('should provide a reason [snapshot]', async function () {
           try {
@@ -108,7 +106,7 @@ describe('midnight-smoker [E2E]', function () {
           } catch (err) {
             snapshot(fixupOutput((err as ExecError).stderr));
           }
-          expect(result, 'to be ok');
+          expect(output, 'to be ok');
         });
 
         describe('when in verbose mode', function () {

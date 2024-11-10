@@ -9,7 +9,6 @@ import {
   type ExecFn,
   type ExecOptions,
   type ExecOutput,
-  type ExecResult,
 } from 'midnight-smoker/schema';
 import {NL} from 'midnight-smoker/util';
 import {Readable} from 'node:stream';
@@ -47,43 +46,37 @@ export function createExecMock(
     readableMocks.stdout ?? createReadableMock());
   const stderr = (readableMocks.stderr =
     readableMocks.stderr ?? createReadableMock());
-  const exec = sinon.stub().callsFake(
-    // this function should _not_ be async for reasons
-    (
-      command: string,
-      args: string[] = [],
-      options: ExecOptions = {},
-    ): ExecResult => {
-      const promise: ExecResult = new Promise((resolve) => {
-        setImmediate(() => {
-          const stdoutValue = stringify({key: 'value'});
-          const stderrValue = 'stderr';
-          const retval: ExecOutput = {
-            command: `${command} ${args.join(' ')}`.trim(),
-            cwd: `${options?.nodeOptions?.cwd ?? '/some/path'}`,
-            exitCode: 0,
-            stderr: 'stderr',
-            stdout: stdoutValue,
-          };
-          stdout.on('data', (value) => {
-            retval.stdout += value;
+  const exec = sinon
+    .stub()
+    .callsFake(
+      (
+        command: string,
+        args: string[] = [],
+        options: ExecOptions = {},
+      ): Promise<ExecOutput> => {
+        return new Promise((resolve) => {
+          setImmediate(() => {
+            const stdoutValue = stringify({key: 'value'});
+            const stderrValue = 'stderr';
+            const retval: ExecOutput = {
+              command: `${command} ${args.join(' ')}`.trim(),
+              cwd: `${options?.nodeOptions?.cwd ?? '/some/path'}`,
+              exitCode: 0,
+              stderr: 'stderr',
+              stdout: stdoutValue,
+            };
+            stdout.on('data', (value) => {
+              retval.stdout += value;
+            });
+            stderr.on('data', (value) => {
+              retval.stderr += value;
+            });
+            stdout.emit('data', `${stdoutValue}${NL}`);
+            stderr.emit('data', `${stderrValue}${NL}`);
+            resolve(retval);
           });
-          stderr.on('data', (value) => {
-            retval.stderr += value;
-          });
-          stdout.emit('data', `${stdoutValue}${NL}`);
-          stderr.emit('data', `${stderrValue}${NL}`);
-          resolve(retval);
         });
-      });
-      void Object.assign(promise, {
-        process: {
-          stderr,
-          stdout,
-        },
-      });
-      return promise;
-    },
-  );
+      },
+    );
   return exec as ExecMock;
 }

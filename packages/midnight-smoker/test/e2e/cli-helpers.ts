@@ -2,11 +2,11 @@ import {ExecError} from '#executor';
 import {
   type ExecFn,
   type ExecOptions,
-  type ExecResult,
-} from '#schema/exec-result';
+  type ExecOutput,
+} from '#schema/exec-output';
 import {exec} from '#util/exec';
+import {stripAnsi} from '#util/format';
 import {isSmokerError} from '#util/guard/smoker-error';
-import stripAnsi from 'strip-ansi';
 import {type Merge} from 'type-fest';
 
 import {createDebug} from '../debug';
@@ -61,7 +61,7 @@ export type ExecSmokerOptionsWithJson<Exec extends ExecFn = ExecFn> = Merge<
 export function execSmoker<Exec extends ExecFn = ExecFn>(
   args: string[],
   opts?: ExecSmokerOptions<Exec>,
-): ExecResult;
+): Promise<ExecOutput>;
 
 /**
  * Execute `smoker`, but parse the result as JSON.
@@ -114,7 +114,6 @@ export function execSmoker(args: string[], opts: ExecSmokerOptions = {}) {
     exec: someExec = exec,
     json,
     nodeOptions,
-    signal,
     timeout,
     trim,
     verbose,
@@ -129,7 +128,6 @@ export function execSmoker(args: string[], opts: ExecSmokerOptions = {}) {
   const finalNodeOpts = {cwd, env: finalEnvOpts, ...nodeOptions};
   const options: ExecOptions = {
     nodeOptions: finalNodeOpts,
-    signal,
     timeout,
     trim,
     verbose,

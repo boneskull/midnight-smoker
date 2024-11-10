@@ -5,12 +5,11 @@ import {normalizeVersionAgainstPkgManager} from '#pkg-manager/version-normalizer
 import {type ComponentRegistry} from '#plugin/component';
 import {type PkgManagerEnvelope} from '#plugin/component-envelope';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
-import {type ExecFn} from '#schema/exec-result';
+import {type ExecFn} from '#schema/exec-output';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {parseRange} from '#schema/version';
 import {caseInsensitiveEquals} from '#util/common';
 import {exec} from '#util/exec';
-import {memoize} from 'lodash';
 import {type SemVer} from 'semver';
 import which from 'which';
 import {type DoneActorEvent, type ErrorActorEvent, fromPromise} from 'xstate';
@@ -92,14 +91,16 @@ export const matchSystemPkgManagerLogic = fromPromise<
     /**
      * Gget the version of a system package manager.
      */
-    const getSystemPkgManagerVersion = memoize(
-      async (bin: string): Promise<string | undefined> => {
-        try {
-          const {stdout} = await someExec(bin, ['--version']);
-          return stdout;
-        } catch {}
-      },
-    );
+    const getSystemPkgManagerVersion = async (
+      bin: string,
+    ): Promise<string | undefined> => {
+      try {
+        const {stdout} = await someExec(bin, ['--version']);
+        return stdout;
+      } catch (err) {
+        err;
+      }
+    };
 
     /**
      * Returns a `SemVer` if the `pkgManager` can support `allegedVersion`.

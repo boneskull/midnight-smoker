@@ -1,6 +1,6 @@
 import {type Executor, type ExecutorOpts} from '#defs/executor';
 import {AbortSignalSchema} from '#schema/abort-signal';
-import {ExecOutputSchema} from '#schema/exec-result';
+import {ExecOutputSchema} from '#schema/exec-output';
 import {StaticPkgManagerSpecSchema} from '#schema/static-pkg-manager-spec';
 import {NonEmptyStringArraySchema} from '#util/schema-util';
 import {z} from 'zod';

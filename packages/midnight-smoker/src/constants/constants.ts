@@ -151,3 +151,13 @@ export const SYSTEM = 'system';
 export const TS_CONFIG_EXTENSIONS = Object.freeze(['.ts', '.mts', '.cts']);
 
 export const ALLOWED_DEFAULT_PKG_MANAGERS = constant(['yarn', 'npm', 'pnpm']);
+
+/**
+ * The URL to submit bug reports.
+ *
+ * @remarks
+ * This should be read from `midnight-smoker/package.json`. At some point we can
+ * just read it synchronously.
+ */
+export const BUGS_URL =
+  'https://github.com/boneskull/midnight-smoker/issues/new';

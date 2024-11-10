@@ -11,7 +11,7 @@ import {ConfigReader} from '#config/config-reader';
 import {SCRIPT_NAME} from '#constants';
 import {createDebug} from '#util/debug';
 import {FileManager} from '#util/filemanager';
-import terminalLink from 'terminal-link';
+import {formatUrl} from '#util/format';
 import {hideBin} from 'yargs/helpers';
 import yargs from 'yargs/yargs';
 
@@ -51,7 +51,7 @@ async function main(args: string[]): Promise<void> {
     })
     // this is the USA dammit
     .epilog(
-      `RTFM at: ${terminalLink(`${homepage}`, `${homepage}`, {
+      `RTFM at: ${formatUrl(`${homepage}`, `${homepage}`, {
         fallback: false,
       })}\n`,
     )

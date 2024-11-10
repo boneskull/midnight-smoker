@@ -173,7 +173,7 @@ describe('midnight-smoker', function () {
         });
       });
 
-      describe('event handling', function () {
+      describe('event', function () {
         let onBeforeExit: sinon.SinonStub;
         let onNoop: sinon.SinonStub;
 
@@ -196,7 +196,7 @@ describe('midnight-smoker', function () {
           actor?.stop();
         });
 
-        describe('event EVENT', function () {
+        describe('EVENT', function () {
           it('should invoke the appropriate event listener in the reporter', async function () {
             const p = runUntilDone(actor);
             actor.send({
@@ -254,6 +254,47 @@ describe('midnight-smoker', function () {
 
               expect(onNoop, 'was called once');
             });
+
+            it('should notify any subscribers', async function () {
+              const err = new Error('test error');
+              onBeforeExit.rejects(err);
+
+              actor.send({
+                event: {type: Events.BeforeExit},
+                type: 'EVENT',
+              });
+              actor.send({
+                event: {type: Events.Noop},
+                type: 'EVENT',
+              });
+
+              const error = sandbox.stub();
+              setup.resetBehavior();
+
+              setup.callsFake((ctx) => {
+                ctx.subscribe({error});
+              });
+
+              actor.send({
+                event: {type: Events.Noop},
+                type: 'EVENT',
+              });
+
+              await runUntilDone(actor);
+
+              expect(error, 'was called once').and(
+                'to have a call satisfying',
+                [
+                  {
+                    cause: {
+                      cause: err,
+                      code: ErrorCode.ReporterError,
+                    },
+                    code: ErrorCode.MachineError,
+                  },
+                ],
+              );
+            });
           });
 
           describe('when events are received during shutdown', function () {
@@ -281,7 +322,7 @@ describe('midnight-smoker', function () {
           });
         });
 
-        describe('event HALT', function () {
+        describe('HALT', function () {
           it('should stop the machine after draining the queue', async function () {
             actor.send({
               event: {type: Events.BeforeExit},

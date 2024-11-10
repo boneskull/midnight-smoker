@@ -58,6 +58,11 @@ export interface SmokerError<Context extends object | void = void, Cause = void>
   name: SmokerErrorName;
 
   /**
+   * If true, we should ask the user to submit a bug report.
+   */
+  shouldAskForBugReport?: boolean;
+
+  /**
    * Returns the error in a JSON-serializable format.
    */
   toJSON(): StaticSmokerError;

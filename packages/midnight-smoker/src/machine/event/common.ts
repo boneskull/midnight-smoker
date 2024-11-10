@@ -24,6 +24,7 @@ export type ComputedPkgEventFields =
  */
 export type ComputedPkgManagerEventFields =
   | 'totalPkgManagers'
+  | 'totalPkgs'
   | 'workspaceInfo';
 
 export type MachineEvent<

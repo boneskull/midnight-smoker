@@ -6,6 +6,7 @@
 import {createTable} from '#cli/cli-util';
 import {Smoker} from '#smoker';
 import {createDebug} from '#util/debug';
+import {formatUrl} from '#util/format';
 import {isBlessedPlugin} from '#util/guard/blessed-plugin';
 import {isString} from '#util/guard/common';
 import {orderBy} from 'lodash';
@@ -159,21 +160,16 @@ export class ListCommand extends BaseCommand {
 
     debug('Found %d rules', rules.length);
 
-    const headers =
-      terminalLink.isSupported && !smoker.smokerOptions.json
-        ? ['Name', 'Description', 'Plugin']
-        : ['Name', 'Description', 'Plugin', 'URL'];
-
     if (smoker.smokerOptions.json) {
       BaseCommand.writeJson(rules);
       return;
     }
 
+    const headers = terminalLink.isSupported
+      ? ['Name', 'Description', 'Plugin']
+      : ['Name', 'Description', 'Plugin', 'URL'];
     const data = rules.map((rule) => {
-      const ruleName =
-        terminalLink.isSupported && rule.url
-          ? terminalLink(rule.id, rule.url)
-          : rule.id;
+      const ruleName = formatUrl(rule.id, rule.url, {fallback: false});
       const pluginName = rule.isBlessed ? '(built-in)' : rule.pluginName;
       const row: (string | undefined)[] = [
         ruleName,

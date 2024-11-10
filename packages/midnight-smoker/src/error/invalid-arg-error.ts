@@ -18,6 +18,8 @@ export class InvalidArgError extends BaseSmokerError<{
 }> {
   public readonly name = 'InvalidArgError';
 
+  public override readonly shouldAskForBugReport = true;
+
   constructor(
     message: string,
     {argName, position}: {argName?: string; position?: number} = {},

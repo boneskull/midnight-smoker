@@ -1,9 +1,9 @@
 import {type InstallManifest} from '#defs/pkg-manager';
-import {ExecOutputSchema} from '#schema/exec-result';
+import {ExecOutputSchema} from '#schema/exec-output';
 import {InstallManifestSchema} from '#schema/install-manifest';
 import {z} from 'zod';
 
-import {type ExecOutput} from './exec-result';
+import {type ExecOutput} from './exec-output';
 
 /**
  * The object fulfilled by `PkgManager.install`

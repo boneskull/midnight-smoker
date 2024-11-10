@@ -102,7 +102,7 @@ describe('@midnight-smoker/plugin-default', function () {
                   '--foreground-scripts=false',
                 ],
                 {
-                  signal: expect.it('to be an', AbortSignal),
+                  nodeOptions: {signal: expect.it('to be an', AbortSignal)},
                   verbose: undefined,
                 },
               ]);

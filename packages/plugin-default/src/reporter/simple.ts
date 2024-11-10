@@ -7,7 +7,7 @@ import {
   RuleSeverities,
   type StaticRule,
 } from 'midnight-smoker/rule';
-import {hrRelativePath, isBlessedPlugin} from 'midnight-smoker/util';
+import {hrRelativePath, isBlessedPlugin, joinLines} from 'midnight-smoker/util';
 import pluralize from 'pluralize';
 import {type LiteralUnion} from 'type-fest';
 
@@ -79,6 +79,9 @@ function pkgManager(label: string) {
   return `${parts[0]}@${other[0]} ${other[1]}`;
 }
 
+const ruleNameError = (rule: StaticRule) => `[${rule.name}]`;
+const ruleNameWarning = (rule: StaticRule) => `[${rule.name}]`;
+
 export const SimpleReporter: Reporter = {
   description: 'Simple reporter (for non-TTY)',
   name: 'simple',
@@ -111,8 +114,6 @@ export const SimpleReporter: Reporter = {
         ({ctx: {pkgJsonPath}, filepath}) => filepath ?? pkgJsonPath,
       );
 
-      const ruleNameError = (rule: StaticRule) => `[${rule.name}]`;
-      const ruleNameWarning = (rule: StaticRule) => `[${rule.name}]`;
       for (const [filepath, failed] of Object.entries(failedByFilepath)) {
         lines.push(`│ ${hrRelativePath(filepath)}:`);
         for (const {
@@ -128,7 +129,7 @@ export const SimpleReporter: Reporter = {
         }
       }
 
-      const msg = lines.join('\n');
+      const msg = joinLines(lines);
       if (isError) {
         console.error(`ERROR: ${msg}`);
       } else {

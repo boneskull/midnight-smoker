@@ -112,7 +112,6 @@ export class PluginMetadata implements Schema.StaticPluginMetadata {
           })
         : Schema.PluginMetadataOptsSchema.parse(optsOrEntryPoint);
     } catch (err) {
-      optsOrEntryPoint;
       throw asValidationError(err);
     }
 

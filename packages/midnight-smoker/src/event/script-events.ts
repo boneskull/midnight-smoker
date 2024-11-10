@@ -8,6 +8,7 @@
 import type * as Schema from '#schema/meta/for-script-events';
 
 import {ScriptEvents} from '#constants/event';
+import {type Except} from 'type-fest';
 
 import {type PkgManagerEventBase} from './common';
 
@@ -43,7 +44,12 @@ export type ScriptEventData = {
    */
   [ScriptEvents.RunScriptBegin]: RunScriptBeginEventData;
 
-  [ScriptEvents.RunScriptEnd]: RunScriptResultEventData;
+  /**
+   * Emitted after running a custom script, regardless of the result.
+   *
+   * @event
+   */
+  [ScriptEvents.RunScriptEnd]: RunScriptEndEventData;
 
   /**
    * Emitted whenever running custom script (run as in {@link RunScriptBegin})
@@ -133,9 +139,13 @@ export type RunScriptEventDataBase<Result = void> = {
   totalScripts: number;
 };
 
-export type RunScriptBeginEventData = Omit<RunScriptEventDataBase, 'result'>;
+export type RunScriptBeginEventData = Except<
+  RunScriptEventDataBase,
+  'result',
+  {requireExactProps: true}
+>;
 
-export type RunScriptResultEventData =
+export type RunScriptEndEventData =
   | RunScriptErrorEventData
   | RunScriptFailedEventData
   | RunScriptOkEventData

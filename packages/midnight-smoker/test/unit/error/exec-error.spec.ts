@@ -1,5 +1,5 @@
 import {ExecError} from '#error/exec-error';
-import {type ExecOutput} from '#schema/exec-result';
+import {type ExecOutput} from '#schema/exec-output';
 import unexpected from 'unexpected';
 
 const expect = unexpected.clone();
@@ -21,7 +21,6 @@ describe('midnight-smoker', function () {
           expect(execError, 'to satisfy', {
             command: 'testCommand',
             exitCode: 1,
-            failed: true,
             message: 'Something bad',
             stderr: 'stderr',
             stdout: 'stdout',

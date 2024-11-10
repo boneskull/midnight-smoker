@@ -29,7 +29,6 @@ import {uniqueId, type UniqueId} from '#util/unique-id';
 import {type Debugger} from 'debug';
 import {cloneDeep, head} from 'lodash';
 import util from 'node:util';
-import stringify from 'stringify-object';
 import {type SetOptional} from 'type-fest';
 import {
   type ActorRefFrom,
@@ -515,7 +514,7 @@ export class PluginRegistry implements Disposable {
     );
     if (!plugin) {
       throw new Err.SmokerReferenceError(
-        `No plugin found for component object ${stringify(componentObject)}`,
+        `No plugin found for component object!`,
       );
     }
     return plugin;

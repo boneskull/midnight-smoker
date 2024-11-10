@@ -1,7 +1,7 @@
 import {InvalidArgError} from '#error/invalid-arg-error';
 import {ok} from '#util/assert';
 import {memoize} from '#util/decorator';
-import {NL} from '#util/format';
+import {NL, stripAnsi} from '#util/format';
 import {isString} from '#util/guard/common';
 import {formatKeypath} from '#util/keypath';
 import {
@@ -20,7 +20,6 @@ import {highlight} from 'cli-highlight';
 import {max, toPath} from 'lodash';
 import path from 'node:path';
 import stringWidth from 'string-width';
-import stripAnsi from 'strip-ansi';
 
 import {JSONLocation} from './json-location';
 
@@ -214,7 +213,7 @@ export class JSONBlamer {
      * Number of lines of context to appear before the highlighted line
      */
     const before = this.beforeLines;
-    const lines = highlighted.split('\n');
+    const lines = highlighted.split(NL);
     const startLine = Math.max(blameInfo.loc.start.line - 1 - before, 0);
     const endLine = blameInfo.loc.end.line;
 

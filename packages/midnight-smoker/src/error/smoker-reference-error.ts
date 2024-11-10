@@ -11,6 +11,8 @@ export class SmokerReferenceError<
 > extends BaseSmokerError<T> {
   public readonly name = 'SmokerReferenceError';
 
+  public override readonly shouldAskForBugReport = true;
+
   constructor(message: string, context?: T) {
     super(message, context as T);
   }

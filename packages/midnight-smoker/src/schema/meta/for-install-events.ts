@@ -1,6 +1,6 @@
 export {type InstallManifest} from '#defs/pkg-manager';
 
-export {type ExecOutput} from '#schema/exec-result';
+export {type ExecOutput} from '#schema/exec-output';
 
 export {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 

@@ -5,12 +5,11 @@
  */
 
 import {defaultsDeep} from 'lodash';
-import {ABORT, constant} from 'midnight-smoker/constants';
+import {constant} from 'midnight-smoker/constants';
 import {AbortError} from 'midnight-smoker/error';
 import {type Executor} from 'midnight-smoker/executor';
 import {exec} from 'midnight-smoker/util';
 import {type SpawnOptions} from 'node:child_process';
-import {constants as osConstants} from 'node:os';
 import path from 'node:path';
 
 /**
@@ -35,37 +34,17 @@ const COREPACK_PATH = path.resolve(
 );
 
 export const corepackExecutor: Executor = async (spec, args, opts = {}) => {
-  const {nodeOptions = {}, signal, verbose} = opts;
+  const {nodeOptions = {}, verbose} = opts;
 
-  if (signal?.aborted) {
-    throw new AbortError(signal.reason);
+  if (nodeOptions.signal?.aborted) {
+    throw new AbortError(nodeOptions.signal.reason);
   }
 
-  const proc = exec(COREPACK_PATH, [spec.label, ...args], {
+  return exec(COREPACK_PATH, [spec.label, ...args], {
     nodeOptions: defaultsDeep(
       {...nodeOptions},
       {env: DEFAULT_ENV},
     ) as SpawnOptions,
-    signal,
     verbose,
   });
-
-  let abortListener: (() => void) | undefined = undefined;
-  if (signal) {
-    abortListener = () => {
-      if (!proc.kill()) {
-        // screw 'em
-        proc.kill(osConstants.signals.SIGKILL);
-      }
-    };
-    signal.addEventListener(ABORT, abortListener);
-  }
-
-  try {
-    return await proc;
-  } finally {
-    if (signal) {
-      signal.removeEventListener(ABORT, abortListener!);
-    }
-  }
 };

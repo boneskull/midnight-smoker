@@ -317,7 +317,6 @@ export const ScriptBusMachine = setup({
               }): EventData<typeof ScriptEvents.RunScriptEnd> => ({
                 ...event,
                 totalScripts,
-                type: ScriptEvents.RunScriptEnd,
               }),
               type: 'report',
             },

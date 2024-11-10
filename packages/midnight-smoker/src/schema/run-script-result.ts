@@ -6,7 +6,7 @@ import {asResultSchema} from '#util/result';
 import {instanceofSchema} from '#util/schema-util';
 import {z} from 'zod';
 
-import {ExecOutputSchema} from './exec-result';
+import {ExecOutputSchema} from './exec-output';
 import {RunScriptManifestSchema} from './run-script-manifest';
 import {ScriptErrorSchema} from './script-error';
 

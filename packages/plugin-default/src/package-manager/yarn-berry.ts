@@ -73,8 +73,8 @@ export const YarnBerry = Object.freeze({
     // NO PACKAGE.JSON? NO LOCKFILE? YOU SHALL NOT PASS
     try {
       await executor(spec, ['init', '--private'], {
-        nodeOptions: {cwd: tmpdir},
-        signal,
+        nodeOptions: {cwd: tmpdir, signal},
+
         verbose,
       });
     } catch (err) {
@@ -82,8 +82,7 @@ export const YarnBerry = Object.freeze({
     }
     // this tells it to use "ol' reliable" instead of the "pnp linker"
     await executor(spec, ['config', 'set', 'nodeLinker', 'node-modules'], {
-      nodeOptions: {cwd: tmpdir},
-      signal,
+      nodeOptions: {cwd: tmpdir, signal},
       verbose,
     });
 
@@ -92,8 +91,7 @@ export const YarnBerry = Object.freeze({
     let installResult: ExecOutput;
     try {
       installResult = await executor(spec, ['add', pkgSpec], {
-        nodeOptions: {cwd: tmpdir},
-        signal,
+        nodeOptions: {cwd: tmpdir, signal},
         verbose,
       });
     } catch (err) {

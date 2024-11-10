@@ -47,11 +47,7 @@ export type SmokeMachinePackEvent =
  */
 export type SmokeMachinePkgManagerPackBeginEvent = MachineEvent<
   typeof PackEvents.PkgManagerPackBegin,
-  Except<
-    PkgManagerPackBeginEventData,
-    ComputedPkgManagerEventFields,
-    {requireExactProps: true}
-  >
+  Omit<PkgManagerPackBeginEventData, ComputedPkgManagerEventFields>
 >;
 
 /**
@@ -63,11 +59,7 @@ export type SmokeMachinePkgManagerPackBeginEvent = MachineEvent<
  */
 export type SmokeMachinePkgManagerPackFailedEvent = MachineEvent<
   typeof PackEvents.PkgManagerPackFailed,
-  Except<
-    PkgManagerPackFailedEventData,
-    ComputedPkgManagerEventFields,
-    {requireExactProps: true}
-  >
+  Omit<PkgManagerPackFailedEventData, ComputedPkgManagerEventFields>
 >;
 
 /**
@@ -77,11 +69,7 @@ export type SmokeMachinePkgManagerPackFailedEvent = MachineEvent<
  */
 export type SmokeMachinePkgManagerPackOkEvent = MachineEvent<
   typeof PackEvents.PkgManagerPackOk,
-  Except<
-    PkgManagerPackOkEventData,
-    ComputedPkgManagerEventFields,
-    {requireExactProps: true}
-  >
+  Omit<PkgManagerPackOkEventData, ComputedPkgManagerEventFields>
 >;
 
 /**

@@ -6,21 +6,28 @@
 import {type Events} from '#constants/event';
 import {type StaticPluginMetadata} from '#defs/plugin';
 import {type EventData, type EventType} from '#event/events';
-import {type ReporterContext} from '#reporter/reporter-context';
+import {
+  type Observer,
+  type ReporterContext,
+  type Subscribable,
+  type Subscription,
+} from '#reporter/reporter-context';
 import {type PackageJson} from '#schema/package-json';
 import {type SmokerOptions} from '#schema/smoker-options';
+
+export type {Observer, ReporterContext, Subscribable, Subscription};
 
 /**
  * Mapping of event types to listener method names
  */
-export type EventToListenerNameMap = {
-  [K in keyof InvertedEvents]: `on${InvertedEvents[K]}`;
+export type EventTypeToListenerName = {
+  [K in keyof EventTypeToEventName]: `on${EventTypeToEventName[K]}`;
 };
 
 /**
  * Mapping of event types to event names
  */
-export type InvertedEvents = {
+export type EventTypeToEventName = {
   [K in keyof typeof Events as (typeof Events)[K]]: K;
 };
 
@@ -45,7 +52,7 @@ export interface BaseReporterContext {
  * @template Ctx Extra context
  */
 export type ReporterListener<
-  T extends EventType,
+  T extends EventType = EventType,
   Ctx extends object = object,
 > = (
   this: void,
@@ -60,7 +67,7 @@ export type ReporterListener<
  * This is only used to define {@link Reporter}.
  */
 export type ReporterListeners<Ctx extends object = object> = {
-  -readonly [K in keyof EventToListenerNameMap as EventToListenerNameMap[K]]: ReporterListener<
+  -readonly [K in keyof EventTypeToListenerName as EventTypeToListenerName[K]]?: ReporterListener<
     K,
     Ctx
   >;
@@ -99,7 +106,7 @@ export type SomeReporter = Reporter<any>;
  * A `Reporter` definition, as provided by a plugin author.
  */
 export interface Reporter<Ctx extends object = object>
-  extends Partial<ReporterListeners<Ctx>> {
+  extends ReporterListeners<Ctx> {
   /**
    * A plugin author can add whatever props they want
    */

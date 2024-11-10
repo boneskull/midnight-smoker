@@ -1,13 +1,15 @@
 import {CoreEvents} from '#constants';
 import {type StaticPluginMetadata} from '#defs/plugin';
-import {type Reporter} from '#defs/reporter';
+import {
+  type Observer,
+  type Reporter,
+  type ReporterContext,
+  type Subscription,
+} from '#defs/reporter';
 import {ErrorCode} from '#error/codes';
 import {type EventData} from '#event/events';
 import {flushQueueLogic} from '#machine/actor/flush-queue';
-import {
-  type ReporterContext,
-  ReporterContextSubject,
-} from '#reporter/reporter-context';
+import {ReporterContextSubject} from '#reporter/reporter-context';
 import {type SmokerOptions} from '#schema/smoker-options';
 import {EventEmitter} from 'node:events';
 import {createSandbox} from 'sinon';
@@ -17,6 +19,7 @@ import {type Actor, createActor} from 'xstate';
 import {runUntilDone} from 'xstate-audition';
 
 import {nullReporter} from '../../mocks';
+
 const expect = unexpected.clone().use(unexpectedSinon);
 
 describe('midnight-smoker', function () {
@@ -39,7 +42,9 @@ describe('midnight-smoker', function () {
           {name: 'foo', version: '1.0.0'},
           {} as StaticPluginMetadata,
         );
-        actor = createActor(flushQueueLogic, {input: {ctx, queue, reporter}});
+        actor = createActor(flushQueueLogic, {
+          input: {ctx, queue, reporter, subject},
+        });
       });
 
       afterEach(function () {
@@ -70,6 +75,44 @@ describe('midnight-smoker', function () {
           ctx,
           {type: CoreEvents.Noop},
         ]);
+      });
+
+      describe('when the actor is aborted', function () {
+        let auxEmitter: EventEmitter;
+
+        beforeEach(function () {
+          auxEmitter = new EventEmitter();
+        });
+
+        afterEach(function () {
+          auxEmitter.removeAllListeners();
+        });
+
+        it('should return without processing the queue', async function () {
+          const eeListener = sandbox.stub();
+          const next = sandbox.stub();
+          const onNoop = sandbox.stub();
+
+          // listen for auxEmitter
+          auxEmitter.once(CoreEvents.Noop, eeListener);
+
+          // listen using observer
+          ctx.subscribe({next});
+
+          // listen using ReporterListener
+          reporter.onNoop = onNoop;
+
+          actor = createActor(flushQueueLogic, {
+            input: {auxEmitter, ctx, queue, reporter},
+          });
+          const p = runUntilDone(actor);
+          actor.stop();
+          await p;
+
+          expect(eeListener, 'was not called');
+          expect(next, 'was not called');
+          expect(onNoop, 'was not called');
+        });
       });
 
       describe('when a ReporterListener errors', function () {
@@ -112,7 +155,7 @@ describe('midnight-smoker', function () {
         });
 
         describe('when the listener throws', function () {
-          it('should emit "error" on the `auxEmitter`', async function () {
+          it('should reject with a ReporterError', async function () {
             const err = new Error('sylvester mcmonkey mcbean');
             const noopListener = sandbox.stub().throws(err);
             const errListener = sandbox.stub();
@@ -128,16 +171,19 @@ describe('midnight-smoker', function () {
                 reporter,
               },
             });
-            await runUntilDone(actor);
 
-            expect(errListener, 'was called once').and(
-              'to have a call satisfying',
-              [expect.it('to be', err)],
+            await expect(
+              runUntilDone(actor),
+              'to be rejected with error satisfying',
+              {
+                cause: err,
+                code: ErrorCode.ReporterError,
+              },
             );
           });
 
           describe('when no "error" listener exists', function () {
-            it('should reject with an UnknownError', async function () {
+            it('should reject with a ReporterError', async function () {
               const err = new Error('hoos-foos');
               const noopListener = sandbox.stub().throws(err);
               auxEmitter.once(CoreEvents.Noop, noopListener);
@@ -155,11 +201,82 @@ describe('midnight-smoker', function () {
                 'to be rejected with error satisfying',
                 {
                   cause: err,
-                  code: ErrorCode.UnknownError,
-                  message: err.message,
+                  code: ErrorCode.ReporterError,
                 },
               );
             });
+          });
+        });
+      });
+
+      describe('when the ReporterContext has subscribers', function () {
+        let subscription: Subscription;
+        let next: sinon.SinonStub;
+
+        beforeEach(function () {
+          next = sandbox.stub();
+          // NOTE: we don't care about error or complete since they won't be called from flushQueueLogic
+          subscription = ctx.subscribe({next});
+        });
+
+        afterEach(function () {
+          subscription?.unsubscribe();
+        });
+
+        it('should notify the subscribers', async function () {
+          expect(next, 'was not called');
+
+          await runUntilDone(actor);
+
+          expect(next, 'was called once').and('to have a call satisfying', [
+            {type: CoreEvents.Noop},
+          ]);
+        });
+
+        describe('when the handler throws', function () {
+          let observer: Observer<EventData>;
+          let err: Error;
+
+          beforeEach(function () {
+            err = new Error('snimm');
+            observer = {
+              complete: sandbox.stub(),
+              error: sandbox.stub(),
+              next: sandbox.stub().throws(err),
+            };
+            subscription?.unsubscribe();
+            subscription = ctx.subscribe(observer);
+          });
+
+          it('should rethrow the error wrapped in a ReporterError', async function () {
+            await expect(
+              runUntilDone(actor),
+              'to be rejected with error satisfying',
+              {
+                cause: err,
+                code: ErrorCode.ReporterError,
+              },
+            );
+          });
+
+          it('should never call the "error" handler', async function () {
+            try {
+              await runUntilDone(actor);
+              expect.fail('Expected a rejection');
+            } catch {
+            } finally {
+              expect(observer.error, 'was not called');
+            }
+          });
+
+          it('should never call the "complete" handler', async function () {
+            try {
+              await runUntilDone(actor);
+              expect.fail('Expected a rejection');
+            } catch {
+            } finally {
+              expect(observer.complete, 'was not called');
+            }
           });
         });
       });

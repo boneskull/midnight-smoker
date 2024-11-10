@@ -1,31 +1,28 @@
 import {Events} from '#constants';
-import {AbortError} from '#error/abort-error';
+import {
+  type EventTypeToListenerName,
+  type Reporter,
+  type ReporterListener,
+} from '#defs/reporter';
 import {ReporterError} from '#error/reporter-error';
 import {type EventData, type EventType} from '#event/events';
 import {
   type ReporterContext,
-  ReporterContextSubject,
+  type ReporterContextSubject,
 } from '#reporter/reporter-context';
+import {ok} from '#util/assert';
 import {createDebug} from '#util/debug';
-import {fromUnknownError} from '#util/from-unknown-error';
-import {isAbortError} from '#util/guard/abort-error';
-import {isFunction} from '#util/guard/common';
+import {isReporterListenerFn} from '#util/guard/reporter-listener';
 import {invert, mapValues} from 'lodash';
 import {type EventEmitter} from 'node:stream';
 import {fromPromise} from 'xstate';
-
-import {
-  type EventToListenerNameMap,
-  type Reporter,
-  type ReporterListener,
-} from '../../defs/reporter';
 
 const debug = createDebug(__filename);
 
 const ListenerNames = mapValues(
   invert(Events),
   (value) => `on${value}` as const,
-) as EventToListenerNameMap;
+) as EventTypeToListenerName;
 
 /**
  * Input object for {@link flushQueueLogic}
@@ -53,6 +50,8 @@ export interface FlushQueueLogicInput {
    * The reporter definition
    */
   reporter: Reporter;
+
+  subject?: ReporterContextSubject;
 }
 
 /**
@@ -62,15 +61,16 @@ export interface FlushQueueLogicInput {
  * @param ctx Reporter definition's context
  * @param event Event data
  */
-async function invokeListener<T extends EventType>(
+const invokeListener = async <T extends EventType>(
   reporter: Reporter,
   ctx: ReporterContext,
   event: EventData<T>,
-): Promise<void> {
+): Promise<void> => {
   const listenerName = ListenerNames[event.type];
-  const listener = reporter[listenerName] as ReporterListener<T, any>;
+  const listener = reporter[listenerName] as ReporterListener<T> | undefined;
+  ok(listener, `Listener not found: ${listenerName}`);
   await listener(ctx, event);
-}
+};
 
 /**
  * Drains the queue of events and invokes the listener for each event.
@@ -82,50 +82,46 @@ async function invokeListener<T extends EventType>(
  */
 export const flushQueueLogic = fromPromise<void, FlushQueueLogicInput>(
   async ({
-    input: {auxEmitter, ctx, queue, reporter},
+    input: {auxEmitter, ctx, queue, reporter, subject},
     signal,
   }): Promise<void> => {
+    // this is necessary so we can abort the actor early if the signal pops.
+    // ZALGO WUZ HERE
+    await Promise.resolve();
+
     while (queue.length) {
       if (signal.aborted) {
-        throw new AbortError(signal.reason);
+        return;
       }
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
       const event = queue.shift()!;
       const {type} = event;
-      const listenerName = ListenerNames[type];
 
-      if (auxEmitter) {
+      if (auxEmitter?.listenerCount(type)) {
         try {
+          // do not catch an re-emit "error" event
           auxEmitter.emit(type, event);
         } catch (err) {
           debug('Aux emitter threw on %s: %O', type, err);
-          try {
-            auxEmitter.emit('error', err);
-          } catch (err) {
-            throw fromUnknownError(err, true);
-          }
+          throw new ReporterError(err, reporter);
         }
       }
 
-      const subject = ReporterContextSubject.getSubject(ctx);
-      try {
-        subject.next(event);
-      } catch (err) {
-        // XXX: I'm not sure this is the right thing to do
-        if (isAbortError(err)) {
-          return;
+      if (subject) {
+        try {
+          // do not catch and call "error" method
+          subject.next(event);
+        } catch (err) {
+          throw new ReporterError(err, reporter);
         }
-        throw new ReporterError(err, reporter);
       }
 
-      if (isFunction(reporter[listenerName])) {
+      const reporterListenerName = ListenerNames[type];
+      // XXX: is this too strict?
+      if (isReporterListenerFn(reporter[reporterListenerName])) {
         try {
           await invokeListener(reporter, ctx, event);
         } catch (err) {
-          // XXX: I'm not sure this is the right thing to do
-          if (isAbortError(err)) {
-            return;
-          }
           throw new ReporterError(err, reporter);
         }
       }

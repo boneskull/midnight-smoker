@@ -72,17 +72,9 @@ export * from './temp-dir-error';
 
 export * from './unknown-component-error';
 
-export * from './unknown-dist-tag-error';
-
 export * from './unknown-error';
 
 export * from './unknown-script-error';
-
-export * from './unknown-version-error';
-
-export * from './unknown-version-range-error';
-
-export * from './unknown-workspace-error';
 
 export * from './unreadable-pkg-json-error';
 

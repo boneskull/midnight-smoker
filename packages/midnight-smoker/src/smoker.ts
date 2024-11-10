@@ -13,7 +13,6 @@ import {
   DEFAULT_EXECUTOR_ID,
   SYSTEM_EXECUTOR_ID,
 } from '#constants';
-import {InvalidArgError} from '#error/invalid-arg-error';
 import {type SmokeResults} from '#event/core-events';
 import {SmokeMachine} from '#machine/smoke-machine';
 import {runActor} from '#machine/util';
@@ -119,16 +118,6 @@ export class Smoker extends EventEmitter {
     this.logic = logic;
     this.inspect = inspect;
     this.pluginRegistry = pluginRegistry;
-
-    /**
-     * Normally, the CLI will intercept this before we get here. The "correct"
-     * place for this validation is in the {@link SmokerOptions} schema.
-     */
-    if (smokerOptions.all && smokerOptions.workspace.length) {
-      throw new InvalidArgError(
-        'Option "workspace" is mutually exclusive with "all"',
-      );
-    }
   }
 
   /**

@@ -1,4 +1,4 @@
-import {type ExecOutput, ExecOutputSchema} from '#schema/exec-result';
+import {type ExecOutput, ExecOutputSchema} from '#schema/exec-output';
 
 /**
  * Type guard for an {@link ExecResult}

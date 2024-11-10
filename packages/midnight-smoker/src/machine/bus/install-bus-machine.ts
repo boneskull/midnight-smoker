@@ -267,12 +267,17 @@ export const InstallBusMachine = setup({
           actions: [
             {
               params: ({
-                context: {pkgManagers = [], workspaceInfoResult: workspaceInfo},
+                context: {
+                  pkgManagers = [],
+                  totalPkgs,
+                  workspaceInfoResult: workspaceInfo,
+                },
                 event: {manifests, pkgManager},
               }): EventData<typeof InstallEvents.PkgManagerInstallBegin> => ({
                 manifests,
                 pkgManager,
                 totalPkgManagers: pkgManagers.length,
+                totalPkgs,
                 type: InstallEvents.PkgManagerInstallBegin,
                 workspaceInfo,
               }),
@@ -291,13 +296,18 @@ export const InstallBusMachine = setup({
             }),
             {
               params: ({
-                context: {pkgManagers = [], workspaceInfoResult: workspaceInfo},
+                context: {
+                  pkgManagers = [],
+                  totalPkgs,
+                  workspaceInfoResult: workspaceInfo,
+                },
                 event: {error, manifests, pkgManager},
               }): EventData<typeof InstallEvents.PkgManagerInstallFailed> => ({
                 error,
                 manifests,
                 pkgManager,
                 totalPkgManagers: pkgManagers.length,
+                totalPkgs,
                 type: InstallEvents.PkgManagerInstallFailed,
                 workspaceInfo,
               }),
@@ -320,12 +330,17 @@ export const InstallBusMachine = setup({
             }),
             {
               params: ({
-                context: {pkgManagers = [], workspaceInfoResult: workspaceInfo},
+                context: {
+                  pkgManagers = [],
+                  totalPkgs,
+                  workspaceInfoResult: workspaceInfo,
+                },
                 event: {manifests, pkgManager},
               }): EventData<typeof InstallEvents.PkgManagerInstallOk> => ({
                 manifests,
                 pkgManager,
                 totalPkgManagers: pkgManagers.length,
+                totalPkgs,
                 type: InstallEvents.PkgManagerInstallOk,
                 workspaceInfo,
               }),

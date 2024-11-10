@@ -32,7 +32,7 @@ export const ReporterContextSchema = instanceofSchema(
  *
  * Does not validate the `event` parameter.
  */
-export const ReporterListenerSchema = multiColorFnSchema(
+export const ReporterListenerFnSchema = multiColorFnSchema(
   z.function(
     z.tuple(
       [ReporterContextSchema, AnyObjectSchema] as [
@@ -136,5 +136,5 @@ export const ReporterSchema = asObjectSchema(
        */
       when: ReporterWhenFnSchema.optional(),
     })
-    .catchall(ReporterListenerSchema.or(z.unknown())),
+    .catchall(ReporterListenerFnSchema.or(z.unknown())),
 );

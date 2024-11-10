@@ -19,6 +19,8 @@ import {
 export type ReporterContext<Ctx extends object = object> = Ctx &
   Readonly<ReporterCtx>;
 
+export type {Observer, Subscribable, Subscription};
+
 const subjects = new WeakMap<ReporterContext, ReporterContextSubject>();
 
 /**
@@ -63,13 +65,15 @@ export class ReporterContextSubject implements Disposable {
     this.observers.delete(observer);
   }
 
+  public error(error: Error) {
+    for (const observer of this.observers) {
+      observer.error?.(error);
+    }
+  }
+
   public next(eventData: EventData) {
     for (const observer of this.observers) {
-      try {
-        observer.next?.(eventData);
-      } catch (err) {
-        observer.error?.(err);
-      }
+      observer.next?.(eventData);
     }
   }
 
@@ -78,9 +82,9 @@ export class ReporterContextSubject implements Disposable {
   }
 }
 
-export type SubscribableEventData = Subscribable<EventData>;
-
-export class ReporterCtx implements SubscribableEventData, BaseReporterContext {
+export class ReporterCtx
+  implements Subscribable<EventData>, BaseReporterContext
+{
   constructor(
     public opts: SmokerOptions,
     public pkgJson: PackageJson,

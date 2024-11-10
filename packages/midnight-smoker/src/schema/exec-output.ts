@@ -3,7 +3,7 @@
  *
  * @packageDocumentation
  */
-import type {SpawnOptions} from 'child_process';
+import type {ChildProcess, SpawnOptions} from 'child_process';
 
 import {z} from 'zod';
 
@@ -17,17 +17,6 @@ export type ExecOutput = {
   stderr: string;
   stdout: string;
 };
-
-/**
- * The return type of the `exec` function, which is a `PromiseLike` thing that
- * contains a reference to the underlying child process.
- *
- * It will resolve with a {@link ExecOutput}
- */
-export type ExecResult<
-  Output extends object = object,
-  Extra extends object = object,
-> = Extra & PromiseLike<ExecOutput & Output>;
 
 /**
  * Schema for the result of running an `Executor` or an {@link ExecFn}.
@@ -45,29 +34,54 @@ export const ExecOutputSchema: z.ZodType<ExecOutput> = z
   })
   .describe('The resolved value of an `ExecFn`');
 
+export type SpawnHook = (
+  proc: ChildProcess,
+  signal: AbortSignal,
+) => Promise<void> | void;
+
 /**
  * Options for the `exec` function
  */
-export type ExecOptions<T extends object = object> = {
+export type ExecOptions = {
+  /**
+   * Additional options to pass to `child_process.spawn()`
+   */
   nodeOptions?: SpawnOptions;
-  signal?: AbortSignal;
+
+  /**
+   * Hook to run when the child process is spawned.
+   *
+   * If this child process fails to spawn, this hook will not be called.
+   */
+  onSpawn?: SpawnHook;
+
+  /**
+   * Timeout in milliseconds.
+   *
+   * Unlike {@link SpawnOptions.timeout}, this will abort the process and reject
+   * with an `AbortError`.
+   */
   timeout?: number;
+
+  /**
+   * If true, trim `stdout` and `stderr`.
+   */
   trim?: boolean;
+
+  /**
+   * If true, log the command to the console.
+   */
   verbose?: boolean;
-} & T;
+};
 
 /**
  * Implementation of an `exec` function; it should implement both signatures.
  */
-export interface ExecFn<
-  Output extends object = object,
-  Result extends object = object,
-  Options extends object = object,
-> {
+export interface ExecFn {
   /**
    * Execute a shell command
    */
-  (command: string, options?: ExecOptions<Options>): ExecResult<Output, Result>;
+  (command: string, options?: ExecOptions): Promise<ExecOutput>;
 
   /**
    * Execute a shell command with arguments
@@ -75,6 +89,6 @@ export interface ExecFn<
   (
     command: string,
     args?: string[],
-    options?: ExecOptions<Options>,
-  ): ExecResult<Output, Result>;
+    options?: ExecOptions,
+  ): Promise<ExecOutput>;
 }

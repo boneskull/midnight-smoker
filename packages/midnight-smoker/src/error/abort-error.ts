@@ -1,6 +1,7 @@
 import {BaseSmokerError} from '#error/base-error';
 import {createDebug} from '#util/debug';
-import {isError} from '#util/guard/common';
+import {isError, isString} from '#util/guard/common';
+import {inspect} from 'node:util';
 
 const debug = createDebug(__filename);
 
@@ -13,18 +14,37 @@ export class AbortError extends BaseSmokerError<
 > {
   public readonly name = 'AbortError';
 
-  constructor(reason?: unknown, id?: string) {
-    let msg = 'Aborted via signal';
-    const reasonIsError = isError(reason);
-    if (reason) {
-      msg += '; reason: ';
-      msg +=
-        reasonIsError && 'message' in reason ? reason.message : String(reason);
+  constructor(reason: unknown, id?: string);
+  constructor(message: string, cause: Error, id?: string);
+  constructor(message?: string, id?: string);
+  constructor(
+    reasonOrMessage?: unknown,
+    idOrCause?: Error | string,
+    id?: string,
+  ) {
+    let msg: string;
+    let error: Error | undefined;
+    const reasonOrMsgIsError = isError(reasonOrMessage);
+    if (isString(reasonOrMessage)) {
+      msg = reasonOrMessage;
+      if (isError(idOrCause)) {
+        error = idOrCause;
+      } else {
+        id = idOrCause;
+      }
+    } else if (reasonOrMsgIsError) {
+      msg = reasonOrMessage.message;
+      error = reasonOrMessage;
+    } else {
+      msg = 'Aborted via signal';
+      if (reasonOrMessage) {
+        msg += '; reason: ';
+        msg += inspect(reasonOrMessage, {sorted: true});
+      }
     }
-    const error = reasonIsError ? reason : undefined;
-    super(msg, {id, reason}, error);
-    if (id) {
-      debug('%s: %s', id, msg);
+    super(msg, {id, reason: reasonOrMessage}, error);
+    if (idOrCause) {
+      debug('%s: %s', idOrCause, msg);
     } else {
       debug(msg);
     }

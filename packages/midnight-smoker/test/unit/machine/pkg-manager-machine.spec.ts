@@ -48,6 +48,7 @@ import {
   runUntilEventSent,
   runUntilSnapshot,
   runUntilTransition,
+  waitForEventSent,
 } from 'xstate-audition';
 
 import {createDebug} from '../../debug';
@@ -488,6 +489,17 @@ describe('midnight-smoker', function () {
                 );
               });
 
+              it('should not send PACK.PKG_MANAGER.BEGIN multiple times', async function () {
+                await expect(
+                  waitForEventSent(actor, [PackEvents.PkgManagerPackBegin]),
+                  'to be fulfilled',
+                );
+                await expect(
+                  runUntilEventSent(actor, [PackEvents.PkgManagerPackBegin]),
+                  'to be rejected',
+                );
+              });
+
               describe('when packing fails', function () {
                 beforeEach(function () {
                   pkgManager.pack = sandbox
@@ -500,7 +512,7 @@ describe('midnight-smoker', function () {
                   });
                 });
 
-                it('should send PACK.PKG.FAILED and PACK.PKG_MANAGER.FAILE events', async function () {
+                it('should send PACK.PKG.FAILED and PACK.PKG_MANAGER.FAILED events', async function () {
                   await expect(
                     runUntilEventSent(actor, [
                       PackEvents.PkgManagerPackBegin,

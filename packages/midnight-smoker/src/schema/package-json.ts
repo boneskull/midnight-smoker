@@ -34,8 +34,6 @@ export type PackageJson = SetOptional<
   '_id' | 'readme'
 >;
 
-export type NormalizedPackageJson = PackageJson;
-
 /**
  * A de-normalized (a "non-normalized?") `package.json` file.
  *

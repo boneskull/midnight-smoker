@@ -6,7 +6,7 @@
  * @packageDocumentation
  */
 
-import {type ExecOptions, type ExecOutput} from '#schema/exec-result';
+import {type ExecOptions, type ExecOutput} from '#schema/exec-output';
 import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {type SpawnOptions as NodeOptions} from 'node:child_process';
 

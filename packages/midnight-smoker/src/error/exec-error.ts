@@ -1,6 +1,5 @@
 import {BaseSmokerError} from '#error/base-error';
-import {type ExecOutput} from '#schema/exec-result';
-import {isNumber} from 'lodash';
+import {type ExecOutput} from '#schema/exec-output';
 
 /**
  * Thrown by `util.exec`
@@ -8,7 +7,7 @@ import {isNumber} from 'lodash';
  * @group Errors
  */
 export class ExecError
-  extends BaseSmokerError<ExecOutput>
+  extends BaseSmokerError<ExecOutput, ExecOutput>
   implements ExecOutput
 {
   public readonly command?: string;
@@ -24,15 +23,20 @@ export class ExecError
   public readonly stdout: string;
 
   constructor(message: string, output: ExecOutput) {
-    super(message, output);
+    // super(
+    //   `${message}${NL}${inspect(output, {
+    //     colors: true,
+    //     depth: 2,
+    //     sorted: true,
+    //   })}`,
+    //   output,
+    //   output,
+    // );
+    super(message, output, output);
     this.command = output.command;
     this.exitCode = output.exitCode;
     this.stderr = output.stderr;
     this.stdout = output.stdout;
     this.cwd = output.cwd;
-  }
-
-  get failed() {
-    return isNumber(this.exitCode) && this.exitCode !== 0;
   }
 }

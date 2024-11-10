@@ -6,4 +6,11 @@
  * @packageDocumentation
  */
 
-export {isEmpty, isError, isFunction, isObject, isString} from 'lodash';
+export {
+  isEmpty,
+  isError,
+  isFunction,
+  isNumber,
+  isObject,
+  isString,
+} from 'lodash';

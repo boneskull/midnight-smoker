@@ -43,7 +43,9 @@ export class ViewCommand extends BaseCommand {
       return;
     }
 
-    BaseCommand.write(inspect(smoker.smokerOptions, {colors: true, depth: 5}));
+    BaseCommand.write(
+      inspect(smoker.smokerOptions, {colors: true, depth: 5, sorted: true}),
+    );
   }
 
   public static async viewDefaultPkgManager(
