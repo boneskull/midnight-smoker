@@ -14,6 +14,7 @@ import {DEFAULT_TMPDIR_PREFIX, MIDNIGHT_SMOKER, PACKAGE_JSON} from '#constants';
 import {AbortError} from '#error/abort-error';
 import {MissingPackageJsonError} from '#error/missing-pkg-json-error';
 import {UnreadablePackageJsonError} from '#error/unreadable-pkg-json-error';
+import {ROOT} from '#root';
 import {
   type DenormalizedPackageJson,
   NormalizedPackageJsonSchema,
@@ -381,7 +382,8 @@ export class FileManager {
   public async readSmokerPkgJson({
     signal,
   }: ReadSmokerPkgJsonOptions = {}): Promise<PackageJson> {
-    const result = await this.findPkgUp(__dirname, {
+    const projectRoot = path.resolve(ROOT, '..');
+    const result = await this.findPkgUp(projectRoot, {
       normalize: true,
       signal,
       strict: true,

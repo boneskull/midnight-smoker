@@ -55,6 +55,7 @@ async function main(args: string[]): Promise<void> {
         fallback: false,
       })}\n`,
     )
+    .version(version)
     .showHelpOnFail(true)
     .help()
     .strict()

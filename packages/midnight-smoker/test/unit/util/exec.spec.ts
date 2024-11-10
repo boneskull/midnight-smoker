@@ -84,7 +84,7 @@ describe('midnight-smoker', function () {
 
           await exec('echo', ['hello'], {verbose: true});
 
-          expect(stdoutSpy, 'was called with', 'hello\n');
+          expect(stdoutSpy, 'to have a call satisfying', ['hello\n']);
           expect(stderrSpy, 'was not called');
         });
       });

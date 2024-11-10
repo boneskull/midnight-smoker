@@ -134,6 +134,7 @@
     "CHANGELOG.md",
     "!**/*.tsbuildinfo",
     "!jsconfig.json",
+    "!src/package.json",
     "!tsconfig.json"
   ],
   "keywords": [

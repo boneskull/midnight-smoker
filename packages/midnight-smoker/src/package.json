@@ -9,7 +9,7 @@
     "#capabilities": "./capabilities.ts",
     "#cli/*": "./cli/*.ts",
     "#cli/command/*": "./cli/command/*.ts",
-    "#defs": "./defs/*.ts",
+    "#defs/*": "./defs/*.ts",
     "#config": "./config/index.ts",
     "#config/*": "./config/*.ts",
     "#constants": "./constants/index.ts",

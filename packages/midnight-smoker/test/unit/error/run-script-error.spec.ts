@@ -1,6 +1,7 @@
 import {ExecError} from '#error/exec-error';
 import {RunScriptError} from '#error/run-script-error';
 import {type ExecOutput} from '#executor';
+import {stripAnsi} from '#util/format';
 import unexpected from 'unexpected';
 
 const expect = unexpected.clone();
@@ -25,20 +26,24 @@ describe('midnight-smoker', function () {
                   'npm',
                 );
 
-                const formattedMessage = runScriptError.formatMessage(false);
+                const formattedMessage = stripAnsi(
+                  runScriptError.formatMessage(false),
+                );
 
                 expect(
                   formattedMessage,
                   'to equal',
-                  `${runScriptError.message} ${runScriptError.formatCode(
-                    false,
-                  )}`,
+                  stripAnsi(
+                    `${runScriptError.message} ${runScriptError.formatCode(
+                      false,
+                    )}`,
+                  ),
                 );
               });
             });
 
             describe('when verbose is true', function () {
-              it('should format the message correctly when verbose is true', function () {
+              it('should format the message correctly', function () {
                 const output: ExecOutput = {
                   command: 'some command',
                   stderr: 'stderr output',
@@ -52,14 +57,16 @@ describe('midnight-smoker', function () {
                   'npm',
                 );
 
-                const formattedMessage = runScriptError.formatMessage(true);
+                const formattedMessage = stripAnsi(
+                  runScriptError.formatMessage(true),
+                );
 
                 expect(formattedMessage, 'to contain', 'Message:')
-                  .and('to contain', runScriptError.message)
+                  .and('to contain', stripAnsi(runScriptError.message))
                   .and('to contain', 'Command:')
-                  .and('to contain', runScriptError.context.command)
+                  .and('to contain', stripAnsi(runScriptError.context.command!))
                   .and('to contain', 'Output:')
-                  .and('to contain', runScriptError.context.output);
+                  .and('to contain', stripAnsi(runScriptError.context.output));
               });
             });
           });
