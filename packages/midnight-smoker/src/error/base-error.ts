@@ -39,6 +39,10 @@ export abstract class BaseSmokerError<
 {
   public readonly code: SmokerErrorCode;
 
+  /**
+   * If true, when formatting the error message, a link to create a bug will be
+   * presented
+   */
   public readonly shouldAskForBugReport?: boolean;
 
   constructor(

@@ -18,10 +18,11 @@ import * as assert from '#util/assert';
 import {createDebug} from '#util/debug';
 import {fromUnknownError} from '#util/from-unknown-error';
 import {cyanBright, yellow} from 'chalk';
-import {isError, isObject, noop} from 'lodash';
+import {defaultsDeep, isError, isObject, noop} from 'lodash';
 import {type ChildProcess, spawn, type SpawnOptions} from 'node:child_process';
 import {once} from 'node:events';
 import {finished} from 'node:stream/promises';
+import {type SetRequired} from 'type-fest';
 
 import {isErrnoException} from './guard';
 import {registerChildProcess} from './preamble';
@@ -196,10 +197,17 @@ export const exec: ExecFn = async (
    */
   const formattedCommand = [command, ...args].join(' ');
 
-  const {nodeOptions, onSpawn, timeout, trim, verbose} = {
-    ...DEFAULT_EXEC_OPTIONS,
-    ...options,
-  };
+  // defaultsDeep is not well-typed
+  const {
+    nodeOptions,
+    onSpawn,
+    timeout = DEFAULT_EXEC_OPTIONS.timeout,
+    trim,
+    verbose,
+  } = defaultsDeep({...options}, DEFAULT_EXEC_OPTIONS) as SetRequired<
+    ExecOptions,
+    keyof typeof DEFAULT_EXEC_OPTIONS
+  >;
 
   // for empty string
   const cwd = `${nodeOptions.cwd || DEFAULT_EXEC_OPTIONS.nodeOptions.cwd}`;

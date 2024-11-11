@@ -80,7 +80,7 @@ export function fromUnknownError(err?: unknown, wrap = false) {
   if (isError(err)) {
     return err;
   }
-  return new Error(inspect(err, {sorted: true}));
+  return new UnknownError(inspect(err, {sorted: true}));
 }
 
 const debug = createDebug(__filename);

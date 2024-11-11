@@ -6,8 +6,7 @@
 
 import {defaultsDeep} from 'lodash';
 import {constant} from 'midnight-smoker/constants';
-import {AbortError} from 'midnight-smoker/error';
-import {type Executor} from 'midnight-smoker/executor';
+import {type ExecOptions, type Executor} from 'midnight-smoker/executor';
 import {exec} from 'midnight-smoker/util';
 import {type SpawnOptions} from 'node:child_process';
 import path from 'node:path';
@@ -36,15 +35,13 @@ const COREPACK_PATH = path.resolve(
 export const corepackExecutor: Executor = async (spec, args, opts = {}) => {
   const {nodeOptions = {}, verbose} = opts;
 
-  if (nodeOptions.signal?.aborted) {
-    throw new AbortError(nodeOptions.signal.reason);
-  }
-
-  return exec(COREPACK_PATH, [spec.label, ...args], {
+  const options: ExecOptions = {
+    // defaultsDeep is not well-typed
     nodeOptions: defaultsDeep(
       {...nodeOptions},
       {env: DEFAULT_ENV},
     ) as SpawnOptions,
     verbose,
-  });
+  };
+  return exec(COREPACK_PATH, [spec.label, ...args], options);
 };

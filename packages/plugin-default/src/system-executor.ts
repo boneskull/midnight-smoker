@@ -4,7 +4,7 @@
  * @packageDocumentation
  */
 
-import {AbortError, InvalidArgError} from 'midnight-smoker/error';
+import {InvalidArgError} from 'midnight-smoker/error';
 import {type Executor} from 'midnight-smoker/executor';
 import {exec} from 'midnight-smoker/util';
 
@@ -16,10 +16,6 @@ export const systemExecutor: Executor = async (spec, args, opts = {}) => {
       'Non-system package manager spec passed to system executor',
       {argName: 'spec', position: 0},
     );
-  }
-
-  if (nodeOptions.signal?.aborted) {
-    throw new AbortError(nodeOptions.signal.reason);
   }
 
   const {bin} = spec;

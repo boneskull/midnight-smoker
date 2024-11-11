@@ -23,15 +23,6 @@ export class ExecError
   public readonly stdout: string;
 
   constructor(message: string, output: ExecOutput) {
-    // super(
-    //   `${message}${NL}${inspect(output, {
-    //     colors: true,
-    //     depth: 2,
-    //     sorted: true,
-    //   })}`,
-    //   output,
-    //   output,
-    // );
     super(message, output, output);
     this.command = output.command;
     this.exitCode = output.exitCode;

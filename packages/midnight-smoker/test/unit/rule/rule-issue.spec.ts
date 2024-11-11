@@ -1,12 +1,15 @@
 import {FAILED, RuleSeverities} from '#constants';
 import {RuleError} from '#error/rule-error';
 import {type Issue} from '#rule/issue';
+import {JSONBlamer} from '#rule/json-blamer';
+import {type RuleContext} from '#rule/rule-context';
 import {RuleIssue, type RuleIssueParams} from '#rule/rule-issue';
 import {type StaticRuleContext} from '#rule/static-rule-context';
 import {type StaticRule} from '#schema/static-rule';
 import {asResult} from '#util/result';
 import stringify from 'json-stable-stringify';
 import {omit} from 'lodash';
+import sinon from 'sinon';
 import unexpected from 'unexpected';
 
 const expect = unexpected.clone();
@@ -176,6 +179,93 @@ describe('midnight-smoker', function () {
                 type: FAILED,
               };
               expect(issue.toJSON(), 'to equal', expected);
+            });
+          });
+
+          describe('getSourceContext()', function () {
+            let sandbox: sinon.SinonSandbox;
+
+            beforeEach(function () {
+              sandbox = sinon.createSandbox();
+            });
+
+            afterEach(function () {
+              sandbox.restore();
+            });
+
+            describe('when filepath is a JSON file and jsonField is provided', function () {
+              it('should return the context from the JSONBlamer', function () {
+                const result: Issue = {
+                  ctx: {rawPkgJson: '{}'} as RuleContext,
+                  filepath: '/path/to/package.json',
+                  id: '12345',
+                  isError: false,
+                  jsonField: 'name',
+                  message: 'Test message',
+                  rule: {
+                    defaultSeverity: 'error',
+                    description: 'Example rule',
+                    name: 'example-rule',
+                  },
+                  type: FAILED,
+                };
+
+                const blamerStub = sandbox
+                  .stub(JSONBlamer.prototype, 'find')
+                  .returns({column: 1, line: 1} as any);
+                sandbox
+                  .stub(JSONBlamer.prototype, 'getContext')
+                  .returns('Context with line numbers');
+
+                const context = RuleIssue.getSourceContext(result);
+
+                expect(context, 'to equal', 'Context with line numbers\n');
+                expect(blamerStub.calledOnceWith('name'), 'to be true');
+              });
+            });
+
+            describe('when filepath is not a JSON file or jsonField is not provided', function () {
+              it('should return an empty string', function () {
+                const result: Issue = {
+                  ctx: {rawPkgJson: '{}'} as RuleContext,
+                  filepath: '/path/to/package.txt',
+                  id: '12345',
+                  isError: false,
+                  jsonField: 'name',
+                  message: 'Test message',
+                  rule: {
+                    defaultSeverity: 'error',
+                    description: 'Example rule',
+                    name: 'example-rule',
+                  },
+                  type: FAILED,
+                };
+
+                const context = RuleIssue.getSourceContext(result);
+
+                expect(context, 'to equal', '');
+              });
+
+              it('should return an empty string if jsonField is not provided', function () {
+                const result: Issue = {
+                  ctx: {rawPkgJson: '{}'} as RuleContext,
+                  filepath: '/path/to/package.json',
+                  id: '12345',
+                  isError: false,
+                  jsonField: undefined,
+                  message: 'Test message',
+                  rule: {
+                    defaultSeverity: 'error',
+                    description: 'Example rule',
+                    name: 'example-rule',
+                  },
+                  type: FAILED,
+                };
+
+                const context = RuleIssue.getSourceContext(result);
+
+                expect(context, 'to equal', '');
+              });
             });
           });
         });

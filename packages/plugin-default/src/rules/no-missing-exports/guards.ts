@@ -7,7 +7,6 @@
 import {glob} from 'glob';
 import isEsm from 'is-file-esm';
 import fs from 'node:fs/promises';
-import path from 'node:path';
 
 import {
   CANONICAL_PACKAGE_JSON,
@@ -21,6 +20,14 @@ import {
   type NMEContext,
   type NMEGuard,
 } from './types';
+
+/**
+ * Greedy extname
+ *
+ * @param filepath Filepath
+ * @returns The extension of the file
+ */
+const extname = (filepath: string) => /(\.[a-z.]+)$/.exec(filepath)?.[1];
 
 /**
  * Checks if the given string is a glob pattern.
@@ -50,11 +57,11 @@ export const isEmptyString: NMEGuard<string> = (value) => value === '';
  * @returns Returns `true` if the file extension is not a valid TypeScript
  *   declaration file extension
  */
-export const conditionalExportIsNotTsDeclaration: NMEGuard<string> = async (
+export const conditionalExportIsNotTsDeclaration: NMEGuard<string> = (
   filepath,
 ) =>
   !TS_DECLARATION_EXTENSIONS.includes(
-    path.extname(filepath) as (typeof TS_DECLARATION_EXTENSIONS)[number],
+    extname(filepath) as (typeof TS_DECLARATION_EXTENSIONS)[number],
   );
 
 /**
