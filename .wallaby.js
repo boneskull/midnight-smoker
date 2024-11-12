@@ -62,6 +62,7 @@ module.exports = (wallaby) => {
       './packages/test-util/src/**/*.ts',
       './packages/test-util/package.json',
       '!**/*.spec.ts',
+      '!./packages/midnight-smoker/src/cli/**/*',
     ],
     filesWithNoCoverageCalculated: [
       './packages/*/test/**/fixture/**/*',
