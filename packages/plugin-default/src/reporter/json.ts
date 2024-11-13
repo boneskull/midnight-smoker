@@ -5,7 +5,6 @@
  */
 
 import jsonStringify from 'json-stable-stringify';
-import {isString, partition} from 'lodash';
 import {FAILED} from 'midnight-smoker/constants';
 import {SmokerReferenceError} from 'midnight-smoker/error';
 import {
@@ -14,7 +13,7 @@ import {
   type SmokeResults,
 } from 'midnight-smoker/event';
 import {type Reporter} from 'midnight-smoker/reporter';
-import {stripAnsi} from 'midnight-smoker/util';
+import {isString, R, stripAnsi} from 'midnight-smoker/util';
 
 import {type SmokerJsonOutput, type SmokerStats} from '../json-types';
 
@@ -75,7 +74,7 @@ export const JSONReporter: Reporter<JSONReporterContext> = {
     ctx.stats.totalRules = total;
   },
   onLintFailed(ctx, {results}) {
-    const [issues, passed] = partition(
+    const [issues, passed] = R.partition(
       results,
       (result) => result.type === FAILED,
     );
@@ -86,14 +85,14 @@ export const JSONReporter: Reporter<JSONReporterContext> = {
     ctx.stats.passedRules = results.length;
     ctx.stats.failedRules = 0;
   },
-  onRunScriptsBegin(ctx, {totalScripts: total}) {
+  onScriptsBegin(ctx, {totalScripts: total}) {
     ctx.stats.totalScripts = total;
   },
-  onRunScriptsFailed(ctx, {failed, passed}) {
+  onScriptsFailed(ctx, {failed, passed}) {
     ctx.stats.failedScripts = failed;
     ctx.stats.passedScripts = passed;
   },
-  onRunScriptsOk(ctx, {passed}) {
+  onScriptsOk(ctx, {passed}) {
     ctx.stats.passedScripts = passed;
     ctx.stats.failedScripts = 0;
   },

@@ -2,10 +2,12 @@ import {DEFAULT_PKG_MANAGER_NAME} from '#constants';
 import {type PkgManager} from '#defs/pkg-manager';
 import {type WorkspaceInfo} from '#schema/workspace-info';
 import {type FileManager} from '#util/filemanager';
+import {isString} from '#util/guard/common';
 import {flatMap} from '#util/hwp';
-import {filter, groupBy, isString, memoize} from 'lodash';
+import memoize from 'nano-memoize';
 import assert from 'node:assert';
 import path from 'node:path';
+import {filter, groupBy} from 'remeda';
 
 /**
  * Check {@link WorkspaceInfo.pkgJson} for a `packageManager` field, and return
@@ -29,7 +31,12 @@ export function getDesiredPkgManagerFromPackageJson({
  */
 const getLockfileMap = memoize(
   (pkgManagers: PkgManager[]): Readonly<Record<string, PkgManager[]>> =>
-    Object.freeze(groupBy(filter(pkgManagers, 'lockfile'), 'lockfile')),
+    Object.freeze(
+      groupBy(
+        filter(pkgManagers, (pkgManager) => !!pkgManager.lockfile),
+        (pkgManager) => pkgManager.lockfile,
+      ),
+    ),
 );
 
 /**

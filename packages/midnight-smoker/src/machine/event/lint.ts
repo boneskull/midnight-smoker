@@ -12,6 +12,9 @@
  */
 import {
   type LintEvents,
+  type PkgLintBeginEventData,
+  type PkgLintFailedEventData,
+  type PkgLintOkEventData,
   type PkgManagerLintBeginEventData,
   type PkgManagerLintFailedEventData,
   type PkgManagerLintOkEventData,
@@ -22,7 +25,7 @@ import {
   type RuleOkEventData,
 } from '#event/lint-events';
 
-import {type MachineEvent} from './common';
+import {type ComputedPkgEventField, type MachineEvent} from './common';
 
 /**
  * These fields are omitted from the `*PkgManager*` events because they are
@@ -52,6 +55,9 @@ type ComputedRuleEventFields =
  * @event
  */
 export type SmokeMachineLintEvent =
+  | SmokeMachinePkgLintBeginEvent
+  | SmokeMachinePkgLintFailedEvent
+  | SmokeMachinePkgLintOkEvent
   | SmokeMachinePkgManagerLintBeginEvent
   | SmokeMachinePkgManagerLintFailedEvent
   | SmokeMachinePkgManagerLintOkEvent
@@ -61,6 +67,33 @@ export type SmokeMachineLintEvent =
   | SmokeMachineRuleFailedEvent
   | SmokeMachineRuleOkEvent;
 
+//#region PkgLint events
+/**
+ * @event
+ */
+export type SmokeMachinePkgLintBeginEvent = MachineEvent<
+  typeof LintEvents.PkgLintBegin,
+  Omit<PkgLintBeginEventData, ComputedPkgEventField>
+>;
+
+/**
+ * @event
+ */
+export type SmokeMachinePkgLintFailedEvent = MachineEvent<
+  typeof LintEvents.PkgLintFailed,
+  Omit<PkgLintFailedEventData, ComputedPkgEventField>
+>;
+
+/**
+ * @event
+ */
+export type SmokeMachinePkgLintOkEvent = MachineEvent<
+  typeof LintEvents.PkgLintOk,
+  Omit<PkgLintOkEventData, ComputedPkgEventField>
+>;
+//#endregion
+
+//#region PkgManagerLint events
 /**
  * Received from `PkgManagerMachine` when it begins linting.
  *
@@ -90,7 +123,9 @@ export type SmokeMachinePkgManagerLintOkEvent = MachineEvent<
   typeof LintEvents.PkgManagerLintOk,
   Omit<PkgManagerLintOkEventData, ComputedPkgManagerLintFields>
 >;
+//#endregion
 
+//#region Rule events
 /**
  * Received from `PkgManagerMachine` when a rule check begins.
  *
@@ -141,3 +176,4 @@ export type SmokeMachineRuleOkEvent = MachineEvent<
   typeof LintEvents.RuleOk,
   Omit<RuleOkEventData, ComputedRuleEventFields>
 >;
+//#endregion

@@ -31,8 +31,8 @@ import {castArray} from '#util/common';
 import {FileManager} from '#util/filemanager';
 import {fromUnknownError} from '#util/from-unknown-error';
 import {isActorOutputNotOk, isActorOutputOk} from '#util/guard/actor-output';
+import {isEmpty} from '#util/guard/common';
 import {type SomeUniqueId, uniqueId} from '#util/unique-id';
-import {isEmpty} from 'lodash';
 import {type ValueOf} from 'type-fest';
 import {
   and,

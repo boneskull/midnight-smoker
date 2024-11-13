@@ -23,8 +23,8 @@ import {
 import {type Except} from 'type-fest';
 
 import {
-  type ComputedPkgEventFields,
-  type ComputedPkgManagerEventFields,
+  type ComputedPkgEventField,
+  type ComputedPkgManagerEventField,
   type MachineEvent,
 } from './common';
 
@@ -50,7 +50,7 @@ export type SmokeMachinePkgInstallBeginEvent = MachineEvent<
   typeof InstallEvents.PkgInstallBegin,
   Except<
     PkgInstallBeginEventData,
-    ComputedPkgEventFields,
+    ComputedPkgEventField,
     {requireExactProps: true}
   >
 >;
@@ -64,7 +64,7 @@ export type SmokeMachinePkgInstallFailedEvent = MachineEvent<
   typeof InstallEvents.PkgInstallFailed,
   Except<
     PkgInstallFailedEventData,
-    ComputedPkgEventFields,
+    ComputedPkgEventField,
     {requireExactProps: true}
   >
 >;
@@ -78,7 +78,7 @@ export type SmokeMachinePkgInstallOkEvent = MachineEvent<
   typeof InstallEvents.PkgInstallOk,
   Except<
     PkgInstallOkEventData,
-    ComputedPkgEventFields,
+    ComputedPkgEventField,
     {requireExactProps: true}
   >
 >;
@@ -92,7 +92,7 @@ export type SmokeMachinePkgManagerInstallBeginEvent = MachineEvent<
   typeof InstallEvents.PkgManagerInstallBegin,
   Except<
     PkgManagerInstallBeginEventData,
-    ComputedPkgManagerEventFields,
+    ComputedPkgManagerEventField,
     {requireExactProps: true}
   >
 >;
@@ -108,7 +108,7 @@ export type SmokeMachinePkgManagerInstallFailedEvent = MachineEvent<
   typeof InstallEvents.PkgManagerInstallFailed,
   Except<
     PkgManagerInstallFailedEventData,
-    ComputedPkgManagerEventFields,
+    ComputedPkgManagerEventField,
     {requireExactProps: true}
   >
 >;
@@ -122,7 +122,7 @@ export type SmokeMachinePkgManagerInstallOkEvent = MachineEvent<
   typeof InstallEvents.PkgManagerInstallOk,
   Except<
     PkgManagerInstallOkEventData,
-    ComputedPkgManagerEventFields,
+    ComputedPkgManagerEventField,
     {requireExactProps: true}
   >
 >;

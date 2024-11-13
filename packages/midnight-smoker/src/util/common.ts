@@ -3,32 +3,24 @@
  *
  * @packageDocumentation
  */
-
-import {
-  castArray as _castArray,
-  camelCase,
-  compact,
-  flow,
-  kebabCase,
-  mapKeys,
-} from 'lodash';
+import * as R from 'remeda';
 import {type CamelCase, type KebabCase} from 'type-fest';
 
 /**
  * Casts a defined value to an array of non-`undefined` values.
  *
  * If `value` is `undefined`, returns an empty array. If `value` is an `Array`,
- * returns the compacted array. Otherwise, returns an array with `value` as the
- * only element.
- *
- * This differs from {@link _castArray _.castArray} in that it refuses to put
- * `undefined` values within the array.
+ * returns the compacted array. Otherwise, it wraps `value` in an array and
+ * returns a compacted array (meaning a nullish `value` will result in an empty
+ * array)
  *
  * @param value Any value
  * @returns An array, for sure!
  */
-
-export const castArray = flow(_castArray, compact);
+export const castArray = R.when(R.isArray, {
+  onFalse: R.piped((v) => [v], R.filter(R.isTruthy)),
+  onTrue: R.filter(R.isTruthy),
+}) as <T>(value?: readonly T[] | T) => T[];
 
 /**
  * Returns string representing difference between `startTime` and now in
@@ -44,7 +36,7 @@ export function delta(startTime: number): string {
 /**
  * An object with keys transformed to camelCase.
  */
-export type CamelCasedObject<T> = {
+export type CamelCasedObject<T extends Record<string, unknown>> = {
   [K in keyof T as CamelCase<K> | K]: T[K];
 };
 
@@ -53,7 +45,7 @@ export type CamelCasedObject<T> = {
  *
  * @template T - The original object type.
  */
-export type KebabCasedObject<T> = {
+export type KebabCasedObject<T extends Record<string, unknown>> = {
   [K in keyof T as KebabCase<K>]: T[K];
 };
 
@@ -62,7 +54,8 @@ export type KebabCasedObject<T> = {
  *
  * @template T - The original object type.
  */
-export type DualCasedObject<T> = CamelCasedObject<T> & KebabCasedObject<T>;
+export type DualCasedObject<T extends Record<string, unknown>> =
+  CamelCasedObject<T> & KebabCasedObject<T>;
 
 /**
  * Creates a new object with the same keys as `obj`, but with each key
@@ -74,13 +67,13 @@ export type DualCasedObject<T> = CamelCasedObject<T> & KebabCasedObject<T>;
  * @returns New object with probably more keys
  */
 
-export function toDualCasedObject<const T extends object>(
+export function toDualCasedObject<const T extends Record<string, unknown>>(
   obj: T,
 ): DualCasedObject<T> {
   return {
-    ...(mapKeys(obj, (_, key) => camelCase(key)) as CamelCasedObject<T>),
-    ...(mapKeys(obj, (_, key) => kebabCase(key)) as KebabCasedObject<T>),
-  };
+    ...R.mapKeys(obj, (key) => R.toCamelCase(key)),
+    ...R.mapKeys(obj, (key) => R.toKebabCase(key)),
+  } as DualCasedObject<T>;
 }
 
 /**

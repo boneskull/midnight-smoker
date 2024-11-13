@@ -17,8 +17,8 @@ import {
 } from '@humanwhocodes/momoa';
 import chalk from 'chalk';
 import {highlight} from 'cli-highlight';
-import {max, toPath} from 'lodash';
 import path from 'node:path';
+import {firstBy, identity, stringToPath as toPath} from 'remeda';
 import stringWidth from 'string-width';
 
 import {JSONLocation} from './json-location';
@@ -125,7 +125,7 @@ export class JSONBlamer {
    */
   @memoize()
   public find(keypath: string): BlameInfo | undefined {
-    const path = isString(keypath) ? toPath(keypath) : keypath;
+    const path = isString(keypath) ? (toPath(keypath) as string[]) : keypath;
 
     if (!keypath || !path.length) {
       return;
@@ -242,7 +242,10 @@ export class JSONBlamer {
       const strippedLines = lines
         .slice(blameInfo.loc.start.line - 1, blameInfo.loc.end.line)
         .map(stripAnsi);
-      const maxCol = max(strippedLines.map(stringWidth));
+      const maxCol = firstBy(strippedLines.map(stringWidth), [
+        identity,
+        'desc',
+      ]);
       ok(maxCol, 'Unexpected empty array of highlighted lines. This is a bug');
       contextLines = [
         ...lines.slice(startLine, blameInfo.loc.start.line - 1),
@@ -273,7 +276,10 @@ export class JSONBlamer {
       return `${lineNumber} ${line}`;
     });
     const maxLineLength =
-      max(contextLines.map((line) => stringWidth(line))) ?? 40;
+      firstBy(
+        contextLines.map((line) => stringWidth(line)),
+        [identity, 'desc'],
+      ) ?? 40;
     contextLines = [
       `${`— ${path.basename(blameInfo.filepath)} `.padEnd(
         maxLineLength,

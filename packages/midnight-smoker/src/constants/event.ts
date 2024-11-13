@@ -13,8 +13,8 @@ import {constant} from '#constants/create-constant';
  */
 export const InstallEvents = constant({
   InstallBegin: 'INSTALL.BEGIN',
-  InstallFailed: 'INSTALL.FAILED',
-  InstallOk: 'INSTALL.OK',
+  InstallFailed: 'INSTALL.MAIN.FAILED',
+  InstallOk: 'INSTALL.MAIN.OK',
   PkgInstallBegin: 'INSTALL.PKG.BEGIN',
   PkgInstallFailed: 'INSTALL.PKG.FAILED',
   PkgInstallOk: 'INSTALL.PKG.OK',
@@ -29,9 +29,9 @@ export const InstallEvents = constant({
  * @enum
  */
 export const PackEvents = constant({
-  PackBegin: 'PACK.BEGIN',
-  PackFailed: 'PACK.FAILED',
-  PackOk: 'PACK.OK',
+  PackBegin: 'PACK.MAIN.BEGIN',
+  PackFailed: 'PACK.MAIN.FAILED',
+  PackOk: 'PACK.MAIN.OK',
   PkgManagerPackBegin: 'PACK.PKG_MANAGER.BEGIN',
   PkgManagerPackFailed: 'PACK.PKG_MANAGER.FAILED',
   PkgManagerPackOk: 'PACK.PKG_MANAGER.OK',
@@ -46,29 +46,32 @@ export const PackEvents = constant({
  * @enum
  */
 export const ScriptEvents = constant({
-  PkgManagerRunScriptsBegin: 'SCRIPTS.PKG_MANAGER.BEGIN',
-  PkgManagerRunScriptsFailed: 'SCRIPTS.PKG_MANAGER.FAILED',
-  PkgManagerRunScriptsOk: 'SCRIPTS.PKG_MANAGER.OK',
+  PkgManagerScriptsBegin: 'SCRIPTS.PKG_MANAGER.BEGIN',
+  PkgManagerScriptsFailed: 'SCRIPTS.PKG_MANAGER.FAILED',
+  PkgManagerScriptsOk: 'SCRIPTS.PKG_MANAGER.OK',
   RunScriptBegin: 'SCRIPTS.SCRIPT.BEGIN',
   RunScriptEnd: 'SCRIPTS.SCRIPT.END',
   RunScriptError: 'SCRIPTS.SCRIPT.RESULT.ERROR',
   RunScriptFailed: 'SCRIPTS.SCRIPT.RESULT.FAILED',
   RunScriptOk: 'SCRIPTS.SCRIPT.RESULT.OK',
-  RunScriptsBegin: 'SCRIPTS.BEGIN',
-  RunScriptsFailed: 'SCRIPTS.FAILED',
   RunScriptSkipped: 'SCRIPTS.SCRIPT.RESULT.SKIPPED',
-  RunScriptsOk: 'SCRIPTS.OK',
+  ScriptsBegin: 'SCRIPTS.BEGIN',
+  ScriptsFailed: 'SCRIPTS.MAIN.FAILED',
+  ScriptsOk: 'SCRIPTS.MAIN.OK',
 });
 
 /**
- * Lint-related event names
+ * Mapping of lint event names to event types
  *
  * @enum
  */
 export const LintEvents = constant({
   LintBegin: 'LINT.BEGIN',
-  LintFailed: 'LINT.FAILED',
-  LintOk: 'LINT.OK',
+  LintFailed: 'LINT.MAIN.FAILED',
+  LintOk: 'LINT.MAIN.OK',
+  PkgLintBegin: 'LINT.PKG.BEGIN',
+  PkgLintFailed: 'LINT.PKG.FAILED',
+  PkgLintOk: 'LINT.PKG.OK',
   PkgManagerLintBegin: 'LINT.PKG_MANAGER.BEGIN',
   PkgManagerLintFailed: 'LINT.PKG_MANAGER.FAILED',
   PkgManagerLintOk: 'LINT.PKG_MANAGER.OK',
@@ -77,9 +80,6 @@ export const LintEvents = constant({
   RuleError: 'LINT.RULE.ERROR',
   RuleFailed: 'LINT.RULE.FAILED',
   RuleOk: 'LINT.RULE.OK',
-  // PkgLintBegin: 'LINT.PKG.BEGIN',
-  // PkgLintFailed: 'LINT.PKG.FAILED',
-  // PkgLintOk: 'LINT.PKG.OK',
 });
 
 /**
@@ -101,7 +101,7 @@ export const CoreEvents = constant({
 });
 
 /**
- * Mapping of event names to event types
+ * Mapping of all event names to event types
  *
  * @enum
  */
@@ -111,4 +111,25 @@ export const Events = constant({
   ...ScriptEvents,
   ...LintEvents,
   ...CoreEvents,
+});
+
+/**
+ * Wildcard event names for matching multiple event types
+ *
+ * @enum
+ */
+export const WildcardEvents = constant({
+  AnyInstallPkg: 'INSTALL.PKG.*',
+  AnyInstallPkgManager: 'INSTALL.PKG_MANAGER.*',
+  AnyInstallResult: 'INSTALL.MAIN.*',
+  AnyLintPkg: 'LINT.PKG.*',
+  AnyLintPkgManager: 'LINT.PKG_MANAGER.*',
+  AnyLintResult: 'LINT.MAIN.*',
+  AnyLintRule: 'LINT.RULE.*',
+  AnyPackPkg: 'PACK.PKG.*',
+  AnyPackPkgManager: 'PACK.PKG_MANAGER.*',
+  AnyPackResult: 'PACK.MAIN.*',
+  AnyRunScriptResult: 'SCRIPTS.SCRIPT.RESULT.*',
+  AnyScriptsPkgManager: 'SCRIPTS.PKG_MANAGER.*',
+  AnyScriptsResult: 'SCRIPTS.MAIN.*',
 });

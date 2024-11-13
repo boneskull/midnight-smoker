@@ -3,8 +3,8 @@
  * exit.
  */
 import {createDebug} from '#util/debug';
-import {once as onlyOnce} from 'lodash';
 import {type ChildProcess} from 'node:child_process';
+import {once as onlyOnce} from 'remeda';
 import terminate_ from 'terminate/promise';
 
 /**

@@ -25,7 +25,12 @@ export class AssertionError<T = void, U = void> extends BaseSmokerError<
   constructor(message: string, actual: Error | T, expected?: U, error?: Error) {
     const context = isError(actual)
       ? undefined
-      : {actual, expected: expected as U};
+      : ({actual, expected} as
+          | {
+              actual: T;
+              expected: U;
+            }
+          | undefined);
     super(message, context, context ? error : (actual as Error));
   }
 }

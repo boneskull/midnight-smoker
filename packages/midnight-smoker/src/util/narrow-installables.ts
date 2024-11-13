@@ -8,7 +8,7 @@
 
 import {constant, TAG_LATEST} from '#constants';
 import {type WorkspaceInfo} from '#schema/workspace-info';
-import {partition, uniq} from 'lodash';
+import {partition, unique as uniq} from 'remeda';
 
 import {createDebug} from './debug';
 

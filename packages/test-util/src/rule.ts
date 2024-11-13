@@ -1,4 +1,3 @@
-import {isEmpty} from 'lodash';
 import {
   ComponentKinds,
   DEFAULT_PKG_MANAGER_NAME,
@@ -31,7 +30,7 @@ import {
   type SomeRuleOptions,
   type StaticRuleContext,
 } from 'midnight-smoker/rule';
-import {fromUnknownError} from 'midnight-smoker/util';
+import {fromUnknownError, isEmpty} from 'midnight-smoker/util';
 
 import {createDebug} from './debug';
 

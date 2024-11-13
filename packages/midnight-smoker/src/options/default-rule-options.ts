@@ -1,5 +1,5 @@
 import {type RuleSchemaValue} from '#schema/rule-schema-value';
-import {memoize} from 'lodash';
+import memoize from 'nano-memoize';
 import {type z} from 'zod';
 
 /**
@@ -15,4 +15,3 @@ export const getDefaultRuleOptions = memoize(
     ) as z.infer<T>;
   },
 );
-getDefaultRuleOptions.cache = new WeakMap();

@@ -6,7 +6,7 @@ import {
   isNumber,
   isObject,
   isString,
-} from 'lodash';
+} from '#util/guard/common';
 import {type Jsonifiable, type JsonPrimitive} from 'type-fest';
 import {
   type JsonifiableArray,

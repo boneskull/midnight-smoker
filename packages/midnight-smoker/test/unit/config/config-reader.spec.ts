@@ -2,10 +2,10 @@ import {BASE_CFG_FILENAMES, ConfigReader} from '#config/config-reader';
 import {PACKAGE_JSON} from '#constants';
 import {FileManager} from '#util/filemanager';
 import {type ImportableVolume, impvol} from 'impvol';
-import {mapKeys} from 'lodash';
 import {createFsFromVolume} from 'memfs';
 import {describe} from 'mocha';
 import path from 'node:path';
+import {mapKeys} from 'remeda';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
@@ -89,9 +89,7 @@ const CWD = '/test';
 /**
  * Directory structure for memfs with paths prefixed by the root dir (`CWD`)
  */
-const directoryJson = mapKeys(configFileMap, (_, key) =>
-  path.resolve(CWD, key),
-);
+const directoryJson = mapKeys(configFileMap, (key) => path.resolve(CWD, key));
 
 describe('midnight-smoker', function () {
   describe('config', function () {

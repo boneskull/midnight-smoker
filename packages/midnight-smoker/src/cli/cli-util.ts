@@ -5,7 +5,8 @@ import {isSomeSmokerError} from '#util/guard/some-smoker-error';
 import {serialize} from '#util/serialize';
 import {bold, cyan, yellow} from 'chalk';
 import Table from 'cli-table3';
-import {mergeWith, omit} from 'lodash';
+import deepmerge, {type ArrayMergeOptions} from 'deepmerge';
+import {omit} from 'remeda';
 import stringWidth from 'string-width';
 import {type Jsonifiable, type MergeDeep, type Primitive} from 'type-fest';
 
@@ -81,10 +82,29 @@ export function mergeOptions<T extends object, U extends object>(
   argv: T,
   config: U,
 ): MergeDeep<T, U, {recurseIntoArrays: true}> {
-  return mergeWith(argv, config, (objValue, srcValue) => {
-    if (Array.isArray(objValue) && Array.isArray(srcValue)) {
-      return [...(objValue as unknown[]), ...(srcValue as unknown[])];
-    }
+  return deepmerge(argv, config, {
+    arrayMerge: (target: any[], source: any[], options: ArrayMergeOptions) => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const destination = [...target];
+
+      source.forEach((item, index) => {
+        if (typeof destination[index] === 'undefined') {
+          destination[index] = options.cloneUnlessOtherwiseSpecified(
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+            item,
+            options,
+          );
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+        } else if (options.isMergeableObject(item)) {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument
+          destination[index] = deepmerge(target[index], item, options);
+        } else if (!target.includes(item)) {
+          destination.push(item);
+        }
+      });
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+      return destination;
+    },
   }) as MergeDeep<T, U, {recurseIntoArrays: true}>;
 }
 
@@ -100,7 +120,7 @@ function handleJsonRejection(err: unknown, verbose = false): void {
     const serialized = serialize(err);
     error = verbose
       ? serialized
-      : omit(serialized, ['stack', 'context', 'id', 'cause']);
+      : omit(serialized, ['stack', 'context', 'name', 'cause']);
   } else if (isError(err)) {
     error = verbose
       ? {message: err.message, name: err.name, stack: err.stack}

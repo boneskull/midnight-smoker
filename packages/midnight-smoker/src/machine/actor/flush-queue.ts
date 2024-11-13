@@ -13,8 +13,8 @@ import {
 import {ok} from '#util/assert';
 import {createDebug} from '#util/debug';
 import {isReporterListenerFn} from '#util/guard/reporter-listener';
-import {invert, mapValues} from 'lodash';
 import {type EventEmitter} from 'node:stream';
+import {invert, mapValues} from 'remeda';
 import {fromPromise} from 'xstate';
 
 const debug = createDebug(__filename);

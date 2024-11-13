@@ -1,6 +1,5 @@
 import {bold, dim, italic, red, yellow} from 'chalk';
 import spinners from 'cli-spinners';
-import {groupBy, head, isEmpty} from 'lodash';
 import {error, info, warning} from 'log-symbols';
 import {FAILED} from 'midnight-smoker/constants';
 import {type Reporter, type Subscription} from 'midnight-smoker/reporter';
@@ -14,9 +13,11 @@ import {
   formatPackage,
   formatPkgManager,
   indent,
+  isEmpty,
   joinLines,
 } from 'midnight-smoker/util';
 import ora, {type Ora} from 'ora';
+import {groupBy, first as head} from 'remeda';
 
 import {createDebug} from '../debug';
 import {ELLIPSIS, plural, preface} from './util';
@@ -202,7 +203,7 @@ export const ConsoleReporter: Reporter<ConsoleReporterContext> = {
   onRuleError({opts: {verbose}, spinner}, {error}) {
     spinner.fail(error.format(verbose));
   },
-  onRunScriptsFailed({opts: {verbose}, spinner}, {results}) {
+  onScriptsFailed({opts: {verbose}, spinner}, {results}) {
     const failedResults = results.filter((result) => result.type === FAILED);
     for (const result of failedResults) {
       // TODO this is not verbose enough

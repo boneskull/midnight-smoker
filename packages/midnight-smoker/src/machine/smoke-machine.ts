@@ -2,7 +2,7 @@ import type * as Event from '#machine/event';
 import type * as Schema from '#schema/meta/for-smoke-machine';
 
 import * as Const from '#constants';
-import {Events} from '#constants/event';
+import {Events, WildcardEvents} from '#constants/event';
 import * as Err from '#error/meta/for-smoke-machine';
 import {
   type AbortedEventData,
@@ -45,9 +45,10 @@ import * as assert from '#util/assert';
 import {hrRelativePath} from '#util/format';
 import {isActorOutputNotOk, isActorOutputOk} from '#util/guard/actor-output';
 import {assertActorOutputNotOk} from '#util/guard/assert/actor-output';
+import {isEmpty} from '#util/guard/common';
 import * as Util from '#util/meta/for-smoke-machine';
-import {compact, isEmpty, map} from 'lodash';
 import {type EventEmitter} from 'node:events';
+import * as R from 'remeda';
 import {type ValueOf} from 'type-fest';
 import {
   type ActorRefFrom,
@@ -719,12 +720,15 @@ export const SmokeMachine = setup({
         },
         enqueue,
       }) => {
-        for (const busRef of compact([
-          packBusMachineRef,
-          installBusMachineRef,
-          lintBusMachineRef,
-          scriptBusMachineRef,
-        ])) {
+        for (const busRef of R.filter(
+          [
+            packBusMachineRef,
+            installBusMachineRef,
+            lintBusMachineRef,
+            scriptBusMachineRef,
+          ],
+          R.isTruthy,
+        )) {
           const evt: Bus.ListenEvent = {
             actorIds: Object.keys(reporterMachineRefs),
             type: 'LISTEN',
@@ -843,7 +847,7 @@ export const SmokeMachine = setup({
         const input: Bus.LintBusMachineInput = {
           parentRef,
           pkgManagers,
-          ruleDefs: map(ruleEnvelopes, 'rule'),
+          ruleDefs: R.map(ruleEnvelopes, (env) => env.rule),
           smokerOptions,
           workspaceInfo,
         };
@@ -924,33 +928,31 @@ export const SmokeMachine = setup({
       }) => {
         const useWorkspaces = all || !isEmpty(workspace);
 
-        const newRefs = Object.fromEntries(
-          pkgManagerEnvelopes.map((envelope) => {
-            const {pkgManager, plugin, spec} = envelope;
-            const executor = spec.isSystem ? systemExecutor : defaultExecutor;
-            const id = `PkgManagerMachine.[${plugin.id}/${pkgManager.name}]<${spec}>`;
-            const actorRef = spawn('PkgManagerMachine', {
-              id,
-              input: {
-                additionalDeps: narrowedAdditionalDeps,
-                envelope,
-                executor,
-                fileManager,
-                linger,
-                opts: {loose, verbose},
-                parentRef: self,
-                ruleConfigs: rules,
-                ruleEnvelopes,
-                scripts,
-                shouldLint,
-                shouldShutdown,
-                useWorkspaces,
-                workspaceInfo,
-              },
-            });
-            return [id, MUtil.monkeypatchActorLogger(actorRef, id)];
-          }),
-        );
+        const newRefs = R.mapToObj(pkgManagerEnvelopes, (envelope) => {
+          const {pkgManager, plugin, spec} = envelope;
+          const executor = spec.isSystem ? systemExecutor : defaultExecutor;
+          const id = `PkgManagerMachine.[${plugin.id}/${pkgManager.name}]<${spec}>`;
+          const actorRef = spawn('PkgManagerMachine', {
+            id,
+            input: {
+              additionalDeps: narrowedAdditionalDeps,
+              envelope,
+              executor,
+              fileManager,
+              linger,
+              opts: {loose, verbose},
+              parentRef: self,
+              ruleConfigs: rules,
+              ruleEnvelopes,
+              scripts,
+              shouldLint,
+              shouldShutdown,
+              useWorkspaces,
+              workspaceInfo,
+            },
+          });
+          return [id, MUtil.monkeypatchActorLogger(actorRef, id)];
+        });
         return {...pkgManagerMachineRefs, ...newRefs};
       },
     }),
@@ -969,23 +971,21 @@ export const SmokeMachine = setup({
         },
         spawn,
       }) => {
-        const newRefs = Object.fromEntries(
-          reporterEnvelopes.map(({plugin, reporter}) => {
-            const id = `ReporterMachine.[${plugin.id}/${reporter.name}]`;
-            const input: ReporterMachineInput = {
-              plugin,
-              reporter,
-              smokerOptions,
-              smokerPkgJson,
-            };
-            const actor = spawn('ReporterMachine', {
-              id,
-              input,
-              systemId: id,
-            });
-            return [id, MUtil.monkeypatchActorLogger(actor, id)];
-          }),
-        );
+        const newRefs = R.mapToObj(reporterEnvelopes, ({plugin, reporter}) => {
+          const id = `ReporterMachine.[${plugin.id}/${reporter.name}]`;
+          const input: ReporterMachineInput = {
+            plugin,
+            reporter,
+            smokerOptions,
+            smokerPkgJson,
+          };
+          const actor = spawn('ReporterMachine', {
+            id,
+            input,
+            systemId: id,
+          });
+          return [id, MUtil.monkeypatchActorLogger(actor, id)];
+        });
         return {...reporterMachineRefs, ...newRefs};
       },
     }),
@@ -1002,8 +1002,7 @@ export const SmokeMachine = setup({
         {output: {actorId: id}}: {output: ReporterMachineOutput},
       ) => {
         enqueue.stopChild(id);
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const {[id]: _, ...rest} = reporterMachineRefs;
+        const rest = R.omit(reporterMachineRefs, [id]);
         enqueue.assign({
           reporterMachineRefs: rest,
         });
@@ -1025,7 +1024,7 @@ export const SmokeMachine = setup({
       }) => {
         const unsupportedPkgManagers =
           Envelope.filterUnsupportedPkgManagersFromEnvelopes(
-            pkgManagerEnvelopes.map(({spec}) => spec),
+            R.map(pkgManagerEnvelopes, ({spec}) => spec),
             desiredPkgManagers,
           );
 
@@ -1085,13 +1084,14 @@ export const SmokeMachine = setup({
     /**
      * Returns `true` if the `lingered` context prop is a nonempty array.
      */
-    hasLingered: ({context: {lingered}}) => !isEmpty(lingered),
+    hasLingered: ({context: {lingered = []}}) => !isEmpty(lingered),
 
     /**
      * Returns `true` if {@link SmokeMachineContext.loaderMachineRefs} has at
      * least one value
      */
-    hasLoaderRef: ({context: {loaderMachineRef}}) => !isEmpty(loaderMachineRef),
+    hasLoaderRef: ({context: {loaderMachineRef = {}}}) =>
+      !isEmpty(loaderMachineRef),
 
     /**
      * Returns `true` if {@link SmokeMachineContext.error} is falsy.
@@ -1102,13 +1102,13 @@ export const SmokeMachine = setup({
      * Returns `true` if {@link SmokeMachineContext.reporterMachineRefs} has at
      * least one value
      */
-    hasReporterRefs: ({context: {reporterMachineRefs}}) =>
+    hasReporterRefs: ({context: {reporterMachineRefs = {}}}) =>
       !isEmpty(reporterMachineRefs),
 
     /**
      * If `true`, then one or more custom scripts have been executed.
      */
-    hasScriptResults: ({context: {runScriptResults}}) =>
+    hasScriptResults: ({context: {runScriptResults = []}}) =>
       !isEmpty(runScriptResults),
 
     /**
@@ -1383,7 +1383,6 @@ export const SmokeMachine = setup({
         done: {
           type: Const.FINAL,
         },
-
         initializing: {
           description:
             'Gathers information about the environment and spawns a ComponentLoaderMachine, which provides all enabled components',
@@ -1818,36 +1817,43 @@ export const SmokeMachine = setup({
               },
 
               on: {
-                [Events.InstallFailed]: {
-                  actions: {
-                    params: ({event: {error}}) => error,
-                    type: 'assignError',
+                [WildcardEvents.AnyInstallPkg]: {
+                  actions: [
+                    {
+                      params: ({event}) => ({
+                        event,
+                        prop: BusActorMap.InstallBusMachine,
+                      }),
+                      type: 'forward',
+                    },
+                  ],
+                },
+                [WildcardEvents.AnyInstallPkgManager]: {
+                  actions: [
+                    {
+                      params: ({event}) => ({
+                        event,
+                        prop: BusActorMap.InstallBusMachine,
+                      }),
+                      type: 'forward',
+                    },
+                  ],
+                },
+                [WildcardEvents.AnyInstallResult]: [
+                  {
+                    guard: ({event}) => event.type === Events.InstallOk,
+                    target: 'done',
                   },
-                  target: 'errored',
-                },
-                [Events.InstallOk]: 'done',
-                'INSTALL.PKG.*': {
-                  actions: [
-                    {
-                      params: ({event}) => ({
-                        event,
-                        prop: BusActorMap.InstallBusMachine,
-                      }),
-                      type: 'forward',
+                  {
+                    actions: {
+                      params: ({event}) =>
+                        (event as EventData<typeof Events.InstallFailed>).error,
+                      type: 'assignError',
                     },
-                  ],
-                },
-                'INSTALL.PKG_MANAGER.*': {
-                  actions: [
-                    {
-                      params: ({event}) => ({
-                        event,
-                        prop: BusActorMap.InstallBusMachine,
-                      }),
-                      type: 'forward',
-                    },
-                  ],
-                },
+                    guard: ({event}) => event.type === Events.InstallFailed,
+                    target: 'errored',
+                  },
+                ],
               },
             },
           },
@@ -1880,25 +1886,7 @@ export const SmokeMachine = setup({
                 type: 'cleanupBusMachine',
               },
               on: {
-                [Events.LintFailed]: {
-                  actions: [
-                    {
-                      params: ({event: {results}}) => results,
-                      type: 'assignLintResults',
-                    },
-                  ],
-                  target: 'failed',
-                },
-                [Events.LintOk]: {
-                  actions: [
-                    {
-                      params: ({event: {results}}) => results,
-                      type: 'assignLintResults',
-                    },
-                  ],
-                  target: 'ok',
-                },
-                'LINT.PKG_MANAGER.*': {
+                [WildcardEvents.AnyLintPkg]: {
                   actions: [
                     {
                       params: ({event}) => {
@@ -1911,7 +1899,42 @@ export const SmokeMachine = setup({
                     },
                   ],
                 },
-                'LINT.RULE.*': {
+                [WildcardEvents.AnyLintPkgManager]: {
+                  actions: [
+                    {
+                      params: ({event}) => {
+                        return {
+                          event,
+                          prop: BusActorMap.LintBusMachine,
+                        };
+                      },
+                      type: 'forward',
+                    },
+                  ],
+                },
+                [WildcardEvents.AnyLintResult]: [
+                  {
+                    actions: [
+                      {
+                        params: ({event: {results}}) => results,
+                        type: 'assignLintResults',
+                      },
+                    ],
+                    guard: ({event}) => event.type === Events.LintOk,
+                    target: 'ok',
+                  },
+                  {
+                    actions: [
+                      {
+                        params: ({event: {results}}) => results,
+                        type: 'assignLintResults',
+                      },
+                    ],
+                    guard: ({event}) => event.type === Events.LintFailed,
+                    target: 'failed',
+                  },
+                ],
+                [WildcardEvents.AnyLintRule]: {
                   actions: [
                     {
                       params: ({event}) => {
@@ -1957,36 +1980,43 @@ export const SmokeMachine = setup({
                 type: 'cleanupBusMachine',
               },
               on: {
-                [Events.PackFailed]: {
-                  actions: {
-                    params: ({event: {error}}) => error,
-                    type: 'assignError',
+                [WildcardEvents.AnyPackPkg]: {
+                  actions: [
+                    {
+                      params: ({event}) => ({
+                        event,
+                        prop: BusActorMap.PackBusMachine,
+                      }),
+                      type: 'forward',
+                    },
+                  ],
+                },
+                [WildcardEvents.AnyPackPkgManager]: {
+                  actions: [
+                    {
+                      params: ({event}) => ({
+                        event,
+                        prop: BusActorMap.PackBusMachine,
+                      }),
+                      type: 'forward',
+                    },
+                  ],
+                },
+                [WildcardEvents.AnyPackResult]: [
+                  {
+                    guard: ({event}) => event.type === Events.PackOk,
+                    target: 'done',
                   },
-                  target: 'errored',
-                },
-                [Events.PackOk]: 'done',
-                'PACK.PKG.*': {
-                  actions: [
-                    {
-                      params: ({event}) => ({
-                        event,
-                        prop: BusActorMap.PackBusMachine,
-                      }),
-                      type: 'forward',
+                  {
+                    actions: {
+                      params: ({event}) =>
+                        (event as EventData<typeof Events.PackFailed>).error,
+                      type: 'assignError',
                     },
-                  ],
-                },
-                'PACK.PKG_MANAGER.*': {
-                  actions: [
-                    {
-                      params: ({event}) => ({
-                        event,
-                        prop: BusActorMap.PackBusMachine,
-                      }),
-                      type: 'forward',
-                    },
-                  ],
-                },
+                    guard: ({event}) => event.type === Events.PackFailed,
+                    target: 'errored',
+                  },
+                ],
               },
             },
           },
@@ -2015,6 +2045,15 @@ export const SmokeMachine = setup({
                 type: 'cleanupBusMachine',
               },
               on: {
+                /**
+                 * Forward {@link Events.RunScriptEnd} to the bus machine
+                 *
+                 * `Events.RunScriptEnd`` is a discrete event and not matched by
+                 * {@link WildcardEvents.AnyRunScriptResult}
+                 *
+                 * **Do not** invoke the `appendRunScriptResult` action, or the
+                 * result will be duplicated.
+                 */
                 [Events.RunScriptEnd]: {
                   actions: [
                     {
@@ -2026,20 +2065,12 @@ export const SmokeMachine = setup({
                     },
                   ],
                 },
-                [Events.RunScriptsFailed]: 'failed',
-                [Events.RunScriptsOk]: 'ok',
-                'SCRIPTS.PKG_MANAGER.*': {
-                  actions: [
-                    {
-                      params: ({event}) => ({
-                        event,
-                        prop: BusActorMap.ScriptBusMachine,
-                      }),
-                      type: 'forward',
-                    },
-                  ],
-                },
-                'SCRIPTS.SCRIPT.RESULT.*': {
+
+                /**
+                 * When a script finishes with any status, append the result and
+                 * forward the event to the bus machine
+                 */
+                [WildcardEvents.AnyRunScriptResult]: {
                   actions: [
                     {
                       params: ({event: {result}}) => result,
@@ -2054,6 +2085,27 @@ export const SmokeMachine = setup({
                     },
                   ],
                 },
+                [WildcardEvents.AnyScriptsPkgManager]: {
+                  actions: [
+                    {
+                      params: ({event}) => ({
+                        event,
+                        prop: BusActorMap.ScriptBusMachine,
+                      }),
+                      type: 'forward',
+                    },
+                  ],
+                },
+                [WildcardEvents.AnyScriptsResult]: [
+                  {
+                    guard: ({event}) => event.type === Events.ScriptsOk,
+                    target: 'ok',
+                  },
+                  {
+                    guard: ({event}) => event.type === Events.ScriptsFailed,
+                    target: 'failed',
+                  },
+                ],
               },
             },
             noop: {

@@ -12,9 +12,9 @@ import {hrRelativePath} from '#util/format';
 import {isEmpty} from '#util/guard/common';
 import * as hwp from '#util/hwp';
 import assert from 'assert';
-import {partition, uniqBy} from 'lodash';
 import {minimatch} from 'minimatch';
 import path from 'path';
+import {partition, uniqueBy} from 'remeda';
 import {fromPromise} from 'xstate';
 import {type ZodError} from 'zod';
 
@@ -216,6 +216,6 @@ export const queryWorkspacesLogic = fromPromise<
       ];
     }
 
-    return uniqBy(workspaceInfo, 'localPath');
+    return uniqueBy(workspaceInfo, (ws) => ws.localPath);
   },
 );

@@ -3,7 +3,7 @@ import {type SomeRule} from '#defs/rule';
 import {RuleContext} from '#rule/rule-context';
 import {type StaticRuleContext} from '#rule/static-rule-context';
 import stringify from 'json-stable-stringify';
-import {omit} from 'lodash';
+import {omit} from 'remeda';
 import unexpected from 'unexpected';
 import {fileURLToPath} from 'url';
 
@@ -144,7 +144,7 @@ describe('midnight-smoker', function () {
                 expect(issues, 'to satisfy', {
                   result: [
                     {
-                      ctx: omit(staticCtx, 'pkgJson'),
+                      ctx: omit(staticCtx, ['pkgJson']),
                       data: 'bar',
                       message: 'foo',
                       rule,

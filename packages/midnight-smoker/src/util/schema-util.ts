@@ -5,7 +5,7 @@
  */
 import {castArray, toDualCasedObject} from '#util/common';
 import {isObject} from '#util/guard/common';
-import {isPlainObject, uniq} from 'lodash';
+import * as R from 'remeda';
 import {Range, SemVer} from 'semver';
 import {type Class} from 'type-fest';
 import {z} from 'zod';
@@ -63,7 +63,7 @@ export const NonEmptyStringToArraySchema = z
   );
 
 export const UniqueNonEmptyStringToArraySchema =
-  NonEmptyStringToArraySchema.transform(uniq)
+  NonEmptyStringToArraySchema.transform(R.unique())
     .pipe(NonEmptyStringArraySchema)
     .describe(
       'A non-empty string or array of non-empty strings, normalized to an array with unique values',
@@ -143,7 +143,7 @@ export const VoidOrPromiseVoidSchema = z
 export const asObjectSchema = <T extends z.AnyZodObject>(schema: T) =>
   z.preprocess(
     (value) =>
-      isPlainObject(value) ? value : isObject(value) ? {...value} : value,
+      R.isPlainObject(value) ? value : isObject(value) ? {...value} : value,
     schema,
   );
 

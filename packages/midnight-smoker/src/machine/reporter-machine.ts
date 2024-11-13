@@ -24,7 +24,7 @@ import {
 import {type PackageJson} from '#schema/package-json';
 import {type SmokerOptions} from '#schema/smoker-options';
 import {fromUnknownError} from '#util/from-unknown-error';
-import {isEmpty} from 'lodash';
+import {isEmpty} from '#util/guard/common';
 import {type EventEmitter} from 'node:events';
 import {and, assign, log, not, setup} from 'xstate';
 

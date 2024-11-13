@@ -17,12 +17,12 @@ import {
 import * as assert from '#util/assert';
 import {createDebug} from '#util/debug';
 import {fromUnknownError} from '#util/from-unknown-error';
+import {isError, isObject} from '#util/guard/common';
 import {cyanBright, yellow} from 'chalk';
-import {defaultsDeep, isError, isObject, noop} from 'lodash';
 import {type ChildProcess, spawn, type SpawnOptions} from 'node:child_process';
 import {once} from 'node:events';
 import {finished} from 'node:stream/promises';
-import {type SetRequired} from 'type-fest';
+import {mergeDeep, doNothing as noop} from 'remeda';
 
 import {isErrnoException} from './guard';
 import {registerChildProcess} from './preamble';
@@ -40,7 +40,7 @@ const DEFAULT_EXEC_OPTIONS = constant({
       DEBUG: '', // prevent DEBUG from being inherited
     },
   },
-  onSpawn: noop,
+  onSpawn: noop(),
   timeout: 30_000,
   trim: true,
 }) satisfies ExecOptions;
@@ -127,7 +127,7 @@ const wrapSpawnHook = (onSpawn: SpawnHook) => {
 export const exec: ExecFn = async (
   command,
   argsOrOptions?: ExecOptions | string[],
-  options?: ExecOptions,
+  options: ExecOptions = {},
 ) => {
   let args: string[] = [];
   if (Array.isArray(argsOrOptions)) {
@@ -204,20 +204,17 @@ export const exec: ExecFn = async (
     timeout = DEFAULT_EXEC_OPTIONS.timeout,
     trim,
     verbose,
-  } = defaultsDeep({...options}, DEFAULT_EXEC_OPTIONS) as SetRequired<
-    ExecOptions,
-    keyof typeof DEFAULT_EXEC_OPTIONS
-  >;
+  } = mergeDeep({...DEFAULT_EXEC_OPTIONS}, options);
 
   // for empty string
-  const cwd = `${nodeOptions.cwd || DEFAULT_EXEC_OPTIONS.nodeOptions.cwd}`;
+  const cwd = `${nodeOptions!.cwd || DEFAULT_EXEC_OPTIONS.nodeOptions.cwd}`;
 
   // we will always timeout at minimum of 30s (see DEFAULT_EXEC_OPTIONS)
   const timeoutSignal = AbortSignal.timeout(timeout);
 
   // if we received a signal, we can compose it with the timeout signal
   const signal =
-    'signal' in nodeOptions && nodeOptions.signal
+    'signal' in nodeOptions! && nodeOptions.signal
       ? AbortSignal.any([nodeOptions.signal, timeoutSignal])
       : timeoutSignal;
 
@@ -259,7 +256,7 @@ export const exec: ExecFn = async (
     return promise;
   }
 
-  const spawnHook = wrapSpawnHook(onSpawn);
+  const spawnHook = wrapSpawnHook(onSpawn!);
   try {
     await spawnHook(proc, signal);
   } catch (err) {

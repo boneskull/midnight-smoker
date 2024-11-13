@@ -27,7 +27,6 @@ import {PluginRegistry} from '#plugin/registry';
 import {type SmokerOptions} from '#schema/smoker-options';
 import {type WorkspaceInfo} from '#schema/workspace-info';
 import {FileManager} from '#util/filemanager';
-import {set} from 'lodash';
 import {memfs} from 'memfs';
 import {type Volume} from 'memfs/lib/volume';
 import {beforeEach} from 'mocha';
@@ -148,9 +147,11 @@ describe('midnight-smoker', function () {
       describe('general behavior', function () {
         describe('when no operations requested', function () {
           beforeEach(function () {
-            set(input, 'smokerOptions.lint', false);
-            // this should already be empty, but just in case
-            set(input, 'smokerOptions.script', []);
+            // script should already be empty, but just in case
+            input = {
+              ...input,
+              smokerOptions: {...smokerOptions, lint: false, script: []},
+            };
 
             actor = createSmokeActor({id, input, logger});
           });
@@ -379,8 +380,18 @@ describe('midnight-smoker', function () {
                     }),
                   });
 
-                  set(input, 'smokerOptions.workspace', ['test-workspace']);
-                  actor = createSmokeActor({id, input, logger});
+                  input = {
+                    ...input,
+                    smokerOptions: {
+                      ...input.smokerOptions,
+                      workspace: ['test-workspace'],
+                    },
+                  };
+                  actor = createSmokeActor({
+                    id,
+                    input,
+                    logger,
+                  });
                 });
 
                 it('should abort', async function () {
@@ -403,7 +414,10 @@ describe('midnight-smoker', function () {
 
                 describe('when private workspaces are allowed', function () {
                   beforeEach(function () {
-                    set(input, 'smokerOptions.allowPrivate', true);
+                    input = {
+                      ...input,
+                      smokerOptions: {...smokerOptions, allowPrivate: true},
+                    };
                     actor = createSmokeActor({id, input, logger});
                   });
 
@@ -421,7 +435,11 @@ describe('midnight-smoker', function () {
 
               describe('when additional deps requested', function () {
                 beforeEach(function () {
-                  set(input, 'smokerOptions.add', ['bambalam']);
+                  input = {
+                    ...input,
+                    smokerOptions: {...smokerOptions, add: ['bambalam']},
+                  };
+
                   actor = createSmokeActor({id, input, logger});
                 });
 
@@ -567,10 +585,14 @@ describe('midnight-smoker', function () {
 
             describe('when a desired pkg manager is not fulfilled', function () {
               beforeEach(function () {
-                set(input, 'smokerOptions.pkgManager', [
-                  ...input.smokerOptions.pkgManager,
-                  'not-a-real-pkg-manager',
-                ]);
+                input = {
+                  ...input,
+                  smokerOptions: {
+                    ...smokerOptions,
+                    pkgManager: ['not-a-real-pkg-manager'],
+                  },
+                };
+
                 actor = createSmokeActor({id, input, logger});
               });
 
@@ -617,7 +639,11 @@ describe('midnight-smoker', function () {
 
             describe('when scripts provided', function () {
               beforeEach(function () {
-                set(input, 'smokerOptions.script', ['foo']);
+                input = {
+                  ...input,
+                  smokerOptions: {...smokerOptions, script: ['foo']},
+                };
+
                 actor = createSmokeActor({id, input, logger});
               });
 

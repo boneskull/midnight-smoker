@@ -30,7 +30,6 @@ import {type WorkspaceInfo} from '#schema/workspace-info';
 import {FileManager} from '#util/filemanager';
 import {serialize} from '#util/serialize';
 import stringify from 'json-stable-stringify';
-import {set} from 'lodash';
 import {memfs} from 'memfs';
 import {type Volume} from 'memfs/lib/volume';
 import path from 'node:path';
@@ -773,7 +772,7 @@ describe('midnight-smoker', function () {
 
             describe('when scripts were provided in SmokerOptions', function () {
               beforeEach(function () {
-                set(input, 'scripts', ['test']);
+                input.scripts = ['test'];
                 actor = createActor(PkgManagerMachine, {
                   id,
                   input,
@@ -801,11 +800,11 @@ describe('midnight-smoker', function () {
                 it('should send the correct events', async function () {
                   await expect(
                     runUntilEventSent(actor, [
-                      ScriptEvents.PkgManagerRunScriptsBegin,
+                      ScriptEvents.PkgManagerScriptsBegin,
                       ScriptEvents.RunScriptBegin,
                       ScriptEvents.RunScriptSkipped,
                       ScriptEvents.RunScriptEnd,
-                      ScriptEvents.PkgManagerRunScriptsOk,
+                      ScriptEvents.PkgManagerScriptsOk,
                     ]),
                     'to be fulfilled',
                   );
@@ -839,11 +838,11 @@ describe('midnight-smoker', function () {
                 it('should send the correct events', async function () {
                   await expect(
                     runUntilEventSent(actor, [
-                      ScriptEvents.PkgManagerRunScriptsBegin,
+                      ScriptEvents.PkgManagerScriptsBegin,
                       ScriptEvents.RunScriptBegin,
                       ScriptEvents.RunScriptFailed,
                       ScriptEvents.RunScriptEnd,
-                      ScriptEvents.PkgManagerRunScriptsFailed,
+                      ScriptEvents.PkgManagerScriptsFailed,
                     ]),
                     'to be fulfilled',
                   );
@@ -854,11 +853,11 @@ describe('midnight-smoker', function () {
                 it('should send the correct events', async function () {
                   await expect(
                     runUntilEventSent(actor, [
-                      ScriptEvents.PkgManagerRunScriptsBegin,
+                      ScriptEvents.PkgManagerScriptsBegin,
                       ScriptEvents.RunScriptBegin,
                       ScriptEvents.RunScriptOk,
                       ScriptEvents.RunScriptEnd,
-                      ScriptEvents.PkgManagerRunScriptsOk,
+                      ScriptEvents.PkgManagerScriptsOk,
                     ]),
                     'to be fulfilled',
                   );
@@ -875,11 +874,11 @@ describe('midnight-smoker', function () {
                 it('should send the correct events', async function () {
                   await expect(
                     runUntilEventSent(actor, [
-                      ScriptEvents.PkgManagerRunScriptsBegin,
+                      ScriptEvents.PkgManagerScriptsBegin,
                       ScriptEvents.RunScriptBegin,
                       ScriptEvents.RunScriptError,
                       ScriptEvents.RunScriptEnd,
-                      ScriptEvents.PkgManagerRunScriptsFailed,
+                      ScriptEvents.PkgManagerScriptsFailed,
                     ]),
                     'to be fulfilled',
                   );

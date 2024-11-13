@@ -4,8 +4,8 @@
  * @packageDocumentation
  */
 
-import {once} from 'lodash';
 import {type Reporter} from 'midnight-smoker/reporter';
+import {once} from 'remeda';
 
 import {createDebug} from '../debug';
 

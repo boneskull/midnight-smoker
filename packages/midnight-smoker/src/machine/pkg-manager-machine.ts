@@ -16,6 +16,7 @@ import {
   ScriptEvents,
   SKIPPED,
 } from '#constants';
+import {type Executor} from '#defs/executor';
 import {AbortError} from '#error/abort-error';
 import {CleanupError} from '#error/cleanup-error';
 import {InstallError} from '#error/install-error';
@@ -26,7 +27,6 @@ import {type PackParseError} from '#error/pack-parse-error';
 import {type RuleError} from '#error/rule-error';
 import {type SomePackError} from '#error/some-pack-error';
 import {TempDirError} from '#error/temp-dir-error';
-import {type Executor} from '#executor';
 import {
   installLogic,
   type InstallLogicInput,
@@ -76,7 +76,7 @@ import {isWorkspaceInstallManifest} from '#util/guard/workspace-install-manifest
 import {asResult, type Result} from '#util/result';
 import {serialize} from '#util/serialize';
 import {uniqueId} from '#util/unique-id';
-import {head, keyBy, map, omit, partition} from 'lodash';
+import {first as head, indexBy as keyBy, map, omit, partition} from 'remeda';
 import {
   type ActorRef,
   type ActorRefFrom,
@@ -795,7 +795,7 @@ export const PkgManagerMachine = setup({
           parentRef,
           ruleConfigs,
           ruleEnvelopes,
-          ruleMachineRefs,
+          ruleMachineRefs = {},
           spec,
         },
         enqueue,
@@ -963,7 +963,7 @@ export const PkgManagerMachine = setup({
       ({
         context: {
           error,
-          lintManifests,
+          lintManifests = [],
           ruleResultMap,
           spec: pkgManager,
           workspaceInfoResult,
@@ -974,15 +974,19 @@ export const PkgManagerMachine = setup({
         | MachineLintEvents.SmokeMachinePkgManagerLintOkEvent => {
         let hasIssues = false;
 
-        const manifestsByInstallPath = keyBy(lintManifests, 'installPath');
+        const manifestsByInstallPath = keyBy(
+          lintManifests,
+          (manifest) => manifest.installPath,
+        );
 
         // turn the ugly map into `LintResult`
         const lintResults = [...ruleResultMap].map<Schema.LintResult>(
           ([installPath, resultMap]) => {
             const results = [...resultMap.values()].flat();
-            const [okResults, failedResults] = partition(results, {
-              type: OK,
-            }) as [Schema.CheckOk[], Schema.Issue[]];
+            const [okResults, failedResults] = partition(
+              results,
+              (result) => result.type === OK,
+            ) as [Schema.CheckOk[], Schema.Issue[]];
             hasIssues = hasIssues || !isEmpty(failedResults);
 
             assert.ok(
@@ -1079,7 +1083,7 @@ export const PkgManagerMachine = setup({
         manifests: runScriptManifests,
         pkgManager,
         sender,
-        type: ScriptEvents.PkgManagerRunScriptsBegin,
+        type: ScriptEvents.PkgManagerScriptsBegin,
         workspaceInfo: workspaceInfoResult,
       }),
     ),
@@ -1100,8 +1104,8 @@ export const PkgManagerMachine = setup({
         const type = runScriptResults?.some(
           (r) => r.type === ERROR || r.type === FAILED,
         )
-          ? ScriptEvents.PkgManagerRunScriptsFailed
-          : ScriptEvents.PkgManagerRunScriptsOk;
+          ? ScriptEvents.PkgManagerScriptsFailed
+          : ScriptEvents.PkgManagerScriptsOk;
         return {
           manifests: runScriptManifests,
           pkgManager,
@@ -1195,7 +1199,7 @@ export const PkgManagerMachine = setup({
           ctx,
           parentRef,
           runScriptQueue = [],
-          scripts,
+          scripts = [],
           spec: pkgManager,
         },
         enqueue,
@@ -1339,7 +1343,7 @@ export const PkgManagerMachine = setup({
           envelope,
           runScriptActorRefs,
           runScriptQueue = [],
-          scripts,
+          scripts = [],
         },
         spawn,
       }) => {
@@ -1376,14 +1380,14 @@ export const PkgManagerMachine = setup({
     stopPackActor: enqueueActions(
       ({context: {packActorRefs = {}}, enqueue}, id: string) => {
         enqueue.stopChild(id);
-        packActorRefs = omit(packActorRefs, id);
+        packActorRefs = omit(packActorRefs, [id]);
         enqueue.assign({packActorRefs});
       },
     ),
     stopPrepareLintManifest: enqueueActions(
       ({context: {prepareLintManifestRefs = {}}, enqueue}, id: string) => {
         enqueue.stopChild(id);
-        prepareLintManifestRefs = omit(prepareLintManifestRefs, id);
+        prepareLintManifestRefs = omit(prepareLintManifestRefs, [id]);
         enqueue.assign({prepareLintManifestRefs});
       },
     ),
@@ -1434,12 +1438,13 @@ export const PkgManagerMachine = setup({
     hasContext: ({context: {ctx}}) => !!ctx,
     hasError: ({context: {error}}) => !!error,
     hasInstallError: ({context: {installError}}) => !!installError,
-    hasInstallJobs: ({context: {installQueue}}) => !isEmpty(installQueue),
-    hasInstallManifests: ({context: {installManifests}}) =>
+    hasInstallJobs: ({context: {installQueue = []}}) => !isEmpty(installQueue),
+    hasInstallManifests: ({context: {installManifests = []}}) =>
       !isEmpty(installManifests),
-    hasLintJobs: ({context: {lintQueue}}) => !isEmpty(lintQueue),
+    hasLintJobs: ({context: {lintQueue = []}}) => !isEmpty(lintQueue),
     hasPackJobs: ({context: {packQueue}}) => !isEmpty(packQueue),
-    hasRunScriptJobs: ({context: {runScriptQueue}}) => !isEmpty(runScriptQueue),
+    hasRunScriptJobs: ({context: {runScriptQueue = []}}) =>
+      !isEmpty(runScriptQueue),
     hasTempDir: ({context: {tmpdir}}) => !!tmpdir,
     isAborted: ({context: {aborted}}) => !!aborted,
     isBootstrapped: and(['hasContext', 'hasTempDir']),
@@ -1483,14 +1488,14 @@ export const PkgManagerMachine = setup({
       'hasContext',
       ({context: {linger}}) => !!linger,
     ]),
-    shouldLint: ({context: {rules, shouldLint}}) =>
+    shouldLint: ({context: {rules = [], shouldLint}}) =>
       shouldLint && !isEmpty(rules),
     shouldPruneTempDir: and([
       'hasTempDir',
       'hasContext',
       ({context: {linger}}) => !linger,
     ]),
-    shouldRunScripts: ({context: {scripts}}) => !isEmpty(scripts),
+    shouldRunScripts: ({context: {scripts = []}}) => !isEmpty(scripts),
     shouldShutdown: ({context: {shouldShutdown}}) => shouldShutdown,
   },
   types: {
@@ -1520,7 +1525,7 @@ export const PkgManagerMachine = setup({
       pkgManager: envelope.pkgManager,
       plugin: envelope.plugin,
       ruleResultMap: new Map(),
-      rules: map(ruleEnvelopes, 'rule'),
+      rules: map(ruleEnvelopes, (env) => env.rule),
       runScriptActorRefs: {},
       runScriptQueue: [],
       spec: serialize(envelope.spec),
@@ -1540,7 +1545,7 @@ export const PkgManagerMachine = setup({
   },
   entry: [
     INIT_ACTION,
-    log(({context: {scripts, shouldLint, spec, workspaceInfo}}) => {
+    log(({context: {scripts = [], shouldLint, spec, workspaceInfo}}) => {
       let msg = `💡 PkgManagerMachine ${spec.label} starting up with ${workspaceInfo.length} workspace(s)`;
       if (shouldLint) {
         msg += '; will lint';
@@ -1576,7 +1581,7 @@ export const PkgManagerMachine = setup({
     },
   },
   output: ({
-    context: {aborted, error, workspaceInfo},
+    context: {aborted, error, workspaceInfo = []},
     self: {id},
   }): PkgManagerMachineOutput => {
     const noop = isEmpty(workspaceInfo);

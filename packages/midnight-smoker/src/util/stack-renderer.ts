@@ -5,7 +5,7 @@
  */
 import {MIDNIGHT_SMOKER} from '#constants';
 import {SOURCE_ROOT} from '#root';
-import {memoize} from 'lodash';
+import memoize from 'nano-memoize';
 import PrettyError from 'pretty-error';
 
 /**
@@ -139,4 +139,4 @@ const DEFAULT_STYLES = {
  *
  * @param options - Options for the renderer
  */
-export const getStackRenderer = memoize(_getStackRenderer);
+export const getStackRenderer = memoize(_getStackRenderer, {vargs: true});

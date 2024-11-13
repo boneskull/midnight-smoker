@@ -34,7 +34,7 @@ import {createDebug} from '#util/debug';
 import {FileManager} from '#util/filemanager';
 import {isBlessedPlugin} from '#util/guard/blessed-plugin';
 import {EventEmitter} from 'events';
-import {noop} from 'lodash';
+import {doNothing as noop} from 'remeda';
 
 /**
  * XState inspector function; applied when creating a
@@ -107,7 +107,7 @@ export class Smoker extends EventEmitter {
     smokerOptions: SmokerOptions,
     {
       fileManager = FileManager.create(),
-      inspect = noop,
+      inspect = noop(),
       logic = SmokeMachine,
       pluginRegistry = PluginRegistry.create(),
     }: SmokerCapabilities = {},

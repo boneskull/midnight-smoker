@@ -1,4 +1,3 @@
-import {isError, pickBy} from 'lodash';
 import {ERROR, FAILED, OK, SKIPPED} from 'midnight-smoker/constants';
 import {
   type ExecError,
@@ -17,8 +16,9 @@ import {
   UnknownScriptError,
   type WorkspaceInfo,
 } from 'midnight-smoker/pkg-manager';
-import {fromUnknownError} from 'midnight-smoker/util';
+import {fromUnknownError, isError} from 'midnight-smoker/util';
 import path from 'node:path';
+import {pickBy} from 'remeda';
 
 import {createDebug} from '../debug';
 import {isExecError} from './util';

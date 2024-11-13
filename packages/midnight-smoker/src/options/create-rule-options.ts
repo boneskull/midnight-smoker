@@ -4,7 +4,7 @@ import {type RuleSchemaValue} from '#schema/rule-schema-value';
 import {type RuleSeverity, RuleSeveritySchema} from '#schema/rule-severity';
 import {isEmpty} from '#util/guard/common';
 import {dualCasedObjectSchema} from '#util/schema-util';
-import {memoize} from 'lodash';
+import memoize from 'nano-memoize';
 import z from 'zod';
 
 /**
@@ -106,5 +106,8 @@ export const createRuleOptionsSchema = memoize(
       .pipe(RuleOptsNormalizedSchema);
 
     return FinalRuleOptionsSchema;
+  },
+  {
+    vargs: true,
   },
 );

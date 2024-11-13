@@ -11,6 +11,10 @@ describe('midnight-smoker', function () {
           expect(Util.castArray(undefined), 'to equal', []);
         });
 
+        it('should return an empty array for an array containing only nullish values', function () {
+          expect(Util.castArray([undefined, null]), 'to equal', []);
+        });
+
         it('should return an array containing the value for non-array values', function () {
           expect(Util.castArray(1), 'to equal', [1]);
         });

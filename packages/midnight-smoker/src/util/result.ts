@@ -8,7 +8,7 @@
 import type {WorkspaceInfoSchema} from '#schema/workspace-info';
 
 import {type PackageJson} from '#schema/package-json';
-import {omit} from 'lodash';
+import * as R from 'remeda';
 import {type TupleToUnion} from 'type-fest';
 
 /**
@@ -34,7 +34,7 @@ export type ResultLike = {
  * @returns A {@link Result} object
  */
 export function asResult<T extends ResultLike>(obj: T): Result<T> {
-  return omit(obj, OmittedResultProps);
+  return R.omit(obj, OmittedResultProps);
 }
 
 /**

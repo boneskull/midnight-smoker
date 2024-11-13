@@ -6,7 +6,6 @@ import {
 } from '#machine/actor/guess-pkg-manager';
 import {type WorkspaceInfo} from '#schema/workspace-info';
 import {FileManager} from '#util/filemanager';
-import {set} from 'lodash';
 import {type IFs, memfs} from 'memfs';
 import {type Volume} from 'memfs/lib/volume';
 import sinon from 'sinon';
@@ -64,14 +63,11 @@ describe('midnight-smoker', function () {
 
         describe('when packageManager field is present in package.json', function () {
           beforeEach(function () {
+            workspaceInfo[0]!.pkgJson.packageManager = 'npm@7.20.0';
             input = {
               fileManager,
               plugins: [],
-              workspaceInfo: set(
-                workspaceInfo,
-                '[0].pkgJson.packageManager',
-                'npm@7.20.0',
-              ),
+              workspaceInfo,
             };
             actor = createActor(guessPkgManagerLogic, {input});
           });

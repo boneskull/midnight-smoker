@@ -18,8 +18,8 @@ import {type StaticRuleContext} from '#rule/static-rule-context';
 import {type SomeRuleConfig} from '#schema/rule-options';
 import {fromUnknownError} from '#util/from-unknown-error';
 import {assertSmokerError} from '#util/guard/assert/smoker-error';
+import {isNumber} from '#util/guard/common';
 import {uniqueId} from '#util/unique-id';
-import {isNumber} from 'lodash';
 import {
   type ActorRef,
   type ActorRefFrom,

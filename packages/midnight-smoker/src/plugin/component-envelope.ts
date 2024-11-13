@@ -6,7 +6,7 @@ import {type SomeRule} from '#defs/rule';
 import {type PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
 import {type SomeRuleConfig} from '#schema/rule-options';
-import {differenceWith} from 'lodash';
+import {differenceWith} from 'remeda';
 
 import {type Reporter} from '../defs/reporter';
 

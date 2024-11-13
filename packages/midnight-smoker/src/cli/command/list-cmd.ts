@@ -9,8 +9,8 @@ import {createDebug} from '#util/debug';
 import {formatUrl} from '#util/format';
 import {isBlessedPlugin} from '#util/guard/blessed-plugin';
 import {isString} from '#util/guard/common';
-import {orderBy} from 'lodash';
 import path from 'node:path';
+import {sortBy} from 'remeda';
 import terminalLink from 'terminal-link';
 import {type Writable} from 'type-fest';
 import {
@@ -89,11 +89,10 @@ export class ListCommand extends BaseCommand {
     debug('Found %d plugins', plugins.length);
 
     // blessed plugins first
-    const sortedPlugins = orderBy(
-      plugins,
+    const sortedPlugins = sortBy(plugins, [
       (plugin) => isBlessedPlugin(plugin.id),
-      ['desc'],
-    );
+      'desc',
+    ]);
 
     if (rawSmokerOptions.json) {
       BaseCommand.writeJson(sortedPlugins);

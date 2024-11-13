@@ -195,9 +195,6 @@
                       "default": false,
                       "description": "If true, ignore ESM packages (\"type\": \"module\")"
                     },
-                    "ignoreIfEsm": {
-                      "$ref": "#/properties/rules/properties/no-missing-entry-point/allOf/0/anyOf/0/properties/ignoreIfESM"
-                    },
                     "ignore-if-esm": {
                       "$ref": "#/properties/rules/properties/no-missing-entry-point/allOf/0/anyOf/0/properties/ignoreIfESM"
                     }

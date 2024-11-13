@@ -3,15 +3,15 @@
  *
  * @packageDocumentation
  */
-
-import {memoize as _memoize, once as _once} from 'lodash';
+import memoize_ from 'nano-memoize';
+import {once as once_} from 'remeda';
 
 /**
  * Per-instance "once" decorator
  *
  * @param target Method
  * @param context Decorator context
- * @see {@link _once _.once}
+ * @see {@link once_ once}
  */
 export function once<TThis, TArgs extends any[], TReturn>(
   target: (this: TThis, ...args: TArgs) => TReturn,
@@ -23,7 +23,7 @@ export function once<TThis, TArgs extends any[], TReturn>(
   context.addInitializer(function (this: TThis) {
     const func = context.access.get(this);
     // @ts-expect-error FIXME
-    this[context.name] = _once(func);
+    this[context.name] = once_(func);
   });
 }
 
@@ -32,7 +32,7 @@ export function once<TThis, TArgs extends any[], TReturn>(
  *
  * @param resolver Function to return the cache key
  * @returns The decorator
- * @see {@link _memoize _.memoize}
+ * @see {@link memoize_ memoize}
  */
 
 export function memoize<
@@ -50,7 +50,7 @@ export function memoize<
     context.addInitializer(function (this: TThis) {
       const func = context.access.get(this);
       // @ts-expect-error FIXME
-      this[context.name] = _memoize(func, resolver);
+      this[context.name] = memoize_(func, resolver);
     });
   };
 }

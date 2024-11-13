@@ -12,7 +12,7 @@ import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {type WorkspaceInfo} from '#schema/workspace-info';
 import * as assert from '#util/assert';
 import {asResult} from '#util/result';
-import {partition} from 'lodash';
+import {partition} from 'remeda';
 import {type AnyActorRef, assign, enqueueActions, setup} from 'xstate';
 
 import {type ListenEvent} from './common-event';
@@ -142,13 +142,13 @@ export const ScriptBusMachine = setup({
             },
           }): {
             andParent: true;
-            event: EventData<typeof ScriptEvents.RunScriptsBegin>;
+            event: EventData<typeof ScriptEvents.ScriptsBegin>;
           } => ({
             andParent: true,
             event: {
               pkgManagers,
               totalScripts: scripts.length,
-              type: ScriptEvents.RunScriptsBegin,
+              type: ScriptEvents.ScriptsBegin,
               workspaceInfo,
             },
           }),
@@ -169,21 +169,20 @@ export const ScriptBusMachine = setup({
           }): {
             andParent: true;
             event: EventData<
-              | typeof ScriptEvents.RunScriptsFailed
-              | typeof ScriptEvents.RunScriptsOk
+              typeof ScriptEvents.ScriptsFailed | typeof ScriptEvents.ScriptsOk
             >;
           } => {
-            const [failedResults, otherResults] = partition(runScriptResults, {
-              type: FAILED,
-            });
-            const [skippedResults, moreOtherResults] = partition(otherResults, {
-              type: SKIPPED,
-            });
+            const [failedResults, otherResults] = partition(
+              runScriptResults,
+              (result) => result.type === FAILED,
+            );
+            const [skippedResults, moreOtherResults] = partition(
+              otherResults,
+              (result) => result.type === SKIPPED,
+            );
             const [erroredResults, passedResults] = partition(
               moreOtherResults,
-              {
-                type: ERROR,
-              },
+              (result) => result.type === ERROR,
             );
 
             const failed = failedResults.length;
@@ -197,8 +196,8 @@ export const ScriptBusMachine = setup({
               `Expected passed ${passed} + skipped ${skipped} + failed ${failed} + errored ${errored} to equal total scripts ${totalScripts} * total pkg managers ${pkgManagers.length}`,
             );
             const type = failed
-              ? ScriptEvents.RunScriptsFailed
-              : ScriptEvents.RunScriptsOk;
+              ? ScriptEvents.ScriptsFailed
+              : ScriptEvents.ScriptsOk;
 
             return {
               andParent: true,
@@ -218,7 +217,7 @@ export const ScriptBusMachine = setup({
         },
       ],
       on: {
-        [ScriptEvents.PkgManagerRunScriptsBegin]: {
+        [ScriptEvents.PkgManagerScriptsBegin]: {
           actions: [
             {
               params: ({
@@ -230,19 +229,19 @@ export const ScriptBusMachine = setup({
                   workspaceInfo,
                 },
                 event: {manifests, pkgManager},
-              }): EventData<typeof ScriptEvents.PkgManagerRunScriptsBegin> => ({
+              }): EventData<typeof ScriptEvents.PkgManagerScriptsBegin> => ({
                 manifests,
                 pkgManager,
                 totalPkgManagers,
                 totalScripts,
-                type: ScriptEvents.PkgManagerRunScriptsBegin,
+                type: ScriptEvents.PkgManagerScriptsBegin,
                 workspaceInfo: workspaceInfo.map(asResult),
               }),
               type: 'report',
             },
           ],
         },
-        [ScriptEvents.PkgManagerRunScriptsFailed]: {
+        [ScriptEvents.PkgManagerScriptsFailed]: {
           actions: [
             'incrementScriptCount',
             {
@@ -252,19 +251,17 @@ export const ScriptBusMachine = setup({
                   smokerOptions: {script: scripts},
                 },
                 event,
-              }): EventData<
-                typeof ScriptEvents.PkgManagerRunScriptsFailed
-              > => ({
+              }): EventData<typeof ScriptEvents.PkgManagerScriptsFailed> => ({
                 ...event,
                 totalPkgManagers: pkgManagers.length,
                 totalScripts: scripts.length,
-                type: ScriptEvents.PkgManagerRunScriptsFailed,
+                type: ScriptEvents.PkgManagerScriptsFailed,
               }),
               type: 'report',
             },
           ],
         },
-        [ScriptEvents.PkgManagerRunScriptsOk]: {
+        [ScriptEvents.PkgManagerScriptsOk]: {
           actions: [
             'incrementScriptCount',
             {
@@ -276,11 +273,11 @@ export const ScriptBusMachine = setup({
                   },
                 },
                 event,
-              }): EventData<typeof ScriptEvents.PkgManagerRunScriptsOk> => ({
+              }): EventData<typeof ScriptEvents.PkgManagerScriptsOk> => ({
                 ...event,
                 totalPkgManagers: pkgManagers.length,
                 totalScripts,
-                type: ScriptEvents.PkgManagerRunScriptsOk,
+                type: ScriptEvents.PkgManagerScriptsOk,
               }),
               type: 'report',
             },

@@ -1,4 +1,4 @@
-import {castArray} from 'lodash';
+import {castArray} from '#util/common';
 
 import {AggregateSmokerError} from './aggregate-smoker-error';
 

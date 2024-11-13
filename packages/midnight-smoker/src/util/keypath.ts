@@ -4,7 +4,7 @@
  * @packageDocumentation
  */
 import * as assert from '#util/assert';
-import {toPath} from 'lodash';
+import {stringToPath as toPath} from 'remeda';
 import {type Tagged} from 'type-fest';
 
 /**

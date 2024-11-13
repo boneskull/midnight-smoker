@@ -14,7 +14,7 @@ import {
 } from '#util/guard/jsonifiable';
 import {isSerializable} from '#util/guard/serializable';
 import {serialize} from '#util/serialize';
-import {mapValues, pickBy} from 'lodash';
+import {mapValues, pickBy} from 'remeda';
 import {type Jsonifiable} from 'type-fest/source/jsonifiable';
 
 /**

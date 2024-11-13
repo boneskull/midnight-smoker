@@ -1,4 +1,3 @@
-import {groupBy, head, isEmpty} from 'lodash';
 import {error, info, warning} from 'log-symbols';
 import {FAILED, MIDNIGHT_SMOKER} from 'midnight-smoker/constants';
 import {type Reporter} from 'midnight-smoker/reporter';
@@ -7,7 +6,13 @@ import {
   RuleSeverities,
   type StaticRule,
 } from 'midnight-smoker/rule';
-import {hrRelativePath, isBlessedPlugin, joinLines} from 'midnight-smoker/util';
+import {
+  hrRelativePath,
+  isBlessedPlugin,
+  isEmpty,
+  joinLines,
+  R,
+} from 'midnight-smoker/util';
 import pluralize from 'pluralize';
 import {type LiteralUnion} from 'type-fest';
 
@@ -109,7 +114,7 @@ export const SimpleReporter: Reporter = {
         ({ctx: {severity}}) => severity === RuleSeverities.Error,
       );
 
-      const failedByFilepath = groupBy(
+      const failedByFilepath = R.groupBy(
         failed,
         ({ctx: {pkgJsonPath}, filepath}) => filepath ?? pkgJsonPath,
       );
@@ -143,7 +148,7 @@ export const SimpleReporter: Reporter = {
   onRuleError(_, {error}) {
     console.error(error.message);
   },
-  onRunScriptsFailed({opts}, {results}) {
+  onScriptsFailed({opts}, {results}) {
     for (const result of results) {
       if (result.type === FAILED) {
         // TODO: this is not verbose enough
@@ -197,12 +202,12 @@ export const SimpleReporter: Reporter = {
     if (workspaceInfo.length > 1) {
       msg += plural('workspace', workspaceInfo.length, true);
     } else {
-      msg += head(workspaceInfo)!.pkgName;
+      msg += R.first(workspaceInfo)!.pkgName;
     }
     if (pkgManagers.length > 1) {
       msg += ` using ${plural('package manager', pkgManagers.length, true)}`;
     } else {
-      msg += ` using ${pkgManager(head(pkgManagers)!.label)}`;
+      msg += ` using ${pkgManager(R.first(pkgManagers)!.label)}`;
     }
 
     console.error(`${info} ${msg}\n`);

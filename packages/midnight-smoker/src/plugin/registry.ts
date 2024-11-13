@@ -27,8 +27,8 @@ import {FileManager} from '#util/filemanager';
 import {isEmpty, isFunction, isString} from '#util/guard/common';
 import {uniqueId, type UniqueId} from '#util/unique-id';
 import {type Debugger} from 'debug';
-import {cloneDeep, head} from 'lodash';
 import util from 'node:util';
+import {clone as cloneDeep, first as head} from 'remeda';
 import {type SetOptional} from 'type-fest';
 import {
   type ActorRefFrom,
@@ -555,12 +555,12 @@ export class PluginRegistry implements Disposable {
     });
 
     const {
-      context: {error, registrations},
+      context: {error, registrations = {}},
     } = await race;
     if (error) {
       throw error;
     }
-    return head(registrations[id])!;
+    return head(registrations[id]!)!;
   }
 
   /**

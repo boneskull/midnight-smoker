@@ -1,7 +1,7 @@
 import type {PkgManager} from '#defs/pkg-manager';
 
 import {RangeSchema} from '#schema/version';
-import {memoize} from 'lodash';
+import memoize from 'nano-memoize';
 import {type Range} from 'semver';
 
 /**

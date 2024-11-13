@@ -11,7 +11,7 @@ import * as assert from '#util/assert';
 import {type FileManager} from '#util/filemanager';
 import {fromUnknownError} from '#util/from-unknown-error';
 import {isEmpty} from '#util/guard/common';
-import {uniq} from 'lodash';
+import {unique} from 'remeda';
 import {assign, enqueueActions, log, setup} from 'xstate';
 
 import {
@@ -114,7 +114,7 @@ export const PkgManagerLoaderMachine = setup({
   context: ({
     input: {desiredPkgManagers = [], ...input},
   }): PkgManagerLoaderMachineContext => {
-    desiredPkgManagers = uniq(
+    desiredPkgManagers = unique(
       desiredPkgManagers.map((desiredPkgManager) => desiredPkgManager.trim()),
     );
     return {

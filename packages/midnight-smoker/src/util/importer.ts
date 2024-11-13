@@ -53,7 +53,7 @@ export const mimport: ImportFn = async (
   let raw: unknown = await import(`${moduleUrl}`);
 
   // unwrap default export of CJS modules
-  if (raw && isObject(raw) && 'default' in raw) {
+  if (isObject(raw) && 'default' in raw) {
     raw = raw.default;
   }
   return raw;

@@ -20,7 +20,7 @@ export type ScriptEventData = {
    *
    * @event
    */
-  [ScriptEvents.PkgManagerRunScriptsBegin]: PkgManagerRunScriptsBeginEventData;
+  [ScriptEvents.PkgManagerScriptsBegin]: PkgManagerScriptsBeginEventData;
 
   /**
    * Emitted when a package manager has run all custom scripts and at least one
@@ -28,13 +28,13 @@ export type ScriptEventData = {
    *
    * @event
    */
-  [ScriptEvents.PkgManagerRunScriptsFailed]: PkgManagerRunScriptsFailedEventData;
+  [ScriptEvents.PkgManagerScriptsFailed]: PkgManagerScriptsFailedEventData;
 
   /**
    * Emitted when a package manager has run all custom scripts and all were
    * successful.
    */
-  [ScriptEvents.PkgManagerRunScriptsOk]: PkgManagerRunScriptsOkEventData;
+  [ScriptEvents.PkgManagerScriptsOk]: PkgManagerScriptsOkEventData;
 
   /**
    * Emitted just before a custom script is about to be run in a package's temp
@@ -80,26 +80,26 @@ export type ScriptEventData = {
   [ScriptEvents.RunScriptOk]: RunScriptOkEventData;
 
   /**
+   * Emitted if a script is skipped for a workspace (because it does not exist)
+   *
+   * @event
+   */
+  [ScriptEvents.RunScriptSkipped]: RunScriptSkippedEventData;
+
+  /**
    * Emitted once after the "checks" phase is complete (if enabled) and just
    * before custom scripts are about to run.
    *
    * @event
    */
-  [ScriptEvents.RunScriptsBegin]: RunScriptsBeginEventData;
+  [ScriptEvents.ScriptsBegin]: ScriptsBeginEventData;
 
   /**
    * Emitted once after all custom scripts have run and at least one has failed.
    *
    * @event
    */
-  [ScriptEvents.RunScriptsFailed]: RunScriptsFailedEventData;
-
-  /**
-   * Emitted if a script is skipped for a workspace (because it does not exist)
-   *
-   * @event
-   */
-  [ScriptEvents.RunScriptSkipped]: RunScriptSkippedEventData;
+  [ScriptEvents.ScriptsFailed]: ScriptsFailedEventData;
 
   /**
    * Emitted once after running a custom script completes with any status.
@@ -112,25 +112,25 @@ export type ScriptEventData = {
    *
    * @event
    */
-  [ScriptEvents.RunScriptsOk]: RunScriptsOkEventData;
+  [ScriptEvents.ScriptsOk]: ScriptsOkEventData;
 };
 
-export interface RunScriptsEventDataBase {
+export interface ScriptsEventDataBase {
   pkgManagers: Schema.StaticPkgManagerSpec[];
   totalScripts: number;
   workspaceInfo: Schema.WorkspaceInfo[];
 }
 
-export type RunScriptsBeginEventData = RunScriptsEventDataBase;
+export type ScriptsBeginEventData = ScriptsEventDataBase;
 
-export type RunScriptsOkEventData = {
+export type ScriptsOkEventData = {
   failed: number;
   passed: number;
   results: Schema.RunScriptResult[];
   skipped: number;
-} & RunScriptsEventDataBase;
+} & ScriptsEventDataBase;
 
-export type RunScriptsFailedEventData = RunScriptsOkEventData;
+export type ScriptsFailedEventData = ScriptsOkEventData;
 
 export type RunScriptEventDataBase<Result = void> = {
   manifest: Schema.RunScriptManifest;
@@ -163,17 +163,15 @@ export type RunScriptSkippedEventData =
 export type RunScriptErrorEventData =
   RunScriptEventDataBase<Schema.RunScriptResultError>;
 
-export type PkgManagerRunScriptsEventDataBase = {
+export type PkgManagerScriptsEventDataBase = {
   manifests: Schema.RunScriptManifest[];
   totalScripts: number;
 } & PkgManagerEventBase;
 
-export type PkgManagerRunScriptsBeginEventData =
-  PkgManagerRunScriptsEventDataBase;
+export type PkgManagerScriptsBeginEventData = PkgManagerScriptsEventDataBase;
 
-export type PkgManagerRunScriptsOkEventData = {
+export type PkgManagerScriptsOkEventData = {
   results: Schema.RunScriptResult[];
-} & PkgManagerRunScriptsEventDataBase;
+} & PkgManagerScriptsEventDataBase;
 
-export type PkgManagerRunScriptsFailedEventData =
-  PkgManagerRunScriptsOkEventData;
+export type PkgManagerScriptsFailedEventData = PkgManagerScriptsOkEventData;

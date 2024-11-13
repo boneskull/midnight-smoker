@@ -7,10 +7,13 @@
  */
 
 export {
+  isBoolean,
   isEmpty,
   isError,
   isFunction,
   isNumber,
-  isObject,
+  isObjectType as isObject,
   isString,
-} from 'lodash';
+} from 'remeda';
+
+export const isNull = (value: unknown): value is null => value === null;

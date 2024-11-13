@@ -8,10 +8,16 @@ import {type PkgEventBase, type PkgManagerEventBase} from './common';
 
 export {LintEvents};
 
+/**
+ * A mapping of lint event types to their data types
+ */
 export type LintEventData = {
   [LintEvents.LintBegin]: LintBeginEventData;
   [LintEvents.LintFailed]: LintFailedEventData;
   [LintEvents.LintOk]: LintOkEventData;
+  [LintEvents.PkgLintBegin]: PkgLintBeginEventData;
+  [LintEvents.PkgLintFailed]: PkgLintFailedEventData;
+  [LintEvents.PkgLintOk]: PkgLintOkEventData;
   [LintEvents.PkgManagerLintBegin]: PkgManagerLintBeginEventData;
   [LintEvents.PkgManagerLintFailed]: PkgManagerLintFailedEventData;
   [LintEvents.PkgManagerLintOk]: PkgManagerLintOkEventData;
@@ -22,14 +28,21 @@ export type LintEventData = {
   [LintEvents.RuleOk]: RuleOkEventData;
 };
 
-export type PkgLintEventBase = PkgEventBase & PkgManagerLintEventBase;
+//#region PkgLint events
+export type PkgLintEventBase = PkgEventBase;
 
 export type PkgLintBeginEventData = PkgLintEventBase;
+
+export type PkgLintOkEventData = {
+  results: Schema.LintResultOk[];
+} & PkgLintEventBase;
 
 export type PkgLintFailedEventData = {
   results: Schema.LintResult[];
 } & PkgLintEventBase;
+//#endregion
 
+//#region PkgManagerLint events
 export type PkgManagerLintBeginEventData = PkgManagerLintEventBase;
 
 export type PkgManagerLintEventBase = {
@@ -43,7 +56,9 @@ export type PkgManagerLintFailedEventData = {
 export type PkgManagerLintOkEventData = {
   results: Schema.LintResult[];
 } & PkgManagerLintEventBase;
+//#endregion
 
+//#region Rule events
 export type RuleEventDataBase = {
   config: Schema.SomeRuleConfig;
   manifest: Result<
@@ -74,7 +89,9 @@ export type RuleErrorEventData = {
 export type RuleOkEventData = {
   result: Schema.CheckResultOk;
 } & RuleEventDataBase;
+//#endregion
 
+//#region Top-level lint events
 export type LintEventDataBase = {
   config: Schema.BaseRuleConfigRecord;
   pkgManagers: Schema.StaticPkgManagerSpec[];
@@ -91,3 +108,4 @@ export type LintOkEventData = {
 export type LintFailedEventData = {
   results: Schema.LintResult[];
 } & LintEventDataBase;
+//#endregion

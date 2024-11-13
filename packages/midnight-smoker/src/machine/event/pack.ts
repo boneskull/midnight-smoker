@@ -22,8 +22,8 @@ import {
 import {type Except} from 'type-fest';
 
 import {
-  type ComputedPkgEventFields,
-  type ComputedPkgManagerEventFields,
+  type ComputedPkgEventField,
+  type ComputedPkgManagerEventField,
   type MachineEvent,
 } from './common';
 
@@ -47,7 +47,7 @@ export type SmokeMachinePackEvent =
  */
 export type SmokeMachinePkgManagerPackBeginEvent = MachineEvent<
   typeof PackEvents.PkgManagerPackBegin,
-  Omit<PkgManagerPackBeginEventData, ComputedPkgManagerEventFields>
+  Omit<PkgManagerPackBeginEventData, ComputedPkgManagerEventField>
 >;
 
 /**
@@ -59,7 +59,7 @@ export type SmokeMachinePkgManagerPackBeginEvent = MachineEvent<
  */
 export type SmokeMachinePkgManagerPackFailedEvent = MachineEvent<
   typeof PackEvents.PkgManagerPackFailed,
-  Omit<PkgManagerPackFailedEventData, ComputedPkgManagerEventFields>
+  Omit<PkgManagerPackFailedEventData, ComputedPkgManagerEventField>
 >;
 
 /**
@@ -69,7 +69,7 @@ export type SmokeMachinePkgManagerPackFailedEvent = MachineEvent<
  */
 export type SmokeMachinePkgManagerPackOkEvent = MachineEvent<
   typeof PackEvents.PkgManagerPackOk,
-  Omit<PkgManagerPackOkEventData, ComputedPkgManagerEventFields>
+  Omit<PkgManagerPackOkEventData, ComputedPkgManagerEventField>
 >;
 
 /**
@@ -81,7 +81,7 @@ export type SmokeMachinePkgPackBeginEvent = MachineEvent<
   typeof PackEvents.PkgPackBegin,
   Except<
     PkgPackBeginEventData,
-    ComputedPkgEventFields,
+    ComputedPkgEventField,
     {requireExactProps: true}
   >
 >;
@@ -95,7 +95,7 @@ export type SmokeMachinePkgPackFailedEvent = MachineEvent<
   typeof PackEvents.PkgPackFailed,
   Except<
     PkgPackFailedEventData,
-    ComputedPkgEventFields,
+    ComputedPkgEventField,
     {requireExactProps: true}
   >
 >;
@@ -107,5 +107,5 @@ export type SmokeMachinePkgPackFailedEvent = MachineEvent<
  */
 export type SmokeMachinePkgPackOkEvent = MachineEvent<
   typeof PackEvents.PkgPackOk,
-  Except<PkgPackOkEventData, ComputedPkgEventFields, {requireExactProps: true}>
+  Except<PkgPackOkEventData, ComputedPkgEventField, {requireExactProps: true}>
 >;

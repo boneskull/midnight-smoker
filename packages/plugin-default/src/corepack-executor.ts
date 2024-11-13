@@ -4,11 +4,9 @@
  * @packageDocumentation
  */
 
-import {defaultsDeep} from 'lodash';
 import {constant} from 'midnight-smoker/constants';
 import {type ExecOptions, type Executor} from 'midnight-smoker/executor';
 import {exec} from 'midnight-smoker/util';
-import {type SpawnOptions} from 'node:child_process';
 import path from 'node:path';
 
 /**
@@ -36,11 +34,7 @@ export const corepackExecutor: Executor = async (spec, args, opts = {}) => {
   const {nodeOptions = {}, verbose} = opts;
 
   const options: ExecOptions = {
-    // defaultsDeep is not well-typed
-    nodeOptions: defaultsDeep(
-      {...nodeOptions},
-      {env: DEFAULT_ENV},
-    ) as SpawnOptions,
+    nodeOptions: {env: {...DEFAULT_ENV, ...nodeOptions.env}, ...nodeOptions},
     verbose,
   };
   return exec(COREPACK_PATH, [spec.label, ...args], options);

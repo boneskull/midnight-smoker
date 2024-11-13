@@ -8,10 +8,10 @@ export * from './format';
 
 export {fromUnknownError} from './from-unknown-error';
 
-export {isBlessedPlugin} from './guard/blessed-plugin';
-
-export {isSmokerError} from './guard/smoker-error';
+export * from './guard';
 
 export * from './keypath';
 
 export * from './schema-util';
+
+export * as R from 'remeda';

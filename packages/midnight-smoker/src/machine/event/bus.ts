@@ -27,5 +27,5 @@ export type BusEventName =
   | typeof Events.LintOk
   | typeof Events.PackFailed
   | typeof Events.PackOk
-  | typeof Events.RunScriptsFailed
-  | typeof Events.RunScriptsOk;
+  | typeof Events.ScriptsFailed
+  | typeof Events.ScriptsOk;

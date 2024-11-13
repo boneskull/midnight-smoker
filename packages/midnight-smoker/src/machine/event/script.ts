@@ -12,9 +12,9 @@
  * @todo Might need `*Pkg*`-type events here.
  */
 import {
-  type PkgManagerRunScriptsBeginEventData,
-  type PkgManagerRunScriptsFailedEventData,
-  type PkgManagerRunScriptsOkEventData,
+  type PkgManagerScriptsBeginEventData,
+  type PkgManagerScriptsFailedEventData,
+  type PkgManagerScriptsOkEventData,
   type RunScriptBeginEventData,
   type RunScriptEndEventData,
   type RunScriptErrorEventData,
@@ -52,8 +52,8 @@ export type ComputedRunScriptFields = 'totalScripts';
  * @event
  */
 export type SmokeMachinePkgManagerRunScriptsBeginEvent = MachineEvent<
-  typeof ScriptEvents.PkgManagerRunScriptsBegin,
-  Omit<PkgManagerRunScriptsBeginEventData, ComputedPkgManagerRunScriptsFields>
+  typeof ScriptEvents.PkgManagerScriptsBegin,
+  Omit<PkgManagerScriptsBeginEventData, ComputedPkgManagerRunScriptsFields>
 >;
 
 /**
@@ -62,16 +62,16 @@ export type SmokeMachinePkgManagerRunScriptsBeginEvent = MachineEvent<
  * @event
  */
 export type SmokeMachinePkgManagerRunScriptsFailedEvent = MachineEvent<
-  typeof ScriptEvents.PkgManagerRunScriptsFailed,
-  Omit<PkgManagerRunScriptsFailedEventData, ComputedPkgManagerRunScriptsFields>
+  typeof ScriptEvents.PkgManagerScriptsFailed,
+  Omit<PkgManagerScriptsFailedEventData, ComputedPkgManagerRunScriptsFields>
 >;
 
 /**
  * Received from `PkgManagerMachine` when all scripts have run successfully.
  */
 export type SmokeMachinePkgManagerRunScriptsOkEvent = MachineEvent<
-  typeof ScriptEvents.PkgManagerRunScriptsOk,
-  Omit<PkgManagerRunScriptsOkEventData, ComputedPkgManagerRunScriptsFields>
+  typeof ScriptEvents.PkgManagerScriptsOk,
+  Omit<PkgManagerScriptsOkEventData, ComputedPkgManagerRunScriptsFields>
 >;
 
 /**

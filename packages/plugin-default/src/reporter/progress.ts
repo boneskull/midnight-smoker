@@ -195,7 +195,7 @@ export const ProgressReporter: Reporter<ProgressReporterContext> = {
     const spec = formatPkgManager(pkgManager);
     bars.get(`pack-${spec}`)?.stop();
   },
-  onPkgManagerRunScriptsBegin(
+  onPkgManagerScriptsBegin(
     {bars, multiBar},
     {pkgManager, totalPkgManagers, totalScripts, workspaceInfo},
   ) {
@@ -212,12 +212,12 @@ export const ProgressReporter: Reporter<ProgressReporterContext> = {
     });
     bars.set(`scripts-${spec}`, bar);
   },
-  onPkgManagerRunScriptsFailed({bars}, {pkgManager}) {
+  onPkgManagerScriptsFailed({bars}, {pkgManager}) {
     bars.get('scripts')?.increment();
     const spec = formatPkgManager(pkgManager);
     bars.get(`scripts-${spec}`)?.stop();
   },
-  onPkgManagerRunScriptsOk({bars}, {pkgManager}) {
+  onPkgManagerScriptsOk({bars}, {pkgManager}) {
     bars.get('scripts')?.increment();
     const spec = formatPkgManager(pkgManager);
     bars.get(`scripts-${spec}`)?.stop();
@@ -275,7 +275,7 @@ export const ProgressReporter: Reporter<ProgressReporterContext> = {
       bars.get(`scripts-${spec}`)?.increment();
     }
   },
-  onRunScriptsBegin({bars, multiBar}, {pkgManagers, totalScripts}) {
+  onScriptsBegin({bars, multiBar}, {pkgManagers, totalScripts}) {
     if (pkgManagers.length === 1) {
       return;
     }
@@ -287,10 +287,10 @@ export const ProgressReporter: Reporter<ProgressReporterContext> = {
       }),
     );
   },
-  onRunScriptsFailed({bars}) {
+  onScriptsFailed({bars}) {
     bars.get('scripts')?.stop();
   },
-  onRunScriptsOk({bars}) {
+  onScriptsOk({bars}) {
     bars.get('scripts')?.stop();
   },
   onSmokeBegin({multiBar, pkgJson}, {pkgManagers, plugins}) {

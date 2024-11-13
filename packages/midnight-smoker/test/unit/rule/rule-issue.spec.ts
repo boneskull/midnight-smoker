@@ -8,7 +8,7 @@ import {type StaticRuleContext} from '#rule/static-rule-context';
 import {type StaticRule} from '#schema/static-rule';
 import {asResult} from '#util/result';
 import stringify from 'json-stable-stringify';
-import {omit} from 'lodash';
+import {omit} from 'remeda';
 import sinon from 'sinon';
 import unexpected from 'unexpected';
 
@@ -75,7 +75,7 @@ describe('midnight-smoker', function () {
         describe('constructor', function () {
           it('should correctly initialize properties', function () {
             expect(issue, 'to satisfy', {
-              ctx: omit(params.ctx, 'pkgJson'),
+              ctx: omit(params.ctx, ['pkgJson']),
               data: params.data,
               error: params.error,
               id: expect.it('to match', /^issue\..+$/),
