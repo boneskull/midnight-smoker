@@ -4,12 +4,12 @@ on: [push, pull_request]
 
 jobs:
   build:
-    name: Node.js v${{ matrix.node_version }} / ${{ matrix.os }}
-    runs-on: ubuntu-latest
     strategy:
       matrix:
-        node_version: [18, 20]
+        node_version: [20, 22]
         os: [ubuntu-latest, windows-latest]
+    name: Node.js v${{ matrix.node_version }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       - name: Use Node.js ${{ matrix.node_version }}

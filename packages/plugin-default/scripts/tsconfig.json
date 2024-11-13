@@ -1,0 +1,7 @@
+{
+  "extends": "../../../.config/tsconfig.workspace.json",
+  "include": ["*.ts"],
+  "compilerOptions": {
+    "noEmit": true
+  }
+}

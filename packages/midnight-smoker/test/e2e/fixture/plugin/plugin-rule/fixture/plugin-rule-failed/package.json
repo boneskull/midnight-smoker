@@ -1,0 +1,5 @@
+{
+  "name": "plugin-rule-failed",
+  "version": "1.0.0",
+  "description": "should fail the rule in the plugin-rule fixture"
+}

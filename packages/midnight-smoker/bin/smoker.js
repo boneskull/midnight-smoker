@@ -1,5 +1,6 @@
 #!/usr/bin/env node
+try {
+  require('source-map-support').install();
+} catch {}
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-require('source-map-support').install();
-require('../dist/cli.js');
+require('../dist/src/cli/index.js');

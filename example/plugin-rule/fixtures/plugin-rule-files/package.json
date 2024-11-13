@@ -1,0 +1,23 @@
+{
+  "name": "plugin-rule-files",
+  "version": "1.0.0",
+  "description": "use the `files` option of the plugin-rule example",
+  "license": "Apache-2.0",
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "start": "smoker"
+  },
+  "smoker": {
+    "plugin": [
+      "../../esm"
+    ],
+    "rules": {
+      "example/no-unlicensed": {
+        "files": [
+          "APACHE-LICENSE"
+        ]
+      }
+    }
+  }
+}

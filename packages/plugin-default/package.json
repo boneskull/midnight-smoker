@@ -1,0 +1,88 @@
+{
+  "name": "@midnight-smoker/plugin-default",
+  "version": "0.0.0",
+  "description": "Default behavior for midnight-smoker",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/boneskull/midnight-smoker.git",
+    "directory": "packages/plugin-default"
+  },
+  "homepage": "https://github.com/boneskull/midnight-smoker/tree/main/packages/plugin-default",
+  "bugs": {
+    "url": "https://github.com/boneskull/midnight-smoker/issues"
+  },
+  "author": "Christopher Hiller <boneskull@boneskull.com> (https://boneskull.com/)",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": "^18.0.0 || ^20.0.0 || ^22.0.0",
+    "npm": ">=8.6.0"
+  },
+  "main": "./dist/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "typedoc": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json",
+    "./data": {
+      "types": "./dist/package-manager/data.d.ts",
+      "typedoc": "./src/package-manager/data.ts",
+      "default": "./dist/package-manager/data.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "./data",
+    "./dist",
+    "./src",
+    "CHANGELOG.md",
+    "!*.tsbuildinfo",
+    "!tsconfig.json"
+  ],
+  "keywords": [
+    "ts",
+    "typescript",
+    "midnight-smoker",
+    "smoker",
+    "smoke",
+    "test",
+    "testing"
+  ],
+  "scripts": {
+    "prepublishOnly": "tsx ./scripts/update-pm-versions.ts",
+    "test": "run-s test:unit test:smoke",
+    "test:ci": "run-s test:unit test:e2e test:smoke",
+    "test:e2e": "mocha \"test/e2e/**/*.spec.ts\" -p --timeout 5s --slow 2500 --fgrep \"[snapshot]\" --invert",
+    "test:smoke": "smoker",
+    "test:snapshots-only": "npm run test:e2e -- --fgrep \"[snapshot]\"",
+    "test:unit": "mocha \"test/unit/**/*.spec.ts\"",
+    "test:update-snapshots": "cross-env SNAPSHOT_UPDATE=1 npm run test:e2e -- --fgrep \"[snapshot]\""
+  },
+  "peerDependencies": {
+    "midnight-smoker": "^8.0.0"
+  },
+  "dependencies": {
+    "chalk": "4.1.2",
+    "cli-progress": "3.12.0",
+    "corepack": "0.29.3",
+    "debug": "4.3.4",
+    "glob": "10.3.10",
+    "is-file-esm": "1.0.0",
+    "json-stable-stringify": "1.0.2",
+    "log-symbols": "4.1.0",
+    "ora": "5.4.1",
+    "pluralize": "8.0.0",
+    "type-fest": "4.19.0"
+  },
+  "devDependencies": {
+    "@midnight-smoker/test-util": "file:../test-util",
+    "@types/cli-progress": "3.11.5",
+    "@types/is-file-esm": "1.0.1",
+    "@types/json-stable-stringify": "1.0.36",
+    "midnight-smoker": "8.0.0",
+    "semver": "7.5.4",
+    "strip-ansi": "5.2.0"
+  },
+  "access": "public"
+}

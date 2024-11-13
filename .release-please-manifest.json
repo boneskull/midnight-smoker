@@ -1,3 +1,5 @@
 {
-  "packages/midnight-smoker": "7.0.4"
+  "packages/midnight-smoker": "7.0.4",
+  "packages/plugin-default": "0.0.0",
+  "packages/test-util": "0.0.0"
 }

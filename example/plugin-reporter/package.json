@@ -1,0 +1,32 @@
+{
+  "name": "example-reporter-plugin",
+  "version": "1.0.0",
+  "description": "Example of a midnight-smoker plugin providing a custom reporter",
+  "workspaces": [
+    "fixtures/*"
+  ],
+  "files": [
+    "index.js"
+  ],
+  "keywords": [
+    "midnight-smoker-plugin"
+  ],
+  "scripts": {
+    "prepare": "tsc",
+    "start": "npm --workspaces start"
+  },
+  "peerDependencies": {
+    "midnight-smoker": "file:../../packages/midnight-smoker"
+  },
+  "devDependencies": {
+    "@tsconfig/node18": "^18.2.2",
+    "midnight-smoker": "file:../../packages/midnight-smoker",
+    "typescript": "^5.3.2"
+  },
+  "smoker": {
+    "plugin": [
+      "./index.js"
+    ],
+    "reporter": "example-reporter-plugin/dot"
+  }
+}

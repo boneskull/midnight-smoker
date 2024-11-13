@@ -1,0 +1,19 @@
+{
+  "extends": "../../../.config/tsconfig.src.json",
+  "compilerOptions": {
+    "outDir": "../dist",
+    "rootDir": ".",
+    "paths": {
+      "midnight-smoker": ["../../midnight-smoker"]
+    }
+  },
+  "include": ["."],
+  "references": [
+    {
+      "path": "../../midnight-smoker/tsconfig.json"
+    },
+    {
+      "path": "../data/tsconfig.json"
+    }
+  ]
+}
