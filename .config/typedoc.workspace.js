@@ -1,7 +1,6 @@
 // @ts-check
 
 const path = require('node:path');
-const fs = require('node:fs');
 
 /**
  * Generates `entryPoints` for TypeDoc for a workspace.
@@ -18,15 +17,12 @@ module.exports = function (cwd) {
   /**
    * @type {import('type-fest').PackageJson}
    */
-  const pkgJson = JSON.parse(
-    fs.readFileSync(path.join(cwd, 'package.json'), 'utf-8'),
-  );
+  const pkgJson = require(path.join(cwd, 'package.json'));
+
   const {exports} = pkgJson;
-  if (!exports) {
-    throw new TypeError('package.json does not have exports');
-  }
-  if (typeof exports !== 'object') {
-    throw new TypeError('package.json exports is not an object');
+  if (!exports || typeof exports !== 'object') {
+    // should make typedoc barf
+    return {};
   }
 
   return {
@@ -48,5 +44,6 @@ module.exports = function (cwd) {
       ),
     excludeInternal: true,
     excludePrivate: true,
+    excludeExternals: true,
   };
 };

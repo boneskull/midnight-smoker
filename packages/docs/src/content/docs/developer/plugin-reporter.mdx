@@ -1,0 +1,121 @@
+---
+title: Creating a Reporter
+description: How to write a custom reporter for midnight-smoker
+---
+
+A _reporter_ is a component which attaches listener functions to an [`EventEmitter`](https://nodejs.org/api/events.html#class-eventemitter)-like object, and generates output from the events it receives.
+
+Since most of the implementation of a reporter will likely be concentrated on listening for events, let's [learn about the events](#events) that `midnight-smoker` emits.
+
+## Events
+
+Reporters can listen for events emitted during _both_ the [`lint` operation](/reference/cli#command-lint) _and_ the [`run-script` operation](/reference/cli#command-run-script-run).
+
+Events marked with ❌ are considered "fatal" and will _always_ cause `smoker` to exit with a non-zero exit code.
+
+:::tip[Packages With an S]
+
+Recall that `midnight-smoker` can run against multiple packages (workspaces) _and_ multiple package managers. Take care to note which events can be emitted an exponential number of times!
+
+:::
+
+### Top-Level Events
+
+_Events related to the entire run._
+
+> These events are emitted _only once_.
+
+- `SmokeBegin`: emitted just before `midnight-smoker` will begin linting and/or running scripts
+- `SmokeOk`: emitted after `midnight-smoker` has completed successfully
+- ❌ `SmokeFailed`: emitted if `midnight-smoker` fails for one of the following reasons:
+  - `PackFailed` was emitted
+  - `InstallFailed` was emitted
+  - `RunRuleFailed` was emitted _and_ the event severity was `error`
+  - `RuleError` was emitted
+  - `UnknownError` was emitted
+- `Lingered`: emitted if the [`linger` option](/reference/config#linger) is `true`
+- `End`: emitted just before `midnight-smoker` will exit
+
+### Packing Events
+
+_Events related to creating [package artifacts](#package-artifacts)._
+
+> These events are emitted _only once_.
+
+- `PackBegin`: emitted just before packages will be packed
+- `PackOk`: emitted after packages have been packed successfully
+- ❌ `PackFailed`: emitted if a package fails to pack
+
+### Installation Events
+
+_Events related to installing package artifact._
+
+> These events are emitted _only once_.
+
+- `InstallBegin`: emitted just before `midnight-smoker` will install package artifacts
+- `InstallOk`: emitted after a package artifact has been installed successfully
+- ❌ `InstallFailed`: emitted if a package artifact fails to install
+
+### Linting/Rule Events
+
+_Events related to linting a package artifact._
+
+> These events are emitted _only once_.
+
+- `RunRulesBegin`: emitted just before `midnight-smoker` will run rules against package artifacts
+- `RunRulesOk`: emitted after linting succeeds without issue
+- `RunRulesFailed`: emitted if linting fails with one or more issues
+- ❌ `RuleError`: emitted if a rule throws an exception or rejects
+
+> These events are emitted _once per rule per package_.
+
+- `RunRuleBegin`: emitted just before a _specific_ rule is run against a package artifact
+- `RunRuleOk`: emitted after _specific_ rule succeeds without issue
+- `RunRuleFailed`: emitted if a _specific_ rule fails with one or more issues
+
+### Custom Script Events
+
+_Events related to execution of custom script(s)._
+
+> These events are emitted _only once_.
+
+- `RunScriptsBegin`: emitted just before `midnight-smoker` will run custom scripts
+- `RunScriptsOk`: emitted after custom scripts have been run successfully
+- ❌ `RunScriptsFailed`: emitted if a custom script fails
+
+> These events are emitted _once per script per package per package manager_.
+
+- `RunScriptBegin`: emitted just before a _specific_ script is run
+- `RunScriptOk`: emitted after a _specific_ script succeeds
+- ❌ `RunScriptFailed`: emitted if a _specific_ script fails
+
+## Example Reporter: `dot`
+
+Here's an example reporter which mimics the `dot` reporter from [Mocha](https://mochajs.org):
+
+{/* prettier-ignore */}
+```ts file=../../../../../../example/plugin-reporter/index.ts title="plugin-reporter.ts"
+```
+
+We see that we don't need to type these event names by hand, since we can get them from the `PluginAPI.Events.SmokerEvent` object, which is an enum-like object (but not a TS `enum`; you're welcome):
+
+{/* prettier-ignore */}
+```ts {4,10-11}
+import type {PluginFactory} from 'midnight-smoker/plugin';
+
+export const plugin: PluginFactory = (api) => {
+  const {SmokerEvent} = api.Event;
+  // ...
+  api.defineReporter({
+    // ...
+    reporter({emitter}) {
+      emitter
+        .once(SmokerEvent.PackOk, dot)
+        .once(SmokerEvent.PackFailed, bang)
+      // ...
+    }
+  })
+}
+```
+
+Of course, this example reporter does not actually _do_ anything with the events it receives other than shuffle them into "dot" and "bang" buckets. However, each event payload is fully-typed, so if you _did_ want to do something like—print useful information—that's _totally_ on the table.

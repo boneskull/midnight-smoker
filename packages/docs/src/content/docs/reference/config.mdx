@@ -1,0 +1,585 @@
+---
+title: Configuration
+description: 'Configuring midnight-smoker'
+---
+
+import {Tabs, TabItem} from '@astrojs/starlight/components';
+
+I know what you're thinking: _"I just don't have enough config files!"_ **midnight-smoker** solves this problem by providing you _the opportunity to add another one_.
+
+## Conventions
+
+For the purposes of this documentation, we'll use the following conventions:
+
+- `kebab-case` will be used as the "canonical" name.
+- JSON examples will use `kebab-case`.
+- JavaScript examples will use `camelCase`.
+
+Some config file options are only used when run with certain CLI commands. This is denoted in the documentation below with the **Command** label.
+
+## Configuration Files
+
+Configuration may be specified in the `smoker` field of your `package.json`, or one of:
+
+- `.smokerrc.(json|js|cjs|mjs)`
+- `smoker.config.(json|js|cjs|mjs)`
+- `.config/smokerrc.(json|js|cjs|mjs)`
+- `.config/smoker.config.(json|js|cjs|mjs)`
+
+`smoker` will look for the closest of these files from the current working directory.
+
+## Compared to the CLI
+
+This section explains some arguably-important things about how config options relate to CLI options.
+
+### Equivalent Options
+
+_Most_ config options have equivalent [command-line options](/reference/cli).
+
+Generally, _if_ the type of a configuration option is more complex than an array of strings (which can be expressed by repeating the option on the CLI), the option _will not_ be available on the CLI. This is because there's _no good way to express it_. Fight me.
+
+### CLI &gt; Config
+
+The CLI takes precedence over any options set in a config file.
+
+In other words, if an option is provided on the command-line, it will _override_ the equivalent configuration option. Which is probably what you expect to happen.
+
+## Configuration Options
+
+:::note[Option Names]
+
+In a config file, option names may be specified in `camelCase` or `kebab-case`. For example, `includeRoot` and `include-root` are equivalent.
+
+:::
+
+### `add`
+
+- **Summary:** An array of packages to be installed alongside your package(s) prior to running custom smoke tests.
+- **Type:** `string | string[]`
+- **Default:** `[]`
+- **Command**: `run-script` / `run`
+
+:::caution[Here Be Dragons]
+
+Read the [scary stuff about `--add`](/reference/cli#--add) before using this option.
+
+:::
+
+#### `add` Examples
+
+<Tabs>
+  <TabItem label="JSON">
+
+```json title="smoker.config.json"
+{
+  "add": ["mocha", "chai"]
+}
+```
+
+  </TabItem>
+  <TabItem label="CJS">
+
+```js title="smoker.config.cjs"
+module.exports = {
+  add: ['mocha', 'chai'],
+};
+```
+
+  </TabItem>
+  <TabItem label="ESM">
+
+```js title="smoker.config.mjs"
+export default {
+  add: ['mocha', 'chai'],
+};
+```
+
+  </TabItem>
+
+</Tabs>
+
+### `all`
+
+**Operate on all workspaces.**
+
+- **Type:** `boolean`
+- **Default:** `false`
+
+The workspace root is excluded by default. To include it, see [`include-root`](#include-root).
+
+#### `all` Examples
+
+<Tabs>
+  <TabItem label="JSON">
+
+```json title="smoker.config.json"
+{
+  "all": true
+}
+```
+
+  </TabItem>
+  <TabItem label="CJS">
+
+```js title="smoker.config.cjs"
+module.exports = {
+  all: true,
+};
+```
+
+  </TabItem>
+  <TabItem label="ESM">
+
+```js title="smoker.config.mjs"
+export default {
+  all: true,
+};
+```
+
+  </TabItem>
+
+</Tabs>
+
+### `bail`
+
+**When running custom scripts, abort upon the first non-zero script exit.**
+
+- **Type:** `boolean`
+- **Default:** `false`
+- **Alias:** `fail-fast`
+- **Command**: `run-script` / `run`
+
+#### `bail` Examples
+
+<Tabs>
+  <TabItem label="JSON">
+
+```json title="smoker.config.json"
+{
+  "bail": true
+}
+```
+
+  </TabItem>
+  <TabItem label="CJS">
+
+```js title="smoker.config.cjs"
+module.exports = {
+  bail: true,
+};
+```
+
+  </TabItem>
+  <TabItem label="ESM">
+
+```js title="smoker.config.mjs"
+export default {
+  bail: true,
+};
+```
+
+  </TabItem>
+
+</Tabs>
+
+### `lint`
+
+**If `false`, do not run the `lint` command.**
+
+- **Type:** `boolean`
+- **Default:** `true`
+- **Command**: `run-script` / `run`
+
+#### `lint` Examples
+
+<Tabs>
+  <TabItem label="JSON">
+
+```json title="smoker.config.json"
+{
+  "lint": false
+}
+```
+
+  </TabItem>
+  <TabItem label="CJS">
+
+```js title="smoker.config.cjs"
+module.exports = {
+  lint: false,
+};
+```
+
+  </TabItem>
+  <TabItem label="ESM">
+
+```js title="smoker.config.mjs"
+export default {
+  lint: false,
+};
+```
+
+  </TabItem>
+
+</Tabs>
+
+### `include-root`
+
+**If [`all`](#all) is `true`, operate on the workspace root as well.**
+
+- **Type:** `boolean`
+- **Default:** `false`
+
+Providing `include-root: true` without `all: true` is considered an error.
+
+#### `include-root` Examples
+
+<Tabs>
+  <TabItem label="JSON">
+
+```json title="smoker.config.json"
+{
+  "all": true,
+  "include-root": true
+}
+```
+
+  </TabItem>
+  <TabItem label="CJS">
+
+```js title="smoker.config.cjs"
+module.exports = {
+  all: true,
+  includeRoot: true,
+};
+```
+
+  </TabItem>
+  <TabItem label="ESM">
+
+```js title="smoker.config.mjs"
+export default {
+  all: true,
+  includeRoot: true,
+};
+```
+
+  </TabItem>
+
+</Tabs>
+
+### `json`
+
+**Output results as JSON.**
+
+- **Type:** `boolean`
+- **Default:** `false`
+
+This is an alias for `--reporter=json`; see [`reporter`](#reporter).
+
+#### `json` Examples
+
+<Tabs>
+  <TabItem label="JSON">
+
+```json title="smoker.config.json"
+{
+  "json": true
+}
+```
+
+  </TabItem>
+  <TabItem label="CJS">
+
+```js title="smoker.config.cjs"
+module.exports = {
+  json: true,
+};
+```
+
+  </TabItem>
+  <TabItem label="ESM">
+
+```js title="smoker.config.mjs"
+export default {
+  json: true,
+};
+```
+
+  </TabItem>
+
+</Tabs>
+
+### `linger`
+
+**After completion, `midnight-smoker` will leave its temp directories intact; the directories will be printed to `stdout`.**
+
+- **Type:** `boolean`
+- **Default:** `false`
+
+This is handy if you're having a tough time debugging a failure.
+
+:::caution[Don't Let linger Linger]
+
+`linger` is intended to be used with the command-line interface as a one-off. Leaving it in your config file could create a whole lot of temp directories.
+
+:::
+
+#### `linger` Examples
+
+<Tabs>
+  <TabItem label="JSON">
+
+```json title="smoker.config.json"
+{
+  "linger": true
+}
+```
+
+  </TabItem>
+  <TabItem label="CJS">
+
+```js title="smoker.config.cjs"
+module.exports = {
+  linger: true,
+};
+```
+
+  </TabItem>
+  <TabItem label="ESM">
+
+```js title="smoker.config.mjs"
+export default {
+  linger: true,
+};
+```
+
+  </TabItem>
+
+</Tabs>
+
+### `loose`
+
+**Do not fail if the specified custom script is not found in a workspace's `package.json`.**
+
+- **Type:** `boolean`
+- **Default:** `false`
+- **Alias:** `if-present`
+- **Command**: `run-script` / `run`
+
+#### `loose` Examples
+
+<Tabs>
+  <TabItem label="JSON">
+
+```json title="smoker.config.json"
+{
+  "loose": true
+}
+```
+
+  </TabItem>
+  <TabItem label="CJS">
+
+```js title="smoker.config.cjs"
+module.exports = {
+  loose: true,
+};
+```
+
+  </TabItem>
+  <TabItem label="ESM">
+
+```js title="smoker.config.mjs"
+export default {
+  loose: true,
+};
+```
+
+  </TabItem>
+
+</Tabs>
+
+### `plugin`
+
+**Specify one or more plugins to use.**
+
+- **Type:** `string | string[]`
+- **Default:** `[]`
+
+#### `plugin` Examples
+
+<Tabs>
+  <TabItem label="JSON">
+
+```json title="smoker.config.json"
+{
+  "plugin": ["@midnight-smoker/plugin-typescript"]
+}
+```
+
+  </TabItem>
+  <TabItem label="CJS">
+
+```js title="smoker.config.cjs"
+module.exports = {
+  plugin: ['@midnight-smoker/plugin-typescript'],
+};
+```
+
+  </TabItem>
+  <TabItem label="ESM">
+
+```js title="smoker.config.mjs"
+export default {
+  plugin: ['@midnight-smoker/plugin-typescript'],
+};
+```
+
+  </TabItem>
+
+</Tabs>
+
+### `reporter`
+
+**Specify one or more [reporters](/reference/reporters) to use.**
+
+- **Type:** `string | string[]`
+- **Default:** `console`
+
+#### `reporter` Examples
+
+<Tabs>
+  <TabItem label="JSON">
+
+```json title="smoker.config.json"
+{
+  "reporter": ["json"]
+}
+```
+
+  </TabItem>
+  <TabItem label="CJS">
+
+```js title="smoker.config.cjs"
+module.exports = {
+  reporter: ['json'],
+};
+```
+
+  </TabItem>
+  <TabItem label="ESM">
+
+```js title="smoker.config.mjs"
+export default {
+  reporter: ['json'],
+};
+```
+
+  </TabItem>
+
+</Tabs>
+
+### `rules`
+
+**Rule-specific configuration.**
+
+- **Type:** `Record<RuleName, RuleSeverity | [RuleSeverity, RuleOptions] | RuleOptions`
+- **Default:** `Record<RuleName, RuleSpecificDefaults>`
+
+In the type above, `RuleOptions` refers to rule-specific options; refer to the [Built-in Rules Reference](/reference/rules) for more information.
+
+`RuleSeverity` refers to a [rule severity](#rule-severity) of `error`, `warn`, or `off`.
+
+#### Rule Severity
+
+Each rule can have a user-configured _severity_. The severity of a rule can be one of:
+
+- `off`: The rule is disabled and _will not be run_
+- `warn`: The rule is enabled, but _will not_ cause `smoker` to exit with a non-zero status code
+- `error`: The rule is enabled, and _will_ cause `smoker` to exit with a non-zero status code
+
+The default severity level for each built-in rule is `error`.
+
+Rules _may_ override this behavior (i.e. a default severity of `warn` or `off`).
+
+#### `rules` Examples
+
+<Tabs>
+  <TabItem label="JSON">
+
+```json title="smoker.config.json"
+{
+  "rules": {
+    "no-banned-files": [
+      "error",
+      {
+        "deny": ["file_id.diz"],
+        "allow": ["aws_secret.txt"]
+      }
+    ],
+    "no-missing-entry-point": "off",
+    "no-missing-exports": [
+      "warn",
+      {
+        "types": false,
+        "require": false
+      }
+    ]
+  }
+}
+```
+
+  </TabItem>
+  <TabItem label="CJS">
+
+```js title="smoker.config.cjs"
+module.exports = {
+  rules: {
+    'no-banned-files': [
+      'error',
+      {
+        deny: ['file_id.diz'],
+        allow: ['aws_secret.txt'],
+      },
+    ],
+    'no-missing-entry-point': 'off',
+    'no-missing-exports': [
+      'warn',
+      {
+        types: false,
+        require: false,
+      },
+    ],
+  },
+};
+```
+
+  </TabItem>
+  <TabItem label="ESM">
+
+```js title="smoker.config.mjs"
+export default {
+  rules: {
+    'no-banned-files': [
+      'error',
+      {
+        deny: ['file_id.diz'],
+        allow: ['aws_secret.txt'],
+      },
+    ],
+    'no-missing-entry-point': 'off',
+    'no-missing-exports': [
+      'warn',
+      {
+        types: false,
+        require: false,
+      },
+    ],
+  },
+};
+```
+
+  </TabItem>
+
+</Tabs>
