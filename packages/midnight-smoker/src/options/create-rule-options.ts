@@ -3,8 +3,8 @@ import {getDefaultRuleOptions} from '#options/default-rule-options';
 import {type RuleSchemaValue} from '#schema/rule-schema-value';
 import {type RuleSeverity, RuleSeveritySchema} from '#schema/rule-severity';
 import {isEmpty} from '#util/guard/common';
+import {memoize} from '#util/memoize';
 import {dualCasedObjectSchema} from '#util/schema-util';
-import memoize from 'nano-memoize';
 import z from 'zod';
 
 /**
@@ -108,6 +108,6 @@ export const createRuleOptionsSchema = memoize(
     return FinalRuleOptionsSchema;
   },
   {
-    vargs: true,
+    length: 2,
   },
 );

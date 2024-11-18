@@ -142,6 +142,7 @@ describe('midnight-smoker', function () {
       afterEach(function () {
         sandbox.restore();
         actor?.stop();
+        fileManager.clear();
       });
 
       describe('general behavior', function () {

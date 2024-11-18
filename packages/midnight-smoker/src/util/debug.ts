@@ -7,7 +7,7 @@
  * @packageDocumentation
  */
 
-import debug from 'debug';
+import Debug from 'debug';
 
 /**
  * Given an absolute path or arbitrary name, creates a new
@@ -23,6 +23,7 @@ import debug from 'debug';
 import {MIDNIGHT_SMOKER} from '#constants';
 import {ROOT} from '#root';
 import path from 'node:path';
+import {format} from 'node:util';
 
 /**
  * A function that is kind of like `debug`'s default export, but derives
@@ -51,12 +52,14 @@ export const createDebug = debugFactory();
  */
 export function debugFactory(rootNamespace = MIDNIGHT_SMOKER, rootPath = ROOT) {
   return (pathOrName: string, ...extra: string[]) => {
-    let relativePathOrName = path.isAbsolute(pathOrName)
+    const relativePathOrName = path.isAbsolute(pathOrName)
       ? path.relative(rootPath, pathOrName)
       : pathOrName;
 
-    if (relativePathOrName.startsWith('../test')) {
-      relativePathOrName = relativePathOrName.replace('../test', 'test');
+    if (process.env.WALLABY) {
+      Debug.log = (...args: string[]) => {
+        console.log(format(...args));
+      };
     }
 
     /**
@@ -66,6 +69,8 @@ export function debugFactory(rootNamespace = MIDNIGHT_SMOKER, rootPath = ROOT) {
     const {dir, name} = path.parse(relativePathOrName);
     const dirParts = dir ? dir.split(path.sep) : [];
     const args = [...dirParts, name, ...extra];
-    return debug([rootNamespace, ...args].join(':'));
+    const debug = Debug([rootNamespace, ...args].join(':'));
+
+    return debug;
   };
 }

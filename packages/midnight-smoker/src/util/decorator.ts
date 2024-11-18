@@ -3,8 +3,9 @@
  *
  * @packageDocumentation
  */
-import memoize_ from 'nano-memoize';
+import {memoize as memoize_} from '#util/memoize';
 import {once as once_} from 'remeda';
+import {type Jsonifiable} from 'type-fest';
 
 /**
  * Per-instance "once" decorator
@@ -30,27 +31,35 @@ export function once<TThis, TArgs extends any[], TReturn>(
 /**
  * Per-instance memoization decorator
  *
- * @param resolver Function to return the cache key
+ * @param normalizer Function to return the cache key. Must be stringifiable
  * @returns The decorator
  * @see {@link memoize_ memoize}
  */
 
-export function memoize<
-  TThis extends object,
-  TArgs extends any[] = unknown[],
-  TReturn = unknown,
->(resolver?: (this: TThis, ...args: TArgs) => any) {
-  return function (
+export const memoize =
+  <TThis extends object, TArgs extends any[] = unknown[], TReturn = unknown>(
+    normalizer?: (...args: TArgs) => Jsonifiable,
+  ) =>
+  (
     target: (this: TThis, ...args: TArgs) => TReturn,
     context: ClassMethodDecoratorContext<
       TThis,
       (this: TThis, ...args: TArgs) => TReturn
     >,
-  ) {
+  ): void => {
     context.addInitializer(function (this: TThis) {
       const func = context.access.get(this);
-      // @ts-expect-error FIXME
-      this[context.name] = memoize_(func, resolver);
+      if (normalizer) {
+        // @ts-expect-error FIXME
+        this[context.name] = memoize_(func, {
+          normalizer: (args) => {
+            const value = normalizer(...args);
+            return JSON.stringify(value);
+          },
+        });
+      } else {
+        // @ts-expect-error FIXME
+        this[context.name] = memoize_(func);
+      }
     });
   };
-}

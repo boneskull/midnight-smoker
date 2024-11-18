@@ -104,6 +104,17 @@ export class FileManager {
     return new FileManager(opts);
   }
 
+  public clear(): void {
+    (this.readPkgJson as {clear(): void} & FileManager['readPkgJson']).clear();
+    (this.findPkgUp as {clear(): void} & FileManager['findPkgUp']).clear();
+    (this.findUp as {clear(): void} & FileManager['findUp']).clear();
+    (
+      this.readSmokerPkgJson as {
+        clear(): void;
+      } & FileManager['readSmokerPkgJson']
+    ).clear();
+  }
+
   /**
    * Creates a temp dir
    *
@@ -154,14 +165,12 @@ export class FileManager {
     cwd: string,
     options?: ReadPkgJsonOptions,
   ): Promise<FindPkgJsonResult | undefined>;
-  @memoize((cwd, opts) => JSON.stringify({cwd, opts}))
+
+  @memoize((cwd, {normalize, strict} = {}) => ({cwd, normalize, strict}))
   public async findPkgUp(
     cwd: string,
     {normalize, signal, strict}: ReadPkgJsonOptions = {},
   ): Promise<FindPkgJsonResult | ReadPkgJsonNormalizedResult | undefined> {
-    if (signal?.aborted) {
-      throw new AbortError(signal.reason);
-    }
     const filepath = await this.findUp(PACKAGE_JSON, cwd, {signal});
     if (!filepath) {
       if (strict) {
@@ -205,17 +214,21 @@ export class FileManager {
    * @param opts Options
    * @returns Path to file, or `undefined` if not found
    */
+  @memoize((filename, from, {followSymlinks} = {}) => ({
+    filename,
+    followSymlinks,
+    from,
+  }))
   public async findUp(
     filename: string,
     from: string,
     {followSymlinks, signal}: FindUpOptions = {},
   ): Promise<string | undefined> {
-    if (signal?.aborted) {
-      throw new AbortError(signal.reason);
-    }
     const method = followSymlinks ? 'lstat' : 'stat';
+    const searched: string[] = [];
     do {
       const allegedPath = path.join(from, filename);
+      searched.push(allegedPath);
       try {
         const stats = await this.fs.promises[method](allegedPath);
         if (stats.isFile()) {
@@ -226,6 +239,11 @@ export class FileManager {
           throw err;
         }
       }
+
+      if (signal?.aborted) {
+        throw new AbortError(signal.reason);
+      }
+
       const nextFrom = path.dirname(from);
       // this happens when you call path.dirname() on the filesystem root
       if (nextFrom === from) {
@@ -234,6 +252,11 @@ export class FileManager {
       from = nextFrom;
       // eslint-disable-next-line no-constant-condition
     } while (true);
+    debug(
+      'Could not find %s in the following paths: %s',
+      filename,
+      searched.join(', '),
+    );
   }
 
   public getHomeDir(): string {
@@ -243,7 +266,6 @@ export class FileManager {
   public getTmpDir(): string {
     return this.os.tmpdir();
   }
-
   public async glob(
     patterns: string | string[],
     opts?: GlobOptionsWithFileTypesUnset,
@@ -260,6 +282,7 @@ export class FileManager {
     patterns: string | string[],
     opts: GlobOptions,
   ): Promise<Path[] | string[]>;
+
   public async glob(
     patterns: string | string[],
     opts?:
@@ -278,7 +301,6 @@ export class FileManager {
           fs,
         });
   }
-
   public globIterate(
     pattern: string | string[],
     options?: GlobOptionsWithFileTypesUnset | undefined,
@@ -295,6 +317,7 @@ export class FileManager {
     pattern: string | string[],
     options: GlobOptions,
   ): AsyncGenerator<Path, void, void> | AsyncGenerator<string, void, void>;
+
   public globIterate(
     pattern: string | string[],
     options:
@@ -312,7 +335,10 @@ export class FileManager {
       return;
     }
     try {
-      await this.rimraf(dir, signal);
+      await this.rimraf(dir);
+      if (signal?.aborted) {
+        throw new AbortError(signal.reason);
+      }
       this.tempDirs.delete(dir);
     } catch (err) {
       debug('Failed to prune temp dir %s: %s', dir, err);
@@ -328,7 +354,6 @@ export class FileManager {
   public async readFile(filepath: string): Promise<string> {
     return this.fs.promises.readFile(filepath, 'utf8');
   }
-
   public async readPkgJson(
     filepath: string,
     options: {normalize: true} & ReadPkgJsonOptions,
@@ -341,15 +366,17 @@ export class FileManager {
     filepath: string,
     options?: ReadPkgJsonOptions,
   ): Promise<ReadPkgJsonResult<DenormalizedPackageJson>>;
-  @memoize((filepath, opts) => JSON.stringify({filepath, opts}))
+
+  @memoize((filepath, {normalize, strict} = {}) => ({
+    filepath,
+    normalize,
+    strict,
+  }))
   public async readPkgJson(
     filepath: string,
     options: ReadPkgJsonOptions = {},
   ): Promise<ReadPkgJsonResult<PackageJson>> {
     const {normalize, signal} = options;
-    if (signal?.aborted) {
-      throw new AbortError(signal.reason);
-    }
     try {
       const file = await this.fs.promises.readFile(filepath, {
         encoding: 'utf8',
@@ -391,10 +418,12 @@ export class FileManager {
     return result.packageJson;
   }
 
-  public async rimraf(dir: string, signal?: AbortSignal): Promise<void> {
-    if (signal?.aborted) {
-      throw new AbortError(signal.reason);
-    }
+  /**
+   * It's a `rm -rf`
+   *
+   * @param dir Dir to annihilate
+   */
+  public async rimraf(dir: string): Promise<void> {
     await this.fs.promises.rm(dir, {force: true, recursive: true});
   }
 }

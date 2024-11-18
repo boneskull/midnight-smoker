@@ -79,6 +79,7 @@ describe('midnight-smoker', function () {
         afterEach(function () {
           sandbox.restore();
           vol.reset();
+          fileManager.clear();
         });
 
         describe('when resolution fails with an error code other than "MODULE_NOT_FOUND"', function () {

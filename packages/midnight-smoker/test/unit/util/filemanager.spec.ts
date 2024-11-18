@@ -77,7 +77,7 @@ describe('midnight-smoker', function () {
             const dir = await fm.createTempDir('', signal);
             sandbox.stub(fm, 'rimraf');
             await fm.pruneTempDir(dir, signal);
-            expect(fm.rimraf, 'to have a call satisfying', [dir, signal]);
+            expect(fm.rimraf, 'to have a call satisfying', [dir]);
           });
 
           describe('when rimraf rejects', function () {
@@ -85,7 +85,7 @@ describe('midnight-smoker', function () {
               const dir = await fm.createTempDir('', signal);
               sandbox.stub(fm, 'rimraf').rejects(new Error('foo'));
               await expect(fm.pruneTempDir(dir, signal), 'to be fulfilled');
-              expect(fm.rimraf, 'to have a call satisfying', [dir, signal]);
+              expect(fm.rimraf, 'to have a call satisfying', [dir]);
             });
           });
         });

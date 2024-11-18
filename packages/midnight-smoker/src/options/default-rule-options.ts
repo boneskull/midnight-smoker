@@ -1,5 +1,5 @@
 import {type RuleSchemaValue} from '#schema/rule-schema-value';
-import memoize from 'nano-memoize';
+import {memoize} from '#util/memoize';
 import {type z} from 'zod';
 
 /**

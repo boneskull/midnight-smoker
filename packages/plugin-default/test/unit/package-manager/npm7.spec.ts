@@ -1,7 +1,7 @@
 import stringify from 'json-stable-stringify';
 import {type ExecOutput} from 'midnight-smoker';
-import {ErrorCode} from 'midnight-smoker/error';
-import {ExecError, type Executor} from 'midnight-smoker/executor';
+import {ErrorCode, ExecError} from 'midnight-smoker/error';
+import {type Executor} from 'midnight-smoker/executor';
 import {
   type PkgManagerInstallContext,
   type PkgManagerPackContext,
@@ -122,6 +122,7 @@ describe('@midnight-smoker/plugin-default', function () {
                   },
                 }),
               };
+              executor.resetBehavior();
               executor.rejects(new ExecError('oops', output));
             });
 
@@ -206,7 +207,9 @@ describe('@midnight-smoker/plugin-default', function () {
                 Npm7.install(ctx),
                 'to be rejected with error satisfying',
                 {
-                  cause: err,
+                  cause: {
+                    code: ErrorCode.ExecError,
+                  },
                   code: ErrorCode.InstallError,
                 },
               );

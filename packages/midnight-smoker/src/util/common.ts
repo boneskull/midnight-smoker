@@ -18,9 +18,14 @@ import {type CamelCase, type KebabCase} from 'type-fest';
  * @returns An array, for sure!
  */
 export const castArray = R.when(R.isArray, {
-  onFalse: R.piped((v) => [v], R.filter(R.isTruthy)),
-  onTrue: R.filter(R.isTruthy),
+  onFalse: R.piped((v) => [v], R.filter(R.isNonNullish)),
+  onTrue: R.filter(R.isNonNullish),
 }) as <T>(value?: readonly T[] | T) => T[];
+
+/**
+ * Like `_.compact()`
+ */
+export const compact = R.filter(R.isNonNullish);
 
 /**
  * Returns string representing difference between `startTime` and now in

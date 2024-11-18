@@ -4,7 +4,7 @@ import {type WorkspaceInfo} from '#schema/workspace-info';
 import {type FileManager} from '#util/filemanager';
 import {isString} from '#util/guard/common';
 import {flatMap} from '#util/hwp';
-import memoize from 'nano-memoize';
+import {memoize} from '#util/memoize';
 import assert from 'node:assert';
 import path from 'node:path';
 import {filter, groupBy} from 'remeda';

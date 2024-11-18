@@ -31,6 +31,10 @@ describe('midnight-smoker', function () {
           vol.fromJSON(monorepoStructure);
         });
 
+        afterEach(function () {
+          fileManager.clear();
+        });
+
         describe('when root package.json is missing', function () {
           beforeEach(async function () {
             await vol.promises.unlink('/package.json');
