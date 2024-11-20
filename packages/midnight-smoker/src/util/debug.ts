@@ -50,8 +50,11 @@ export const createDebug = debugFactory();
  * @param rootPath Root path
  * @returns A function that creates `Debug` instances
  */
-export function debugFactory(rootNamespace = MIDNIGHT_SMOKER, rootPath = ROOT) {
-  return (pathOrName: string, ...extra: string[]) => {
+export function debugFactory(
+  rootNamespace = MIDNIGHT_SMOKER,
+  rootPath = ROOT,
+): (pathOrName: string, ...extra: string[]) => Debug.Debugger {
+  return (pathOrName: string, ...extra: string[]): Debug.Debugger => {
     const relativePathOrName = path.isAbsolute(pathOrName)
       ? path.relative(rootPath, pathOrName)
       : pathOrName;

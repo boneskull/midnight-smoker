@@ -5,6 +5,8 @@
  *
  * @module midnight-smoker/cli
  */
+import {enableCompileCache, logCompileCacheResult} from './cache';
+const cacheResult = enableCompileCache();
 
 import {GlobalOptions} from '#cli/command/global-opts';
 import {ConfigReader} from '#config/config-reader';
@@ -37,6 +39,10 @@ async function main(args: string[]): Promise<void> {
     await FileManager.create().readSmokerPkgJson();
 
   debug('%s v%s', name, version);
+
+  if (cacheResult && debug.enabled) {
+    logCompileCacheResult(debug, cacheResult);
+  }
 
   await y
     .scriptName(SCRIPT_NAME)
