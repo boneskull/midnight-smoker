@@ -2,7 +2,6 @@ import type * as Rule from 'midnight-smoker/rule';
 import type {PackageJson as PackageJsonNS} from 'type-fest';
 
 import {type PackageJson} from 'midnight-smoker/schema';
-import {type Keypath} from 'midnight-smoker/util';
 
 import {type EXPORTS_FIELD} from './constants';
 
@@ -12,7 +11,7 @@ export type Exports = PackageJsonNS.Exports;
 
 export type NMEIssue = [message: string, options?: Rule.AddIssueOptions];
 
-export type RootNMEContext = {keypath: [typeof EXPORTS_FIELD] & Keypath} & Omit<
+export type RootNMEContext = {keypath: [typeof EXPORTS_FIELD]} & Omit<
   NMEContext,
   'keypath'
 >;
@@ -45,7 +44,7 @@ export interface BaseNMEContext<
   addIssue: Rule.AddIssueFn & ThisType<void>;
   exportsValue: T;
   installPath: string;
-  keypath: Keypath;
+  keypath: readonly string[];
   pkgJson: PackageJson;
   pkgJsonPath: string;
   shouldAllowGlobs: boolean;

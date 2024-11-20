@@ -187,6 +187,7 @@
     "string-width": "4.2.3",
     "terminal-link": "2.1.1",
     "terminate": "2.8.0",
+    "to-keypath": "0.1.2",
     "type-fest": "4.19.0",
     "which": "4.0.0",
     "wrap-ansi": "7.0.0",

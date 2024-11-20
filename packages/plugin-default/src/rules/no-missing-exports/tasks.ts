@@ -1,4 +1,4 @@
-import {formatKeypath} from 'midnight-smoker/util';
+import {toKeypath} from 'midnight-smoker/util';
 import path from 'node:path';
 
 import type {
@@ -43,7 +43,7 @@ export const checkUndefinedExportsField: NMETask = (ctx) => {
  */
 export const checkNullExportsField: NMETask = ({exportsValue, keypath}) => {
   if (exportsValue === null) {
-    const jsonField = formatKeypath(keypath);
+    const jsonField = toKeypath(keypath);
     return [
       [
         `Field ${jsonField} cannot be a null literal`,
@@ -55,6 +55,10 @@ export const checkNullExportsField: NMETask = ({exportsValue, keypath}) => {
   }
 };
 
+/**
+ * Checks if the `default` conditional is the _last_ property in its container
+ * (if present)
+ */
 export const checkDefaultConditional: NMETask<NMEContext<ExportConditions>> = (
   ctx,
 ) => {
@@ -63,12 +67,12 @@ export const checkDefaultConditional: NMETask<NMEContext<ExportConditions>> = (
     CONDITIONAL_EXPORT_DEFAULT in ctx.exportsValue &&
     guards.isDefaultConditionalNotLast(undefined, ctx)
   ) {
-    const fullName = formatKeypath(ctx.keypath);
+    const fullName = toKeypath(ctx.keypath);
     return [
       [
         `Conditional ${fullName} must be the last export`,
         {
-          jsonField: formatKeypath(ctx.keypath),
+          jsonField: toKeypath(ctx.keypath),
         },
       ],
     ];
@@ -139,7 +143,7 @@ export const checkFile: NMETask<NMEContext<null | string>> = async (ctx) => {
   }
 
   const relPath = exportsValue;
-  const jsonField = formatKeypath(keypath);
+  const jsonField = toKeypath(keypath);
 
   // seems wrong to have an empty string for a path!
   if (guards.isEmptyString(relPath, ctx)) {
@@ -237,8 +241,8 @@ export const checkFile: NMETask<NMEContext<null | string>> = async (ctx) => {
 export const checkUnknownType: NMETask = ({keypath}) => {
   return [
     [
-      `${formatKeypath(keypath)} is of an unexpected type`,
-      {jsonField: formatKeypath(keypath)},
+      `${toKeypath(keypath)} is of an unexpected type`,
+      {jsonField: toKeypath(keypath)},
     ],
   ];
 };

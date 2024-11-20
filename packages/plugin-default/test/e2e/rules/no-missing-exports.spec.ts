@@ -86,7 +86,7 @@ describe('@midnight-smoker/plugin-default', function () {
                 result: [
                   {
                     message:
-                      /\.\/index-missing\.js unreadable at field exports\['\.\/missing\.js'\]$/,
+                      /\.\/index-missing\.js unreadable at field exports\["\.\/missing\.js"\]$/,
                     rule: {name},
                   },
                 ],
@@ -123,7 +123,7 @@ describe('@midnight-smoker/plugin-default', function () {
                   result: [
                     {
                       message:
-                        "Export exports['./*.js'] matches no files using glob: ./lib/*.js",
+                        'Export exports["./*.js"] matches no files using glob: ./lib/*.js',
                     },
                   ],
                 },
@@ -158,7 +158,7 @@ describe('@midnight-smoker/plugin-default', function () {
                   result: [
                     {
                       message:
-                        "Export exports['./*.js'] contains a glob pattern; glob patterns are disallowed by rule options",
+                        'Export exports["./*.js"] contains a glob pattern; glob patterns are disallowed by rule options',
                     },
                   ],
                 },

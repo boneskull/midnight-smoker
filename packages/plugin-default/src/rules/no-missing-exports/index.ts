@@ -1,5 +1,4 @@
 import type {PluginAPI} from 'midnight-smoker/plugin';
-import type {Keypath} from 'midnight-smoker/util';
 
 import {PACKAGE_JSON} from 'midnight-smoker/constants';
 
@@ -84,7 +83,7 @@ export default function noMissingExports({
         addIssue: ctx.addIssue.bind(ctx),
         exportsValue: ctx.pkgJson[EXPORTS_FIELD],
         installPath: ctx.installPath,
-        keypath: [EXPORTS_FIELD] as Keypath,
+        keypath: [EXPORTS_FIELD],
         pkgJson: ctx.pkgJson,
         pkgJsonPath: ctx.pkgJsonPath,
         shouldAllowGlobs: opts.glob,
@@ -143,7 +142,7 @@ function traverseExports(
   if (Array.isArray(ctx.exportsValue)) {
     // recurse
     for (const [idx, value] of ctx.exportsValue.entries()) {
-      const itemKeypath = [...keypath, `${idx}`] as Keypath;
+      const itemKeypath = [...keypath, `${idx}`] as const;
       taskQueue.push(
         ...traverseExports({
           ...ctx,
@@ -162,7 +161,7 @@ function traverseExports(
         tasks.checkDefaultConditional,
         {
           ...ctx,
-          keypath: [...keypath, CONDITIONAL_EXPORT_DEFAULT] as Keypath,
+          keypath: [...keypath, CONDITIONAL_EXPORT_DEFAULT] as const,
         },
         taskQueue,
       );
@@ -174,7 +173,7 @@ function traverseExports(
         ...traverseExports({
           ...ctx,
           exportsValue: value,
-          keypath: [...keypath, key] as Keypath,
+          keypath: [...keypath, key] as const,
         }),
       );
     }

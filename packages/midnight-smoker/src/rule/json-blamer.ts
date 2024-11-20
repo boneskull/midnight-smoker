@@ -3,7 +3,6 @@ import {ok} from '#util/assert';
 import {memoize} from '#util/decorator';
 import {NL, stripAnsi} from '#util/format';
 import {isString} from '#util/guard/common';
-import {formatKeypath} from '#util/keypath';
 import {
   type ArrayNode,
   type DocumentNode,
@@ -20,6 +19,7 @@ import {highlight} from 'cli-highlight';
 import path from 'node:path';
 import {firstBy, identity, stringToPath as toPath} from 'remeda';
 import stringWidth from 'string-width';
+import {toKeypath} from 'to-keypath';
 
 import {JSONLocation} from './json-location';
 
@@ -169,7 +169,7 @@ export class JSONBlamer {
         found.loc.end,
       );
       // normalize it
-      const keypath = formatKeypath(path);
+      const keypath = toKeypath(path);
       // get the actual value at the keypath
       const value = evaluate(getValue(found));
 
