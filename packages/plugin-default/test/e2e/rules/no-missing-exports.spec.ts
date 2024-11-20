@@ -288,7 +288,7 @@ describe('@midnight-smoker/plugin-default', function () {
                     result: [
                       {
                         message:
-                          './index.js is not a .d.ts file at field exports.types',
+                          './index.js is not a declaration file at field exports.types',
                         rule: {name},
                       },
                     ],

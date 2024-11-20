@@ -222,7 +222,7 @@ export const checkFile: NMETask<NMEContext<null | string>> = async (ctx) => {
       ) {
         return [
           [
-            `${relPath} is not a .d.ts file at field ${jsonField}`,
+            `${relPath} is not a declaration file at field ${jsonField}`,
             {
               jsonField,
             },
