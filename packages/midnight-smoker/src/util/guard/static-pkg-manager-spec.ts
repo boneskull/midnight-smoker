@@ -1,7 +1,7 @@
 import {
   type StaticPkgManagerSpec,
   StaticPkgManagerSpecSchema,
-} from '#schema/static-pkg-manager-spec';
+} from '#schema/pkg-manager/static-pkg-manager-spec';
 
 export const isStaticPkgManagerSpec = (
   value: unknown,

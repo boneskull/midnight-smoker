@@ -1,7 +1,8 @@
 import {type PluginAPI} from '#plugin/plugin-api';
 import {isObject} from '#util/guard/common';
-import {NonEmptyStringSchema, VoidOrPromiseVoidSchema} from '#util/schema-util';
 import {z} from 'zod';
+
+import {NonEmptyStringSchema, VoidOrPromiseVoidSchema} from './util/util';
 
 /**
  * A function which receives a {@link PluginAPI} object and uses its methods to

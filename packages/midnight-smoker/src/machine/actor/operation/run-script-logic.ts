@@ -11,7 +11,7 @@ import {
   type RunScriptResult,
   type RunScriptResultError,
   type RunScriptResultFailed,
-} from '#schema/run-script-result';
+} from '#schema/pkg-manager/run-script-result';
 import {fromUnknownError} from '#util/from-unknown-error';
 import {isAbortError} from '#util/guard/abort-error';
 import {isSmokerError} from '#util/guard/smoker-error';

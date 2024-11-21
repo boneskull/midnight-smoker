@@ -12,23 +12,23 @@ export * from '#defs/pkg-manager';
 
 export * from '#error/pkg-manager';
 
-export * from '#schema/desired-pkg-manager';
+export * from '#schema/pkg-manager/desired-pkg-manager';
 
-export type {ExecOutput} from '#schema/exec-output';
+export type {ExecOutput} from '#schema/exec/exec-output';
 
-export * from '#schema/install-manifest';
+export * from '#schema/pkg-manager/install-manifest';
 
-export * from '#schema/install-result';
+export * from '#schema/pkg-manager/install-result';
 
-export * from '#schema/pack-options';
+export * from '#schema/pkg-manager/pack-options';
 
-export * from '#schema/run-script-manifest';
+export * from '#schema/pkg-manager/run-script-manifest';
 
-export * from '#schema/run-script-result';
+export * from '#schema/pkg-manager/run-script-result';
 
-export * from '#schema/static-pkg-manager-spec';
+export * from '#schema/pkg-manager/static-pkg-manager-spec';
 
-export * from '#schema/version';
+export * from '#schema/util/version';
 
 export * from '#schema/workspace-info';
 

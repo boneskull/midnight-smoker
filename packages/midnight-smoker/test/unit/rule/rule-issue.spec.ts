@@ -5,7 +5,7 @@ import {JSONBlamer} from '#rule/json-blamer';
 import {type RuleContext} from '#rule/rule-context';
 import {RuleIssue, type RuleIssueParams} from '#rule/rule-issue';
 import {type StaticRuleContext} from '#rule/static-rule-context';
-import {type StaticRule} from '#schema/static-rule';
+import {type StaticRule} from '#schema/lint/static-rule';
 import {asResult} from '#util/result';
 import stringify from 'json-stable-stringify';
 import {omit} from 'remeda';

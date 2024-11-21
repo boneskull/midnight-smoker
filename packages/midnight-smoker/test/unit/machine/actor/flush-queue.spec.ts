@@ -9,7 +9,7 @@ import {
 import {ErrorCode} from '#error/codes';
 import {type EventData} from '#event/events';
 import {flushQueueLogic} from '#machine/actor/flush-queue';
-import {ReporterContextSubject} from '#reporter/reporter-context';
+import {ReporterContextObserver} from '#reporter/reporter-context';
 import {type SmokerOptions} from '#schema/smoker-options';
 import {EventEmitter} from 'node:events';
 import {createSandbox} from 'sinon';
@@ -29,14 +29,14 @@ describe('midnight-smoker', function () {
       let sandbox: sinon.SinonSandbox;
       let reporter: Reporter;
       let ctx: ReporterContext;
-      let subject: ReporterContextSubject;
+      let subject: ReporterContextObserver;
       let queue: EventData[];
 
       beforeEach(function () {
         sandbox = createSandbox();
         reporter = {...nullReporter};
         queue = [{type: CoreEvents.Noop} as const];
-        subject = ReporterContextSubject.create();
+        subject = ReporterContextObserver.create();
         ctx = subject.createReporterContext(
           {} as SmokerOptions,
           {name: 'foo', version: '1.0.0'},

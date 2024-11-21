@@ -1,4 +1,4 @@
-import {NonEmptyStringSchema, NonNegativeIntSchema} from '#util/schema-util';
+import {NonEmptyStringSchema, NonNegativeIntSchema} from '#schema/util/util';
 import {z} from 'zod';
 
 export type PackOptions = z.infer<typeof PackOptionsSchema>;

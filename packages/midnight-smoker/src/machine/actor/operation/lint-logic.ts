@@ -6,7 +6,7 @@ import {type CheckOk, type Issue} from '#rule/issue';
 import {type LintManifest} from '#rule/lint-manifest';
 import {RuleContext} from '#rule/rule-context';
 import {type StaticRuleContext} from '#rule/static-rule-context';
-import {type SomeRuleConfig} from '#schema/rule-options';
+import {type SomeRuleConfig} from '#schema/lint/rule-options';
 import {isAbortError} from '#util/guard/abort-error';
 import {isSmokerError} from '#util/guard/smoker-error';
 import {asResult, type Result} from '#util/result';

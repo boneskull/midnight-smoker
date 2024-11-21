@@ -1,7 +1,7 @@
 import {
   type DesiredPkgManager,
   DesiredPkgManagerSchema,
-} from '#schema/desired-pkg-manager';
+} from '#schema/pkg-manager/desired-pkg-manager';
 
 export function isDesiredPkgManager(
   value: unknown,

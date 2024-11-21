@@ -9,9 +9,9 @@
 
 import {FAILED, OK} from '#constants';
 import {type CheckOk, type Issue} from '#rule/issue';
+import {type RuleSeverity} from '#schema/lint/rule-severity';
+import {type StaticRule} from '#schema/lint/static-rule';
 import {type PackageJson} from '#schema/package-json';
-import {type RuleSeverity} from '#schema/rule-severity';
-import {type StaticRule} from '#schema/static-rule';
 import {type WorkspaceInfo} from '#schema/workspace-info';
 import {asResult} from '#util/result';
 import {serialize} from '#util/serialize';

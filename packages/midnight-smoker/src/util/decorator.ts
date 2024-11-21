@@ -29,9 +29,10 @@ export function once<TThis, TArgs extends any[], TReturn>(
 }
 
 /**
- * Per-instance memoization decorator
+ * **Per-instance** memoization decorator
  *
- * @param normalizer Function to return the cache key. Must be stringifiable
+ * @param normalizer Function to return the cache key. Must be
+ *   {@link Jsonifiable}.
  * @returns The decorator
  * @see {@link memoize_ memoize}
  */

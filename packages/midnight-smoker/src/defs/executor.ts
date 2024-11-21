@@ -1,49 +1,40 @@
 /**
  * Declares the {@link Executor} interface
  *
- * An implementation of `Executor` can then transform commands as needed.
+ * An implementation of `Executor` transforms commands before reaching an
+ * `ExecFn`.
  *
  * @packageDocumentation
  */
 
-import {type ExecOptions, type ExecOutput} from '#schema/exec-output';
-import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
-import {type SpawnOptions as NodeOptions} from 'node:child_process';
+import {type ExecOptions, type ExecOutput} from '#schema/exec/exec-output';
+import {type StaticPkgManagerSpec} from '#schema/pkg-manager/static-pkg-manager-spec';
 
-/**
- * Options to pass along to the underlying child process spawner
- */
-export type {NodeOptions};
+export {type SpawnOptions} from 'node:child_process';
 
 export type {ExecOptions, ExecOutput, StaticPkgManagerSpec};
-
-/**
- * Options for an {@link Executor}
- */
-
-export type ExecutorOpts = ExecOptions | undefined;
 
 /**
  * An `Executor` is responsible for invoking package manager commands.
  *
  * A package manager calls its `Executor` instance with the proper arguments to
- * run.
+ * run. The `Executor` then calls an `ExecFn` with those arguments and spawns a
+ * child process.
  *
  * An `Executor` can be thought of as the final "transform" before the package
  * manager process gets spawned.
  *
  * @remarks
- * This can be thought of as a wrapper around `exec()` from
- * `midnight-smoker/util`, allowing greater control over the spawned process and
- * its return value.
+ * While an `Executor` is a component--and thus can be defined by plugins--there
+ * may be no use-case for defining one outside of `midnight-smoker` itself. As
+ * such, I don't intend to document it publicly.
  * @param spec - The package manager spec
  * @param args - The arguments to the package manager executable, likely
  *   including a command
- * @param options - Options for the `Executor`
- * @param nodeOptions - Options for `child_process.spawn()` by way of `exec()`
+ * @param options - Options for the underlying `ExecFn`
  */
 export type Executor = (
   spec: StaticPkgManagerSpec,
   args: string[],
-  options?: ExecutorOpts,
+  options?: ExecOptions,
 ) => Promise<ExecOutput>;

@@ -16,4 +16,4 @@ export {ScriptFailedError} from '#error/script-failed-error';
 
 export {UnknownScriptError} from '#error/unknown-script-error';
 
-export type {ScriptError} from '#schema/script-error';
+export type {ScriptError} from '#schema/pkg-manager/script-error';

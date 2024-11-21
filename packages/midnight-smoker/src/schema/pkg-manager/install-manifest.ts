@@ -1,7 +1,6 @@
-import {NonEmptyStringSchema} from '#util/schema-util';
+import {NonEmptyStringSchema} from '#schema/util/util';
+import {WorkspaceInfoSchema} from '#schema/workspace-info';
 import {z} from 'zod';
-
-import {WorkspaceInfoSchema} from './workspace-info';
 
 /**
  * The `pack` implementation of a `PkgManager` should return this value.

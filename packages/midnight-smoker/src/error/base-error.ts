@@ -1,5 +1,4 @@
 import {BUGS_URL} from '#constants';
-import {type Serializable} from '#schema/serializable';
 import {
   DOUBLE_NL,
   formatCode,
@@ -11,6 +10,7 @@ import {
 } from '#util/format';
 import {isSomeSmokerError} from '#util/guard/some-smoker-error';
 import {jsonify} from '#util/jsonify';
+import {type Serializable} from '#util/serializable';
 import {italic, whiteBright} from 'chalk';
 import {format} from 'node:util';
 

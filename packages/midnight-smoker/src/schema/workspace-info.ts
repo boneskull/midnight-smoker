@@ -2,7 +2,7 @@ import {
   NormalizedPackageJsonSchema,
   type PackageJson,
 } from '#schema/package-json';
-import {NonEmptyStringSchema} from '#util/schema-util';
+import {NonEmptyStringSchema} from '#schema/util/util';
 import {z} from 'zod';
 
 /**

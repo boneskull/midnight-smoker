@@ -1,5 +1,5 @@
+import {type RuleSeverity} from '#schema/lint/rule-severity';
 import {type PackageJson} from '#schema/package-json';
-import {type RuleSeverity} from '#schema/rule-severity';
 import {type WorkspaceInfo} from '#schema/workspace-info';
 
 /**

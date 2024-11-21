@@ -1,5 +1,5 @@
-import {type Serialized} from '#schema/serializable';
 import {jsonify} from '#util/jsonify';
+import {type Serialized} from '#util/serializable';
 import unexpected from 'unexpected';
 
 const expect = unexpected.clone();

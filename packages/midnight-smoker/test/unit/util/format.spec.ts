@@ -1,6 +1,6 @@
 import {SYSTEM} from '#constants';
 import {type SmokerErrorCode} from '#error/codes';
-import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
+import {type StaticPkgManagerSpec} from '#schema/pkg-manager/static-pkg-manager-spec';
 import {
   formatCode,
   formatErrorMessage,

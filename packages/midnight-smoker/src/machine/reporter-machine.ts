@@ -19,7 +19,7 @@ import {
 import {type PluginMetadata} from '#plugin/plugin-metadata';
 import {
   type ReporterContext,
-  ReporterContextSubject,
+  ReporterContextObserver,
 } from '#reporter/reporter-context';
 import {type PackageJson} from '#schema/package-json';
 import {type SmokerOptions} from '#schema/smoker-options';
@@ -79,7 +79,7 @@ export interface ReporterMachineContext
    */
   shouldShutdown: boolean;
 
-  subject: ReporterContextSubject;
+  subject: ReporterContextObserver;
 }
 
 export interface ReporterMachineSmokeMachineEvent {
@@ -199,7 +199,7 @@ export const ReporterMachine = setup({
   context: ({
     input: {plugin, smokerOptions, smokerPkgJson, ...input},
   }): ReporterMachineContext => {
-    const subject = ReporterContextSubject.create();
+    const subject = ReporterContextObserver.create();
     const ctx = subject.createReporterContext(
       smokerOptions,
       smokerPkgJson,

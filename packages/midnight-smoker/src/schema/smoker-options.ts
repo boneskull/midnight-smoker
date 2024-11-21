@@ -3,21 +3,21 @@ import {
   type BaseRuleConfigRecord,
   BaseRuleConfigSchema,
   RawRuleOptionsRecordSchema,
-} from '#schema/rule-options';
+} from '#schema/lint/rule-options';
+import {UniqueNonEmptyStringToArraySchema} from '#schema/util/util';
 import {type DualCasedObject, toDualCasedObject} from '#util/common';
-import {
-  DefaultFalseSchema,
-  DefaultTrueSchema,
-  NonEmptyStringSchema,
-  UniqueNonEmptyStringToArraySchema,
-} from '#util/schema-util';
 import {type ReadonlyDeep, type Simplify} from 'type-fest';
 import {z} from 'zod';
 
 import {
   type DesiredPkgManager,
   DesiredPkgManagerSchema,
-} from './desired-pkg-manager';
+} from './pkg-manager/desired-pkg-manager';
+import {
+  DefaultFalseSchema,
+  DefaultTrueSchema,
+  NonEmptyStringSchema,
+} from './util/util';
 
 /**
  * Properties of {@link SmokerOptions}, dual-cased

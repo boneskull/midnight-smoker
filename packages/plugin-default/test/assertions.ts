@@ -3,7 +3,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import type unexpected from 'unexpected';
 
-import {type ExecOutput, isExecOutput} from 'midnight-smoker/executor';
+import {type ExecOutput} from 'midnight-smoker/defs/executor';
+import {isExecOutput} from 'midnight-smoker/util';
 
 export default {
   installInto(expect: typeof unexpected) {

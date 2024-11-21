@@ -1,6 +1,6 @@
 import type {PkgManager} from '#defs/pkg-manager';
 
-import {RangeSchema} from '#schema/version';
+import {RangeSchema} from '#schema/util/version';
 import {memoize} from '#util/memoize';
 import {type Range} from 'semver';
 

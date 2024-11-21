@@ -1,14 +1,14 @@
 import {asValidationError} from '#error/validation-error';
 import {type PluginRegistry} from '#plugin/registry';
-import {RawRuleOptionsSchema} from '#schema/rule-options';
+import {RawRuleOptionsSchema} from '#schema/lint/rule-options';
 import {
   type RawSmokerOptions,
   type SmokerOptions,
   SmokerOptionsSchema,
 } from '#schema/smoker-options';
+import {EmptyObjectSchema} from '#schema/util/util';
 import {createDebug} from '#util/debug';
 import {isEmpty} from '#util/guard/common';
-import {EmptyObjectSchema} from '#util/schema-util';
 import {z} from 'zod';
 
 import {createRuleOptionsSchema} from './create-rule-options';

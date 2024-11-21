@@ -15,11 +15,11 @@ import {type PluginMetadata} from '#plugin/plugin-metadata';
 import {
   type DesiredPkgManager,
   parseDesiredPkgManagerSpec,
-} from '#schema/desired-pkg-manager';
+} from '#schema/pkg-manager/desired-pkg-manager';
 import {
   type PartialStaticPkgManagerSpec,
   type StaticPkgManagerSpec,
-} from '#schema/static-pkg-manager-spec';
+} from '#schema/pkg-manager/static-pkg-manager-spec';
 import * as assert from '#util/assert';
 import {caseInsensitiveEquals} from '#util/common';
 import {fromUnknownError} from '#util/from-unknown-error';

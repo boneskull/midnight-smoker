@@ -13,7 +13,8 @@ import {
   type PluginAPI,
 } from '#plugin/plugin-api';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
-import {type RuleSchemaValue} from '#schema/rule-schema-value';
+import {type RuleSchemaValue} from '#schema/lint/rule-schema-value';
+import * as SchemaUtils from '#schema/util/util';
 import {createDebug} from '#util/debug';
 import {
   assertExecutor,
@@ -21,7 +22,6 @@ import {
   assertReporter,
   assertRule,
 } from '#util/guard/assert/component';
-import * as SchemaUtils from '#util/schema-util';
 import {z} from 'zod';
 
 import {Helpers} from './helpers';

@@ -1,23 +1,26 @@
 /**
  * Schemas and types relating to `package.json` files.
  *
+ * This defines a subset of the `package.json` format, as we don't care about
+ * the vast majority of it.
+ *
  * @packageDocumentation
  */
 import {PACKAGE_JSON} from '#constants';
+import {JsonValueSchema} from '#schema/util/json';
+import {VersionStringSchema} from '#schema/util/version';
+import {type Package as NpmNormalizedPackageJson} from 'normalize-package-data';
 import {
-  NonEmptyNonEmptyStringArraySchema,
-  NonEmptyStringSchema,
-} from '#util/schema-util';
-import {type Package as _NormalizedPackageJson} from 'normalize-package-data';
-import {
-  type PackageJson as _PackageJson,
   type Merge,
   type SetOptional,
+  type PackageJson as TypeFestPackageJson,
 } from 'type-fest';
 import {z} from 'zod';
 
-import {JsonValueSchema} from './json';
-import {VersionStringSchema} from './version';
+import {
+  NonEmptyNonEmptyStringArraySchema,
+  NonEmptyStringSchema,
+} from './util/util';
 
 /**
  * A normalized `package.json` file.
@@ -26,25 +29,25 @@ import {VersionStringSchema} from './version';
  * `normalize-package-data`, and adds additional types from `type-fest` which
  * `normalize-package-data` ignores.
  *
- * The two fields `normalize-package-data` adds, `readme` and `_id`, are unused
- * by `midnight-smoker`.
+ * @privateRemarks
+ * `_id` may be used at some point, but I don't see what we'd need `readme` for.
  */
 export type PackageJson = SetOptional<
-  Merge<_PackageJson, _NormalizedPackageJson>,
+  Merge<TypeFestPackageJson, NpmNormalizedPackageJson>,
   '_id' | 'readme'
 >;
 
 /**
  * A de-normalized (a "non-normalized?") `package.json` file.
  *
- * This type reconciles the {@link _PackageJson PackageJson} type from
- * `type-fest` with {@link our normalized PackageJson}; in some cases the latter
- * claims a possible type where the former does not.
+ * This type reconciles the {@link TypeFestPackageJson PackageJson} type from
+ * `type-fest` with {@link PackageJson our normalized PackageJson type}; in some
+ * cases the latter claims a possible type where the former does not.
  */
 export type DenormalizedPackageJson = Merge<
-  _PackageJson,
+  TypeFestPackageJson,
   Pick<
-    _PackageJson | PackageJson,
+    PackageJson | TypeFestPackageJson,
     'author' | 'bundleDependencies' | 'contributors' | 'maintainers'
   >
 >;
@@ -54,14 +57,14 @@ export type DenormalizedPackageJson = Merge<
  *
  * @see {@link DenormalizedPackageJson}
  */
-export type PkgJsonType = 'commonjs' | 'module';
+export type PackageType = TypeFestPackageJson['type'];
 
 /**
  * The value of the `workspaces` field in a `package.json` when it is an object.
  *
  * @see {@link PkgJsonWorkspaces}
  */
-export type PkgJsonWorkspaceConfig = _PackageJson.WorkspaceConfig;
+export type PkgJsonWorkspaceConfig = TypeFestPackageJson.WorkspaceConfig;
 
 /**
  * The value of the `workspaces` field in a `package.json` when it is a string
@@ -95,9 +98,9 @@ export const PkgJsonWorkspaceConfigSchema: z.ZodType<PkgJsonWorkspaceConfig> =
   });
 
 /**
- * {@inheritDoc PkgJsonType}
+ * {@inheritDoc PackageType}
  */
-export const PkgJsonTypeSchema: z.ZodType<PkgJsonType> = z
+export const PackageTypeSchema: z.ZodType<PackageType> = z
   .literal('module')
   .or(z.literal('commonjs'));
 
@@ -118,7 +121,7 @@ export const NormalizedPackageJsonSchema: z.ZodType<PackageJson> = z
     packageManager: z.string().optional().describe('Preferred package manager'),
     private: z.boolean().optional().describe('Private flag'),
     readme: z.string().optional().describe('Contents of README'),
-    type: PkgJsonTypeSchema.optional().describe('Module type'),
+    type: PackageTypeSchema.optional().describe('Module type'),
     version: VersionStringSchema.describe('Package version'),
     workspaces:
       PkgJsonWorkspacesSchema.optional().describe('Workspaces config'),

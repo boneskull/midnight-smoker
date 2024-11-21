@@ -1,4 +1,4 @@
-import {type RuleSchemaValue} from '#schema/rule-schema-value';
+import {type RuleSchemaValue} from '#schema/lint/rule-schema-value';
 import {memoize} from '#util/memoize';
 import {type z} from 'zod';
 

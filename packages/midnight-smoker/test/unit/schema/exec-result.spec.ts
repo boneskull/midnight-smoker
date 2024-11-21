@@ -1,5 +1,5 @@
 import {AssertionError} from '#error/assertion-error';
-import {type ExecOutput, ExecOutputSchema} from '#schema/exec-output';
+import {type ExecOutput, ExecOutputSchema} from '#schema/exec/exec-output';
 import {assertExecOutput} from '#util/guard/assert/exec-output';
 import unexpected from 'unexpected';
 

@@ -1,5 +1,5 @@
 import {ExecError} from '#error/exec-error';
-import {type ExecOutput} from '#schema/exec-output';
+import {type ExecOutput} from '#schema/exec/exec-output';
 import unexpected from 'unexpected';
 
 const expect = unexpected.clone();

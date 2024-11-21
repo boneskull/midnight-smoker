@@ -1,7 +1,7 @@
 import stringify from 'json-stable-stringify';
 import {type ExecOutput} from 'midnight-smoker';
+import {type Executor} from 'midnight-smoker/defs/executor';
 import {ErrorCode, ExecError} from 'midnight-smoker/error';
-import {type Executor} from 'midnight-smoker/executor';
 import {
   type PkgManagerInstallContext,
   type PkgManagerPackContext,

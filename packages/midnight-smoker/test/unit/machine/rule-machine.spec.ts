@@ -9,7 +9,7 @@ import {RuleMachine, type RuleMachineInput} from '#machine/rule-machine';
 import {PluginRegistry} from '#plugin/registry';
 import {type LintManifest} from '#rule/lint-manifest';
 import {type StaticRuleContext} from '#rule/static-rule-context';
-import {type SomeRuleConfig} from '#schema/rule-options';
+import {type SomeRuleConfig} from '#schema/lint/rule-options';
 import {FileManager} from '#util/filemanager';
 import {memfs} from 'memfs';
 import {type Volume} from 'memfs/lib/volume';

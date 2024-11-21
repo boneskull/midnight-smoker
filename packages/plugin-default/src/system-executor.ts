@@ -4,8 +4,8 @@
  * @packageDocumentation
  */
 
+import {type Executor} from 'midnight-smoker/defs/executor';
 import {InvalidArgError} from 'midnight-smoker/error';
-import {type Executor} from 'midnight-smoker/executor';
 import {exec} from 'midnight-smoker/util';
 
 export const systemExecutor: Executor = async (spec, args, opts = {}) => {

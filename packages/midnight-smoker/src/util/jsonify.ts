@@ -23,7 +23,8 @@ import {type Jsonifiable} from 'type-fest/source/jsonifiable';
  * The returned JSON _is not intended to be a serialization format_; it should
  * not be used to marshal and un-marshal the data.
  *
- * `Serializable` can be thought of as a specific subset of `Jsonifiable`.
+ * The main use-case here is to transform unknown data (usually an `Error`) into
+ * a JSON blob which can then be dumped into the terminal.
  */
 export function jsonify(value: unknown): Jsonifiable {
   // Serializable means there's intent to return something via toJSON.

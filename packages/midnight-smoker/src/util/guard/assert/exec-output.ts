@@ -1,6 +1,6 @@
 import {AssertionError} from '#error/assertion-error';
 import {asValidationError} from '#error/validation-error';
-import {type ExecOutput, ExecOutputSchema} from '#schema/exec-output';
+import {type ExecOutput, ExecOutputSchema} from '#schema/exec/exec-output';
 
 /**
  * Asserts given `value` is an {@link ExecResult}.

@@ -1,8 +1,11 @@
 import {createRuleOptionsSchema} from '#options/create-rule-options';
-import {JsonValueSchema} from '#schema/json';
-import {type RuleSchemaValue} from '#schema/rule-schema-value';
-import {type RuleSeverity, RuleSeveritySchema} from '#schema/rule-severity';
-import {type EmptyObject} from '#util/schema-util';
+import {type RuleSchemaValue} from '#schema/lint/rule-schema-value';
+import {
+  type RuleSeverity,
+  RuleSeveritySchema,
+} from '#schema/lint/rule-severity';
+import {JsonValueSchema} from '#schema/util/json';
+import {type EmptyObject} from '#schema/util/util';
 import {z} from 'zod';
 
 /**

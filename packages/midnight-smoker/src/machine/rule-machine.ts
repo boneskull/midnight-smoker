@@ -15,7 +15,7 @@ import {DEFAULT_INIT_ACTION, INIT_ACTION} from '#machine/util';
 import {type RuleEnvelope} from '#plugin/component-envelope';
 import {type LintManifest} from '#rule/lint-manifest';
 import {type StaticRuleContext} from '#rule/static-rule-context';
-import {type SomeRuleConfig} from '#schema/rule-options';
+import {type SomeRuleConfig} from '#schema/lint/rule-options';
 import {fromUnknownError} from '#util/from-unknown-error';
 import {assertSmokerError} from '#util/guard/assert/smoker-error';
 import {isNumber} from '#util/guard/common';

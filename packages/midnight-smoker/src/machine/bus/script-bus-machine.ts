@@ -6,9 +6,9 @@ import {
   type SmokeMachineScriptEvent,
   type SomeSmokeMachineRunScriptResultEvent,
 } from '#machine/event/script';
-import {type RunScriptResult} from '#schema/run-script-result';
+import {type RunScriptResult} from '#schema/pkg-manager/run-script-result';
+import {type StaticPkgManagerSpec} from '#schema/pkg-manager/static-pkg-manager-spec';
 import {type SmokerOptions} from '#schema/smoker-options';
-import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
 import {type WorkspaceInfo} from '#schema/workspace-info';
 import * as assert from '#util/assert';
 import {asResult} from '#util/result';

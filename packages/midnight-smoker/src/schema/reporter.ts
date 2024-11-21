@@ -3,27 +3,31 @@ import {
   type ReporterTeardownFn,
   type ReporterWhenFn,
 } from '#defs/reporter';
-import {ReporterCtx} from '#reporter/reporter-context';
+import {BaseReporterContext} from '#reporter/reporter-context';
 import {SmokerOptionsSchema} from '#schema/smoker-options';
 import {
-  AnyObjectSchema,
   asObjectSchema,
-  DefaultFalseSchema,
   instanceofSchema,
   multiColorFnSchema,
-  NonEmptyStringSchema,
 } from '#util/schema-util';
 import {z} from 'zod';
+import {
+  AnyObjectSchema,
+  DefaultFalseSchema,
+  NonEmptyStringSchema,
+} from './util/util';
+
+export * from '#defs/reporter';
 
 /**
  * Approximation of a `ReporterContext` object:
  *
- * - It's a {@link ReporterCtx} instance
+ * - It's a {@link BaseReporterContext} instance
  * - It also contains whatever the object `Ctx` type argument contains
  * - It's readonly
  */
 export const ReporterContextSchema = instanceofSchema(
-  ReporterCtx,
+  BaseReporterContext,
   AnyObjectSchema,
 ).readonly();
 

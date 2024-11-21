@@ -1,4 +1,4 @@
-import {ErrnoExceptionSchema} from '#schema/errno-exception';
+import {ErrnoExceptionSchema} from '#schema/util/errno-exception';
 import {isErrnoException} from '#util/guard/errno-exception';
 import unexpected from 'unexpected';
 

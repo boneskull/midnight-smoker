@@ -5,7 +5,7 @@ import {type AbortEvent} from '#machine/event/abort';
 import {type ComponentRegistry} from '#plugin/component';
 import {type PkgManagerEnvelope} from '#plugin/component-envelope';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
-import {type DesiredPkgManager} from '#schema/desired-pkg-manager';
+import {type DesiredPkgManager} from '#schema/pkg-manager/desired-pkg-manager';
 import {type WorkspaceInfo} from '#schema/workspace-info';
 import * as assert from '#util/assert';
 import {type FileManager} from '#util/filemanager';

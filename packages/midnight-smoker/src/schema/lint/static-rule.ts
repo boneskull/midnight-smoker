@@ -5,7 +5,7 @@
  * @packageDocumentation
  */
 
-import {NonEmptyStringSchema} from '#util/schema-util';
+import {NonEmptyStringSchema} from '#schema/util/util';
 import {z} from 'zod';
 
 import {type RuleSeverity, RuleSeveritySchema} from './rule-severity';

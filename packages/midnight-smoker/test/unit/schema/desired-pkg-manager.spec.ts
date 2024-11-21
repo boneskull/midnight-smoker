@@ -3,7 +3,7 @@ import {
   DesiredPkgManagerSchema,
   NameAndVersionSchema,
   PartialPkgManagerSpecFromDesiredSchema,
-} from '#schema/desired-pkg-manager';
+} from '#schema/pkg-manager/desired-pkg-manager';
 import unexpected from 'unexpected';
 
 const expect = unexpected.clone();

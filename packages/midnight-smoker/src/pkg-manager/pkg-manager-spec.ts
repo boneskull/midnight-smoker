@@ -5,8 +5,8 @@
  * @packageDocumentation
  */
 import {type SYSTEM} from '#constants';
-import {parseDesiredPkgManagerSpec} from '#schema/desired-pkg-manager';
-import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
+import {parseDesiredPkgManagerSpec} from '#schema/pkg-manager/desired-pkg-manager';
+import {type StaticPkgManagerSpec} from '#schema/pkg-manager/static-pkg-manager-spec';
 import * as assert from '#util/assert';
 import {memoize} from '#util/decorator';
 import {isString} from '#util/guard/common';

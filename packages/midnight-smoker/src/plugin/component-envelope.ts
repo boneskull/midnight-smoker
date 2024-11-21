@@ -1,11 +1,11 @@
-import type {DesiredPkgManager} from '#schema/desired-pkg-manager';
+import type {DesiredPkgManager} from '#schema/pkg-manager/desired-pkg-manager';
 
 import {type ComponentKind, type ComponentKinds} from '#constants';
 import {type PkgManager} from '#defs/pkg-manager';
 import {type SomeRule} from '#defs/rule';
 import {type PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
-import {type SomeRuleConfig} from '#schema/rule-options';
+import {type SomeRuleConfig} from '#schema/lint/rule-options';
 import {differenceWith} from 'remeda';
 
 import {type Reporter} from '../defs/reporter';

@@ -1,5 +1,5 @@
 import {ALLOWED_DEFAULT_PKG_MANAGERS, SYSTEM} from '#constants';
-import {NonEmptyStringSchema} from '#util/schema-util';
+import {NonEmptyStringSchema} from '#schema/util/util';
 import {type LiteralUnion, type Merge, type SetRequired} from 'type-fest';
 import {z} from 'zod';
 

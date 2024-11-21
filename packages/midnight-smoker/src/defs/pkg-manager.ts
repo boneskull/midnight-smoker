@@ -9,9 +9,9 @@
  */
 
 import {type ExecOutput, type Executor} from '#defs/executor';
-import {type RunScriptResult} from '#schema/run-script-result';
-import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
-import {type RawPkgManagerVersionData} from '#schema/version';
+import {type RunScriptResult} from '#schema/pkg-manager/run-script-result';
+import {type StaticPkgManagerSpec} from '#schema/pkg-manager/static-pkg-manager-spec';
+import {type RawPkgManagerVersionData} from '#schema/pkg-manager/version-data';
 import {type WorkspaceInfo} from '#schema/workspace-info';
 import {type Range} from 'semver';
 import {type Merge, type SetOptional} from 'type-fest';
@@ -254,3 +254,5 @@ export type RunScriptManifest = {
   cwd: string;
   script: string;
 } & WorkspaceInfo;
+
+export type {PkgManagerVersionData} from '#schema/pkg-manager/version-data';

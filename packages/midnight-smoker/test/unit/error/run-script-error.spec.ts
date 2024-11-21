@@ -1,6 +1,6 @@
+import {type ExecOutput} from '#defs/executor';
 import {ExecError} from '#error/exec-error';
 import {RunScriptError} from '#error/run-script-error';
-import {type ExecOutput} from '#executor';
 import {stripAnsi} from '#util/format';
 import unexpected from 'unexpected';
 

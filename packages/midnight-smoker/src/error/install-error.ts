@@ -1,7 +1,7 @@
 import {BaseSmokerError} from '#error/base-error';
 import {ExecError} from '#error/exec-error';
-import {type ExecOutput} from '#schema/exec-output';
-import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
+import {type ExecOutput} from '#schema/exec/exec-output';
+import {type StaticPkgManagerSpec} from '#schema/pkg-manager/static-pkg-manager-spec';
 import {formatPackage, formatPkgManager} from '#util/format';
 import {fromUnknownError} from '#util/from-unknown-error';
 import {isExecOutput} from '#util/guard/exec-output';

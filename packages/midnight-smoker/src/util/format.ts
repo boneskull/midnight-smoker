@@ -6,7 +6,7 @@
 
 import {SYSTEM} from '#constants';
 import {type SmokerErrorCode} from '#error/codes';
-import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
+import {type StaticPkgManagerSpec} from '#schema/pkg-manager/static-pkg-manager-spec';
 import {isError, isNumber, isString} from '#util/guard/common';
 import {
   black,
@@ -271,7 +271,8 @@ export const formatStackTrace = (err: Error, level = 1): string => {
     level++;
     const aggregateOutput = err.errors
       .filter(isError)
-      .map((error) => formatStackTrace(error, level));
+      // XXX why is this type assertion necessary?
+      .map((error) => formatStackTrace(error as Error, level));
     output = [
       ...output,
       indent(whiteBright(italic('Reasons:')), level),

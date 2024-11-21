@@ -12,10 +12,10 @@ import {type PkgManager} from '#defs/pkg-manager';
 import {type Reporter} from '#defs/reporter';
 import {type Rule, type RuleSchemaValue} from '#defs/rule';
 import {asValidationError} from '#error/validation-error';
-import {ExecutorSchema} from '#schema/executor';
-import {PkgManagerSchema} from '#schema/pkg-manager';
+import {RuleSchema} from '#schema/lint/rule';
+import {ExecutorSchema} from '#schema/pkg-manager/executor';
+import {PkgManagerSchema} from '#schema/pkg-manager/pkg-manager';
 import {ReporterSchema} from '#schema/reporter';
-import {RuleSchema} from '#schema/rule';
 
 /**
  * Asserts that `allegedRule` is a valid {@link Rule}.

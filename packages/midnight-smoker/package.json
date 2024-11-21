@@ -62,6 +62,11 @@
       "typedoc": "./src/index.ts",
       "default": "./dist/src/index.js"
     },
+    "./defs/*": {
+      "types": "./dist/src/defs/*.d.ts",
+      "typedoc": "./src/defs/*.ts",
+      "default": "./dist/src/defs/*.js"
+    },
     "./plugin": {
       "types": "./dist/src/plugin/index.d.ts",
       "typedoc": "./src/plugin/index.ts",
@@ -91,11 +96,6 @@
       "types": "./dist/src/reporter/index.d.ts",
       "typedoc": "./src/reporter/index.ts",
       "default": "./dist/src/reporter/index.js"
-    },
-    "./executor": {
-      "types": "./dist/src/executor/index.d.ts",
-      "typedoc": "./src/executor/index.ts",
-      "default": "./dist/src/executor/index.js"
     },
     "./options": {
       "types": "./dist/src/options/index.d.ts",

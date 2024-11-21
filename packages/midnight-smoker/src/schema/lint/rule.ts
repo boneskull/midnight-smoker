@@ -1,9 +1,11 @@
 import {type RuleCheckFn} from '#defs/rule';
-import {AbortSignalSchema} from '#schema/abort-signal';
-import {RuleSchemaValueSchema} from '#schema/rule-schema-value';
-import {StaticRuleSchemaShape} from '#schema/static-rule';
+import {RuleSchemaValueSchema} from '#schema/lint/rule-schema-value';
+import {StaticRuleSchemaShape} from '#schema/lint/static-rule';
+import {AbortSignalSchema} from '#schema/util/abort-signal';
 import {asObjectSchema, multiColorFnSchema} from '#util/schema-util';
 import {z} from 'zod';
+
+export * from '#defs/rule';
 
 /**
  * @private

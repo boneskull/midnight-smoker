@@ -1,11 +1,11 @@
 import {OK} from '#constants';
+import {type Executor} from '#defs/executor';
 import {type PkgManager} from '#defs/pkg-manager';
 import {type Reporter} from '#defs/reporter';
 import {type Rule} from '#defs/rule';
-import {type Executor} from '#executor';
 import {PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
-import {type ExecOutput} from '#schema/exec-output';
-import {type RunScriptResultOk} from '#schema/run-script-result';
+import {type ExecOutput} from '#schema/exec/exec-output';
+import {type RunScriptResultOk} from '#schema/pkg-manager/run-script-result';
 import {scheduler} from 'node:timers/promises';
 
 /**

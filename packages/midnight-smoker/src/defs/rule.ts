@@ -15,9 +15,9 @@
  */
 
 import {type RuleContext} from '#rule/rule-context';
-import {type RuleOptions} from '#schema/rule-options';
-import {type RuleSchemaValue} from '#schema/rule-schema-value';
-import {type StaticRule} from '#schema/static-rule';
+import {type RuleOptions} from '#schema/lint/rule-options';
+import {type RuleSchemaValue} from '#schema/lint/rule-schema-value';
+import {type StaticRule} from '#schema/lint/static-rule';
 
 export type {RuleSchemaValue};
 

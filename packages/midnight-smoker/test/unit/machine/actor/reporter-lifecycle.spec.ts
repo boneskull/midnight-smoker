@@ -6,7 +6,7 @@ import {
 } from '#machine/actor/reporter-lifecycle';
 import {
   type ReporterContext,
-  ReporterContextSubject,
+  ReporterContextObserver,
 } from '#reporter/reporter-context';
 import {type SmokerOptions} from '#schema/smoker-options';
 import {createSandbox} from 'sinon';
@@ -27,7 +27,7 @@ describe('midnight-smoker', function () {
     beforeEach(function () {
       sandbox = createSandbox();
       reporter = {...nullReporter};
-      const subject = ReporterContextSubject.create();
+      const subject = ReporterContextObserver.create();
       ctx = subject.createReporterContext(
         {} as SmokerOptions,
         {name: 'foo', version: '1.0.0'},

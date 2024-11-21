@@ -1,5 +1,5 @@
 import {PackParseError} from '#error/pack-parse-error';
-import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
+import {type StaticPkgManagerSpec} from '#schema/pkg-manager/static-pkg-manager-spec';
 import {type WorkspaceInfo} from '#schema/workspace-info';
 import unexpected from 'unexpected';
 

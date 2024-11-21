@@ -1,4 +1,4 @@
-import {type ExecOutput} from 'midnight-smoker/executor';
+import {type ExecOutput} from 'midnight-smoker/defs/executor';
 import {
   type PkgManager,
   type PkgManagerInstallContext,

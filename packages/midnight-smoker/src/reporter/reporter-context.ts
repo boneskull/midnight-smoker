@@ -1,8 +1,15 @@
+/**
+ * Provides {@link ReporterContext} which is an object all reporter event
+ * listeners receive
+ *
+ * @packageDocumentation
+ */
+
 import {type StaticPluginMetadata} from '#defs/plugin';
-import {type BaseReporterContext} from '#defs/reporter';
 import {type EventData} from '#event/events';
 import {type PackageJson} from '#schema/package-json';
 import {type SmokerOptions} from '#schema/smoker-options';
+import * as assert from '#util/assert';
 import {
   type Observer,
   type Subscribable,
@@ -11,43 +18,73 @@ import {
 } from 'xstate';
 
 /**
- * The reporter context is like a `this`, but it's passed as an argument.
+ * The object all reporter listeners receive.
+ *
+ * This object is also available during the setup/teardown lifecycles of a
+ * reporter.
  *
  * The context has some base properties that are always available, and the
- * implementor can define extra properties as desired.
+ * implementor can define extra properties as desired. _Our_ portion is
+ * readonly, though.
  */
 export type ReporterContext<Ctx extends object = object> = Ctx &
-  Readonly<ReporterCtx>;
+  Readonly<BaseReporterContext>;
 
 export type {Observer, Subscribable, Subscription};
 
-const subjects = new WeakMap<ReporterContext, ReporterContextSubject>();
+/**
+ * Mapping of `ReporterContext` to `ReporterContextObserver`.
+ *
+ * A `ReporterContext` may only have one `ReporterContextObserver`, but the
+ * `ReporterContextObserver` may contain many subscribers.
+ */
+const reporterContextObservers = new WeakMap<
+  ReporterContext,
+  ReporterContextObserver
+>();
 
 /**
  * @internal
  */
-export class ReporterContextSubject implements Disposable {
-  private observers: Set<Observer<EventData>> = new Set();
+export class ReporterContextObserver
+  implements Disposable, Observer<EventData>
+{
+  /**
+   * All observers listening to events on the associated `ReporterContext`
+   */
+  #observers: Set<Observer<EventData>> = new Set();
 
   private constructor() {}
 
   public static create() {
-    return new ReporterContextSubject();
+    return new ReporterContextObserver();
   }
 
-  public static getSubject(ctx: ReporterContext): ReporterContextSubject {
-    return subjects.get(ctx)!;
+  public static getObserverForContext(
+    ctx: ReporterContext,
+  ): ReporterContextObserver {
+    assert.ok(
+      reporterContextObservers.has(ctx),
+      'No observer found for ReporterContext! This is a bug.',
+    );
+    return reporterContextObservers.get(ctx)!;
+  }
+
+  public static maybeGetObserverForContext(
+    ctx: ReporterContext,
+  ): ReporterContextObserver | undefined {
+    return reporterContextObservers.get(ctx);
   }
 
   public add(observer: Observer<EventData>) {
-    this.observers.add(observer);
+    this.#observers.add(observer);
   }
 
   public complete() {
-    for (const subscriber of this.observers) {
-      subscriber.complete?.();
+    for (const observer of this.#observers) {
+      observer.complete?.();
     }
-    this.observers = new Set();
+    this.#observers = new Set();
   }
 
   public createReporterContext<Ctx extends object = object>(
@@ -56,35 +93,39 @@ export class ReporterContextSubject implements Disposable {
     plugin: StaticPluginMetadata,
     signal?: AbortSignal,
   ): ReporterContext<Ctx> {
-    const ctx = new ReporterCtx(opts, pkgJson, plugin, signal);
-    subjects.set(ctx, this);
+    const ctx = new BaseReporterContext(opts, pkgJson, plugin, signal);
+    reporterContextObservers.set(ctx, this);
     return ctx as ReporterContext<Ctx>;
   }
 
   public delete(observer: Observer<EventData>) {
-    this.observers.delete(observer);
+    this.#observers.delete(observer);
   }
 
-  public error(error: Error) {
-    for (const observer of this.observers) {
+  public error(error: unknown) {
+    for (const observer of this.#observers) {
       observer.error?.(error);
     }
   }
 
   public next(eventData: EventData) {
-    for (const observer of this.observers) {
+    for (const observer of this.#observers) {
       observer.next?.(eventData);
     }
   }
 
   [Symbol.dispose](): void {
-    this.observers.clear();
+    this.#observers.clear();
   }
 }
 
-export class ReporterCtx
-  implements Subscribable<EventData>, BaseReporterContext
-{
+/**
+ * Mostly just a pile of data and the {@link BaseReporterContext.subscribe}
+ * method.
+ *
+ * @internal
+ */
+export class BaseReporterContext implements Subscribable<EventData> {
   constructor(
     public opts: SmokerOptions,
     public pkgJson: PackageJson,
@@ -98,6 +139,15 @@ export class ReporterCtx
     errorListener?: (error: any) => void,
     completeListener?: () => void,
   ): Subscription;
+
+  /**
+   * Subscribes to all events which could be received by a `Reporter`
+   *
+   * @param nextListenerOrObserver An `Observer` or just the `next` listener
+   * @param errorListener `error` listener, if any
+   * @param completeListener `complete` listener, if any
+   * @returns Subscription to all events which could be received by a `Reporter`
+   */
   public subscribe(
     nextListenerOrObserver?:
       | ((snapshot: EventData) => void)
@@ -111,11 +161,13 @@ export class ReporterCtx
       completeListener,
     );
 
-    ReporterContextSubject.getSubject(this)!.add(observer);
+    ReporterContextObserver.getObserverForContext(this).add(observer);
 
     return {
       unsubscribe: () => {
-        ReporterContextSubject.getSubject(this)!.delete(observer);
+        ReporterContextObserver.maybeGetObserverForContext(this)?.delete(
+          observer,
+        );
       },
     };
   }

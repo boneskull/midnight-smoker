@@ -1,5 +1,5 @@
 import {BaseSmokerError} from '#error/base-error';
-import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
+import {type StaticPkgManagerSpec} from '#schema/pkg-manager/static-pkg-manager-spec';
 import {type WorkspaceInfo} from '#schema/workspace-info';
 import {isString} from '#util/guard/common';
 

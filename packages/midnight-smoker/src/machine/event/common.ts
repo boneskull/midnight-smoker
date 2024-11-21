@@ -4,7 +4,7 @@
  * @packageDocumentation
  */
 
-import {type EmptyObject} from '#util/schema-util';
+import {type EmptyObject} from '#schema/util/util';
 import {type Simplify} from 'type-fest';
 
 /**

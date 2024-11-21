@@ -1,9 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
 import type unexpected from 'unexpected';
 
-import {type ExecOutput, isExecOutput} from '#executor';
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+import {type ExecOutput} from '#defs/executor';
+import {isExecOutput} from '#util/guard/exec-output';
 
 export default {
   installInto(expect: typeof unexpected) {

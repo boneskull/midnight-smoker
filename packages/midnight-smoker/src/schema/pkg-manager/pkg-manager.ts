@@ -9,20 +9,17 @@ import {
   type PkgManagerSetupFn,
   type PkgManagerTeardownFn,
 } from '#defs/pkg-manager';
-import {ExecOutputSchema} from '#executor';
-import {AbortSignalSchema} from '#schema/abort-signal';
-import {ExecutorSchema} from '#schema/executor';
-import {InstallManifestSchema} from '#schema/install-manifest';
-import {RunScriptManifestSchema} from '#schema/run-script-manifest';
-import {RunScriptResultSchema} from '#schema/run-script-result';
-import {StaticPkgManagerSpecSchema} from '#schema/static-pkg-manager-spec';
-import {RangeSchema} from '#schema/version';
+import {ExecOutputSchema} from '#schema/exec/exec-output';
+import {ExecutorSchema} from '#schema/pkg-manager/executor';
+import {InstallManifestSchema} from '#schema/pkg-manager/install-manifest';
+import {RunScriptManifestSchema} from '#schema/pkg-manager/run-script-manifest';
+import {RunScriptResultSchema} from '#schema/pkg-manager/run-script-result';
+import {StaticPkgManagerSpecSchema} from '#schema/pkg-manager/static-pkg-manager-spec';
+import {AbortSignalSchema} from '#schema/util/abort-signal';
+import {NonEmptyStringSchema} from '#schema/util/util';
+import {RangeSchema} from '#schema/util/version';
 import {WorkspaceInfoSchema} from '#schema/workspace-info';
-import {
-  asObjectSchema,
-  multiColorFnSchema,
-  NonEmptyStringSchema,
-} from '#util/schema-util';
+import {asObjectSchema, multiColorFnSchema} from '#util/schema-util';
 import z from 'zod';
 
 /**

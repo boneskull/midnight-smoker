@@ -7,14 +7,13 @@
 import {type PkgManager} from '#defs/pkg-manager';
 import {asValidationError} from '#error/validation-error';
 import {
-  parseRange,
   type PkgManagerVersionData,
   type RawPkgManagerVersionData,
   RawPkgManagerVersionDataSchema,
-  VersionStringSchema,
-} from '#schema/version';
+} from '#schema/pkg-manager/version-data';
+import {NonEmptyStringSchema} from '#schema/util/util';
+import {parseRange, VersionStringSchema} from '#schema/util/version';
 import {createDebug} from '#util/debug';
-import {NonEmptyStringSchema} from '#util/schema-util';
 import {maxSatisfying, parse, type SemVer} from 'semver';
 
 /**

@@ -1,9 +1,9 @@
-import {ExecError} from '#executor';
+import {ExecError} from '#error/exec-error';
 import {
   type ExecFn,
   type ExecOptions,
   type ExecOutput,
-} from '#schema/exec-output';
+} from '#schema/exec/exec-output';
 import {exec} from '#util/exec';
 import {stripAnsi} from '#util/format';
 import {isSmokerError} from '#util/guard/smoker-error';

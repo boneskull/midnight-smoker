@@ -1,5 +1,5 @@
 import {type ExecError} from '#error/exec-error';
-import {type ExecOutput} from '#schema/exec-output';
+import {type ExecOutput} from '#schema/exec/exec-output';
 import path from 'node:path';
 import snapshot from 'snap-shot-it';
 import unexpected from 'unexpected';

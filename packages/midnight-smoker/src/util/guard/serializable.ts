@@ -1,5 +1,5 @@
-import {type Serializable} from '#schema/serializable';
 import {isFunction, isObject} from '#util/guard/common';
+import {type Serializable} from '#util/serializable';
 import {type JsonifiableObject} from 'type-fest/source/jsonifiable';
 
 /**

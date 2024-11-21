@@ -1,14 +1,14 @@
-import type * as SchemaUtils from '#util/schema-util';
+import type * as SchemaUtils from '#schema/util/util';
 
 import {type Executor} from '#defs/executor';
 import {type PkgManager} from '#defs/pkg-manager';
+import {type Reporter} from '#defs/reporter';
 import {type Rule} from '#defs/rule';
-import {type RuleSchemaValue} from '#schema/rule-schema-value';
+import {type RuleSchemaValue} from '#schema/lint/rule-schema-value';
 import {type z} from 'zod';
 
 import type * as Helpers from './helpers';
 
-import {type Reporter} from '../defs/reporter';
 import {type PluginMetadata} from './plugin-metadata';
 
 /**

@@ -1,7 +1,10 @@
 import {DEFAULT_RULE_SEVERITY} from '#constants';
 import {getDefaultRuleOptions} from '#options/default-rule-options';
-import {type RuleSchemaValue} from '#schema/rule-schema-value';
-import {type RuleSeverity, RuleSeveritySchema} from '#schema/rule-severity';
+import {type RuleSchemaValue} from '#schema/lint/rule-schema-value';
+import {
+  type RuleSeverity,
+  RuleSeveritySchema,
+} from '#schema/lint/rule-severity';
 import {isEmpty} from '#util/guard/common';
 import {memoize} from '#util/memoize';
 import {dualCasedObjectSchema} from '#util/schema-util';

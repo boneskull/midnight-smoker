@@ -1,6 +1,6 @@
 // import {createExecaMock, type ExecaMock} from '@midnight-smoker/test-util';
 // import {type ExecaError} from 'execa';
-// import * as Executor from 'midnight-smoker/executor';
+// import * as Executor from 'midnight-smoker/defs/executor';
 // import {PkgManagerSpec} from 'midnight-smoker/pkg-manager';
 // import {Readable} from 'node:stream';
 // import rewiremock from 'rewiremock/node';

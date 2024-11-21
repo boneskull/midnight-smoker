@@ -4,7 +4,7 @@ import {
   getPkgManagerFromLockfile,
 } from '#pkg-manager/inspect';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
-import {type DesiredPkgManager} from '#schema/desired-pkg-manager';
+import {type DesiredPkgManager} from '#schema/pkg-manager/desired-pkg-manager';
 import {type WorkspaceInfo} from '#schema/workspace-info';
 import {type FileManager} from '#util/filemanager';
 import {isDesiredPkgManager} from '#util/guard/desired-pkg-manager';

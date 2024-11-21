@@ -8,8 +8,10 @@
  *
  * @packageDocumentation
  */
-import {type Serializable, type Serialized} from '#schema/serializable';
+
 import {isSerializable} from '#util/guard/serializable';
+
+import {type Serializable, type Serialized} from './serializable';
 
 /**
  * Serializes an array of {@link Serializable}s to an array of

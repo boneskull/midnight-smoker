@@ -19,8 +19,6 @@ export * from './error';
 
 export * from './event';
 
-export * from './executor';
-
 export * from './options';
 
 export * from './options';

@@ -8,7 +8,7 @@ import {ReporterError} from '#error/reporter-error';
 import {type EventData, type EventType} from '#event/events';
 import {
   type ReporterContext,
-  type ReporterContextSubject,
+  type ReporterContextObserver,
 } from '#reporter/reporter-context';
 import {ok} from '#util/assert';
 import {createDebug} from '#util/debug';
@@ -51,7 +51,7 @@ export interface FlushQueueLogicInput {
    */
   reporter: Reporter;
 
-  subject?: ReporterContextSubject;
+  subject?: ReporterContextObserver;
 }
 
 /**

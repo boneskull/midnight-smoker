@@ -5,7 +5,7 @@ import {
 import {AbortError} from '#error/abort-error';
 import {PackError} from '#error/pack-error';
 import {PackParseError} from '#error/pack-parse-error';
-import {InstallManifestSchema} from '#schema/install-manifest';
+import {InstallManifestSchema} from '#schema/pkg-manager/install-manifest';
 import {isSmokerError} from '#util/guard/smoker-error';
 import {fromPromise} from 'xstate';
 

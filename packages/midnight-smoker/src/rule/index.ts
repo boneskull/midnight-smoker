@@ -16,13 +16,13 @@ export {getDefaultRuleOptions} from '#options/default-rule-options';
 
 export * from '#rule/static-rule-context';
 
-export * from '#schema/rule-options';
+export * from '#schema/lint/rule-options';
 
-export * from '#schema/rule-schema-value';
+export * from '#schema/lint/rule-schema-value';
 
-export * from '#schema/rule-severity';
+export * from '#schema/lint/rule-severity';
 
-export * from '#schema/static-rule';
+export * from '#schema/lint/static-rule';
 
 export * from './issue';
 

@@ -24,7 +24,7 @@ import {
 } from '#plugin/component-envelope';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
 import {PluginRegistry} from '#plugin/registry';
-import {type RunScriptResultFailed} from '#schema/run-script-result';
+import {type RunScriptResultFailed} from '#schema/pkg-manager/run-script-result';
 import {type SmokerOptions} from '#schema/smoker-options';
 import {type WorkspaceInfo} from '#schema/workspace-info';
 import {FileManager} from '#util/filemanager';

@@ -9,7 +9,7 @@
 import {FAILED, PACKAGE_JSON, RuleSeverities} from '#constants';
 import {type RuleError} from '#error/rule-error';
 import {type Issue} from '#rule/issue';
-import {type StaticRule} from '#schema/static-rule';
+import {type StaticRule} from '#schema/lint/static-rule';
 import {NL} from '#util/format';
 import {asResult, type Result} from '#util/result';
 import {serialize} from '#util/serialize';

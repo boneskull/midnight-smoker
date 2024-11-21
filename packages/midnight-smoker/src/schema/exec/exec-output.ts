@@ -3,7 +3,7 @@
  *
  * @packageDocumentation
  */
-import type {ChildProcess, SpawnOptions} from 'child_process';
+import type {ChildProcess, SpawnOptions} from 'node:child_process';
 
 import {z} from 'zod';
 
@@ -34,7 +34,7 @@ export const ExecOutputSchema: z.ZodType<ExecOutput> = z
   })
   .describe('The resolved value of an `ExecFn`');
 
-export type SpawnHook = (
+export type SpawnHookFn = (
   proc: ChildProcess,
   signal: AbortSignal,
 ) => Promise<void> | void;
@@ -42,7 +42,7 @@ export type SpawnHook = (
 /**
  * Options for the `exec` function
  */
-export type ExecOptions = {
+export interface ExecOptions {
   /**
    * Additional options to pass to `child_process.spawn()`
    */
@@ -53,7 +53,7 @@ export type ExecOptions = {
    *
    * If this child process fails to spawn, this hook will not be called.
    */
-  onSpawn?: SpawnHook;
+  onSpawn?: SpawnHookFn;
 
   /**
    * Timeout in milliseconds.
@@ -72,7 +72,7 @@ export type ExecOptions = {
    * If true, log the command to the console.
    */
   verbose?: boolean;
-};
+}
 
 /**
  * Implementation of an `exec` function; it should implement both signatures.

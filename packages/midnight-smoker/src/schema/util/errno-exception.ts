@@ -1,5 +1,7 @@
-import {instanceofSchema, NonEmptyStringSchema} from '#util/schema-util';
+import {instanceofSchema} from '#util/schema-util';
 import {z} from 'zod';
+
+import {NonEmptyStringSchema} from './util';
 
 export const ErrnoExceptionSchema: z.ZodType<NodeJS.ErrnoException> =
   instanceofSchema(

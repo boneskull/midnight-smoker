@@ -1,5 +1,5 @@
 import {BaseSmokerError} from '#error/base-error';
-import {type ExecOutput} from '#schema/exec-output';
+import {type ExecOutput} from '#schema/exec/exec-output';
 
 /**
  * Thrown by `util.exec`

@@ -1,15 +1,14 @@
 import {DEFAULT_PKG_MANAGER_VERSION, SYSTEM} from '#constants';
-import {NonEmptyStringSchema} from '#util/schema-util';
-import {type LiteralUnion} from 'type-fest';
-import {z} from 'zod';
-
 import {
   type PartialStaticSystemPkgManagerSpec,
   PartialStaticSystemPkgManagerSpecSchema,
   type StaticPkgManagerSpec,
   StaticPkgManagerSpecSchema,
   SystemConstantSchema,
-} from './static-pkg-manager-spec';
+} from '#schema/pkg-manager/static-pkg-manager-spec';
+import {NonEmptyStringSchema} from '#schema/util/util';
+import {type LiteralUnion} from 'type-fest';
+import {z} from 'zod';
 
 export type DesiredPkgManager = LiteralUnion<typeof SYSTEM, string>;
 

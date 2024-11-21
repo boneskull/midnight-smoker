@@ -5,7 +5,7 @@
  */
 
 import {constant} from 'midnight-smoker/constants';
-import {type ExecOptions, type Executor} from 'midnight-smoker/executor';
+import {type ExecOptions, type Executor} from 'midnight-smoker/defs/executor';
 import {exec} from 'midnight-smoker/util';
 import path from 'node:path';
 

@@ -1,5 +1,5 @@
 import {type FAILED, type OK} from '#constants';
-import {type StaticRule} from '#schema/static-rule';
+import {type StaticRule} from '#schema/lint/static-rule';
 import {type Result} from '#util/result';
 
 import {type StaticRuleContext} from './static-rule-context';

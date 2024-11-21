@@ -29,18 +29,18 @@ export {
 
 export {type StaticRuleContext} from '#rule/static-rule-context';
 
-export {type InstallResult} from '#schema/install-result';
+export {type BaseRuleConfigRecord} from '#schema/lint/rule-options';
 
-export {PkgManagerContextSchema} from '#schema/pkg-manager';
+export {type SomeRuleConfig} from '#schema/lint/rule-options';
 
-export {type BaseRuleConfigRecord} from '#schema/rule-options';
+export {type InstallResult} from '#schema/pkg-manager/install-result';
 
-export {type SomeRuleConfig} from '#schema/rule-options';
+export {PkgManagerContextSchema} from '#schema/pkg-manager/pkg-manager';
 
-export {type RunScriptResult} from '#schema/run-script-result';
+export {type RunScriptResult} from '#schema/pkg-manager/run-script-result';
 
-export {type ScriptError} from '#schema/script-error';
+export {type ScriptError} from '#schema/pkg-manager/script-error';
 
-export {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
+export {type StaticPkgManagerSpec} from '#schema/pkg-manager/static-pkg-manager-spec';
 
 export {type WorkspaceInfo} from '#schema/workspace-info';

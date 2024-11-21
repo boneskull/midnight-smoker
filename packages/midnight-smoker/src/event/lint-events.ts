@@ -79,7 +79,7 @@ export type RuleFailedEventData = {
 
 export type RuleEndEventData = {
   error?: RuleError;
-  result?: Schema.CheckResultFailed[] | Schema.CheckResultOk;
+  result?: Schema.CheckResultFailed[] | Schema.CheckOk;
 } & RuleEventDataBase;
 
 export type RuleErrorEventData = {
@@ -87,7 +87,7 @@ export type RuleErrorEventData = {
 } & RuleEventDataBase;
 
 export type RuleOkEventData = {
-  result: Schema.CheckResultOk;
+  result: Schema.CheckOk;
 } & RuleEventDataBase;
 //#endregion
 

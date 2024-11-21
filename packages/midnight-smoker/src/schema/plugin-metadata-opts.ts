@@ -1,10 +1,10 @@
 import {TRANSIENT} from '#constants';
-import {NonEmptyStringSchema} from '#util/schema-util';
 import path from 'node:path';
 import {type LiteralUnion, type SetRequired} from 'type-fest';
 import {z} from 'zod';
 
 import {NormalizedPackageJsonSchema, type PackageJson} from './package-json';
+import {NonEmptyStringSchema} from './util/util';
 
 export type PluginMetadataOpts = {
   description?: string;

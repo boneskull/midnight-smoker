@@ -4,7 +4,6 @@
  * @module midnight-smoker/defs/reporter
  */
 import {type Events} from '#constants/event';
-import {type StaticPluginMetadata} from '#defs/plugin';
 import {type EventData, type EventType} from '#event/events';
 import {
   type Observer,
@@ -12,7 +11,6 @@ import {
   type Subscribable,
   type Subscription,
 } from '#reporter/reporter-context';
-import {type PackageJson} from '#schema/package-json';
 import {type SmokerOptions} from '#schema/smoker-options';
 
 export type {Observer, ReporterContext, Subscribable, Subscription};
@@ -30,20 +28,6 @@ export type EventTypeToListenerName = {
 export type EventTypeToEventName = {
   [K in keyof typeof Events as (typeof Events)[K]]: K;
 };
-
-/**
- * Mostly just something that the `ReporterCtx` class can implement.
- *
- * @private
- */
-export interface BaseReporterContext {
-  opts: SmokerOptions;
-
-  pkgJson: PackageJson;
-
-  plugin: StaticPluginMetadata;
-  signal?: AbortSignal;
-}
 
 /**
  * The type of a Reporter's listener on a specific event.

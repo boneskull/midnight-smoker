@@ -1,6 +1,6 @@
 import {DEFAULT_PKG_MANAGER_NAME} from '#constants';
-import {type ExecError} from '#executor';
-import {type ExecOutput} from '#schema/exec-output';
+import {type ExecError} from '#error/exec-error';
+import {type ExecOutput} from '#schema/exec/exec-output';
 import {FileManager} from '#util/filemanager';
 import {resolveFrom} from '#util/importer';
 import fs from 'node:fs/promises';

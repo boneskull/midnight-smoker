@@ -5,7 +5,7 @@
  * @packageDocumentation
  */
 
-import {type PkgManagerVersionData} from 'midnight-smoker/pkg-manager';
+import {type PkgManagerVersionData} from 'midnight-smoker/defs/pkg-manager';
 
 import npmDistTags from '../../data/npm-dist-tags.json';
 import npmVersions from '../../data/npm-versions.json';

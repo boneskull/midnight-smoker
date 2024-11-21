@@ -6,8 +6,8 @@ export {
   type RunScriptResultFailed,
   type RunScriptResultOk,
   type RunScriptResultSkipped,
-} from '#schema/run-script-result';
+} from '#schema/pkg-manager/run-script-result';
 
-export {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
+export {type StaticPkgManagerSpec} from '#schema/pkg-manager/static-pkg-manager-spec';
 
 export {type WorkspaceInfo} from '#schema/workspace-info';

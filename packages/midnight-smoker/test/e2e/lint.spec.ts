@@ -1,4 +1,4 @@
-import type {ExecOutput} from '#schema/exec-output';
+import type {ExecOutput} from '#schema/exec/exec-output';
 
 import {type ExecError} from '#error/exec-error';
 import path from 'node:path';

@@ -1,4 +1,4 @@
-import {ErrnoExceptionSchema} from '#schema/errno-exception';
+import {ErrnoExceptionSchema} from '#schema/util/errno-exception';
 
 /**
  * Type guard for {@link NodeJS.ErrnoException}

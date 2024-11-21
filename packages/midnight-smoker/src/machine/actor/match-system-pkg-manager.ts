@@ -5,9 +5,9 @@ import {normalizeVersionAgainstPkgManager} from '#pkg-manager/version-normalizer
 import {type ComponentRegistry} from '#plugin/component';
 import {type PkgManagerEnvelope} from '#plugin/component-envelope';
 import {type PluginMetadata} from '#plugin/plugin-metadata';
-import {type ExecFn} from '#schema/exec-output';
-import {type StaticPkgManagerSpec} from '#schema/static-pkg-manager-spec';
-import {parseRange} from '#schema/version';
+import {type ExecFn} from '#schema/exec/exec-output';
+import {type StaticPkgManagerSpec} from '#schema/pkg-manager/static-pkg-manager-spec';
+import {parseRange} from '#schema/util/version';
 import {caseInsensitiveEquals} from '#util/common';
 import {exec} from '#util/exec';
 import {type SemVer} from 'semver';

@@ -1,4 +1,4 @@
-import {type Executor} from 'midnight-smoker';
+import {type Executor} from 'midnight-smoker/defs/executor';
 import {
   type PkgManagerInstallContext,
   PkgManagerSpec,

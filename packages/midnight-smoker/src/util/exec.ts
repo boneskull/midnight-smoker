@@ -6,26 +6,25 @@
  */
 import {constant} from '#constants';
 import {AbortError} from '#error/abort-error';
+import {ExecError} from '#error/exec-error';
 import {SpawnError} from '#error/spawn-error';
-import {ExecError} from '#executor';
 import {
   type ExecFn,
   type ExecOptions,
   type ExecOutput,
-  type SpawnHook,
-} from '#schema/exec-output';
+  type SpawnHookFn,
+} from '#schema/exec/exec-output';
 import * as assert from '#util/assert';
 import {createDebug} from '#util/debug';
 import {fromUnknownError} from '#util/from-unknown-error';
 import {isError, isObject} from '#util/guard/common';
+import {isErrnoException} from '#util/guard/errno-exception';
+import {registerChildProcess} from '#util/preamble';
 import {cyanBright, yellow} from 'chalk';
 import {type ChildProcess, spawn, type SpawnOptions} from 'node:child_process';
 import {once} from 'node:events';
 import {finished} from 'node:stream/promises';
 import {mergeDeep, doNothing as noop} from 'remeda';
-
-import {isErrnoException} from './guard';
-import {registerChildProcess} from './preamble';
 
 const debug = createDebug(__filename);
 
@@ -100,7 +99,7 @@ const errored = async (proc: ChildProcess): Promise<never> => {
   throw err;
 };
 
-const wrapSpawnHook = (onSpawn: SpawnHook) => {
+const wrapSpawnHook = (onSpawn: SpawnHookFn) => {
   return async (proc: ChildProcess, signal: AbortSignal) => {
     try {
       // TODO: can be Promise.try in the future

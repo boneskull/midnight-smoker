@@ -14,12 +14,12 @@
 import {OptionsParser} from '#options/options-parser';
 import {BLESSED_PLUGINS} from '#plugin/blessed';
 import {PluginRegistry} from '#plugin/registry';
-import {RuleSeveritySchema} from '#schema/rule-severity';
+import {RuleSeveritySchema} from '#schema/lint/rule-severity';
 import {
   DefaultFalseSchema,
   DefaultTrueSchema,
   NonEmptyStringToArraySchema,
-} from '#util/schema-util';
+} from '#schema/util/util';
 import {writeFile} from 'node:fs/promises';
 import {normalize} from 'node:path';
 import prettier from 'prettier';
