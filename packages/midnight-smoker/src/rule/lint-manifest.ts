@@ -8,7 +8,7 @@ export type LintManifest = Readonly<{
   installPath: string;
   pkgJson: PackageJson;
   pkgJsonPath: string;
+  pkgJsonSource: string;
   pkgName: string;
-  rawPkgJson: string;
   workspace: WorkspaceInfo;
 }>;

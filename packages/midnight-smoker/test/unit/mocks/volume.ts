@@ -38,13 +38,13 @@ export const monorepoWorkspaces: WorkspaceInfo[] = [
       version: '1.0.0',
     },
     pkgJsonPath: '/packages/package-c/package.json',
-    pkgName: 'package-c',
-    private: false,
-    rawPkgJson: stringify({
+    pkgJsonSource: stringify({
       main: 'index.js',
       name: 'package-c',
       version: '1.0.0',
     }),
+    pkgName: 'package-c',
+    private: false,
   },
   {
     localPath: '/packages/package-b',
@@ -54,13 +54,13 @@ export const monorepoWorkspaces: WorkspaceInfo[] = [
       version: '1.0.0',
     },
     pkgJsonPath: '/packages/package-b/package.json',
-    pkgName: 'package-b',
-    private: false,
-    rawPkgJson: stringify({
+    pkgJsonSource: stringify({
       main: 'index.js',
       name: 'package-b',
       version: '1.0.0',
     }),
+    pkgName: 'package-b',
+    private: false,
   },
   {
     localPath: '/packages/package-a',
@@ -70,12 +70,12 @@ export const monorepoWorkspaces: WorkspaceInfo[] = [
       version: '1.0.0',
     },
     pkgJsonPath: '/packages/package-a/package.json',
-    pkgName: 'package-a',
-    private: false,
-    rawPkgJson: stringify({
+    pkgJsonSource: stringify({
       main: 'index.js',
       name: 'package-a',
       version: '1.0.0',
     }),
+    pkgName: 'package-a',
+    private: false,
   },
 ];

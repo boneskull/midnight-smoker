@@ -191,7 +191,7 @@
     "type-fest": "4.19.0",
     "which": "4.0.0",
     "wrap-ansi": "7.0.0",
-    "xstate": "5.17.4",
+    "xstate": "5.19.0",
     "yargs": "17.7.2",
     "zod": "3.22.4",
     "zod-validation-error": "2.1.0"
@@ -210,6 +210,7 @@
     "zod-to-json-schema": "3.22.3"
   },
   "overrides": {
+    "xstate": "$xstate",
     "zod": "$zod"
   }
 }

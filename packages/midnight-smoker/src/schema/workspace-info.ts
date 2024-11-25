@@ -6,22 +6,29 @@ import {NonEmptyStringSchema} from '#schema/util/util';
 import {z} from 'zod';
 
 /**
+ * **For extension only**.
+ *
+ * @internal
+ */
+export const BaseWorkspaceInfoSchema = z.object({
+  localPath: NonEmptyStringSchema,
+  pkgJson: NormalizedPackageJsonSchema,
+  pkgJsonPath: NonEmptyStringSchema,
+  pkgJsonSource: NonEmptyStringSchema,
+  pkgName: NonEmptyStringSchema,
+  private: z.boolean().optional(),
+});
+
+/**
  * Schema for a {@link WorkspaceInfo}.
  *
  * @remarks
  * `WorkspaceInfo` is not a value that we expect a plugin author to ever need to
- * provide. This is only used for composition with other schemas that build upon
- * it.
+ * provide.
  * @see {@link WorkspaceInfo}
  */
-export const WorkspaceInfoSchema = z.strictObject({
-  localPath: NonEmptyStringSchema,
-  pkgJson: NormalizedPackageJsonSchema,
-  pkgJsonPath: NonEmptyStringSchema,
-  pkgName: NonEmptyStringSchema,
-  private: z.boolean().optional(),
-  rawPkgJson: z.string(),
-});
+export const WorkspaceInfoSchema: z.ZodType<WorkspaceInfo> =
+  BaseWorkspaceInfoSchema.readonly();
 
 /**
  * Information about a _workspace_ in the package-manager parlance.
@@ -46,6 +53,11 @@ export type WorkspaceInfo = Readonly<{
   pkgJsonPath: string;
 
   /**
+   * The source of `package.json`
+   */
+  pkgJsonSource: string;
+
+  /**
    * Name of the package.
    *
    * @remarks
@@ -60,11 +72,4 @@ export type WorkspaceInfo = Readonly<{
    * Corresponds to the `private` field of the `package.json`
    */
   private?: boolean;
-
-  /**
-   * A Momoa AST representing the `package.json` file.
-   *
-   * This probably doesn't need to be used directly.
-   */
-  rawPkgJson: string;
 }>;

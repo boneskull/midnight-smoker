@@ -736,8 +736,8 @@ export const PkgManagerMachine = setup({
               localPath,
               pkgJson: workspace.pkgJson,
               pkgJsonPath: workspace.pkgJsonPath,
+              pkgJsonSource: workspace.pkgJsonSource,
               pkgName,
-              rawPkgJson: workspace.rawPkgJson,
               script,
             };
 

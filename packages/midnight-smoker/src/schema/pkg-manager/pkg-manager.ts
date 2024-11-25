@@ -18,7 +18,10 @@ import {StaticPkgManagerSpecSchema} from '#schema/pkg-manager/static-pkg-manager
 import {AbortSignalSchema} from '#schema/util/abort-signal';
 import {NonEmptyStringSchema} from '#schema/util/util';
 import {RangeSchema} from '#schema/util/version';
-import {WorkspaceInfoSchema} from '#schema/workspace-info';
+import {
+  BaseWorkspaceInfoSchema,
+  WorkspaceInfoSchema,
+} from '#schema/workspace-info';
 import {asObjectSchema, multiColorFnSchema} from '#util/schema-util';
 import z from 'zod';
 
@@ -45,10 +48,12 @@ export const PkgManagerContextSchema: z.ZodType<PkgManagerContext> =
  * Schema for a {@link PkgManagerPackContext}
  */
 export const PkgManagerPackContextSchema: z.ZodType<PkgManagerPackContext> =
-  BasePkgManagerContextSchema.merge(WorkspaceInfoSchema).extend({
-    signal: AbortSignalSchema,
-    timeout: z.number().optional(),
-  });
+  BasePkgManagerContextSchema.merge(BaseWorkspaceInfoSchema)
+    .extend({
+      signal: AbortSignalSchema,
+      timeout: z.number().optional(),
+    })
+    .readonly();
 
 /**
  * Schema for a {@link PkgManagerInstallContext}

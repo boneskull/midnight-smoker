@@ -29,7 +29,7 @@ export const prepareLintManifestLogic = fromPromise<
   const {
     packageJson: installedPkgJson,
     path: installedPkgJsonPath,
-    rawPackageJson: rawPkgJson,
+    rawPackageJson: pkgJsonSource,
   } = await fileManager.findPkgUp(installPath, {
     normalize: true,
     signal,
@@ -40,8 +40,8 @@ export const prepareLintManifestLogic = fromPromise<
     installPath,
     pkgJson: installedPkgJson,
     pkgJsonPath: installedPkgJsonPath,
+    pkgJsonSource,
     pkgName: installedPkgJson.name ?? workspace.pkgName,
-    rawPkgJson,
     workspace,
   };
 

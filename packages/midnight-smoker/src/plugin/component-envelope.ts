@@ -86,3 +86,5 @@ export function filterUnsupportedPkgManagersFromEnvelopes(
     (desiredPkgManager, {requestedAs}) => desiredPkgManager === requestedAs,
   );
 }
+
+export {type PkgManagerSpec};

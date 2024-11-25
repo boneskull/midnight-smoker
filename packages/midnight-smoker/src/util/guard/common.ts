@@ -1,19 +1,28 @@
 /**
- * Exports some common utilities.
+ * Exports some common guards.
  *
- * @privateRemarks
- * This could (and perhaps should) be replaced with our own implementations.
  * @packageDocumentation
  */
 
-export {
+import * as R from 'remeda';
+
+const {
   isBoolean,
   isEmpty,
   isError,
   isFunction,
   isNumber,
-  isObjectType as isObject,
+  isObjectType: isObject,
+  isStrictEqual,
   isString,
-} from 'remeda';
+} = R;
 
-export const isNull = (value: unknown): value is null => value === null;
+export {isBoolean, isEmpty, isError, isFunction, isNumber, isObject, isString};
+
+/**
+ * Returns `true` if the value is `null`.
+ *
+ * @param value Value to check
+ * @returns `true` if the value is `null`
+ */
+export const isNull = isStrictEqual(null);

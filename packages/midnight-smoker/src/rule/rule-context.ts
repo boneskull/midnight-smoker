@@ -13,7 +13,6 @@ import {type RuleSeverity} from '#schema/lint/rule-severity';
 import {type StaticRule} from '#schema/lint/static-rule';
 import {type PackageJson} from '#schema/package-json';
 import {type WorkspaceInfo} from '#schema/workspace-info';
-import {asResult} from '#util/result';
 import {serialize} from '#util/serialize';
 
 import {RuleIssue} from './rule-issue';
@@ -136,7 +135,7 @@ export class RuleContext implements StaticRuleContext {
       });
     }
     return Object.freeze({
-      ctx: asResult(serialize(this)),
+      ctx: serialize(this),
       rule: this.staticRule,
       type: OK,
     });
@@ -192,16 +191,16 @@ export class RuleContext implements StaticRuleContext {
     return this.staticCtx.pkgJsonPath;
   }
 
+  public get pkgJsonSource(): string {
+    return this.staticCtx.pkgJsonSource;
+  }
+
   public get pkgManager(): string {
     return this.staticCtx.pkgManager;
   }
 
   public get pkgName(): string {
     return this.staticCtx.pkgName;
-  }
-
-  public get rawPkgJson(): string {
-    return this.staticCtx.rawPkgJson;
   }
 
   public get ruleName(): string {

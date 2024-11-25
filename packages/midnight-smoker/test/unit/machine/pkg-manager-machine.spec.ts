@@ -139,8 +139,8 @@ describe('midnight-smoker', function () {
                 localPath: '/bar',
                 pkgJson: {name: 'bar', version: '1.0.0'},
                 pkgJsonPath: '/package.json',
+                pkgJsonSource: stringify({name: 'bar', version: '1.0.0'}),
                 pkgName: 'bar',
-                rawPkgJson: stringify({name: 'bar', version: '1.0.0'}),
               },
             ],
           };
@@ -298,8 +298,8 @@ describe('midnight-smoker', function () {
                   localPath: '/bar',
                   pkgJson: {name: 'bar', version: '1.0.0'},
                   pkgJsonPath: '/package.json',
+                  pkgJsonSource: stringify({name: 'bar', version: '1.0.0'}),
                   pkgName: 'bar',
-                  rawPkgJson: stringify({name: 'bar', version: '1.0.0'}),
                 },
               ],
             };

@@ -5,7 +5,7 @@
  * @packageDocumentation
  */
 
-import type {WorkspaceInfoSchema} from '#schema/workspace-info';
+import type {BaseWorkspaceInfoSchema} from '#schema/workspace-info';
 
 import {type PackageJson} from '#schema/package-json';
 import * as R from 'remeda';
@@ -14,7 +14,7 @@ import {type TupleToUnion} from 'type-fest';
 /**
  * Props which are not allowed in a {@link Result}.
  */
-const OmittedResultProps = ['pkgJson'] as const;
+const OmittedResultProps = ['pkgJson', 'pkgJsonSource'] as const;
 
 /**
  * A union of the props in {@link OmittedResultProps}.
@@ -23,6 +23,7 @@ type OmittedResultProp = TupleToUnion<typeof OmittedResultProps>;
 
 export type ResultLike = {
   pkgJson?: PackageJson;
+  pkgJsonSource?: string;
 };
 
 /**
@@ -55,18 +56,20 @@ export function asResult<T extends ResultLike>(obj: T): Result<T> {
 export type Result<T extends ResultLike> = Omit<T, OmittedResultProp>;
 
 /**
- * Creates a strict schema from one extending {@link WorkspaceInfoSchema} which
- * omits the `pkgJson` field.
+ * Creates a strict schema from one extending {@link BaseWorkspaceInfoSchema}
+ * which omits the `pkgJson` field.
  *
- * @param schema - A schema extending {@link WorkspaceInfoSchema}
+ * @param schema - A schema extending {@link BaseWorkspaceInfoSchema}
  * @returns A new schema
  */
 
-export function asResultSchema<T extends typeof WorkspaceInfoSchema>(
+export function asResultSchema<T extends typeof BaseWorkspaceInfoSchema>(
   schema: T,
 ) {
   const description: string = schema.description
     ? `${schema.description} (without \`pkgJson\` field)`
     : 'Object without `pkgJson` field';
-  return schema.omit({pkgJson: true}).describe(description);
+  return schema
+    .omit({pkgJson: true, pkgJsonSource: true})
+    .describe(description);
 }

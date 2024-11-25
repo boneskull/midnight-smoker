@@ -19,3 +19,5 @@ export * from './util/abort-signal';
 export * from './util/errno-exception';
 
 export * from './util/version';
+
+export * from './workspace-info';

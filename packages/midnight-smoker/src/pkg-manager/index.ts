@@ -12,9 +12,9 @@ export * from '#defs/pkg-manager';
 
 export * from '#error/pkg-manager';
 
-export * from '#schema/pkg-manager/desired-pkg-manager';
-
 export type {ExecOutput} from '#schema/exec/exec-output';
+
+export * from '#schema/pkg-manager/desired-pkg-manager';
 
 export * from '#schema/pkg-manager/install-manifest';
 

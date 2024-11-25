@@ -8,6 +8,8 @@
  * @packageDocumentation
  */
 
+export * from './abort';
+
 export * from './bus';
 
 export * from './common';
@@ -17,6 +19,8 @@ export * from './install';
 export * from './lint';
 
 export * from './pack';
+
+export * from './pkg-manager';
 
 export * from './script';
 

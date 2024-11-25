@@ -28,9 +28,9 @@ describe('midnight-smoker', function () {
             // include other necessary package.json properties here
           },
           pkgJsonPath: '/path/to/example-package/package.json',
+          pkgJsonSource: '{}',
           pkgManager: 'smthing',
           pkgName: 'example-package',
-          rawPkgJson: '{}',
           ruleId,
           severity: 'error',
           workspace: {
@@ -40,11 +40,11 @@ describe('midnight-smoker', function () {
               version: '1.0.0',
             },
             pkgJsonPath: '/path/to/example-package/package.json',
-            pkgName: 'example-package',
-            rawPkgJson: stringify({
+            pkgJsonSource: stringify({
               name: 'example-package',
               version: '1.0.0',
             }),
+            pkgName: 'example-package',
           },
         };
 

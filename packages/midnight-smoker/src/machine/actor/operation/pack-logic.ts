@@ -1,11 +1,11 @@
 import {
-  type InstallManifest,
   type PkgManagerPackContext,
+  type WorkspaceInstallManifest,
 } from '#defs/pkg-manager';
 import {AbortError} from '#error/abort-error';
 import {PackError} from '#error/pack-error';
 import {PackParseError} from '#error/pack-parse-error';
-import {InstallManifestSchema} from '#schema/pkg-manager/install-manifest';
+import {WorkspaceInstallManifestSchema} from '#schema/pkg-manager/install-manifest';
 import {isSmokerError} from '#util/guard/smoker-error';
 import {fromPromise} from 'xstate';
 
@@ -28,7 +28,7 @@ export type PackLogicInput = OperationLogicInput<PkgManagerPackContext>;
  * information _must_ live in the rejection reason.
  */
 
-export const packLogic = fromPromise<InstallManifest, PackLogicInput>(
+export const packLogic = fromPromise<WorkspaceInstallManifest, PackLogicInput>(
   async ({
     input: {
       ctx,
@@ -41,8 +41,7 @@ export const packLogic = fromPromise<InstallManifest, PackLogicInput>(
     }
     try {
       const allegedManifest = await pkgManager.pack({...ctx, signal});
-      const manifest = InstallManifestSchema.parse(allegedManifest);
-      return {localPath: ctx.localPath, ...manifest};
+      return WorkspaceInstallManifestSchema.parse(allegedManifest);
     } catch (err) {
       if (isSmokerError(PackError, err) || isSmokerError(PackParseError, err)) {
         throw err;
@@ -54,8 +53,8 @@ export const packLogic = fromPromise<InstallManifest, PackLogicInput>(
           localPath: ctx.localPath,
           pkgJson: ctx.pkgJson,
           pkgJsonPath: ctx.pkgJsonPath,
+          pkgJsonSource: ctx.pkgJsonSource,
           pkgName: ctx.pkgName,
-          rawPkgJson: ctx.rawPkgJson,
         },
         ctx.tmpdir,
         err,

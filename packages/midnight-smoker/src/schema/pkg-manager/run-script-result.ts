@@ -5,7 +5,6 @@ import {UnknownScriptError} from '#error/unknown-script-error';
 import {ExecOutputSchema} from '#schema/exec/exec-output';
 import {RunScriptManifestSchema} from '#schema/pkg-manager/run-script-manifest';
 import {ScriptErrorSchema} from '#schema/pkg-manager/script-error';
-import {asResultSchema} from '#util/result';
 import {instanceofSchema} from '#util/schema-util';
 import {z} from 'zod';
 
@@ -39,7 +38,7 @@ export const ScriptResultRawResultSchema = ExecOutputSchema.describe(
 );
 
 export const BaseRunScriptResultSchema = z.strictObject({
-  manifest: asResultSchema(RunScriptManifestSchema),
+  manifest: RunScriptManifestSchema,
 });
 
 export const RunScriptErrorResultSchema = BaseRunScriptResultSchema.extend({

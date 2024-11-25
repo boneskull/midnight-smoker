@@ -33,9 +33,9 @@ describe('midnight-smoker', function () {
             version: '1.0.0',
           },
           pkgJsonPath: '/path/to/example-package/package.json',
+          pkgJsonSource: '{}',
           pkgManager: 'bebebebebee',
           pkgName: 'example-package',
-          rawPkgJson: '{}',
           ruleId,
           severity: RuleSeverities.Error,
           workspace: {
@@ -45,11 +45,11 @@ describe('midnight-smoker', function () {
               version: '1.0.0',
             },
             pkgJsonPath: '/path/to/example-package/package.json',
-            pkgName: 'example-package',
-            rawPkgJson: stringify({
+            pkgJsonSource: stringify({
               name: 'example-package',
               version: '1.0.0',
             }),
+            pkgName: 'example-package',
           },
         };
         let issue: RuleIssue;
@@ -168,7 +168,7 @@ describe('midnight-smoker', function () {
           describe('toJSON()', function () {
             it('should return a StaticRuleIssue', function () {
               const expected: Issue = {
-                ctx: asResult(params.ctx),
+                ctx: params.ctx,
                 data: params.data,
                 error: params.error,
                 filepath: issue.filepath,
@@ -196,7 +196,7 @@ describe('midnight-smoker', function () {
             describe('when filepath is a JSON file and jsonField is provided', function () {
               it('should return the context from the JSONBlamer', function () {
                 const result: Issue = {
-                  ctx: {rawPkgJson: '{}'} as RuleContext,
+                  ctx: {pkgJsonSource: '{}'} as RuleContext,
                   filepath: '/path/to/package.json',
                   id: '12345',
                   isError: false,
@@ -227,7 +227,7 @@ describe('midnight-smoker', function () {
             describe('when filepath is not a JSON file or jsonField is not provided', function () {
               it('should return an empty string', function () {
                 const result: Issue = {
-                  ctx: {rawPkgJson: '{}'} as RuleContext,
+                  ctx: {pkgJsonSource: '{}'} as RuleContext,
                   filepath: '/path/to/package.txt',
                   id: '12345',
                   isError: false,
@@ -248,7 +248,7 @@ describe('midnight-smoker', function () {
 
               it('should return an empty string if jsonField is not provided', function () {
                 const result: Issue = {
-                  ctx: {rawPkgJson: '{}'} as RuleContext,
+                  ctx: {pkgJsonSource: '{}'} as RuleContext,
                   filepath: '/path/to/package.json',
                   id: '12345',
                   isError: false,

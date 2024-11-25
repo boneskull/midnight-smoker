@@ -114,7 +114,7 @@ export const queryWorkspacesLogic = fromPromise<
           const pkgJsonPath = path.join(fullpath, PACKAGE_JSON);
           // it appears we're not sending `normalize: true` here so that we can
           // trap the errors and display them a certain way
-          const {packageJson, rawPackageJson: rawPkgJson} =
+          const {packageJson, rawPackageJson: pkgJsonSource} =
             await fileManager.readPkgJson(pkgJsonPath, {
               signal,
             });
@@ -145,9 +145,9 @@ export const queryWorkspacesLogic = fromPromise<
               localPath: fullpath,
               pkgJson: workspacePkgJson,
               pkgJsonPath,
+              pkgJsonSource,
               pkgName: workspacePkgJson.name,
               private: !!workspacePkgJson.private,
-              rawPkgJson,
             },
           ];
         },
@@ -209,9 +209,9 @@ export const queryWorkspacesLogic = fromPromise<
           localPath: cwd,
           pkgJson: rootPkgJson,
           pkgJsonPath: rootPkgJsonPath,
+          pkgJsonSource: rawRootPkgJson,
           pkgName: rootPkgJson.name,
           private: !!rootPkgJson.private,
-          rawPkgJson: rawRootPkgJson,
         },
       ];
     }

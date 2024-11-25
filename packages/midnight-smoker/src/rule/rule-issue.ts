@@ -11,7 +11,6 @@ import {type RuleError} from '#error/rule-error';
 import {type Issue} from '#rule/issue';
 import {type StaticRule} from '#schema/lint/static-rule';
 import {NL} from '#util/format';
-import {asResult, type Result} from '#util/result';
 import {serialize} from '#util/serialize';
 import {uniqueId, type UniqueId} from '#util/unique-id';
 import path from 'node:path';
@@ -67,7 +66,7 @@ export class RuleIssue implements Issue {
   /**
    * {@inheritDoc RuleIssueParams.ctx}
    */
-  public readonly ctx: Result<StaticRuleContext>;
+  public readonly ctx: StaticRuleContext;
 
   /**
    * {@inheritDoc RuleIssueParams.data}
@@ -111,7 +110,7 @@ export class RuleIssue implements Issue {
   }: RuleIssueParams) {
     // just in case StaticRuleDef is a Rule
     this.rule = serialize(rule);
-    this.ctx = asResult(ctx);
+    this.ctx = ctx;
     this.data = data;
     this.error = error;
     this.id = uniqueId({prefix: 'issue'});
@@ -147,12 +146,12 @@ export class RuleIssue implements Issue {
    */
   public static getSourceContext(result: Issue) {
     const {
-      ctx: {rawPkgJson},
+      ctx: {pkgJsonSource},
       filepath,
       jsonField,
     } = result;
     if (filepath && path.extname(filepath) === '.json' && jsonField) {
-      const blamer = new JSONBlamer(rawPkgJson, filepath);
+      const blamer = new JSONBlamer(pkgJsonSource, filepath);
       const res = blamer.find(jsonField);
       if (res) {
         const context = blamer.getContext(res);

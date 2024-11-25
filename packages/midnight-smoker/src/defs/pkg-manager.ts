@@ -14,7 +14,7 @@ import {type StaticPkgManagerSpec} from '#schema/pkg-manager/static-pkg-manager-
 import {type RawPkgManagerVersionData} from '#schema/pkg-manager/version-data';
 import {type WorkspaceInfo} from '#schema/workspace-info';
 import {type Range} from 'semver';
-import {type Merge, type SetOptional} from 'type-fest';
+import {type Merge, type SetOptional, type SetRequired} from 'type-fest';
 
 /**
  * The context for a package manager.
@@ -226,14 +226,17 @@ export type PkgManagerTeardownFn =
   | ((context: PkgManagerContext) => void);
 
 export type InstallManifest = Readonly<
-  {
-    cwd: string;
-    installPath?: string;
-    isAdditional?: boolean;
-    pkgSpec: string;
-  } & SetOptional<
-    WorkspaceInfo,
-    'localPath' | 'pkgJson' | 'pkgJsonPath' | 'rawPkgJson'
+  Merge<
+    {
+      cwd: string;
+      installPath?: string;
+      isAdditional?: boolean;
+      pkgSpec: string;
+    },
+    SetOptional<
+      WorkspaceInfo,
+      'localPath' | 'pkgJson' | 'pkgJsonPath' | 'pkgJsonSource'
+    >
   >
 >;
 
@@ -242,12 +245,11 @@ export type InstallManifest = Readonly<
  */
 
 export type WorkspaceInstallManifest = Merge<
-  InstallManifest,
-  {
-    installPath: string;
-    isAdditional?: false;
-    localPath: string;
-  }
+  SetRequired<
+    InstallManifest,
+    'installPath' | 'localPath' | 'pkgJson' | 'pkgJsonPath' | 'pkgJsonSource'
+  >,
+  {isAdditional?: false}
 >;
 
 export type RunScriptManifest = {

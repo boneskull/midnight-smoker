@@ -25,8 +25,8 @@ describe('midnight-smoker', function () {
             localPath: '',
             pkgJson,
             pkgJsonPath: '',
+            pkgJsonSource: stringify(pkgJson),
             pkgName: '',
-            rawPkgJson: stringify(pkgJson),
           },
         ];
 
