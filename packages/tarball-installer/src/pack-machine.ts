@@ -49,6 +49,7 @@ type InternalPackMachineEvents =
 export type PackMachineEvents = PackMachinePackEvent;
 
 export interface PackMachineContext extends PackMachineInput {
+  aborted?: boolean;
   packActorRefs: Record<string, ActorRefFromLogic<typeof packLogic>>;
   queue: PkgManagerPackContext[];
 }
@@ -82,11 +83,14 @@ export const PackMachine = setup({
         }) as const,
     ),
 
+    aborted: assign({
+      aborted: true,
+    }),
+
     /**
      * Spawns a {@link packLogic} actor with the first
      * {@link PkgManagerPackContext} item in the queue, invokes
      * {@link emitPkgPackBegin}, and shifts the item from the head of the queue.
-     * If items remain in the queue, it invokes itself recursively.
      *
      * We do this in one place so we can ensure that the queue is shifted
      * properly.
@@ -102,11 +106,6 @@ export const PackMachine = setup({
       enqueue.assign({
         queue: R.drop(queue, 1),
       });
-
-      if (queue.length) {
-        // @ts-expect-error - TS limitation
-        enqueue({type: 'beginPack'});
-      }
     }),
 
     /**
@@ -173,6 +172,8 @@ export const PackMachine = setup({
      * This would normally be an {@link emit}, but we are parsing an object with
      * Zod, which likes to throw exceptions. So in the case that we cannot
      * extract a {@link WorkspaceInfo}, we will abort.
+     *
+     * `installManifest` is guaranteed per the guard.
      */
     emitPkgPackOk: enqueueActions(
       (
@@ -183,15 +184,16 @@ export const PackMachine = setup({
           enqueue,
           self: {id: sender},
         },
-        installManifest: WorkspaceInstallManifest,
+        installManifest?: WorkspaceInstallManifest,
       ) => {
         // note: InstallManifest is a superset of WorkspaceInfo;
         // this will just strip out fields
         try {
-          const workspace: WorkspaceInfo =
-            WorkspaceInfoSchema.parse(installManifest);
+          const workspace: WorkspaceInfo = WorkspaceInfoSchema.parse(
+            installManifest!,
+          );
           const evt: SmokeMachinePkgPackOkEvent = {
-            installManifest: asResult(installManifest),
+            installManifest: asResult(installManifest!),
             pkgManager,
             sender,
             type: PackEvents.PkgPackOk,
@@ -199,6 +201,7 @@ export const PackMachine = setup({
           };
           enqueue.emit(evt);
         } catch (err) {
+          // this "should never happen"
           // @ts-expect-error - TS limitation
           enqueue({params: asValidationError(err), type: 'abort'});
         }
@@ -215,6 +218,10 @@ export const PackMachine = setup({
         ...contexts,
       ],
     }),
+
+    halt: ({self}) => {
+      self.stop();
+    },
 
     /**
      * For testing
@@ -273,10 +280,14 @@ export const PackMachine = setup({
   on: {
     ABORT: {
       actions: [
-        log(({event: {reason}}) =>
-          reason ? `Aborting PackMachine: ${reason}` : 'Aborting PackMachine',
+        'aborted',
+        log(({event: {reason}, self: {id}}) =>
+          reason
+            ? `Aborting PackMachine [${id}]: ${reason}`
+            : `Aborting PackMachine [${id}]`,
         ),
         'destroyAllChildren',
+        'halt',
       ],
     },
     PACK: {
@@ -288,24 +299,38 @@ export const PackMachine = setup({
         type: 'enqueue',
       },
     },
-    'xstate.done.actor.pack.*': {
-      actions: [
-        {
-          /**
-           * Provide {@link PackLogicOutput} to {@link emitPkgPackOk}
-           */
-          params: R.piped(R.prop('event'), R.prop('output')),
-          type: 'emitPkgPackOk',
+    'xstate.done.actor.pack.*': [
+      {
+        actions: [
+          {
+            /**
+             * Provide {@link PackLogicOutput} to {@link emitPkgPackOk}
+             */
+            params: R.piped(R.prop('event'), R.prop('output')),
+            type: 'emitPkgPackOk',
+          },
+          {
+            /**
+             * Provide {@link DoneActorEvent.actorId} to {@link destroyChild}
+             */
+            params: R.piped(R.prop('event'), R.prop('actorId')),
+            type: 'destroyChild',
+          },
+        ],
+        guard: R.piped(R.prop('event'), R.prop('output'), R.isTruthy),
+      },
+      {
+        actions: {
+          params: 'Packing aborted because pack logic was explicitly stopped',
+          type: 'abort',
         },
-        {
-          /**
-           * Provide {@link DoneActorEvent.actorId} to {@link destroyChild}
-           */
-          params: R.piped(R.prop('event'), R.prop('actorId')),
-          type: 'destroyChild',
-        },
-      ],
-    },
+        guard: R.piped(
+          R.prop('context'),
+          R.prop('aborted'),
+          R.isNot(R.isTruthy),
+        ),
+      },
+    ],
     'xstate.error.actor.pack.*': {
       actions: [
         {

@@ -1,59 +1,69 @@
-import {ErrorCode, PackEvents, type PkgManagerEnvelope} from 'midnight-smoker';
+import {ErrorCode} from 'midnight-smoker/error';
+import {PackEvents} from 'midnight-smoker/event';
 import {type SmokeMachinePkgPackOkEvent} from 'midnight-smoker/machine';
 import {
   asResult,
   PackError,
   type PkgManagerPackContext,
-  PkgManagerSpec,
-  type WorkspaceInstallManifest,
 } from 'midnight-smoker/pkg-manager';
+import {type PkgManagerEnvelope} from 'midnight-smoker/plugin';
+import {R} from 'midnight-smoker/util';
 import {afterEach, beforeEach, describe, it} from 'node:test';
 import sinon from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
 import {type Actor, createActor, fromPromise} from 'xstate';
-import {runUntilEmitted, runUntilSpawn} from 'xstate-audition';
+import {runUntilDone, runUntilEmitted, runUntilSpawn} from 'xstate-audition';
 
 import {PackMachine, type PackMachineInput} from '../../src/pack-machine';
+import {
+  makePkgManagerPackContext,
+  nullPkgManager,
+  nullPkgManagerSpec,
+  testPlugin,
+  workspaceInstallManifest,
+} from './fixture';
 
 const expect = unexpected.clone().use(unexpectedSinon);
 
 describe('PackMachine', () => {
-  let sandbox: sinon.SinonSandbox;
-  let input: PackMachineInput;
-  let logic: typeof PackMachine;
-  let packStub: sinon.SinonStub;
-  const spec = new PkgManagerSpec({
-    name: 'nullpm',
-    requestedAs: `nullpm@1.0.0`,
-    version: '1.0.0',
-  });
-  const installManifest: WorkspaceInstallManifest = {
-    cwd: '/some/cwd',
-    installPath: '/some/tmp/path',
-    isAdditional: false,
-    localPath: '/some/other/path',
-    pkgJson: {name: 'test-package', version: '1.0.0'},
-    pkgJsonPath: '/path/to/package.json',
-    pkgJsonSource: "{name: 'test-package', version: '1.0.0'}",
-    pkgName: 'test-package',
-    pkgSpec: 'nullpm@1.0.0',
-  };
+  /**
+   * Actor ID of the test pack machine
+   */
+  const id = 'test-pack-machine';
 
+  /**
+   * Silent logger
+   */
+  const logger = R.doNothing();
+  const spec = nullPkgManagerSpec.clone();
+  const pkgManager = {...nullPkgManager};
+  const plugin = {...testPlugin};
+  const envelope: PkgManagerEnvelope = {
+    id: pkgManager.name,
+    pkgManager,
+    plugin,
+    spec,
+  };
   const pkgPackOkEvent: SmokeMachinePkgPackOkEvent = {
-    installManifest: asResult(installManifest),
+    installManifest: asResult(workspaceInstallManifest),
     pkgManager: spec,
-    sender: 'test-sender',
+    sender: id,
     type: PackEvents.PkgPackOk,
   };
 
+  let sandbox: sinon.SinonSandbox;
+  let input: PackMachineInput;
+  let logic: typeof PackMachine;
+  let packLogicStub: sinon.SinonStub;
+
   beforeEach(() => {
     sandbox = sinon.createSandbox();
-    input = {envelope: {spec} as PkgManagerEnvelope};
-    packStub = sandbox.stub().resolves(installManifest);
+    input = {envelope};
+    packLogicStub = sandbox.stub().resolves(workspaceInstallManifest);
     logic = PackMachine.provide({
       actors: {
-        pack: fromPromise(packStub),
+        pack: fromPromise(packLogicStub),
       },
     });
   });
@@ -68,11 +78,13 @@ describe('PackMachine', () => {
 
       beforeEach(() => {
         actor = createActor(logic, {
+          id,
           input,
+          logger,
         });
       });
 
-      it.only(`should emit "${PackEvents.PkgPackBegin}"`, async () => {
+      it(`should emit "${PackEvents.PkgPackBegin}"`, async () => {
         const promise = runUntilEmitted(actor, [PackEvents.PkgPackBegin]);
         actor.send({
           contexts: [{pkgName: 'test-package'} as any],
@@ -93,7 +105,7 @@ describe('PackMachine', () => {
           type: 'PACK',
         });
         await promise;
-        expect(packStub, 'was called once');
+        expect(packLogicStub, 'was called once');
       });
 
       describe('when packing completes successfully', () => {
@@ -101,14 +113,15 @@ describe('PackMachine', () => {
 
         beforeEach(() => {
           actor = createActor(logic, {
-            id: 'test-sender',
+            id,
             input,
+            logger,
           });
         });
 
         it(`should emit ${PackEvents.PkgPackOk}`, async () => {
           const promise = runUntilEmitted(actor, [PackEvents.PkgPackOk]);
-          const ctx: PkgManagerPackContext = {pkgName: 'test-package'} as any;
+          const ctx = makePkgManagerPackContext(spec);
           actor.send({
             contexts: [ctx],
             sender: 'test',
@@ -137,7 +150,7 @@ describe('PackMachine', () => {
         let actor: Actor<typeof logic>;
 
         beforeEach(() => {
-          packStub = sandbox
+          packLogicStub = sandbox
             .stub()
             .rejects(
               new PackError(
@@ -150,12 +163,14 @@ describe('PackMachine', () => {
             );
           logic = PackMachine.provide({
             actors: {
-              pack: fromPromise(packStub),
+              pack: fromPromise(packLogicStub),
             },
           });
 
           actor = createActor(logic, {
+            id,
             input,
+            logger,
           });
         });
 
@@ -190,6 +205,71 @@ describe('PackMachine', () => {
           await promise;
           expect(actor.getSnapshot().context.packActorRefs, 'to be empty');
         });
+      });
+    });
+
+    describe('ABORT', () => {
+      let actor: Actor<typeof logic>;
+      let destroyAllChildrenStub: sinon.SinonStub;
+
+      beforeEach(() => {
+        destroyAllChildrenStub = sandbox.stub();
+        logic = logic.provide({
+          actions: {
+            destroyAllChildren: destroyAllChildrenStub,
+          },
+        });
+        actor = createActor(logic, {
+          id,
+          input,
+          logger,
+        });
+      });
+
+      it('should set aborted to true', async () => {
+        const promise = runUntilDone(actor);
+        actor.send({
+          reason: 'test reason',
+          type: 'ABORT',
+        });
+
+        await promise;
+        expect(actor.getSnapshot().context.aborted, 'to be true');
+      });
+
+      it('should destroy all children', async () => {
+        const promise = runUntilDone(actor);
+        actor.send({
+          reason: 'test reason',
+          type: 'ABORT',
+        });
+
+        await promise;
+        expect(destroyAllChildrenStub, 'was called once');
+      });
+
+      it('should stop itself', async () => {
+        const promise = runUntilDone(actor);
+        sandbox.spy(actor, 'stop');
+        actor.send({
+          reason: 'test reason',
+          type: 'ABORT',
+        });
+
+        await promise;
+        expect(actor.stop, 'was called once');
+      });
+
+      it('should have "stopped" status', async () => {
+        const promise = runUntilDone(actor);
+        sandbox.spy(actor, 'stop');
+        actor.send({
+          reason: 'test reason',
+          type: 'ABORT',
+        });
+
+        await promise;
+        expect(actor.getSnapshot().status, 'to be', 'stopped');
       });
     });
   });

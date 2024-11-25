@@ -25,6 +25,7 @@ export const installLogic = fromPromise<InstallResult, InstallLogicInput>(
     },
     signal,
   }) => {
+    await Promise.resolve();
     if (signal.aborted) {
       throw new AbortError(signal.reason);
     }

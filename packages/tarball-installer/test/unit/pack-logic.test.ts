@@ -1,9 +1,9 @@
-import {PluginMetadata} from 'midnight-smoker';
-import {type ExecOutput, type Executor} from 'midnight-smoker/defs/executor';
-import {type PkgManagerPackContext} from 'midnight-smoker/defs/pkg-manager';
-import {AbortError, PackError} from 'midnight-smoker/error';
-import {PkgManagerSpec} from 'midnight-smoker/pkg-manager';
-import {WorkspaceInstallManifestSchema} from 'midnight-smoker/schema';
+import {
+  type PkgManager,
+  type PkgManagerPackContext,
+} from 'midnight-smoker/defs/pkg-manager';
+import {ErrorCode, PackError} from 'midnight-smoker/error';
+import {type PkgManagerSpec} from 'midnight-smoker/pkg-manager';
 import {R} from 'midnight-smoker/util';
 import {afterEach, beforeEach, describe, it} from 'node:test';
 import sinon from 'sinon';
@@ -12,54 +12,41 @@ import unexpectedSinon from 'unexpected-sinon';
 import {createActor} from 'xstate';
 import {runUntilDone} from 'xstate-audition';
 
-import {packLogic} from '../../src/pack-logic';
+import {packLogic, type PackLogicInput} from '../../src/pack-logic';
+import {
+  makePkgManagerPackContext,
+  nullExecutor,
+  nullPkgManager,
+  nullPkgManagerSpec,
+  testPlugin,
+  workspaceInstallManifest,
+} from './fixture';
 
 const expect = unexpected.clone().use(unexpectedSinon);
 
 describe('packLogic', () => {
-  const nullExecutor: Executor = async (): Promise<ExecOutput> => {
-    const result: ExecOutput = {
-      command: '',
-      cwd: '',
-      exitCode: 0,
-      stderr: '',
-      stdout: '',
-    };
-    return result;
-  };
   let sandbox: sinon.SinonSandbox;
   let ctx: PkgManagerPackContext;
-  let pkgManager: any;
-  let spec: any;
+  let pkgManager: PkgManager;
+  let spec: PkgManagerSpec;
   let signal: AbortSignal;
   let abortController: AbortController;
+  let input: PackLogicInput;
   beforeEach(() => {
     abortController = new AbortController();
+    pkgManager = {...nullPkgManager};
     sandbox = sinon.createSandbox();
     signal = abortController.signal;
-    ctx = {
-      executor: nullExecutor,
-      localPath: '/path/to/package',
-      pkgJson: {name: 'test-package', version: '1.0.0'},
-      pkgJsonPath: '/path/to/package/package.json',
-      pkgJsonSource: '{"name": "test-package", "version": "1.0.0"}',
-      pkgName: 'test-package',
-      signal,
-      spec: new PkgManagerSpec({
-        name: 'nullpm',
-        requestedAs: `nullpm@1.0.0`,
-        version: '1.0.0',
-      }),
-      tmpdir: '/tmp',
-      workspaceInfo: [
-        {
-          localPath: '/path/to/package',
-          pkgJson: {name: 'test-package', version: '1.0.0'},
-          pkgJsonPath: '/path/to/package/package.json',
-          pkgJsonSource: '{"name": "test-package", "version": "1.0.0"}',
-          pkgName: 'test-package',
-        },
-      ],
+    spec = nullPkgManagerSpec.clone();
+    ctx = makePkgManagerPackContext(spec, nullExecutor, signal);
+    input = {
+      ctx: R.omit(ctx, ['signal']),
+      envelope: {
+        id: 'nullpm',
+        pkgManager,
+        plugin: testPlugin,
+        spec,
+      },
     };
   });
 
@@ -68,75 +55,39 @@ describe('packLogic', () => {
   });
 
   describe('when actor is stopped', () => {
-    it('should abort', async () => {
+    it('should return undefined', async () => {
       const actor = createActor(packLogic, {
-        input: {
-          ctx: R.omit(ctx, ['signal']),
-          envelope: {
-            id: 'nullpm',
-            pkgManager,
-            plugin: PluginMetadata.createTransient('test-plugin'),
-            spec,
-          },
-        },
+        input,
       });
       const promise = runUntilDone(actor);
 
       actor.stop();
 
-      await expect(
-        promise,
-        'to be rejected with',
-        new AbortError('Test abort'),
-      );
+      await expect(promise, 'to be fulfilled with', undefined);
     });
   });
 
   describe('when packing succeeds', () => {
     it('should return a valid WorkspaceInstallManifest', async () => {
-      const manifest = {name: 'test-package', version: '1.0.0'};
-      pkgManager.pack.resolves(manifest);
+      sandbox.stub(pkgManager, 'pack').resolves(workspaceInstallManifest);
 
       const actor = createActor(packLogic, {
-        input: {
-          ctx,
-          envelope: {
-            id: 'nullpm',
-            pkgManager,
-            plugin: PluginMetadata.createTransient('test-plugin'),
-            spec,
-          },
-        },
+        input,
       });
 
       const result = await runUntilDone(actor);
 
-      expect(
-        result,
-        'to satisfy',
-        WorkspaceInstallManifestSchema.parse({
-          ...ctx.workspaceInfo,
-          ...manifest,
-        }),
-      );
+      expect(result, 'to satisfy', workspaceInstallManifest);
     });
   });
 
-  describe('when packing fails with a known error', () => {
-    it('should throw the known error', async () => {
+  describe('when packing fails with SomePackError', () => {
+    it('should reject with the same error', async () => {
       const error = new PackError('Known error', spec, ctx, ctx.tmpdir);
-      pkgManager.pack.rejects(error);
+      sandbox.stub(pkgManager, 'pack').rejects(error);
 
       const actor = createActor(packLogic, {
-        input: {
-          ctx,
-          envelope: {
-            id: 'nullpm',
-            pkgManager,
-            plugin: PluginMetadata.createTransient('test-plugin'),
-            spec,
-          },
-        },
+        input,
       });
 
       await expect(runUntilDone(actor), 'to be rejected with', error);
@@ -146,30 +97,23 @@ describe('packLogic', () => {
   describe('when packing fails with an unknown error', () => {
     it('should throw a PackError', async () => {
       const error = new Error('Unknown error');
-      pkgManager.pack.rejects(error);
+      sandbox.stub(pkgManager, 'pack').rejects(error);
 
       const actor = createActor(packLogic, {
-        input: {
-          ctx,
-          envelope: {
-            id: 'nullpm',
-            pkgManager,
-            plugin: PluginMetadata.createTransient('test-plugin'),
-            spec,
-          },
-        },
+        input,
       });
 
       await expect(
         runUntilDone(actor),
-        'to be rejected with',
-        new PackError(
-          `Failed to pack package "${ctx.pkgName}" for unknown reason; see \`cause\` property for details`,
-          spec,
-          ctx,
-          ctx.tmpdir,
-          error,
-        ),
+        'to be rejected with error satisfying',
+        {
+          cause: error,
+          code: ErrorCode.PackError,
+          context: {
+            originalMessage: `Failed to pack package "${ctx.pkgName}" for unknown reason; see \`cause\` property for details`,
+          },
+          message: `${spec.label} failed to pack package "${ctx.pkgName}"`,
+        },
       );
     });
   });

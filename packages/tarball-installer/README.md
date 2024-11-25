@@ -1,9 +1,10 @@
-# @midnight-smoker/test-util
+# @midnight-smoker/tarball-installer
 
-> Test utilities for [midnight-smoker][] plugins
+> Packs a workspace and installs it somewhere
 
 ## TODO
 
-Document this package.
-
-[midnight-smoker]: https://github.com/boneskull/midnight-smoker
+- [ ] Port installation logic
+- [ ] Move pack & installation specific types and schemas into here
+- [ ] provide own CLI
+- [ ] re-integrate into `midnight-smoker`

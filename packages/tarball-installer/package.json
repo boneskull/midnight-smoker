@@ -17,18 +17,21 @@
     "node": "^18.0.0 || ^20.0.0 || ^22.0.0",
     "npm": ">=8.6.0"
   },
-  "main": "./dist/index.js",
+  "main": "./dist/src/index.js",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "typedoc": "./src/index.ts",
-      "default": "./dist/index.js"
+      "types": "./dist/src/index.d.ts",
+      "default": "./dist/src/index.js"
+    },
+    "./pack": {
+      "types": "./dist/src/pack.d.ts",
+      "default": "./dist/src/pack.js"
     },
     "./package.json": "./package.json"
   },
-  "types": "./dist/index.d.ts",
+  "types": "./dist/src/index.d.ts",
   "files": [
-    "./dist",
+    "./dist/src",
     "./src",
     "CHANGELOG.md",
     "!*.tsbuildinfo",
@@ -48,7 +51,7 @@
     "test:ci": "run-s test:unit test:e2e test:smoke",
     "test:e2e": "exit 0",
     "test:smoke": "smoker",
-    "test:unit": "mocha \"test/unit/**/*.spec.ts\""
+    "test:unit": "node --import tsx --test \"test/**/*.test.ts\""
   },
   "peerDependencies": {
     "midnight-smoker": "^8.0.0"
