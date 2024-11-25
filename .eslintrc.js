@@ -59,12 +59,12 @@ module.exports = {
       files: '**/*.ts',
       overrides: [
         {
-          env: {
-            mocha: true,
-          },
           files: ['**/test/**/*.ts'],
           overrides: [
             {
+              env: {
+                mocha: true,
+              },
               extends: ['plugin:mocha/recommended'],
               files: ['**/test/**/*.spec.ts'],
               rules: {
@@ -72,6 +72,12 @@ module.exports = {
                 'mocha/no-nested-tests': 'off',
                 // also
                 'mocha/no-setup-in-describe': 'off',
+              },
+            },
+            {
+              files: ['**/test/**/*.test.ts'],
+              rules: {
+                '@typescript-eslint/no-floating-promises': 'off',
               },
             },
           ],

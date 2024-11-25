@@ -1,0 +1,20 @@
+{
+  "extends": ["../../.config/tsconfig.src.json"],
+  "include": ["./src", "./test"],
+  "exclude": ["./test/e2e/fixture/**/*"],
+  "compilerOptions": {
+    "outDir": "./dist",
+    "paths": {
+      "midnight-smoker": ["../midnight-smoker"],
+      "@midnight-smoker/pkg-manager": ["../pkg-manager"]
+    }
+  },
+  "references": [
+    {
+      "path": "../midnight-smoker/tsconfig.json"
+    },
+    {
+      "path": "../pkg-manager/tsconfig.json"
+    }
+  ]
+}

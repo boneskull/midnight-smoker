@@ -1,6 +1,6 @@
 module.exports = {
   '*.{js,ts}': ['eslint --fix', 'prettier --write'],
-  '!(_*).md': ['markdownlint-cli2-fix', 'prettier --write'],
+  '!(_*).md': ['markdownlint-cli2 --fix', 'prettier --write'],
   '*.ya?ml': ['prettier --write'],
   /**
    * This _should_ match if the options change, the rules change, the
