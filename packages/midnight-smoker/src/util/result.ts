@@ -1,5 +1,5 @@
 /**
- * Provides {@link Result} and {@link asResult} for trimming objects before
+ * Provides {@link Result} and {@link toResult} for trimming objects before
  * display/output
  *
  * @packageDocumentation
@@ -34,9 +34,15 @@ export type ResultLike = {
  * @param obj Any object extending {@link WorkspaceInfoLike}
  * @returns A {@link Result} object
  */
-export function asResult<T extends ResultLike>(obj: T): Result<T> {
-  return R.omit(obj, OmittedResultProps);
+export function toResult<T extends ResultLike>(obj: T): Result<T>;
+
+export function toResult(...args: unknown[]) {
+  return R.purry(toResult_, args);
 }
+
+const toResult_ = <T extends ResultLike>(obj: T): Result<T> => {
+  return R.omit(obj, OmittedResultProps);
+};
 
 /**
  * A {@link WorkspaceInfoLike} object with the `pkgJson` property removed.
@@ -47,10 +53,10 @@ export function asResult<T extends ResultLike>(obj: T): Result<T> {
  * events) all extend {@link WorkspaceInfoLike}.
  *
  * To convert a {@link WorkspaceInfoLike} object to a `Result`, use
- * {@link asResult}.
+ * {@link toResult}.
  *
  * @template T A {@link WorkspaceInfoLike} object.
- * @see {@link asResult}
+ * @see {@link toResult}
  * @see {@link Except}
  */
 export type Result<T extends ResultLike> = Omit<T, OmittedResultProp>;

@@ -9,8 +9,8 @@ import {type StaticPkgManagerSpec} from '#schema/pkg-manager/static-pkg-manager-
 import {type SmokerOptions} from '#schema/smoker-options';
 import {type WorkspaceInfo} from '#schema/workspace-info';
 import {fromUnknownError} from '#util/from-unknown-error';
-import {asResult, type Result} from '#util/result';
-import {type AnyActorRef, assign, enqueueActions, setup} from 'xstate';
+import {toResult, type Result} from '#util/result';
+import {assign, enqueueActions, setup, type AnyActorRef} from 'xstate';
 
 import {type ListenEvent} from './common-event';
 
@@ -95,7 +95,7 @@ export const LintBusMachine = setup({
   context: ({input}) => ({
     ...input,
     pkgManagerDidLintCount: 0,
-    workspaceInfoResult: input.workspaceInfo.map(asResult),
+    workspaceInfoResult: input.workspaceInfo.map(toResult),
   }),
   id: 'LintBusMachine',
   initial: 'idle',
@@ -139,7 +139,7 @@ export const LintBusMachine = setup({
               pkgManagers,
               totalRules: ruleDefs.length,
               type: LintEvents.LintBegin,
-              workspaceInfo: workspaceInfo.map(asResult),
+              workspaceInfo: workspaceInfo.map(toResult),
             },
           }),
           type: 'report',
@@ -174,7 +174,7 @@ export const LintBusMachine = setup({
                   results: lintResults,
                   totalRules,
                   type: LintEvents.LintFailed,
-                  workspaceInfo: workspaceInfo.map(asResult),
+                  workspaceInfo: workspaceInfo.map(toResult),
                 },
               };
             }
@@ -187,7 +187,7 @@ export const LintBusMachine = setup({
                 results: lintResults as LintResultOk[],
                 totalRules: rules.length,
                 type: LintEvents.LintOk,
-                workspaceInfo: workspaceInfo.map(asResult),
+                workspaceInfo: workspaceInfo.map(toResult),
               },
             };
           },
@@ -211,7 +211,7 @@ export const LintBusMachine = setup({
                   totalPkgManagers: pkgManagers.length,
                   totalRules: rules.length,
                   type: LintEvents.PkgManagerLintBegin,
-                  workspaceInfo: workspaceInfo.map(asResult),
+                  workspaceInfo: workspaceInfo.map(toResult),
                 };
               },
               type: 'report',
@@ -243,7 +243,7 @@ export const LintBusMachine = setup({
                   totalPkgManagers: pkgManagers.length,
                   totalRules: rules.length,
                   type: LintEvents.PkgManagerLintFailed,
-                  workspaceInfo: workspaceInfo.map(asResult),
+                  workspaceInfo: workspaceInfo.map(toResult),
                 };
               },
               type: 'report',
@@ -275,7 +275,7 @@ export const LintBusMachine = setup({
                   totalPkgManagers: pkgManagers.length,
                   totalRules: rules.length,
                   type: LintEvents.PkgManagerLintOk,
-                  workspaceInfo: workspaceInfo.map(asResult),
+                  workspaceInfo: workspaceInfo.map(toResult),
                 };
               },
               type: 'report',

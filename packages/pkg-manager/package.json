@@ -1,0 +1,61 @@
+{
+  "name": "@midnight-smoker/pkg-manager",
+  "version": "0.0.0",
+  "description": "Packs a workspace and installs it somewhere",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/boneskull/midnight-smoker.git",
+    "directory": "packages/pkg-manager"
+  },
+  "homepage": "https://github.com/boneskull/midnight-smoker/tree/main/packages/pkg-manager",
+  "bugs": {
+    "url": "https://github.com/boneskull/midnight-smoker/issues"
+  },
+  "author": "Christopher Hiller <boneskull@boneskull.com> (https://boneskull.com/)",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": "^18.0.0 || ^20.0.0 || ^22.0.0",
+    "npm": ">=8.6.0"
+  },
+  "main": "./dist/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "typedoc": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "./dist",
+    "./src",
+    "CHANGELOG.md",
+    "!*.tsbuildinfo",
+    "!tsconfig.json"
+  ],
+  "keywords": [
+    "ts",
+    "typescript",
+    "midnight-smoker",
+    "smoker",
+    "smoke",
+    "test",
+    "testing"
+  ],
+  "scripts": {
+    "test": "run-s test:unit test:smoke",
+    "test:ci": "run-s test:unit test:e2e test:smoke",
+    "test:e2e": "exit 0",
+    "test:smoke": "smoker",
+    "test:unit": "mocha \"test/unit/**/*.spec.ts\""
+  },
+  "peerDependencies": {
+    "midnight-smoker": "^8.0.0"
+  },
+  "dependencies": {
+    "@midnight-smoker/tarball-installer": "0.0.0",
+    "xstate": "5.19.0"
+  },
+  "access": "public"
+}

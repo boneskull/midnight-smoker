@@ -1,0 +1,20 @@
+{
+  "extends": ["../../.config/tsconfig.src.json"],
+  "include": ["./src", "./test"],
+  "exclude": ["./test/e2e/fixture/**/*"],
+  "compilerOptions": {
+    "outDir": "./dist",
+    "paths": {
+      "@midnight-smoker/tarball-installer": ["../tarball-installer"],
+      "midnight-smoker": ["../midnight-smoker"]
+    }
+  },
+  "references": [
+    {
+      "path": "../midnight-smoker/tsconfig.json"
+    },
+    {
+      "path": "../tarball-installer/tsconfig.json"
+    }
+  ]
+}

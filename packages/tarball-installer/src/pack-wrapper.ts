@@ -1,11 +1,11 @@
-import {
-  PackEvents,
-  type PkgManagerEnvelope,
-  type PkgManagerPackContext,
-  type SomePackError,
-} from 'midnight-smoker';
-import {type Actor, createActor} from 'xstate';
+import {type PkgManagerContext} from 'midnight-smoker/defs/pkg-manager';
+import {type SomePackError} from 'midnight-smoker/error';
+import {PackEvents} from 'midnight-smoker/event';
+import {type PkgManagerEnvelope} from 'midnight-smoker/plugin';
+import {uniqueId} from 'midnight-smoker/util';
+import {type Actor, type ActorOptions, createActor} from 'xstate';
 
+import {createDebug} from './debug';
 import {PackMachine, type PackMachineEmitted} from './pack-machine';
 
 /**
@@ -18,10 +18,18 @@ import {PackMachine, type PackMachineEmitted} from './pack-machine';
  */
 export const pack = async (
   envelope: PkgManagerEnvelope,
-  contexts: PkgManagerPackContext[],
+  ctx: PkgManagerContext,
+  {id, logger, ...actorOptions}: ActorOptions<typeof PackMachine> = {},
 ): Promise<PackMachineEmitted[]> => {
+  id ??= uniqueId({prefix: 'pack-wrapper', suffix: envelope.spec.label});
+  logger ??= createDebug(__filename);
+
+  const {workspaces} = ctx;
   const actor: Actor<typeof PackMachine> = createActor(PackMachine, {
-    input: {envelope},
+    id,
+    logger,
+    ...actorOptions,
+    input: {ctx, envelope},
   });
 
   const results: PackMachineEmitted[] = [];
@@ -43,7 +51,7 @@ export const pack = async (
       // eslint-disable-next-line no-fallthrough
       case PackEvents.PkgPackOk:
         results.push(evt);
-        if (results.length === contexts.length) {
+        if (results.length >= workspaces.length) {
           actor.stop();
         }
         break;
@@ -68,9 +76,9 @@ export const pack = async (
 
   actor.start();
   actor.send({
-    contexts,
     sender: 'pack-wrapper',
     type: 'PACK',
+    workspaces,
   });
 
   try {

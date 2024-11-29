@@ -10,6 +10,6 @@ export {isSmokerError} from '#util/guard/smoker-error';
 
 export {narrowInstallables} from '#util/narrow-installables';
 
-export {asResult} from '#util/result';
+export {toResult as asResult} from '#util/result';
 
 export {serialize} from '#util/serialize';

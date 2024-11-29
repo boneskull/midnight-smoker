@@ -27,6 +27,10 @@
       "types": "./dist/src/pack.d.ts",
       "default": "./dist/src/pack.js"
     },
+    "./install": {
+      "types": "./dist/src/install.d.ts",
+      "default": "./dist/src/install.js"
+    },
     "./package.json": "./package.json"
   },
   "types": "./dist/src/index.d.ts",
@@ -51,13 +55,12 @@
     "test:ci": "run-s test:unit test:e2e test:smoke",
     "test:e2e": "exit 0",
     "test:smoke": "smoker",
-    "test:unit": "node --import tsx --test \"test/**/*.test.ts\""
+    "test:unit": "node --env-file=./test/test.env --env-file-if-exists=.test.env --import tsx --test \"test/**/*.test.ts\""
   },
   "peerDependencies": {
     "midnight-smoker": "^8.0.0"
   },
   "dependencies": {
-    "@midnight-smoker/pkg-manager": "file:../pkg-manager",
     "xstate": "5.19.0"
   },
   "access": "public"

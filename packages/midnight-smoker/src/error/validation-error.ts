@@ -1,4 +1,5 @@
 import {BaseSmokerError} from '#error/base-error';
+import {isString} from '#util/guard/common';
 import {
   toValidationError as zodToValidationError,
   ValidationError as ZodValidationError,
@@ -12,28 +13,44 @@ import {type SmokerError} from './smoker-error';
  */
 const toValidationError = zodToValidationError();
 
+export interface ValidationErrorContext {
+  original?: unknown;
+  summary?: string;
+}
+
 export class ValidationError
   extends ZodValidationError
-  implements SmokerError<{summary?: string}, unknown>
+  implements SmokerError<ValidationErrorContext, unknown>
 {
-  public readonly code = ErrorCode.ZodValidationError;
+  public readonly code = ErrorCode.ValidationError;
 
-  public context: {summary?: string};
+  public context: ValidationErrorContext;
 
   public readonly error: Error;
 
   // @ts-expect-error - overwrites prop
   public override readonly name = 'ValidationError';
 
-  constructor(error: unknown, summary?: string) {
+  constructor(
+    error: unknown,
+    {original, summary}: ValidationErrorContext = {},
+  ) {
     const validationError = toValidationError(error);
     super(validationError.message, validationError.details);
     this.error = validationError;
-    this.context = {summary};
+    this.context = {original, summary};
   }
 
-  public static create(this: void, error: unknown, summary?: string) {
-    return new ValidationError(error, summary);
+  public static create(
+    this: void,
+    error: unknown,
+    summary?: string | ValidationErrorContext,
+    original?: unknown,
+  ) {
+    return new ValidationError(
+      error,
+      isString(summary) ? {original, summary} : summary,
+    );
   }
 
   public format(verbose = false) {

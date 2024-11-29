@@ -73,7 +73,7 @@ import {fromUnknownError} from '#util/from-unknown-error';
 import {isEmpty} from '#util/guard/common';
 import {isSmokerError} from '#util/guard/smoker-error';
 import {isWorkspaceInstallManifest} from '#util/guard/workspace-install-manifest';
-import {asResult, type Result} from '#util/result';
+import {type Result, toResult} from '#util/result';
 import {serialize} from '#util/serialize';
 import {uniqueId} from '#util/unique-id';
 import {first as head, indexBy as keyBy, map, omit, partition} from 'remeda';
@@ -607,7 +607,7 @@ export const PkgManagerMachine = setup({
           spec,
           tmpdir,
           useWorkspaces,
-          workspaceInfo,
+          workspaces: workspaceInfo,
           ...opts,
         };
       },
@@ -765,7 +765,7 @@ export const PkgManagerMachine = setup({
           pkgManager,
           sender,
           type: PackEvents.PkgPackFailed,
-          workspace: asResult(error.context.workspace),
+          workspace: toResult(error.context.workspace),
         };
         enqueue.sendTo(parentRef, evt);
       },
@@ -818,8 +818,8 @@ export const PkgManagerMachine = setup({
           const evt: MachineLintEvents.SmokeMachineRuleBeginEvent = {
             config,
             manifest: {
-              ...asResult(manifest),
-              workspace: asResult(manifest.workspace),
+              ...toResult(manifest),
+              workspace: toResult(manifest.workspace),
             },
             pkgManager: spec,
             rule: ruleId,
@@ -861,7 +861,7 @@ export const PkgManagerMachine = setup({
           pkgManager,
           sender,
           type: PackEvents.PkgPackBegin,
-          workspace: asResult(workspace),
+          workspace: toResult(workspace),
         };
         enqueue.sendTo(parentRef, evt);
         enqueue.assign({packQueue: queue});
@@ -994,7 +994,7 @@ export const PkgManagerMachine = setup({
               `Expected a lint manifest for ${installPath}`,
             );
 
-            const manifest = asResult(manifestsByInstallPath[installPath]);
+            const manifest = toResult(manifestsByInstallPath[installPath]);
             const retval = isEmpty(failedResults)
               ? ({
                   ...manifest,
@@ -1130,11 +1130,11 @@ export const PkgManagerMachine = setup({
           pkgName: installManifest.pkgName,
         } as Schema.WorkspaceInfo;
         return {
-          installManifest: asResult(installManifest),
+          installManifest: toResult(installManifest),
           pkgManager,
           sender,
           type: PackEvents.PkgPackOk,
-          workspace: asResult(workspace),
+          workspace: toResult(workspace),
         };
       },
     ),
@@ -1529,7 +1529,7 @@ export const PkgManagerMachine = setup({
       runScriptActorRefs: {},
       runScriptQueue: [],
       spec: serialize(envelope.spec),
-      workspaceInfoResult: workspaceInfo.map(asResult),
+      workspaceInfoResult: workspaceInfo.map(toResult),
     } satisfies Partial<PkgManagerMachineContext>;
 
     return {

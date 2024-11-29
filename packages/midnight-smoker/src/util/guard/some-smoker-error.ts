@@ -10,11 +10,8 @@ import {isError} from '#util/guard/common';
  *   `SmokerError`
  */
 
-export function isSomeSmokerError(error?: unknown): error is SomeSmokerError {
-  return (
-    isError(error) &&
-    'code' in error &&
-    'name' in error &&
-    ErrorCode[error.name as SmokerErrorName] === error.code
-  );
-}
+export const isSomeSmokerError = (error?: unknown): error is SomeSmokerError =>
+  isError(error) &&
+  'code' in error &&
+  'name' in error &&
+  ErrorCode[error.name as SmokerErrorName] === error.code;

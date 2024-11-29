@@ -10,8 +10,8 @@ import {type SmokerOptions} from '#schema/smoker-options';
 import {type WorkspaceInfo} from '#schema/workspace-info';
 import {fromUnknownError} from '#util/from-unknown-error';
 import {assertSmokerError} from '#util/guard/assert/smoker-error';
-import {asResult, type Result} from '#util/result';
-import {type AnyActorRef, assign, enqueueActions, sendTo, setup} from 'xstate';
+import {toResult, type Result} from '#util/result';
+import {assign, enqueueActions, sendTo, setup, type AnyActorRef} from 'xstate';
 
 import {type ListenEvent} from './common-event';
 
@@ -88,7 +88,7 @@ export const PackBusMachine = setup({
   context: ({input}) => ({
     ...input,
     pkgManagerDidPackCount: 0,
-    workspaceInfoResult: input.workspaceInfo.map(asResult),
+    workspaceInfoResult: input.workspaceInfo.map(toResult),
   }),
   id: 'PackBusMachine',
   initial: 'idle',
@@ -227,7 +227,7 @@ export const PackBusMachine = setup({
                 pkgManager,
                 totalPkgManagers: pkgManagers.length,
                 type: PackEvents.PkgManagerPackBegin,
-                workspaceInfo: workspaceInfo.map(asResult),
+                workspaceInfo: workspaceInfo.map(toResult),
               }),
               type: 'report',
             },

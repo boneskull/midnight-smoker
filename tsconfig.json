@@ -3,6 +3,7 @@
   "files": [],
   "references": [
     {"path": "./packages/midnight-smoker/tsconfig.json"},
+    {"path": "./packages/pkg-manager/tsconfig.json"},
     {"path": "./packages/tarball-installer/tsconfig.json"},
     {"path": "./packages/test-util/tsconfig.json"},
     {"path": "./packages/plugin-default/tsconfig.json"}

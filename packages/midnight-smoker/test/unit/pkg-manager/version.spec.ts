@@ -146,7 +146,7 @@ describe('midnight-smoker', function () {
             };
 
             expect(() => normalizeVersionAgainstData(versionData), 'to throw', {
-              code: ErrorCode.ZodValidationError,
+              code: ErrorCode.ValidationError,
             });
           });
         });

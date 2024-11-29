@@ -135,11 +135,7 @@ export const YarnClassic = Object.freeze({
       });
     } catch (err) {
       if (isExecError(err)) {
-        throw new InstallError(err.message, spec, pkgSpec, tmpdir, {
-          error: err,
-          exitCode: err.exitCode,
-          output: err.stderr || err.stdout,
-        });
+        throw new InstallError(err, installManifest, spec);
       }
       throw err;
     }

@@ -1,5 +1,6 @@
 import {constant} from 'midnight-smoker/constants';
 import {
+  type PkgManagerContext,
   type PkgManagerPackContext,
   type WorkspaceInstallManifest,
 } from 'midnight-smoker/defs/pkg-manager';
@@ -15,8 +16,9 @@ import {
   type SmokeMachinePkgPackOkEvent,
 } from 'midnight-smoker/machine';
 import {type PkgManagerEnvelope} from 'midnight-smoker/plugin';
-import {type WorkspaceInfo, WorkspaceInfoSchema} from 'midnight-smoker/schema';
-import {asResult, assert, R, uniqueId} from 'midnight-smoker/util';
+import {toWorkspaceInfo, type WorkspaceInfo} from 'midnight-smoker/schema';
+import {assert, R, toResult, uniqueId} from 'midnight-smoker/util';
+import {type Except} from 'type-fest';
 import {
   type ActorRefFromLogic,
   type DoneActorEvent,
@@ -38,29 +40,39 @@ type PackLogicErrorEvent = ErrorActorEvent<SomePackError, 'pack.*'>;
 
 export type PackMachinePackEvent = MachineEvent<
   'PACK',
-  {contexts: PkgManagerPackContext[]}
+  {workspaces: WorkspaceInfo[]}
 >;
 
-type InternalPackMachineEvents =
+export type PackMachineHaltEvent = MachineEvent<'HALT'>;
+
+export interface PackMachineOptions {
+  dryRun?: boolean;
+  verbose?: boolean;
+}
+
+type InternalPackMachineEvent =
   | AbortEvent
   | PackLogicDoneEvent
   | PackLogicErrorEvent;
 
-export type PackMachineEvents = PackMachinePackEvent;
+export type PackMachineEvent = PackMachineHaltEvent | PackMachinePackEvent;
 
-export interface PackMachineContext extends PackMachineInput {
+export interface PackMachineContext
+  extends Except<PackMachineInput, 'workspaces', {requireExactProps: true}> {
   aborted?: boolean;
   packActorRefs: Record<string, ActorRefFromLogic<typeof packLogic>>;
-  queue: PkgManagerPackContext[];
+  queue: WorkspaceInfo[];
 }
 
-export interface PackMachineInput {
-  envelope: PkgManagerEnvelope;
+export interface PackMachineInput extends PackMachineOptions {
+  ctx: Readonly<PkgManagerContext>;
+  envelope: Readonly<PkgManagerEnvelope>;
+
+  workspaces?: WorkspaceInfo[];
 }
 
 const PACK_MACHINE_CONTEXT_DEFAULTS = constant({
   packActorRefs: {},
-  queue: [],
 }) satisfies Partial<PackMachineContext>;
 
 /**
@@ -95,13 +107,15 @@ export const PackMachine = setup({
      * We do this in one place so we can ensure that the queue is shifted
      * properly.
      */
-    beginPack: enqueueActions(({context: {queue}, enqueue}) => {
-      const [ctx] = queue;
-      assert.ok(ctx, 'Expected a PkgManagerPackContext');
+    beginPack: enqueueActions(({context: {ctx, queue}, enqueue}) => {
+      const [workspace] = queue;
+      assert.ok(workspace, 'Expected a WorkspaceInfo object');
+
+      const packCtx: PkgManagerPackContext = {...ctx, ...workspace};
       // @ts-expect-error - TS limitation
-      enqueue({params: ctx, type: 'spawnPackActor'});
+      enqueue({params: packCtx, type: 'spawnPackActor'});
       // @ts-expect-error - TS limitation
-      enqueue({params: ctx, type: 'emitPkgPackBegin'});
+      enqueue({params: packCtx, type: 'emitPkgPackBegin'});
 
       enqueue.assign({
         queue: R.drop(queue, 1),
@@ -141,7 +155,7 @@ export const PackMachine = setup({
         pkgManager: envelope.spec,
         sender,
         type: PackEvents.PkgPackBegin,
-        workspace: asResult(ctx),
+        workspace: toResult(ctx),
       }),
     ),
 
@@ -162,7 +176,7 @@ export const PackMachine = setup({
         pkgManager,
         sender,
         type: PackEvents.PkgPackFailed,
-        workspace: asResult(error.context.workspace),
+        workspace: toResult(error.context.workspace),
       }),
     ),
 
@@ -189,15 +203,13 @@ export const PackMachine = setup({
         // note: InstallManifest is a superset of WorkspaceInfo;
         // this will just strip out fields
         try {
-          const workspace: WorkspaceInfo = WorkspaceInfoSchema.parse(
-            installManifest!,
-          );
+          const workspace = toWorkspaceInfo(installManifest!);
           const evt: SmokeMachinePkgPackOkEvent = {
-            installManifest: asResult(installManifest!),
+            installManifest: toResult(installManifest!),
             pkgManager,
             sender,
             type: PackEvents.PkgPackOk,
-            workspace: asResult(workspace),
+            workspace: toResult(workspace),
           };
           enqueue.emit(evt);
         } catch (err) {
@@ -213,9 +225,9 @@ export const PackMachine = setup({
      * {@link PackMachineContext.queue}
      */
     enqueue: assign({
-      queue: ({context: {queue}}, contexts: PkgManagerPackContext[]) => [
+      queue: ({context: {queue}}, workspaces: WorkspaceInfo[]) => [
         ...queue,
-        ...contexts,
+        ...workspaces,
       ],
     }),
 
@@ -258,7 +270,7 @@ export const PackMachine = setup({
   types: {
     context: {} as PackMachineContext,
     emitted: {} as PackMachineEmitted,
-    events: {} as InternalPackMachineEvents | PackMachineEvents,
+    events: {} as InternalPackMachineEvent | PackMachineEvent,
     input: {} as PackMachineInput,
   },
 }).createMachine({
@@ -274,9 +286,16 @@ export const PackMachine = setup({
   ],
 
   /**
-   * Merge {@link PackMachineInput} with {@link PACK_MACHINE_CONTEXT_DEFAULTS}
+   * Merge {@link PackMachineInput} with {@link PACK_MACHINE_CONTEXT_DEFAULTS} and
+   * add workspaces (if any) to the queue
    */
-  context: R.piped(R.prop('input'), R.merge(PACK_MACHINE_CONTEXT_DEFAULTS)),
+  context: ({input: {workspaces = [], ...input}}) => ({
+    ...PACK_MACHINE_CONTEXT_DEFAULTS,
+    ...input,
+    queue: workspaces,
+  }),
+
+  entry: [INIT_ACTION, log(({self: {id}}) => `[${id}] PackMachine started`)],
   on: {
     ABORT: {
       actions: [
@@ -293,9 +312,9 @@ export const PackMachine = setup({
     PACK: {
       actions: {
         /**
-         * Enqueue all {@link PackMachinePackEvent.contexts}
+         * Enqueue all {@link PackMachinePackEvent.workspaces}
          */
-        params: R.piped(R.prop('event'), R.prop('contexts')),
+        params: R.piped(R.prop('event'), R.prop('workspaces')),
         type: 'enqueue',
       },
     },
@@ -317,6 +336,7 @@ export const PackMachine = setup({
             type: 'destroyChild',
           },
         ],
+        // TODO: rewrite as provided guard
         guard: R.piped(R.prop('event'), R.prop('output'), R.isTruthy),
       },
       {
@@ -324,6 +344,7 @@ export const PackMachine = setup({
           params: 'Packing aborted because pack logic was explicitly stopped',
           type: 'abort',
         },
+        // TODO: rewrite as provided guard
         guard: R.piped(
           R.prop('context'),
           R.prop('aborted'),

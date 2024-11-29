@@ -7,8 +7,8 @@ import {type StaticPkgManagerSpec} from '#schema/pkg-manager/static-pkg-manager-
 import {type SmokerOptions} from '#schema/smoker-options';
 import {type WorkspaceInfo} from '#schema/workspace-info';
 import {fromUnknownError} from '#util/from-unknown-error';
-import {asResult, type Result} from '#util/result';
-import {type AnyActorRef, assign, enqueueActions, setup} from 'xstate';
+import {toResult, type Result} from '#util/result';
+import {assign, enqueueActions, setup, type AnyActorRef} from 'xstate';
 
 import {type ListenEvent} from './common-event';
 
@@ -93,7 +93,7 @@ export const InstallBusMachine = setup({
     ...input,
     pkgManagerDidInstallCount: 0,
     totalPkgs: input.workspaceInfo.length + input.smokerOptions.add.length,
-    workspaceInfoResult: input.workspaceInfo.map(asResult),
+    workspaceInfoResult: input.workspaceInfo.map(toResult),
   }),
   id: 'InstallBusMachine',
   initial: 'idle',

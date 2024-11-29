@@ -1,4 +1,4 @@
-import {type ERROR, FAILED, OK} from '#constants';
+import {FAILED, OK, type ERROR} from '#constants';
 import {type SomeRule} from '#defs/rule';
 import {AbortError} from '#error/abort-error';
 import {RuleError} from '#error/rule-error';
@@ -9,7 +9,7 @@ import {type StaticRuleContext} from '#rule/static-rule-context';
 import {type SomeRuleConfig} from '#schema/lint/rule-options';
 import {isAbortError} from '#util/guard/abort-error';
 import {isSmokerError} from '#util/guard/smoker-error';
-import {asResult, type Result} from '#util/result';
+import {toResult, type Result} from '#util/result';
 import {serialize} from '#util/serialize';
 import {fromPromise} from 'xstate';
 
@@ -88,13 +88,13 @@ export const lintLogic = fromPromise<LintLogicOutput, LintLogicInput>(
       }
       throw new RuleError(
         `Rule "${ruleId}" threw when checking package "${ctx.pkgName}"`,
-        {...asResult(staticCtx), config, ruleId},
+        {...toResult(staticCtx), config, ruleId},
         err,
       );
     }
 
     const result = ctx.finalize();
-    const manifest = asResult(serialize(input.manifest));
+    const manifest = toResult(serialize(input.manifest));
 
     switch (result.type) {
       case OK: {

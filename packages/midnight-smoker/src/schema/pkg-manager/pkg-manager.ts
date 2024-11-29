@@ -30,12 +30,13 @@ import z from 'zod';
  */
 export const BasePkgManagerContextSchema = z.object({
   executor: ExecutorSchema,
+  linger: z.boolean().optional(),
   loose: z.boolean().optional(),
   spec: StaticPkgManagerSpecSchema,
   tmpdir: NonEmptyStringSchema.readonly(),
   useWorkspaces: z.boolean().optional(),
   verbose: z.boolean().optional(),
-  workspaceInfo: z.array(WorkspaceInfoSchema),
+  workspaces: z.array(WorkspaceInfoSchema),
 });
 
 /**

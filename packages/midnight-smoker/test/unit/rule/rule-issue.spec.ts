@@ -6,7 +6,7 @@ import {type RuleContext} from '#rule/rule-context';
 import {RuleIssue, type RuleIssueParams} from '#rule/rule-issue';
 import {type StaticRuleContext} from '#rule/static-rule-context';
 import {type StaticRule} from '#schema/lint/static-rule';
-import {asResult} from '#util/result';
+import {toResult} from '#util/result';
 import stringify from 'json-stable-stringify';
 import {omit} from 'remeda';
 import sinon from 'sinon';
@@ -61,7 +61,7 @@ describe('midnight-smoker', function () {
             error: new RuleError(
               'Test error',
               {
-                ...asResult(exampleStaticRuleContext),
+                ...toResult(exampleStaticRuleContext),
                 config: {opts: {}, severity: exampleStaticRuleContext.severity},
               },
               new Error('Test error'),
@@ -95,7 +95,7 @@ describe('midnight-smoker', function () {
                   error: new RuleError(
                     'Test error',
                     {
-                      ...asResult(exampleStaticRuleContext),
+                      ...toResult(exampleStaticRuleContext),
                       config: {
                         opts: {},
                         severity: exampleStaticRuleContext.severity,
@@ -125,7 +125,7 @@ describe('midnight-smoker', function () {
                   error: new RuleError(
                     'Test error',
                     {
-                      ...asResult(exampleStaticRuleContext),
+                      ...toResult(exampleStaticRuleContext),
                       config: {
                         opts: {},
                         severity: exampleStaticRuleContext.severity,

@@ -34,19 +34,18 @@ export const installLogic = fromPromise<InstallResult, InstallLogicInput>(
       throw new AbortError(signal.reason);
     }
     const {installManifest} = ctx;
-    const {cwd, pkgSpec} = installManifest;
     try {
       const rawResult = await pkgManager.install({...ctx, signal});
       assertExecOutput(rawResult);
       if (rawResult.exitCode !== 0) {
-        throw new InstallError('Install failed', spec, pkgSpec, cwd, rawResult);
+        throw new InstallError(rawResult, installManifest, spec);
       }
       return InstallResultSchema.parse({installManifest, rawResult});
     } catch (err) {
       if (isSmokerError(InstallError, err)) {
         throw err;
       } else {
-        throw new InstallError('Install failed', spec, pkgSpec, cwd, err);
+        throw new InstallError(err, installManifest, spec);
       }
     }
   },

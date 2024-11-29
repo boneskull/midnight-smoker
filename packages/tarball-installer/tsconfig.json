@@ -5,16 +5,12 @@
   "compilerOptions": {
     "outDir": "./dist",
     "paths": {
-      "midnight-smoker": ["../midnight-smoker"],
-      "@midnight-smoker/pkg-manager": ["../pkg-manager"]
+      "midnight-smoker": ["../midnight-smoker"]
     }
   },
   "references": [
     {
       "path": "../midnight-smoker/tsconfig.json"
-    },
-    {
-      "path": "../pkg-manager/tsconfig.json"
     }
   ]
 }

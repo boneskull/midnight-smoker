@@ -97,7 +97,7 @@ export async function install(
       nodeOptions: {cwd: tmpdir, signal},
       verbose: ctx.verbose,
     });
-    err = maybeHandleInstallError(ctx, installResult, pkgSpec);
+    err = maybeHandleInstallError(ctx, installResult);
   } catch (e) {
     if (isExecError(e)) {
       throw maybeHandleInstallError(ctx, e, pkgSpec);
@@ -144,40 +144,22 @@ function maybeHandleInstallError(
 function maybeHandleInstallError(
   {spec, tmpdir}: PkgManagerInstallContext,
   result: ExecOutput,
-  pkgSpec: string,
 ): InstallError | undefined;
 function maybeHandleInstallError(
-  {spec, tmpdir}: PkgManagerInstallContext,
+  {installManifest, spec}: PkgManagerInstallContext,
   errOrResult: ExecError | ExecOutput,
-  pkgSpec: string,
 ): InstallError | undefined {
   if (isExecError(errOrResult)) {
     try {
+      // TODO: fix this
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const parsedError = parseNpmError(errOrResult.stdout);
-      return new InstallError(
-        parsedError.summary,
-        spec,
-        pkgSpec,
-        tmpdir,
-        errOrResult,
-      );
+      return new InstallError(errOrResult, installManifest, spec);
     } catch (e) {
-      return new InstallError(
-        `Unable to parse npm output. Use --verbose for more information`,
-        spec,
-        pkgSpec,
-        tmpdir,
-        errOrResult,
-      );
+      return new InstallError(errOrResult, installManifest, spec);
     }
   } else if (errOrResult.exitCode || isError(errOrResult)) {
-    return new InstallError(
-      `Use --verbose for more information`,
-      spec,
-      pkgSpec,
-      tmpdir,
-      errOrResult,
-    );
+    return new InstallError(errOrResult, installManifest, spec);
   }
 }
 

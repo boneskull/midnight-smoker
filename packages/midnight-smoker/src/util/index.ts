@@ -27,3 +27,7 @@ export * from './serialize';
 export * from './unique-id';
 
 export * as R from 'remeda';
+
+export * as xs from 'xstate';
+
+export * as z from 'zod';

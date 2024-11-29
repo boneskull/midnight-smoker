@@ -1,13 +1,14 @@
-import {OK} from 'midnight-smoker/constants';
+import {constant, OK} from 'midnight-smoker/constants';
 import {type ExecOutput, type Executor} from 'midnight-smoker/defs/executor';
 import {
   type PkgManager,
-  type PkgManagerPackContext,
+  type PkgManagerContext,
   type WorkspaceInstallManifest,
 } from 'midnight-smoker/defs/pkg-manager';
 import {
   PkgManagerSpec,
   type RunScriptResultOk,
+  type WorkspaceInfo,
 } from 'midnight-smoker/pkg-manager';
 import {PluginMetadata} from 'midnight-smoker/plugin';
 import {scheduler} from 'node:timers/promises';
@@ -17,7 +18,7 @@ import {scheduler} from 'node:timers/promises';
  */
 const DELAY = 100;
 
-export const nullPkgManager: PkgManager = {
+export const nullPkgManager = Object.freeze(<PkgManager>{
   bin: 'nullpm',
   async install() {
     await scheduler.wait(DELAY);
@@ -64,7 +65,7 @@ export const nullPkgManager: PkgManager = {
     tags: {latest: '1.0.0'},
     versions: ['1.0.0'],
   },
-};
+});
 
 export const nullExecutor: Executor = async (): Promise<ExecOutput> => {
   const result: ExecOutput = {
@@ -77,15 +78,17 @@ export const nullExecutor: Executor = async (): Promise<ExecOutput> => {
   return result;
 };
 
-export const nullPkgManagerSpec = new PkgManagerSpec({
-  name: 'nullpm',
-  requestedAs: `nullpm@1.0.0`,
-  version: '1.0.0',
-});
+export const nullPkgManagerSpec = Object.freeze(
+  new PkgManagerSpec({
+    name: 'nullpm',
+    requestedAs: `nullpm@1.0.0`,
+    version: '1.0.0',
+  }),
+);
 
 export const testPlugin = PluginMetadata.createTransient('test-plugin');
 
-export const workspaceInstallManifest: WorkspaceInstallManifest = {
+export const workspaceInstallManifest = constant({
   cwd: '/some/cwd',
   installPath: '/some/tmp/path',
   isAdditional: false,
@@ -95,33 +98,29 @@ export const workspaceInstallManifest: WorkspaceInstallManifest = {
   pkgJsonSource: "{name: 'test-package', version: '1.0.0'}",
   pkgName: 'test-package',
   pkgSpec: 'nullpm@1.0.0',
-};
+}) satisfies WorkspaceInstallManifest;
 
-export const makePkgManagerPackContext = (
-  spec: PkgManagerSpec = nullPkgManagerSpec,
-  executor: Executor = nullExecutor,
-  signal: AbortSignal = new AbortController().signal,
-  timeout?: number,
-): PkgManagerPackContext => {
-  return {
-    executor,
+export const testPkgManagerContext = constant({
+  executor: nullExecutor.bind(null),
+  spec: nullPkgManagerSpec.clone(),
+  tmpdir: '/tmp',
+  workspaces: [
+    {
+      localPath: '/path/to/package',
+      pkgJson: {name: 'test-package', version: '1.0.0'},
+      pkgJsonPath: '/path/to/package/package.json',
+      pkgJsonSource: '{"name": "test-package", "version": "1.0.0"}',
+      pkgName: 'test-package',
+    },
+  ],
+}) satisfies Readonly<PkgManagerContext>;
+
+export const testWorkspaces = constant([
+  {
     localPath: '/path/to/package',
     pkgJson: {name: 'test-package', version: '1.0.0'},
     pkgJsonPath: '/path/to/package/package.json',
     pkgJsonSource: '{"name": "test-package", "version": "1.0.0"}',
     pkgName: 'test-package',
-    signal,
-    spec,
-    timeout,
-    tmpdir: '/tmp',
-    workspaceInfo: [
-      {
-        localPath: '/path/to/package',
-        pkgJson: {name: 'test-package', version: '1.0.0'},
-        pkgJsonPath: '/path/to/package/package.json',
-        pkgJsonSource: '{"name": "test-package", "version": "1.0.0"}',
-        pkgName: 'test-package',
-      },
-    ],
-  };
-};
+  },
+]) satisfies Readonly<WorkspaceInfo[]>;

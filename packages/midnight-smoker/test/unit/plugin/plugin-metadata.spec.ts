@@ -101,7 +101,7 @@ describe('midnight-smoker', function () {
                 expect(
                   () => PluginMetadata.create('entryPoint.js'),
                   'to throw',
-                  {code: ErrorCode.ZodValidationError},
+                  {code: ErrorCode.ValidationError},
                 );
               });
             });
@@ -147,7 +147,7 @@ describe('midnight-smoker', function () {
                         pkgJson: {},
                       }),
                     'to throw',
-                    {code: ErrorCode.ZodValidationError},
+                    {code: ErrorCode.ValidationError},
                   );
                 });
               });

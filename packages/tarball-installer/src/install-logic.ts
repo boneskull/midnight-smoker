@@ -1,7 +1,11 @@
 import {type PkgManagerInstallContext} from 'midnight-smoker/defs/pkg-manager';
-import {AbortError, InstallError} from 'midnight-smoker/error';
-import {type InstallResult, InstallResultSchema} from 'midnight-smoker/schema';
-import {assertExecOutput, isSmokerError} from 'midnight-smoker/util';
+import {
+  AbortError,
+  asValidationError,
+  InstallError,
+} from 'midnight-smoker/error';
+import {type ExecOutput, type InstallResult} from 'midnight-smoker/schema';
+import {assertExecOutput, fromUnknownError} from 'midnight-smoker/util';
 import {fromPromise} from 'xstate';
 
 import {type OperationLogicInput} from './logic';
@@ -11,13 +15,15 @@ import {type OperationLogicInput} from './logic';
  */
 export type InstallLogicInput = OperationLogicInput<PkgManagerInstallContext>;
 
+export type InstallLogicOutput = InstallResult;
+
 /**
  * Installs a package
  *
  * @todo More verbose errors
  */
 
-export const installLogic = fromPromise<InstallResult, InstallLogicInput>(
+export const installLogic = fromPromise<InstallLogicOutput, InstallLogicInput>(
   async ({
     input: {
       ctx,
@@ -30,20 +36,37 @@ export const installLogic = fromPromise<InstallResult, InstallLogicInput>(
       throw new AbortError(signal.reason);
     }
     const {installManifest} = ctx;
-    const {cwd, pkgSpec} = installManifest;
+    const {cwd} = installManifest;
+    let execOutput: ExecOutput | undefined;
     try {
-      const rawResult = await pkgManager.install({...ctx, signal});
-      assertExecOutput(rawResult);
-      if (rawResult.exitCode !== 0) {
-        throw new InstallError('Install failed', spec, pkgSpec, cwd, rawResult);
-      }
-      return InstallResultSchema.parse({installManifest, rawResult});
+      execOutput = await pkgManager.install({...ctx, signal});
     } catch (err) {
-      if (isSmokerError(InstallError, err)) {
-        throw err;
-      } else {
-        throw new InstallError('Install failed', spec, pkgSpec, cwd, err);
-      }
+      throw new InstallError(
+        // is probably an ExecError
+        fromUnknownError(err),
+        installManifest,
+        spec,
+      );
     }
+
+    if (signal.aborted) {
+      throw new AbortError(signal.reason);
+    }
+
+    try {
+      assertExecOutput(execOutput);
+    } catch (err) {
+      const validationErr = asValidationError(
+        err,
+        `${pkgManager.label} returned invalid output during install in dir ${cwd}`,
+      );
+      throw new InstallError(validationErr, installManifest, spec);
+    }
+
+    if (execOutput.exitCode !== 0) {
+      throw new InstallError(execOutput, installManifest, spec);
+    }
+
+    return {installManifest, rawResult: execOutput};
   },
 );

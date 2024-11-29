@@ -38,4 +38,6 @@ export * from './pkg-manager-spec';
 
 export * from './version-normalizer';
 
+export * from './range';
+
 export {SemVer} from 'semver';

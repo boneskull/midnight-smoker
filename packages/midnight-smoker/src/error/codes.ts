@@ -49,7 +49,7 @@ export const ErrorCode = constant({
   UnreadablePackageJsonError: 'ESMOKER_UNREADABLEPACKAGEJSON',
   UnresolvablePluginError: 'ESMOKER_PLUGINNOTFOUND',
   UnsupportedPackageManagerError: 'ESMOKER_UNSUPPORTEDPACKAGEMANAGER',
-  ZodValidationError: 'ESMOKER_VALIDATIONERROR',
+  ValidationError: 'ESMOKER_VALIDATIONERROR',
 });
 
 /**

@@ -52,7 +52,7 @@ describe('@midnight-smoker/plugin-default', function () {
               signal: new AbortController().signal,
               spec,
               tmpdir: MOCK_TMPDIR,
-              workspaceInfo: [],
+              workspaces: [],
             };
             executor.resolves({exitCode: 0, stdout: 'stuff'} as any);
           });

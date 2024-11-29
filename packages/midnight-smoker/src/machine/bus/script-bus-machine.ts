@@ -11,7 +11,7 @@ import {type StaticPkgManagerSpec} from '#schema/pkg-manager/static-pkg-manager-
 import {type SmokerOptions} from '#schema/smoker-options';
 import {type WorkspaceInfo} from '#schema/workspace-info';
 import * as assert from '#util/assert';
-import {asResult} from '#util/result';
+import {toResult} from '#util/result';
 import {partition} from 'remeda';
 import {type AnyActorRef, assign, enqueueActions, setup} from 'xstate';
 
@@ -235,7 +235,7 @@ export const ScriptBusMachine = setup({
                 totalPkgManagers,
                 totalScripts,
                 type: ScriptEvents.PkgManagerScriptsBegin,
-                workspaceInfo: workspaceInfo.map(asResult),
+                workspaceInfo: workspaceInfo.map(toResult),
               }),
               type: 'report',
             },

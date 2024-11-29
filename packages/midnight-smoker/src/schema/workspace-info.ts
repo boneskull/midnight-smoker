@@ -3,6 +3,7 @@ import {
   type PackageJson,
 } from '#schema/package-json';
 import {NonEmptyStringSchema} from '#schema/util/util';
+import * as R from 'remeda';
 import {z} from 'zod';
 
 /**
@@ -73,3 +74,18 @@ export type WorkspaceInfo = Readonly<{
    */
   private?: boolean;
 }>;
+
+/**
+ * Strips properties from an object extending {@link WorkspaceInfo}.
+ *
+ * @param workspaceInfo Something extending {@link WorkspaceInfo}
+ * @returns New object
+ */
+export function toWorkspaceInfo(workspaceInfo: WorkspaceInfo): WorkspaceInfo;
+
+export function toWorkspaceInfo(...args: unknown[]) {
+  return R.purry(toWorkspaceInfo_, args);
+}
+
+const toWorkspaceInfo_ = (workspaceInfo: WorkspaceInfo): WorkspaceInfo =>
+  R.pick(workspaceInfo, R.keys(BaseWorkspaceInfoSchema.shape));

@@ -6,6 +6,7 @@ import {
   OK,
   PACKAGE_JSON,
 } from '#constants';
+import {type InstallManifest} from '#defs/pkg-manager';
 import {ErrorCode} from '#error/codes';
 import {InstallError} from '#error/install-error';
 import {PackError} from '#error/pack-error';
@@ -999,10 +1000,6 @@ describe('midnight-smoker', function () {
                           // this actor _must_ throw a PackError.
                           install: fromPromise(() => {
                             throw new InstallError(
-                              'whoops',
-                              nullPkgManagerSpec,
-                              'some-pkg@1.0.0',
-                              '/some/path/',
                               {
                                 all: '',
                                 command: '',
@@ -1011,6 +1008,8 @@ describe('midnight-smoker', function () {
                                 stderr: '',
                                 stdout: '',
                               },
+                              {} as InstallManifest,
+                              nullPkgManagerSpec,
                             );
                           }),
                         },

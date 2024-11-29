@@ -59,8 +59,9 @@ export const packLogic = fromPromise<PackLogicOutput, PackLogicInput>(
       if (signal.aborted) {
         return;
       }
+      // TODO: assertWorkspaceInstallManifest(allegedManifest);
       return WorkspaceInstallManifestSchema.parse({
-        ...ctx.workspaceInfo,
+        ...ctx.workspaces,
         ...allegedManifest,
       });
     } catch (err) {

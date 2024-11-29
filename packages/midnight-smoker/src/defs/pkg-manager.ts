@@ -16,6 +16,10 @@ import {type WorkspaceInfo} from '#schema/workspace-info';
 import {type Range} from 'semver';
 import {type Merge, type SetOptional, type SetRequired} from 'type-fest';
 
+export {PkgManagerSpec} from '#pkg-manager/pkg-manager-spec';
+
+export type {StaticPkgManagerSpec} from '#schema/pkg-manager/static-pkg-manager-spec';
+
 /**
  * The context for a package manager.
  *
@@ -26,10 +30,11 @@ import {type Merge, type SetOptional, type SetRequired} from 'type-fest';
 export type PkgManagerContext = Merge<
   {
     executor: Executor;
+    linger?: boolean;
     spec: StaticPkgManagerSpec;
     tmpdir: string;
     useWorkspaces?: boolean;
-    workspaceInfo: WorkspaceInfo[];
+    workspaces: WorkspaceInfo[];
   },
   PkgManagerOpts
 >;
@@ -134,7 +139,7 @@ export type PkgManager = {
  */
 export type PkgManagerInstallContext = {
   installManifest: InstallManifest;
-  signal: AbortSignal;
+  signal?: AbortSignal;
 } & PkgManagerContext;
 
 /**
@@ -167,7 +172,7 @@ export type PkgManagerOpts = {
  * directory.
  */
 export type PkgManagerPackContext = {
-  signal: AbortSignal;
+  signal?: AbortSignal;
   timeout?: number;
 } & PkgManagerContext &
   WorkspaceInfo;
