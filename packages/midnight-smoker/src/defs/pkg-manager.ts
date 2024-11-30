@@ -34,7 +34,7 @@ export type PkgManagerContext = Merge<
     spec: StaticPkgManagerSpec;
     tmpdir: string;
     useWorkspaces?: boolean;
-    workspaces: WorkspaceInfo[];
+    // workspaces: WorkspaceInfo[];
   },
   PkgManagerOpts
 >;

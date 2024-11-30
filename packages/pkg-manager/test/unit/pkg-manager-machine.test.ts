@@ -1,70 +1,62 @@
 // TODO: Fix
 
-import stringify from 'json-stable-stringify';
 import {memfs} from 'memfs';
 import {type Volume} from 'memfs/lib/volume';
-import {
-  ERROR,
-  FAILED,
-  InstallEvents,
-  LintEvents,
-  OK,
-  PackEvents,
-  ScriptEvents,
-  SKIPPED,
-} from 'midnight-smoker/constants';
+import {ERROR, OK, PackEvents} from 'midnight-smoker/constants';
 import {type Executor} from 'midnight-smoker/defs/executor';
-import {
-  type PkgManager,
-  type RunScriptManifest,
-} from 'midnight-smoker/defs/pkg-manager';
-import {ErrorCode, ScriptFailedError} from 'midnight-smoker/error';
-import {
-  PkgManagerMachine,
-  type PkgManagerMachineInput,
-} from 'midnight-smoker/machine';
+import {type PkgManager} from 'midnight-smoker/defs/pkg-manager';
+import {ErrorCode} from 'midnight-smoker/error';
 import {OptionsParser} from 'midnight-smoker/options';
-import {PkgManagerSpec} from 'midnight-smoker/pkg-manager';
+import {type PkgManagerSpec} from 'midnight-smoker/pkg-manager';
 import {
   type PkgManagerEnvelope,
   type PluginMetadata,
   PluginRegistry,
-  type RuleEnvelope,
 } from 'midnight-smoker/plugin';
-import {
-  type RunScriptResultFailed,
-  type SmokerOptions,
-  type WorkspaceInfo,
-} from 'midnight-smoker/schema';
+import {type SmokerOptions, type WorkspaceInfo} from 'midnight-smoker/schema';
 import {FileManager, serialize} from 'midnight-smoker/util';
-import path from 'node:path';
 import {afterEach, beforeEach, describe, it} from 'node:test';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
 import {
   type Actor,
+  type ActorLogicFrom,
   type AnyActorRef,
   createActor,
   createEmptyActor,
+  fromPromise,
 } from 'xstate';
 import {
+  createActorWith,
+  type CurryCreateActorWithP1,
   runUntilDone,
   runUntilEventSent,
   runUntilSnapshot,
   runUntilTransition,
   waitForEventSent,
+  waitForSnapshot,
 } from 'xstate-audition';
 
+import {
+  PkgManagerMachine,
+  type PkgManagerMachineInput,
+} from '../../src/pkg-manager-machine';
 import {createDebug} from '../debug';
-import {nullExecutor, nullPkgManager, nullRule} from '../mocks/component';
+import {
+  nullExecutor,
+  nullPkgManager,
+  nullPkgManagerSpec,
+  testPlugin,
+  testWorkspaces,
+} from './fixture';
 
 const expect = unexpected.clone().use(unexpectedSinon);
 const logger = createDebug(__filename);
 
-describe('midnight-smoker', function () {
-  describe('machine', function () {
-    describe('PkgManagerMachine', function () {
+describe('midnight-smoker', () => {
+  describe('machine', () => {
+    describe('PkgManagerMachine', () => {
       let executor: Executor;
       let plugin: Readonly<PluginMetadata>;
       let pluginRegistry: PluginRegistry;
@@ -77,25 +69,29 @@ describe('midnight-smoker', function () {
       let spec: PkgManagerSpec;
       let setup: sinon.SinonStub;
       let teardown: sinon.SinonStub;
-      let ruleEnvelopes: RuleEnvelope[];
       let envelope: PkgManagerEnvelope;
       let actor: Actor<typeof PkgManagerMachine>;
-      const id = 'PkgManagerMachine';
+      let workspaces: WorkspaceInfo[];
+      let input: PkgManagerMachineInput;
+      let logic: ActorLogicFrom<typeof PkgManagerMachine>;
 
-      beforeEach(async function () {
+      const sender = 'test';
+      const id = 'PkgManagerMachine';
+      let createActorWithDefaults: CurryCreateActorWithP1<
+        typeof PkgManagerMachine
+      >;
+
+      beforeEach(async () => {
+        logic = PkgManagerMachine;
         ({vol} = memfs());
+        workspaces = [...testWorkspaces];
         fileManager = FileManager.create({fs: vol as any});
         pluginRegistry = PluginRegistry.create({
           fileManager,
         });
         sandbox = createSandbox();
         pkgManager = {...nullPkgManager};
-        plugin = await pluginRegistry.registerPlugin('test-plugin', {
-          plugin(api) {
-            api.definePackageManager(pkgManager);
-            api.defineRule({...nullRule});
-          },
-        });
+        plugin = {...testPlugin};
         executor = nullExecutor.bind(null);
         smokerOptions = OptionsParser.buildSmokerOptionsSchema(
           pluginRegistry,
@@ -105,70 +101,120 @@ describe('midnight-smoker', function () {
         parentRef = createEmptyActor();
         setup = sandbox.stub(pkgManager, 'setup').resolves();
         teardown = sandbox.stub(pkgManager, 'teardown').resolves();
-        spec = PkgManagerSpec.create('nullpm@1.0.0');
-        ruleEnvelopes = plugin.rules.map((rule) => {
-          const id = pluginRegistry.getComponentId(rule);
-          return {
-            config: smokerOptions.rules[id]!,
-            id,
-            plugin,
-            rule,
-          };
-        });
+        spec = nullPkgManagerSpec.clone();
         envelope = {
           id: 'test-plugin/nullpm',
           pkgManager,
           plugin: serialize(plugin),
           spec,
         };
+        input = {
+          envelope,
+          executor,
+          fileManager,
+          parentRef,
+          smokerOptions,
+        };
+        createActorWithDefaults = createActorWith({id, input, logger});
+        actor = createActorWithDefaults(logic);
       });
 
-      afterEach(function () {
+      afterEach(() => {
         sandbox.restore();
+        actor?.stop();
       });
 
-      describe('lifecycle hooks', function () {
-        let input: PkgManagerMachineInput;
-
-        beforeEach(async function () {
-          input = {
-            envelope,
-            executor,
-            fileManager,
-            immediate: true,
-            parentRef,
-            ruleConfigs: smokerOptions.rules,
-            shouldShutdown: true,
-            useWorkspaces: false,
-            workspaceInfo: [
-              {
-                localPath: '/bar',
-                pkgJson: {name: 'bar', version: '1.0.0'},
-                pkgJsonPath: '/package.json',
-                pkgJsonSource: stringify({name: 'bar', version: '1.0.0'}),
-                pkgName: 'bar',
-              },
-            ],
-          };
-          actor = createActor(PkgManagerMachine, {id, input, logger});
+      describe('lifecycle hooks', () => {
+        beforeEach(() => {
+          input = {...input, workspaces};
+          actor = createActor(logic, {id, input, logger});
         });
 
-        it('should call the "setup" lifecycle hook', async function () {
-          await runUntilDone(actor);
+        it('should create a PkgManagerContext', async () => {
+          let snapshot = await waitForSnapshot(actor, (snapshot) =>
+            snapshot.matches({startup: 'createPkgManagerContext'}),
+          );
+          expect(snapshot.context.ctx, 'to be falsy');
+          snapshot = await runUntilSnapshot(actor, (snapshot) =>
+            snapshot.matches({startup: 'setupLifecycle'}),
+          );
+          expect(snapshot.context.ctx, 'to be ok');
+        });
+
+        describe('when createPkgManagerContext fails', () => {
+          let err: Error;
+
+          beforeEach(() => {
+            err = new Error('context creation failed');
+            logic = logic.provide({
+              actors: {
+                createPkgManagerContext: fromPromise<any, any>(async () => {
+                  throw err;
+                }),
+              },
+            });
+            actor = createActor(logic, {id, input, logger});
+          });
+
+          it('should retain the error', async () => {
+            await expect(
+              runUntilSnapshot(
+                actor,
+                (snapshot) => snapshot.context.error?.cause?.cause === err,
+              ),
+              'to be fulfilled',
+            );
+          });
+
+          it('should skip the "setup" lifecycle hook', async () => {
+            await expect(
+              runUntilSnapshot(actor, (snapshot) =>
+                snapshot.matches({startup: 'setupLifecycle'}),
+              ),
+              'to be rejected',
+            );
+          });
+
+          it('should skip the "teardown" lifecycle hook', async () => {
+            await expect(
+              runUntilSnapshot(actor, (snapshot) =>
+                snapshot.matches({shutdown: 'teardownLifecycle'}),
+              ),
+              'to be rejected',
+            );
+          });
+        });
+
+        it('should call the "setup" lifecycle hook', async () => {
+          await runUntilSnapshot(actor, (snapshot) =>
+            snapshot.matches({working: 'packing'}),
+          );
           expect(pkgManager.setup, 'was called once');
         });
 
-        describe('when the "setup" hook rejects', function () {
-          beforeEach(function () {
+        describe('when the "setup" hook rejects', () => {
+          beforeEach(() => {
             setup.rejects(new Error('setup failed'));
           });
 
-          it('should call the "teardown" lifecycle hook', async function () {
+          it('should call the "teardown" lifecycle hook', async () => {
             await runUntilDone(actor);
             expect(pkgManager.teardown, 'was called once');
           });
 
-          it('should output with a MachineError and aborted flag', async function () {
+          it('should destroy the PkgManagerContext', async () => {
+            await waitForSnapshot(
+              actor,
+              (snapshot) => !!snapshot.context.error && !!snapshot.context.ctx,
+            );
+
+            await expect(
+              runUntilSnapshot(actor, (snapshot) => !snapshot.context.ctx),
+              'to be fulfilled',
+            );
+          });
+
+          it('should output with a MachineError and aborted flag', async () => {
             await expect(
               runUntilDone(actor),
               'to be fulfilled with value satisfying',
@@ -189,13 +235,16 @@ describe('midnight-smoker', function () {
           });
         });
 
-        describe('when not in immediate mode', function () {
-          it('should not transition from initial state (.idle) to .startup', async function () {
-            actor = createActor(PkgManagerMachine, {
+        describe('when initialized without workspaces', () => {
+          beforeEach(() => {
+            actor = createActor(logic, {
               id,
-              input: {...input, immediate: false},
+              input: {...input, workspaces: []},
               logger,
             });
+          });
+
+          it('should not transition from initial state (.idle) to .startup', async () => {
             await expect(
               runUntilTransition(
                 actor,
@@ -206,39 +255,57 @@ describe('midnight-smoker', function () {
             );
           });
 
-          describe('when "BEGIN" received', function () {
-            it('should transition from initial state (.idle) to .startup', async function () {
-              actor = createActor(PkgManagerMachine, {
-                id,
-                input: {...input, immediate: false},
-                logger,
-              });
-              const p = runUntilTransition(
+          describe('when "START" received', () => {
+            it('should transition from initial state (.idle) to .startup', async () => {
+              const promise = runUntilTransition(
                 actor,
                 'PkgManagerMachine.idle',
                 'PkgManagerMachine.startup',
               );
-              actor.send({type: 'BEGIN'});
-              await expect(p, 'to be fulfilled');
+              actor.send({sender, type: 'START', workspaces});
+              await expect(promise, 'to be fulfilled');
             });
           });
         });
 
-        it('should call the "teardown" lifecycle hook', async function () {
-          await runUntilDone(actor);
-          expect(pkgManager.teardown, 'was called once');
-        });
-
-        describe('when the "teardown" hook rejects', function () {
-          beforeEach(function () {
-            teardown.rejects(new Error('teardown failed'));
+        describe('when HALT received', () => {
+          it('should transition to .shutdown', async () => {
+            await waitForSnapshot(actor, (snapshot) =>
+              snapshot.matches('working'),
+            );
+            const promise = runUntilTransition(
+              actor,
+              'PkgManagerMachine.working',
+              'PkgManagerMachine.shutdown',
+            );
+            actor.send({sender, type: 'HALT'});
+            await expect(promise, 'to be fulfilled');
           });
 
-          it('should output with a MachineError', async function () {
-            await expect(
-              runUntilDone(actor),
-              'to be fulfilled with value satisfying',
-              {
+          it('should call the "teardown" lifecycle hook', async () => {
+            await waitForSnapshot(actor, (snapshot) =>
+              snapshot.matches('working'),
+            );
+            const promise = runUntilDone(actor);
+            actor.send({sender, type: 'HALT'});
+            await promise;
+            expect(pkgManager.teardown, 'was called once');
+          });
+
+          describe('when the "teardown" hook rejects', () => {
+            beforeEach(() => {
+              teardown.rejects(new Error('teardown failed'));
+            });
+
+            it('should output with a MachineError', async () => {
+              await waitForSnapshot(actor, (snapshot) =>
+                snapshot.matches('working'),
+              );
+              const promise = runUntilDone(actor);
+
+              actor.send({sender, type: 'HALT'});
+
+              await expect(promise, 'to be fulfilled with value satisfying', {
                 error: {
                   code: ErrorCode.MachineError,
                   errors: [
@@ -249,197 +316,111 @@ describe('midnight-smoker', function () {
                   ],
                 },
                 type: ERROR,
-              },
-            );
+              });
+            });
           });
-
-          describe('when the pruneTempDir actor also rejects', function () {
-            beforeEach(function () {
-              sandbox
-                .stub(fileManager, 'pruneTempDir')
-                .rejects(new Error('prune failed'));
+          describe('when destroyPkgManagerContext rejects', () => {
+            let err: Error;
+            beforeEach(() => {
+              err = new Error('prune failed');
+              sandbox.stub(fileManager, 'pruneTempDir').rejects(err);
             });
 
-            it('should output with a MachineError containing both errors', async function () {
-              await expect(
-                runUntilDone(actor),
-                'to be fulfilled with value satisfying',
-                {
-                  error: {
-                    code: ErrorCode.MachineError,
-                    errors: [
-                      {
-                        code: ErrorCode.CleanupError,
-                      },
-                      {
-                        code: ErrorCode.LifecycleError,
-                        context: {stage: 'teardown'},
-                      },
-                    ],
-                  },
-                  type: ERROR,
-                },
+            it('should output with a MachineError > LifecycleError > Error', async () => {
+              await waitForSnapshot(actor, (snapshot) =>
+                snapshot.matches('working'),
               );
+              const promise = runUntilDone(actor);
+              actor.send({sender, type: 'HALT'});
+              await expect(promise, 'to be fulfilled with value satisfying', {
+                error: {
+                  code: ErrorCode.MachineError,
+                  errors: [
+                    {
+                      cause: err,
+                      code: ErrorCode.LifecycleError,
+                      context: {stage: 'teardown'},
+                    },
+                  ],
+                },
+                type: ERROR,
+              });
             });
           });
         });
       });
 
-      describe('state', function () {
-        describe('init', function () {
-          let input: PkgManagerMachineInput;
-
-          beforeEach(async function () {
-            input = {
-              envelope,
-              executor,
-              fileManager,
-              immediate: true,
-              parentRef,
-              ruleConfigs: smokerOptions.rules,
-              shouldShutdown: true,
-              useWorkspaces: false,
-              workspaceInfo: [
-                {
-                  localPath: '/bar',
-                  pkgJson: {name: 'bar', version: '1.0.0'},
-                  pkgJsonPath: '/package.json',
-                  pkgJsonSource: stringify({name: 'bar', version: '1.0.0'}),
-                  pkgName: 'bar',
-                },
-              ],
-            };
-          });
-
-          describe('when temp dir creation is successful', function () {
-            beforeEach(function () {
-              actor = createActor(PkgManagerMachine, {id, input, logger});
-            });
-
-            it('should run the "setup" lifecycle hook', async function () {
-              await expect(
-                runUntilSnapshot(actor, (snapshot) =>
-                  snapshot.matches({startup: 'setupLifecycle'}),
-                ),
-                'to be fulfilled',
-              );
-            });
-
-            it('should exit without error', async function () {
-              await expect(
-                runUntilDone(actor),
-                'to be fulfilled with value satisfying',
-                {
-                  type: OK,
-                },
-              );
-            });
-          });
-
-          describe('when "workspaceInfo" is an empty array', function () {
-            it('should exit immediately with {noop: true}', async function () {
-              actor = createActor(PkgManagerMachine, {
-                id,
-                input: {...input, workspaceInfo: []},
-                logger,
+      describe('state', () => {
+        describe('startup', () => {
+          describe('when HALT received', () => {
+            it('should exit without error', async () => {
+              const promise = runUntilDone(actor);
+              actor.send({sender, type: 'HALT'});
+              await expect(promise, 'to be fulfilled with value satisfying', {
+                type: OK,
               });
-              await expect(
-                runUntilDone(actor),
-                'to be fulfilled with value satisfying',
-                {
-                  noop: true,
-                  type: OK,
-                },
-              );
             });
           });
 
-          describe('when temp dir creation fails', function () {
-            beforeEach(function () {
-              sandbox
-                .stub(fileManager, 'createTempDir')
-                .rejects(new Error('temp dir creation failed'));
-              actor = createActor(PkgManagerMachine, {id, input, logger});
-            });
+          describe('when create');
 
-            it('should skip the "setup" lifecycle hook', async function () {
-              await expect(
-                runUntilSnapshot(actor, (snapshot) =>
-                  snapshot.matches({startup: 'setupLifecycle'}),
-                ),
-                'to be rejected',
-              );
-            });
+          it('should skip the "setup" lifecycle hook', async () => {
+            await expect(
+              runUntilSnapshot(actor, (snapshot) =>
+                snapshot.matches({startup: 'setupLifecycle'}),
+              ),
+              'to be rejected',
+            );
+          });
 
-            it('should skip the "teardown" lifecycle hook', async function () {
-              await expect(
-                runUntilSnapshot(actor, (snapshot) =>
-                  snapshot.matches({shutdown: 'teardownLifecycle'}),
-                ),
-                'to be rejected',
-              );
-            });
+          it('should skip the "teardown" lifecycle hook', async () => {
+            await expect(
+              runUntilSnapshot(actor, (snapshot) =>
+                snapshot.matches({shutdown: 'teardownLifecycle'}),
+              ),
+              'to be rejected',
+            );
+          });
 
-            it('should exit with an error', async function () {
-              await expect(
-                runUntilDone(actor),
-                'to be fulfilled with value satisfying',
-                {
-                  error: {
-                    code: ErrorCode.MachineError,
-                    errors: [
-                      {
-                        code: ErrorCode.TempDirError,
-                      },
-                    ],
-                  },
-                  type: ERROR,
+          it('should exit with an error', async () => {
+            await expect(
+              runUntilDone(actor),
+              'to be fulfilled with value satisfying',
+              {
+                error: {
+                  code: ErrorCode.MachineError,
+                  errors: [
+                    {
+                      code: ErrorCode.TempDirError,
+                    },
+                  ],
                 },
-              );
-            });
+                type: ERROR,
+              },
+            );
           });
         });
+      });
 
-        describe('working', function () {
-          const workspaceInfo = {
-            localPath: '/bar',
-            pkgJson: {name: 'bar', version: '1.0.0'},
-            pkgJsonPath: '/package.json',
-            pkgName: 'bar',
-          } as WorkspaceInfo;
+      describe('working', () => {
+        describe('installing', () => {
+          describe('when additional deps are provided', () => {
+            beforeEach(() => {
+              smokerOptions = {...smokerOptions, add: ['foo@1.0.0']};
+              input = {...input, smokerOptions};
+            });
 
-          let input: PkgManagerMachineInput;
-
-          beforeEach(async function () {
-            input = {
-              envelope,
-              executor,
-              fileManager,
-              immediate: true,
-              parentRef,
-              ruleConfigs: smokerOptions.rules,
-              shouldShutdown: true,
-              useWorkspaces: false,
-              workspaceInfo: [workspaceInfo],
-            };
-          });
-
-          describe('when additional deps are provided', function () {
-            describe('when workspaceInfo is empty', function () {
-              it('should not attempt to install additional deps', async function () {
-                actor = createActor(PkgManagerMachine, {
+            describe('when workspaces are empty', () => {
+              it('should not attempt to install additional deps', async () => {
+                actor = createActor(logic, {
                   id,
-                  input: {
-                    ...input,
-                    additionalDeps: ['foo@1.0.0'],
-                    workspaceInfo: [],
-                  },
+                  input,
                   logger,
                 });
                 await expect(
                   runUntilSnapshot(actor, (snapshot) =>
                     snapshot.matches({
-                      working: {installing: {installingPkgs: 'installPkg'}},
+                      working: 'installing',
                     }),
                   ),
                   'to be rejected',
@@ -447,20 +428,21 @@ describe('midnight-smoker', function () {
               });
             });
 
-            describe('when workspaceInfo is nonempty', function () {
-              it('should install additional deps immediately', async function () {
-                actor = createActor(PkgManagerMachine, {
+            describe('when workspaceInfo is nonempty', () => {
+              beforeEach(() => {
+                input = {...input, workspaces};
+              });
+
+              it('should install additional deps', async () => {
+                actor = createActor(logic, {
                   id,
-                  input: {
-                    ...input,
-                    additionalDeps: ['foo@1.0.0'],
-                  },
+                  input,
                   logger,
                 });
                 await expect(
                   runUntilSnapshot(actor, (snapshot) =>
                     snapshot.matches({
-                      working: {installing: {installingPkgs: 'installPkg'}},
+                      working: 'installing',
                     }),
                   ),
                   'to be fulfilled with value satisfying',
@@ -475,498 +457,140 @@ describe('midnight-smoker', function () {
               });
             });
           });
+        });
 
-          describe('packing', function () {
-            beforeEach(function () {
-              actor = createActor(PkgManagerMachine, {id, input, logger});
+        describe('packing', () => {
+          beforeEach(() => {
+            input = {...input, workspaces};
+            actor = createActor(logic, {id, input, logger});
+          });
+
+          describe('packingPkgs', () => {
+            it('should send expected events in order', async () => {
+              await expect(
+                runUntilEventSent(actor, [
+                  PackEvents.PkgManagerPackBegin,
+                  PackEvents.PkgPackBegin,
+                  PackEvents.PkgPackOk,
+                  PackEvents.PkgManagerPackOk,
+                ]),
+                'to be fulfilled',
+              );
             });
 
-            describe('packingPkgs', function () {
-              it('should send expected events in order', async function () {
+            it('should not send PACK.PKG_MANAGER.BEGIN multiple times', async () => {
+              await expect(
+                waitForEventSent(actor, [PackEvents.PkgManagerPackBegin]),
+                'to be fulfilled',
+              );
+              await expect(
+                runUntilEventSent(actor, [PackEvents.PkgManagerPackBegin]),
+                'to be rejected',
+              );
+            });
+
+            describe('when packing fails', () => {
+              beforeEach(() => {
+                pkgManager.pack = sandbox
+                  .stub()
+                  .rejects(new Error('packing BAD'));
+                actor = createActor(logic, {
+                  id,
+                  input,
+                  logger,
+                });
+              });
+
+              it('should send PACK.PKG.FAILED and PACK.PKG_MANAGER.FAILED events', async () => {
                 await expect(
                   runUntilEventSent(actor, [
                     PackEvents.PkgManagerPackBegin,
                     PackEvents.PkgPackBegin,
-                    PackEvents.PkgPackOk,
-                    PackEvents.PkgManagerPackOk,
+                    PackEvents.PkgPackFailed,
+                    PackEvents.PkgManagerPackFailed,
                   ]),
                   'to be fulfilled',
                 );
               });
 
-              it('should not send PACK.PKG_MANAGER.BEGIN multiple times', async function () {
+              it('should output with a MachineError and aborted flag', async () => {
+                actor = createActor(logic, {
+                  id,
+                  input,
+                  logger,
+                });
+
                 await expect(
-                  waitForEventSent(actor, [PackEvents.PkgManagerPackBegin]),
-                  'to be fulfilled',
-                );
-                await expect(
-                  runUntilEventSent(actor, [PackEvents.PkgManagerPackBegin]),
-                  'to be rejected',
-                );
-              });
-
-              describe('when packing fails', function () {
-                beforeEach(function () {
-                  pkgManager.pack = sandbox
-                    .stub()
-                    .rejects(new Error('packing BAD'));
-                  actor = createActor(PkgManagerMachine, {
-                    id,
-                    input,
-                    logger,
-                  });
-                });
-
-                it('should send PACK.PKG.FAILED and PACK.PKG_MANAGER.FAILED events', async function () {
-                  await expect(
-                    runUntilEventSent(actor, [
-                      PackEvents.PkgManagerPackBegin,
-                      PackEvents.PkgPackBegin,
-                      PackEvents.PkgPackFailed,
-                      PackEvents.PkgManagerPackFailed,
-                    ]),
-                    'to be fulfilled',
-                  );
-                });
-
-                it('should output with a MachineError and aborted flag', async function () {
-                  actor = createActor(PkgManagerMachine, {
-                    id,
-                    input: {...input, workspaceInfo: [workspaceInfo]},
-                    logger,
-                  });
-
-                  await expect(
-                    runUntilDone(actor),
-                    'to be fulfilled with value satisfying',
-                    {
-                      aborted: true,
-                      error: {
-                        code: ErrorCode.MachineError,
-                        errors: [
-                          {
-                            cause: {message: 'packing BAD'},
-                            code: ErrorCode.PackError,
-                          },
-                        ],
-                      },
-                      type: ERROR,
-                    },
-                  );
-                });
-              });
-            });
-          });
-
-          describe('installing', function () {
-            beforeEach(function () {
-              actor = createActor(PkgManagerMachine, {id, input, logger});
-            });
-
-            describe('installingPkgs', function () {
-              describe('installPkg', function () {
-                it('should send install events in order', async function () {
-                  await expect(
-                    runUntilEventSent(actor, [
-                      InstallEvents.PkgManagerInstallBegin,
-                      InstallEvents.PkgInstallBegin,
-                      InstallEvents.PkgInstallOk,
-                      InstallEvents.PkgManagerInstallOk,
-                    ]),
-                    'to be fulfilled',
-                  );
-                });
-
-                describe('when installation fails', function () {
-                  beforeEach(function () {
-                    pkgManager.install = sandbox
-                      .stub()
-                      .rejects(new Error('install BAD'));
-                    actor = createActor(PkgManagerMachine, {
-                      id,
-                      input,
-                      logger,
-                    });
-                  });
-
-                  it('should send INSTALL.PKG.FAILED and INSTALL.PKG_MANAGER.FAILED events', async function () {
-                    await expect(
-                      runUntilEventSent(actor, [
-                        InstallEvents.PkgManagerInstallBegin,
-                        InstallEvents.PkgInstallBegin,
-                        InstallEvents.PkgInstallFailed,
-                        InstallEvents.PkgManagerInstallFailed,
-                      ]),
-                      'to be fulfilled',
-                    );
-                  });
-
-                  it('should output with a MachineError and aborted flag', async function () {
-                    actor = createActor(PkgManagerMachine, {
-                      id,
-                      input: {...input, workspaceInfo: [workspaceInfo]},
-                      logger,
-                    });
-                    await expect(
-                      runUntilDone(actor),
-                      'to be fulfilled with value satisfying',
-                      {
-                        aborted: true,
-                        error: {
-                          code: ErrorCode.MachineError,
-                          errors: [
-                            {
-                              cause: {message: 'install BAD'},
-                              code: ErrorCode.InstallError,
-                            },
-                          ],
+                  runUntilDone(actor),
+                  'to be fulfilled with value satisfying',
+                  {
+                    aborted: true,
+                    error: {
+                      code: ErrorCode.MachineError,
+                      errors: [
+                        {
+                          cause: {message: 'packing BAD'},
+                          code: ErrorCode.PackError,
                         },
-                        type: ERROR,
-                      },
-                    );
-                  });
-                });
-              });
-            });
-          });
-
-          describe('linting', function () {
-            const tmpdir = '/tmp';
-
-            beforeEach(function () {
-              // configure filesystem for an installed package
-              // within the temp dir.  this is needed for reading the
-              // package.json at the install path of the tarballed workspace
-              sandbox.stub(fileManager, 'createTempDir').resolves(tmpdir);
-              vol.fromJSON({
-                [path.join(tmpdir, 'node_modules', 'bar', 'package.json')]:
-                  JSON.stringify({name: 'bar', version: '1.0.0'}),
-              });
-            });
-
-            describe('when "shouldLint" flag not set', function () {
-              it('should not lint', async function () {
-                await expect(
-                  runUntilSnapshot(actor, (snapshot) =>
-                    snapshot.matches({working: {linting: 'lintingPkgs'}}),
-                  ),
-                  'to be rejected',
-                );
-              });
-            });
-
-            describe('when "shouldLint" flag is set and rules are enabled', function () {
-              beforeEach(function () {
-                input = {
-                  ...input,
-                  ruleEnvelopes,
-                  shouldLint: true,
-                };
-                actor = createActor(PkgManagerMachine, {
-                  id,
-                  input,
-                  logger,
-                });
-              });
-
-              it('should send lint events in order', async function () {
-                await expect(
-                  runUntilEventSent(actor, [
-                    LintEvents.PkgManagerLintBegin,
-                    LintEvents.RuleBegin,
-                    LintEvents.RuleOk,
-                    LintEvents.RuleEnd,
-                    LintEvents.PkgManagerLintOk,
-                  ]),
-                  'to be fulfilled',
-                );
-              });
-
-              describe('when a rule fails', function () {
-                beforeEach(function () {
-                  for (const {rule} of ruleEnvelopes) {
-                    sandbox.stub(rule, 'check').callsFake(async (ctx) => {
-                      ctx.addIssue('PROBLEM');
-                    });
-                  }
-                  actor = createActor(PkgManagerMachine, {
-                    id,
-                    input,
-                    logger,
-                  });
-                });
-
-                it('should send lint events in order', async function () {
-                  await expect(
-                    runUntilEventSent(actor, [
-                      LintEvents.PkgManagerLintBegin,
-                      LintEvents.RuleBegin,
-                      LintEvents.RuleFailed,
-                      LintEvents.RuleEnd,
-                      LintEvents.PkgManagerLintFailed,
-                    ]),
-                    'to be fulfilled',
-                  );
-                });
-
-                it('should output with type OK', async function () {
-                  await expect(
-                    runUntilDone(actor),
-                    'to be fulfilled with value satisfying',
-                    {
-                      type: OK,
+                      ],
                     },
-                  );
-                });
-              });
-
-              describe('when a rule throws an exception', function () {
-                beforeEach(function () {
-                  for (const {rule} of ruleEnvelopes) {
-                    sandbox.stub(rule, 'check').throws(new Error('test error'));
-                  }
-                  actor = createActor(PkgManagerMachine, {
-                    id,
-                    input,
-                    logger,
-                  });
-                });
-
-                it('should send lint events in order', async function () {
-                  await expect(
-                    runUntilEventSent(actor, [
-                      LintEvents.PkgManagerLintBegin,
-                      LintEvents.RuleBegin,
-                      LintEvents.RuleError,
-                      LintEvents.RuleEnd,
-                      LintEvents.PkgManagerLintFailed,
-                    ]),
-                    'to be fulfilled',
-                  );
-                });
-              });
-            });
-
-            describe('when "shouldLint" flag is set but all rules are disabled', function () {
-              // NOTE: ComponentLoaderMachine would normally filter the rules based on their severity, and only enabled rule defs would be provided. thus, PkgManagerMachine does not check the rule config; it only checks if it has any rule defs.
-              it('should not lint', async function () {
-                actor = createActor(PkgManagerMachine, {
-                  id,
-                  input: {...input, ruleEnvelopes: [], shouldLint: true},
-                  logger,
-                });
-
-                await expect(
-                  runUntilEventSent(actor, [LintEvents.PkgManagerLintBegin]),
-                  'to be rejected',
+                    type: ERROR,
+                  },
                 );
-              });
-            });
-          });
-
-          describe('runningScripts', function () {
-            describe('when no scripts were provided in SmokerOptions', function () {
-              it('should not enter state working.runningScripts.running', async function () {
-                await expect(
-                  runUntilSnapshot(actor, (snapshot) =>
-                    snapshot.matches({working: {runningScripts: 'running'}}),
-                  ),
-                  'to be rejected',
-                );
-              });
-            });
-
-            describe('when scripts were provided in SmokerOptions', function () {
-              beforeEach(function () {
-                input.scripts = ['test'];
-                actor = createActor(PkgManagerMachine, {
-                  id,
-                  input,
-                  logger,
-                });
-              });
-
-              it('should enter state working.runningScripts.running', async function () {
-                await expect(
-                  runUntilSnapshot(actor, (snapshot) =>
-                    snapshot.matches({working: {runningScripts: 'running'}}),
-                  ),
-                  'to be fulfilled',
-                );
-              });
-
-              describe('when a script was skipped', function () {
-                beforeEach(function () {
-                  sandbox.stub(pkgManager, 'runScript').resolves({
-                    manifest: {} as RunScriptManifest,
-                    type: SKIPPED,
-                  });
-                });
-
-                it('should send the correct events', async function () {
-                  await expect(
-                    runUntilEventSent(actor, [
-                      ScriptEvents.PkgManagerScriptsBegin,
-                      ScriptEvents.RunScriptBegin,
-                      ScriptEvents.RunScriptSkipped,
-                      ScriptEvents.RunScriptEnd,
-                      ScriptEvents.PkgManagerScriptsOk,
-                    ]),
-                    'to be fulfilled',
-                  );
-                });
-              });
-
-              describe('when a script failed', function () {
-                beforeEach(function () {
-                  const result: RunScriptResultFailed = {
-                    error: new ScriptFailedError('failed', {
-                      command: '',
-                      exitCode: 1,
-                      output: '',
-                      pkgManager: 'nullpm',
-                      pkgName: workspaceInfo.pkgName,
-                      script: 'test',
-                    }),
-                    manifest: {} as RunScriptManifest,
-                    rawResult: {
-                      command: '',
-                      cwd: '',
-                      exitCode: 0,
-                      stderr: '',
-                      stdout: '',
-                    },
-                    type: FAILED,
-                  };
-                  sandbox.stub(pkgManager, 'runScript').resolves(result);
-                });
-
-                it('should send the correct events', async function () {
-                  await expect(
-                    runUntilEventSent(actor, [
-                      ScriptEvents.PkgManagerScriptsBegin,
-                      ScriptEvents.RunScriptBegin,
-                      ScriptEvents.RunScriptFailed,
-                      ScriptEvents.RunScriptEnd,
-                      ScriptEvents.PkgManagerScriptsFailed,
-                    ]),
-                    'to be fulfilled',
-                  );
-                });
-              });
-
-              describe('when a script succeeds', function () {
-                it('should send the correct events', async function () {
-                  await expect(
-                    runUntilEventSent(actor, [
-                      ScriptEvents.PkgManagerScriptsBegin,
-                      ScriptEvents.RunScriptBegin,
-                      ScriptEvents.RunScriptOk,
-                      ScriptEvents.RunScriptEnd,
-                      ScriptEvents.PkgManagerScriptsOk,
-                    ]),
-                    'to be fulfilled',
-                  );
-                });
-              });
-
-              describe('when a the script runner throws an error', function () {
-                beforeEach(function () {
-                  sandbox
-                    .stub(pkgManager, 'runScript')
-                    .rejects(new Error('dook dook dook'));
-                });
-
-                it('should send the correct events', async function () {
-                  await expect(
-                    runUntilEventSent(actor, [
-                      ScriptEvents.PkgManagerScriptsBegin,
-                      ScriptEvents.RunScriptBegin,
-                      ScriptEvents.RunScriptError,
-                      ScriptEvents.RunScriptEnd,
-                      ScriptEvents.PkgManagerScriptsFailed,
-                    ]),
-                    'to be fulfilled',
-                  );
-                });
-
-                it('should bail', async function () {
-                  await expect(
-                    runUntilTransition(
-                      actor,
-                      'PkgManagerMachine.working.runningScripts.running',
-                      'PkgManagerMachine.working.runningScripts.errored',
-                    ),
-                    'to be fulfilled',
-                  );
-                });
               });
             });
           });
         });
 
-        describe('shutdown', function () {
-          const workspaceInfo = {
-            localPath: '/',
-            pkgJson: {name: 'bar', version: '1.0.0'},
-            pkgJsonPath: '/package.json',
-            pkgName: 'bar',
-          } as WorkspaceInfo;
-          let input: PkgManagerMachineInput;
+        describe('installing', () => {
+          beforeEach(() => {
+            actor = createActor(logic, {id, input, logger});
+          });
+        });
+      });
 
-          beforeEach(function () {
-            input = {
-              envelope,
-              executor,
-              fileManager,
-              immediate: true,
-              parentRef,
-              ruleConfigs: smokerOptions.rules,
-              shouldShutdown: true,
-              useWorkspaces: false,
-              workspaceInfo: [workspaceInfo],
-            };
+      describe('shutdown', () => {
+        describe('when destroying the PkgManagerContext fails', () => {
+          beforeEach(() => {
+            sandbox
+              .stub(fileManager, 'pruneTempDir')
+              .rejects(new Error('prune failed'));
+            actor = createActor(logic, {id, input, logger});
           });
 
-          describe('when pruning the temp dir fails', function () {
-            beforeEach(function () {
-              sandbox
-                .stub(fileManager, 'pruneTempDir')
-                .rejects(new Error('prune failed'));
-              actor = createActor(PkgManagerMachine, {id, input, logger});
-            });
-
-            it('should output with a MachineError', async function () {
-              await expect(
-                runUntilDone(actor),
-                'to be fulfilled with value satisfying',
-                {
-                  error: {
-                    code: ErrorCode.MachineError,
-                    errors: [
-                      {
-                        code: ErrorCode.CleanupError,
-                      },
-                    ],
-                  },
-                  type: ERROR,
+          it('should output with a MachineError', async () => {
+            await expect(
+              runUntilDone(actor),
+              'to be fulfilled with value satisfying',
+              {
+                error: {
+                  code: ErrorCode.MachineError,
+                  errors: [
+                    {
+                      code: ErrorCode.CleanupError,
+                    },
+                  ],
                 },
-              );
-            });
+                type: ERROR,
+              },
+            );
+          });
+        });
+
+        describe('when the "linger" flag was provided', () => {
+          beforeEach(() => {
+            input = {
+              ...input,
+              smokerOptions: {...smokerOptions, linger: true},
+            };
+            actor = createActor(logic, {id, input, logger});
           });
 
-          describe('when the "linger" flag was provided', function () {
-            beforeEach(function () {
-              input = {...input, linger: true};
-              actor = createActor(PkgManagerMachine, {id, input, logger});
-            });
-
-            it('should send the LINGERED event', async function () {
-              await expect(
-                runUntilEventSent(actor, ['LINGERED']),
-                'to be fulfilled',
-              );
-            });
+          it('should send the LINGERED event', async () => {
+            await expect(
+              runUntilEventSent(actor, ['LINGERED']),
+              'to be fulfilled',
+            );
           });
         });
       });

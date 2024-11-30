@@ -4,6 +4,8 @@ import {BaseSmokerError} from '#error/base-error';
  * Thrown when `Smoker.cleanup()` fails.
  *
  * @group Errors
+ *
+ * TODO: remove this; no longer needed
  */
 
 export class CleanupError extends BaseSmokerError<

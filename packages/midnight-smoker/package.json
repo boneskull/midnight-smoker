@@ -206,7 +206,6 @@
     "@types/yargs": "17.0.32",
     "memfs": "4.6.0",
     "strip-ansi": "5.2.0",
-    "xstate-audition": "1.2.0",
     "zod-to-json-schema": "3.22.3"
   },
   "overrides": {

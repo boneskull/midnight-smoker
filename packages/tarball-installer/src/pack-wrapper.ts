@@ -1,6 +1,7 @@
 import {type PkgManagerContext} from 'midnight-smoker/defs/pkg-manager';
 import {type SomePackError} from 'midnight-smoker/error';
 import {PackEvents} from 'midnight-smoker/event';
+import {type WorkspaceInfo} from 'midnight-smoker/pkg-manager';
 import {type PkgManagerEnvelope} from 'midnight-smoker/plugin';
 import {uniqueId} from 'midnight-smoker/util';
 import {type Actor, type ActorOptions, createActor} from 'xstate';
@@ -19,12 +20,12 @@ import {PackMachine, type PackMachineEmitted} from './pack-machine';
 export const pack = async (
   envelope: PkgManagerEnvelope,
   ctx: PkgManagerContext,
+  workspaces: WorkspaceInfo[],
   {id, logger, ...actorOptions}: ActorOptions<typeof PackMachine> = {},
 ): Promise<PackMachineEmitted[]> => {
   id ??= uniqueId({prefix: 'pack-wrapper', suffix: envelope.spec.label});
   logger ??= createDebug(__filename);
 
-  const {workspaces} = ctx;
   const actor: Actor<typeof PackMachine> = createActor(PackMachine, {
     id,
     logger,

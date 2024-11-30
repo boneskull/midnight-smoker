@@ -23,6 +23,7 @@ import {
   toResult,
   uniqueId,
 } from 'midnight-smoker/util';
+import {type Except} from 'type-fest';
 import {
   type ActorRefFromLogic,
   type DoneActorEvent,
@@ -35,13 +36,15 @@ import {assign, enqueueActions, log, raise} from 'xstate/actions';
 import {installLogic, type InstallLogicOutput} from './install-logic';
 
 export interface InstallMachineInput {
-  additionalDeps?: readonly string[];
   ctx: Readonly<PkgManagerContext>;
 
   envelope: Readonly<PkgManagerEnvelope>;
+
+  manifests?: InstallManifest[];
 }
 
-export interface InstallMachineContext extends InstallMachineInput {
+export interface InstallMachineContext
+  extends Except<InstallMachineInput, 'manifests', {requireExactProps: true}> {
   aborted: boolean;
   installActorRef?: ActorRefFromLogic<typeof installLogic>;
   queue: InstallManifest[];
@@ -223,17 +226,6 @@ export const InstallMachine = setup({
         ...manifests,
       ],
     }),
-    enqueueAdditionalDeps: assign({
-      queue: ({context: {additionalDeps = [], ctx, queue}}) => {
-        const manifests: InstallManifest[] = additionalDeps.map((dep) => ({
-          cwd: ctx.tmpdir,
-          isAdditional: true,
-          pkgName: dep,
-          pkgSpec: dep,
-        }));
-        return [...queue, ...manifests];
-      },
-    }),
 
     /**
      * Stops the machine
@@ -304,12 +296,12 @@ export const InstallMachine = setup({
         R.hasAtLeast(queue, 1) && !installActorRef,
     },
   ],
-  context: R.piped(R.prop('input'), R.merge(INSTALL_MACHINE_CONTEXT_DEFAULTS)),
-  entry: [
-    INIT_ACTION,
-    log(({self: {id}}) => `[${id}] InstallMachine started`),
-    'enqueueAdditionalDeps',
-  ],
+  context: ({input: {manifests = [], ...input}}) => ({
+    ...INSTALL_MACHINE_CONTEXT_DEFAULTS,
+    ...input,
+    queue: manifests,
+  }),
+  entry: [INIT_ACTION, log(({self: {id}}) => `[${id}] InstallMachine started`)],
   on: {
     ABORT: {
       actions: [

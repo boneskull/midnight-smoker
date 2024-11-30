@@ -607,7 +607,7 @@ export const PkgManagerMachine = setup({
           spec,
           tmpdir,
           useWorkspaces,
-          workspaces: workspaceInfo,
+          // workspaces: workspaceInfo,
           ...opts,
         };
       },

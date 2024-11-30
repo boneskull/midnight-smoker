@@ -48,7 +48,7 @@
     "test:ci": "run-s test:unit test:e2e test:smoke",
     "test:e2e": "exit 0",
     "test:smoke": "smoker",
-    "test:unit": "mocha \"test/unit/**/*.spec.ts\""
+    "test:unit": "node --env-file=./test/test.env --env-file-if-exists=.test.env --import tsx --test \"test/**/*.test.ts\""
   },
   "peerDependencies": {
     "midnight-smoker": "^8.0.0"

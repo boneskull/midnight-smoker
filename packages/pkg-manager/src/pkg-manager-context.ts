@@ -6,7 +6,6 @@ import {
   type PkgManagerContext,
   type PkgManagerOpts,
 } from 'midnight-smoker/defs/pkg-manager';
-import {type WorkspaceInfo} from 'midnight-smoker/pkg-manager';
 import {type FileManager} from 'midnight-smoker/util';
 import {fromPromise} from 'xstate';
 
@@ -18,7 +17,6 @@ export interface PkgManagerContextLogicInput {
   spec: StaticPkgManagerSpec;
 
   useWorkspaces?: boolean;
-  workspaces: WorkspaceInfo[];
 }
 
 export const createPkgManagerContextLogic = fromPromise<
@@ -33,7 +31,6 @@ export const createPkgManagerContextLogic = fromPromise<
       options,
       spec,
       useWorkspaces,
-      workspaces,
     },
     signal,
   }) => {
@@ -49,7 +46,6 @@ export const createPkgManagerContextLogic = fromPromise<
       spec,
       tmpdir,
       useWorkspaces,
-      workspaces,
       ...options,
     });
   },

@@ -4,6 +4,7 @@ import {
   type PkgManagerContext,
   type PkgManagerEnvelope,
   type PkgManagerSpec,
+  type WorkspaceInfo,
 } from 'midnight-smoker';
 import {afterEach, beforeEach, describe, it} from 'node:test';
 import sinon from 'sinon';
@@ -15,6 +16,7 @@ import {
   nullPkgManagerSpec,
   testPkgManagerContext,
   testPlugin,
+  testWorkspaces,
   workspaceInstallManifest,
 } from './fixture';
 
@@ -28,6 +30,7 @@ describe('pack', () => {
     let packStub: sinon.SinonStub;
     let spec: PkgManagerSpec;
     let ctx: PkgManagerContext;
+    let workspaces: WorkspaceInfo[];
 
     beforeEach(() => {
       sandbox = sinon.createSandbox();
@@ -35,6 +38,7 @@ describe('pack', () => {
       pkgManager = {...nullPkgManager, pack: packStub};
       ctx = {...testPkgManagerContext};
       spec = nullPkgManagerSpec.clone();
+      workspaces = [...testWorkspaces];
       envelope = {
         id: 'nullpm',
         pkgManager,
@@ -49,7 +53,7 @@ describe('pack', () => {
 
     describe('when packing succeeds', () => {
       it('should return PackMachineEmitted events', async () => {
-        const result = await pack(envelope, ctx);
+        const result = await pack(envelope, ctx, workspaces);
         expect(result, 'to satisfy', [{type: PackEvents.PkgPackOk}]);
       });
     });
@@ -61,7 +65,7 @@ describe('pack', () => {
 
       it('should reject with an AggregateError', async () => {
         await expect(
-          pack(envelope, ctx),
+          pack(envelope, ctx, workspaces),
           'to be rejected with error satisfying',
           expect.it('to be an', AggregateError),
         );
@@ -70,7 +74,7 @@ describe('pack', () => {
 
     describe('when actor completes', () => {
       it('should resolve the promise with results', async () => {
-        const result = await pack(envelope, ctx);
+        const result = await pack(envelope, ctx, workspaces);
         expect(result, 'to be an array');
       });
     });

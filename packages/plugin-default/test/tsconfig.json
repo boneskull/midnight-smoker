@@ -6,7 +6,7 @@
       "@midnight-smoker/test-util": ["../../test-util"]
     }
   },
-  "include": ["."],
+  "include": [".", "../../pkg-manager/test/unit/fixture.ts"],
   "references": [
     {
       "path": "../src/tsconfig.json"

@@ -11,7 +11,10 @@ import {
   type WorkspaceInstallManifest,
 } from 'midnight-smoker/defs/pkg-manager';
 import {PackError, PackParseError} from 'midnight-smoker/error';
-import {WorkspaceInstallManifestSchema} from 'midnight-smoker/schema';
+import {
+  toWorkspaceInfo,
+  WorkspaceInstallManifestSchema,
+} from 'midnight-smoker/schema';
 import {isSmokerError} from 'midnight-smoker/util';
 import {fromPromise} from 'xstate';
 import 'xstate/guards';
@@ -61,7 +64,7 @@ export const packLogic = fromPromise<PackLogicOutput, PackLogicInput>(
       }
       // TODO: assertWorkspaceInstallManifest(allegedManifest);
       return WorkspaceInstallManifestSchema.parse({
-        ...ctx.workspaces,
+        ...toWorkspaceInfo(ctx),
         ...allegedManifest,
       });
     } catch (err) {

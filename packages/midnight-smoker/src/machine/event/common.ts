@@ -4,8 +4,7 @@
  * @packageDocumentation
  */
 
-import {type EmptyObject} from '#schema/util/util';
-import {type Simplify} from 'type-fest';
+import {type Merge} from 'type-fest';
 
 /**
  * These fields are omitted from the `*Pkg*` events because they are computed by
@@ -30,10 +29,11 @@ export type ComputedPkgManagerEventField =
  */
 export type MachineEvent<
   Name extends string,
-  T extends object = EmptyObject,
-> = Simplify<
+  T extends object = object,
+> = Merge<
   {
     sender: string;
     type: Name;
-  } & T
+  },
+  T
 >;

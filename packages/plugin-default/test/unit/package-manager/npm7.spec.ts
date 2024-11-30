@@ -77,15 +77,6 @@ describe('@midnight-smoker/plugin-default', function () {
               signal: new AbortController().signal,
               spec,
               tmpdir: MOCK_TMPDIR,
-              workspaces: [
-                {
-                  localPath: '/some/path',
-                  pkgJson: {name: 'foo', version: '1.0.0'},
-                  pkgJsonPath: '/some/path/to/package.json',
-                  pkgJsonSource: stringify({name: 'foo', version: '1.0.0'}),
-                  pkgName: 'foo',
-                },
-              ],
             };
           });
 
@@ -185,7 +176,6 @@ describe('@midnight-smoker/plugin-default', function () {
               signal: new AbortController().signal,
               spec,
               tmpdir: MOCK_TMPDIR,
-              workspaces: [],
             };
           });
 
@@ -263,7 +253,6 @@ describe('@midnight-smoker/plugin-default', function () {
               signal: new AbortController().signal,
               spec,
               tmpdir: MOCK_TMPDIR,
-              workspaces: [],
             };
           });
 
