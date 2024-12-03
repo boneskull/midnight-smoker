@@ -1,4 +1,4 @@
-import {constant, InstallEvents} from 'midnight-smoker/constants';
+import {constant, FINAL, InstallEvents} from 'midnight-smoker/constants';
 import {
   type InstallManifest,
   type PkgManagerContext,
@@ -26,9 +26,11 @@ import {
 import {type Except} from 'type-fest';
 import {
   type ActorRefFromLogic,
+  and,
   type DoneActorEvent,
   emit,
   type ErrorActorEvent,
+  not,
   setup,
 } from 'xstate';
 import {assign, enqueueActions, log, raise} from 'xstate/actions';
@@ -46,11 +48,12 @@ export interface InstallMachineInput {
 export interface InstallMachineContext
   extends Except<InstallMachineInput, 'manifests', {requireExactProps: true}> {
   aborted: boolean;
+  halting?: boolean;
   installActorRef?: ActorRefFromLogic<typeof installLogic>;
   queue: InstallManifest[];
 }
 
-export type InstallMachineHaltEvent = MachineEvent<'HALT'>;
+export type InstallMachineHaltEvent = MachineEvent<'HALT', {now?: boolean}>;
 const INSTALL_MACHINE_CONTEXT_DEFAULTS = constant({
   aborted: false,
   installActorRef: undefined,
@@ -98,6 +101,10 @@ export const InstallMachine = setup({
       aborted: true,
     }),
 
+    assignHalting: assign({
+      halting: true,
+    }),
+
     /**
      * Pulls an {@link InstallManifest} object off of
      * {@link InstallMachineContext.queue the queue}, spawns an install actor and
@@ -119,18 +126,6 @@ export const InstallMachine = setup({
       enqueue.assign({
         queue: R.drop(queue, 1),
       });
-    }),
-
-    /**
-     * Destroys all children; for use when aborting.
-     *
-     * Does not assume we're holding references to any children
-     */
-    destroyAllChildren: enqueueActions(({enqueue, self}) => {
-      const snapshot = self.getSnapshot();
-      for (const child of Object.keys(snapshot.children)) {
-        enqueue.stopChild(child);
-      }
     }),
 
     /**
@@ -266,6 +261,12 @@ export const InstallMachine = setup({
   actors: {
     install: installLogic,
   },
+  guards: {
+    hasInstallItems: ({context: {installActorRef, queue}}) =>
+      !!queue.length && !installActorRef,
+    isHalting: ({context: {halting}}) => !!halting,
+    shouldHaltNow: (_, {now}: InstallMachineHaltEvent) => !!now,
+  },
   types: {
     context: {} as InstallMachineContext,
     emitted: {} as InstallMachineEmitted,
@@ -273,95 +274,114 @@ export const InstallMachine = setup({
     input: {} as InstallMachineInput,
   },
 }).createMachine({
-  always: [
-    {
-      actions: [
-        log(
-          ({context: {queue}, self: {id}}) =>
-            `[${id}] Queue contains ${
-              queue.length
-            } items; beginning install of "${R.first(queue)!.pkgName}"`,
-        ),
-        'beginInstall',
-      ],
-
-      /**
-       * {@link InstallMachineContext.queue} must have at least one item.
-       *
-       * {@link InstallMachineContext.installActorRef} must be falsy, because we
-       * should only be performing a single install at a time (per package
-       * manager).
-       */
-      guard: ({context: {installActorRef, queue}}) =>
-        R.hasAtLeast(queue, 1) && !installActorRef,
-    },
-  ],
   context: ({input: {manifests = [], ...input}}) => ({
     ...INSTALL_MACHINE_CONTEXT_DEFAULTS,
     ...input,
     queue: manifests,
   }),
-  entry: [INIT_ACTION, log(({self: {id}}) => `[${id}] InstallMachine started`)],
-  on: {
-    ABORT: {
-      actions: [
-        'aborted',
-        log(({event: {reason}, self: {id}}) =>
-          reason
-            ? `Aborting InstallMachine [${id}]: ${reason}`
-            : `Aborting InstallMachine [${id}]`,
-        ),
-        'destroyAllChildren',
-        'halt',
-      ],
+  initial: 'running',
+  states: {
+    done: {
+      type: FINAL,
     },
-    INSTALL: {
-      actions: [
-        log(
-          ({
-            event: {
-              manifests: {length: count},
-              sender,
+    running: {
+      always: [
+        {
+          actions: [
+            log(
+              ({context: {queue}, self: {id}}) =>
+                `[${id}] Queue contains ${
+                  queue.length
+                } items; beginning install of "${R.first(queue)!.pkgName}"`,
+            ),
+            'beginInstall',
+          ],
+          guard: 'hasInstallItems',
+        },
+        {
+          guard: and(['isHalting', not('hasInstallItems')]),
+          target: 'done',
+        },
+      ],
+      entry: [
+        INIT_ACTION,
+        log(({self: {id}}) => `[${id}] InstallMachine started`),
+      ],
+      on: {
+        ABORT: {
+          actions: [
+            'aborted',
+            log(({event: {reason}, self: {id}}) =>
+              reason
+                ? `Aborting InstallMachine [${id}]: ${reason}`
+                : `Aborting InstallMachine [${id}]`,
+            ),
+          ],
+          target: 'done',
+        },
+        HALT: [
+          {
+            description: 'If "now" is true, we should halt immediately',
+            guard: {
+              params: R.prop('event'),
+              type: 'shouldHaltNow',
             },
-            self: {id},
-          }) =>
-            `[${id}] Received INSTALL event from [${sender}]; appending ${count} manifest(s) to queue`,
-        ),
-        {
-          params: R.piped(R.prop('event'), R.prop('manifests')),
-          type: 'enqueue',
+            target: 'done',
+          },
+          {
+            actions: 'assignHalting',
+            description: 'If "now" is falsy, wait until the queue is empty',
+          },
+        ],
+        INSTALL: {
+          actions: [
+            log(
+              ({
+                event: {
+                  manifests: {length: count},
+                  sender,
+                },
+                self: {id},
+              }) =>
+                `[${id}] Received INSTALL event from [${sender}]; appending ${count} manifest(s) to queue`,
+            ),
+            {
+              params: R.piped(R.prop('event'), R.prop('manifests')),
+              type: 'enqueue',
+            },
+          ],
         },
-      ],
-    },
-    'xstate.done.actor.install.*': {
-      actions: [
-        {
-          /**
-           * Provide {@link InstallLogicOutput} to {@link emitPkgInstallOk}
-           */
-          params: R.piped(R.prop('event'), R.prop('output')),
-          type: 'emitPkgInstallOk',
+        'xstate.done.actor.install.*': {
+          actions: [
+            {
+              /**
+               * Provide {@link InstallLogicOutput} to {@link emitPkgInstallOk}
+               */
+              params: R.piped(R.prop('event'), R.prop('output')),
+              type: 'emitPkgInstallOk',
+            },
+            {
+              /**
+               * Provide {@link DoneActorEvent.actorId} to {@link destroyChild}
+               */
+              params: R.piped(R.prop('event'), R.prop('actorId')),
+              type: 'destroyChild',
+            },
+          ],
         },
-        {
-          /**
-           * Provide {@link DoneActorEvent.actorId} to {@link destroyChild}
-           */
-          params: R.piped(R.prop('event'), R.prop('actorId')),
-          type: 'destroyChild',
+        'xstate.error.actor.install.*': {
+          actions: [
+            {
+              params: R.piped(R.prop('event'), R.prop('error')),
+              type: 'emitPkgInstallFailed',
+            },
+            {
+              params: R.piped(R.prop('event'), R.prop('actorId')),
+              type: 'destroyChild',
+            },
+          ],
         },
-      ],
-    },
-    'xstate.error.actor.install.*': {
-      actions: [
-        {
-          params: R.piped(R.prop('event'), R.prop('error')),
-          type: 'emitPkgInstallFailed',
-        },
-        {
-          params: R.piped(R.prop('event'), R.prop('actorId')),
-          type: 'destroyChild',
-        },
-      ],
+      },
     },
   },
 });

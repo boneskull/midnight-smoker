@@ -1,3 +1,4 @@
+import {SmokerReferenceError} from 'midnight-smoker';
 import {DEFAULT_PKG_MANAGER_NAME, SYSTEM} from 'midnight-smoker/constants';
 import {type PkgManager} from 'midnight-smoker/defs/pkg-manager';
 import {
@@ -51,6 +52,9 @@ export const matchSystemPkgManagerLogic = fromPromise<
       plugins,
       spec,
       which: someWhich = which,
+    },
+    self: {
+      system: {_logger: log},
     },
   }) => {
     /**
@@ -131,16 +135,27 @@ export const matchSystemPkgManagerLogic = fromPromise<
       return version && range.test(version) ? version : undefined;
     };
 
+    log(
+      `Attempting to match system package manager using spec "${spec.label}"`,
+    );
+
     for (const plugin of plugins) {
       const {pkgManagers} = plugin;
 
+      const matchingPkgManagers = filterMatchingPkgManagers(spec, pkgManagers);
+
+      log(
+        `Found ${matchingPkgManagers.length} matching package manager(s) in plugin "${plugin.id}"`,
+      );
+
       // find the package manager(s) that match the PkgManagerrSpec
-      for (const pkgManager of filterMatchingPkgManagers(spec, pkgManagers)) {
+      for (const pkgManager of matchingPkgManagers) {
         const {bin} = pkgManager;
 
         // does the system have this package manager?
         const binPath = await findSystemPkgManagerPath(bin);
         if (binPath) {
+          log(`Found executable for "${pkgManager.name}" at ${binPath}`);
           // ok, great.  what version is the system package manager?
           const reportedVersion = await getSystemPkgManagerVersion(binPath);
           if (reportedVersion) {
@@ -148,6 +163,10 @@ export const matchSystemPkgManagerLogic = fromPromise<
             const acceptedVersion = accepts(pkgManager, reportedVersion);
 
             if (acceptedVersion) {
+              log(
+                `Package manager "${pkgManager.name}" at ${binPath} reports version ${reportedVersion} (accepted)`,
+              );
+
               // a "system" range means "whatever's there"
               if (spec.version !== SYSTEM) {
                 // `spec.version` is an unknown at this point, but we can now
@@ -203,15 +222,26 @@ export const matchSystemPkgManagerLogic = fromPromise<
                       DEFAULT_PKG_MANAGER_NAME)
                 ) {
                   defaultSystemPkgManagerEnvelope = envelope;
+                  log(`Setting default system package manager to "${id}"`);
                 }
 
                 // it's expected that the caller sends
                 // `defaultSystemPkgManagerEnvelope` back to us on subsequent
                 // calls
                 return {defaultSystemPkgManagerEnvelope, envelope};
+              } else {
+                throw new SmokerReferenceError(
+                  `Could not find component for PkgManager with name "${pkgManager.name}"`,
+                );
               }
+            } else {
+              log(
+                `Package manager "${pkgManager.name}" at ${binPath} reports version ${reportedVersion} (declined)`,
+              );
             }
           }
+        } else {
+          log(`Could not find executable for ${pkgManager.name} named ${bin}`);
         }
       }
     }

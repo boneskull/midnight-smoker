@@ -53,6 +53,8 @@ const PkgManagerVersionDataArraySchema = versionDataShape.versions
 
 /**
  * Schema for version data for `normalizeVersion`
+ *
+ * TOOD: create assertion
  */
 export const RawPkgManagerVersionDataSchema =
   PkgManagerVersionDataArraySchema.or(PkgManagerVersionDataSchema).describe(

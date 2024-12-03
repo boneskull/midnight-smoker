@@ -137,7 +137,7 @@ export function normalizeVersionAgainstData(
     if (result) {
       debug('Normalized version "%s" to "%s"', value, result);
     } else {
-      debug('Could not normalize version "%s"', value);
+      debug('Could not normalize version "%s" (version unknown)', value);
     }
     return result;
   };

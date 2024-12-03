@@ -1,4 +1,4 @@
-import {constant} from 'midnight-smoker/constants';
+import {constant, FINAL} from 'midnight-smoker/constants';
 import {
   type PkgManagerContext,
   type PkgManagerPackContext,
@@ -21,8 +21,10 @@ import {assert, R, toResult, uniqueId} from 'midnight-smoker/util';
 import {type Except} from 'type-fest';
 import {
   type ActorRefFromLogic,
+  and,
   type DoneActorEvent,
   type ErrorActorEvent,
+  not,
   setup,
 } from 'xstate';
 import {assign, emit, enqueueActions, log, raise} from 'xstate/actions';
@@ -43,7 +45,7 @@ export type PackMachinePackEvent = MachineEvent<
   {workspaces: WorkspaceInfo[]}
 >;
 
-export type PackMachineHaltEvent = MachineEvent<'HALT'>;
+export type PackMachineHaltEvent = MachineEvent<'HALT', {now?: boolean}>;
 
 export interface PackMachineOptions {
   dryRun?: boolean;
@@ -60,6 +62,7 @@ export type PackMachineEvent = PackMachineHaltEvent | PackMachinePackEvent;
 export interface PackMachineContext
   extends Except<PackMachineInput, 'workspaces', {requireExactProps: true}> {
   aborted?: boolean;
+  halting?: boolean;
   packActorRefs: Record<string, ActorRefFromLogic<typeof packLogic>>;
   queue: WorkspaceInfo[];
 }
@@ -99,6 +102,10 @@ export const PackMachine = setup({
       aborted: true,
     }),
 
+    assignHalting: assign({
+      halting: true,
+    }),
+
     /**
      * Spawns a {@link packLogic} actor with the first
      * {@link PkgManagerPackContext} item in the queue, invokes
@@ -120,18 +127,6 @@ export const PackMachine = setup({
       enqueue.assign({
         queue: R.drop(queue, 1),
       });
-    }),
-
-    /**
-     * Destroys all children; for use when aborting.
-     *
-     * Does not assume we're holding references to any children
-     */
-    destroyAllChildren: enqueueActions(({enqueue, self}) => {
-      const snapshot = self.getSnapshot();
-      for (const child of Object.keys(snapshot.children)) {
-        enqueue.stopChild(child);
-      }
     }),
 
     /**
@@ -267,6 +262,11 @@ export const PackMachine = setup({
   actors: {
     pack: packLogic,
   },
+  guards: {
+    hasPackItems: ({context: {queue}}) => !!queue.length,
+    isHalting: ({context: {halting}}) => !!halting,
+    shouldHaltNow: (_, {now}: PackMachineHaltEvent) => !!now,
+  },
   types: {
     context: {} as PackMachineContext,
     emitted: {} as PackMachineEmitted,
@@ -274,17 +274,6 @@ export const PackMachine = setup({
     input: {} as PackMachineInput,
   },
 }).createMachine({
-  always: [
-    {
-      actions: 'beginPack',
-
-      /**
-       * {@link PackMachineContext.queue} must have at least one item
-       */
-      guard: R.piped(R.prop('context'), R.prop('queue'), R.hasAtLeast(1)),
-    },
-  ],
-
   /**
    * Merge {@link PackMachineInput} with {@link PACK_MACHINE_CONTEXT_DEFAULTS} and
    * add workspaces (if any) to the queue
@@ -294,81 +283,121 @@ export const PackMachine = setup({
     ...input,
     queue: workspaces,
   }),
-
   entry: [INIT_ACTION, log(({self: {id}}) => `[${id}] PackMachine started`)],
-  on: {
-    ABORT: {
-      actions: [
-        'aborted',
-        log(({event: {reason}, self: {id}}) =>
-          reason
-            ? `Aborting PackMachine [${id}]: ${reason}`
-            : `Aborting PackMachine [${id}]`,
-        ),
-        'destroyAllChildren',
-        'halt',
+  initial: 'running',
+  states: {
+    done: {
+      type: FINAL,
+    },
+    running: {
+      always: [
+        {
+          actions: 'beginPack',
+          guard: 'hasPackItems',
+        },
+        {
+          guard: and(['isHalting', not('hasPackItems')]),
+          target: 'done',
+        },
       ],
-    },
-    PACK: {
-      actions: {
-        /**
-         * Enqueue all {@link PackMachinePackEvent.workspaces}
-         */
-        params: R.piped(R.prop('event'), R.prop('workspaces')),
-        type: 'enqueue',
-      },
-    },
-    'xstate.done.actor.pack.*': [
-      {
-        actions: [
+      on: {
+        ABORT: {
+          actions: [
+            'aborted',
+            log(({event: {reason}, self: {id}}) =>
+              reason
+                ? `Aborting PackMachine [${id}]: ${reason}`
+                : `Aborting PackMachine [${id}]`,
+            ),
+          ],
+          target: 'done',
+        },
+        HALT: [
           {
-            /**
-             * Provide {@link PackLogicOutput} to {@link emitPkgPackOk}
-             */
-            params: R.piped(R.prop('event'), R.prop('output')),
-            type: 'emitPkgPackOk',
+            description: 'If "now" is true, we should halt immediately',
+            guard: {
+              params: R.prop('event'),
+              type: 'shouldHaltNow',
+            },
+            target: 'done',
           },
           {
-            /**
-             * Provide {@link DoneActorEvent.actorId} to {@link destroyChild}
-             */
-            params: R.piped(R.prop('event'), R.prop('actorId')),
-            type: 'destroyChild',
+            actions: 'assignHalting',
+            description: 'If "now" is falsy, wait until the queue is empty',
           },
         ],
-        // TODO: rewrite as provided guard
-        guard: R.piped(R.prop('event'), R.prop('output'), R.isTruthy),
+        PACK: [
+          {
+            actions: {
+              /**
+               * Enqueue all {@link PackMachinePackEvent.workspaces}
+               */
+              params: R.piped(R.prop('event'), R.prop('workspaces')),
+              type: 'enqueue',
+            },
+            guard: not('isHalting'),
+          },
+          {
+            actions: log(
+              ({self: {id}}) =>
+                `[${id}] PACK event ignored; PackMachine shutting down`,
+            ),
+          },
+        ],
+        'xstate.done.actor.pack.*': [
+          {
+            actions: [
+              {
+                /**
+                 * Provide {@link PackLogicOutput} to {@link emitPkgPackOk}
+                 */
+                params: R.piped(R.prop('event'), R.prop('output')),
+                type: 'emitPkgPackOk',
+              },
+              {
+                /**
+                 * Provide {@link DoneActorEvent.actorId} to {@link destroyChild}
+                 */
+                params: R.piped(R.prop('event'), R.prop('actorId')),
+                type: 'destroyChild',
+              },
+            ],
+            // TODO: rewrite as provided guard
+            guard: R.piped(R.prop('event'), R.prop('output'), R.isTruthy),
+          },
+          {
+            actions: {
+              params:
+                'Packing aborted because pack logic was explicitly stopped',
+              type: 'abort',
+            },
+            // TODO: rewrite as provided guard
+            guard: R.piped(
+              R.prop('context'),
+              R.prop('aborted'),
+              R.isNot(R.isTruthy),
+            ),
+          },
+        ],
+        'xstate.error.actor.pack.*': {
+          actions: [
+            {
+              /**
+               * Provide the {@link SomePackError} to {@link emitPkgPackFailed}
+               */
+              params: R.piped(R.prop('event'), R.prop('error')),
+              type: 'emitPkgPackFailed',
+            },
+            {
+              /**
+               * Provide {@link ErrorActorEvent.actorId} to {@link destroyChild}
+               */
+              params: R.piped(R.prop('event'), R.prop('actorId')),
+              type: 'destroyChild',
+            },
+          ],
+        },
       },
-      {
-        actions: {
-          params: 'Packing aborted because pack logic was explicitly stopped',
-          type: 'abort',
-        },
-        // TODO: rewrite as provided guard
-        guard: R.piped(
-          R.prop('context'),
-          R.prop('aborted'),
-          R.isNot(R.isTruthy),
-        ),
-      },
-    ],
-    'xstate.error.actor.pack.*': {
-      actions: [
-        {
-          /**
-           * Provide the {@link SomePackError} to {@link emitPkgPackFailed}
-           */
-          params: R.piped(R.prop('event'), R.prop('error')),
-          type: 'emitPkgPackFailed',
-        },
-        {
-          /**
-           * Provide {@link ErrorActorEvent.actorId} to {@link destroyChild}
-           */
-          params: R.piped(R.prop('event'), R.prop('actorId')),
-          type: 'destroyChild',
-        },
-      ],
     },
   },
 });

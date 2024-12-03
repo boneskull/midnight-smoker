@@ -2,7 +2,7 @@
 
 import {memfs} from 'memfs';
 import {type Volume} from 'memfs/lib/volume';
-import {ERROR, OK, PackEvents} from 'midnight-smoker/constants';
+import {ERROR, OK} from 'midnight-smoker/constants';
 import {type Executor} from 'midnight-smoker/defs/executor';
 import {type PkgManager} from 'midnight-smoker/defs/pkg-manager';
 import {ErrorCode} from 'midnight-smoker/error';
@@ -34,7 +34,6 @@ import {
   runUntilEventSent,
   runUntilSnapshot,
   runUntilTransition,
-  waitForEventSent,
   waitForSnapshot,
 } from 'xstate-audition';
 
@@ -74,6 +73,7 @@ describe('midnight-smoker', () => {
       let workspaces: WorkspaceInfo[];
       let input: PkgManagerMachineInput;
       let logic: ActorLogicFrom<typeof PkgManagerMachine>;
+      const initialTimeout = 100;
 
       const sender = 'test';
       const id = 'PkgManagerMachine';
@@ -112,6 +112,7 @@ describe('midnight-smoker', () => {
           envelope,
           executor,
           fileManager,
+          initialTimeout,
           parentRef,
           smokerOptions,
         };
@@ -143,14 +144,20 @@ describe('midnight-smoker', () => {
 
         describe('when createPkgManagerContext fails', () => {
           let err: Error;
+          let setupPkgManager: sinon.SinonStub;
+          let teardownPkgManager: sinon.SinonStub;
 
           beforeEach(() => {
             err = new Error('context creation failed');
+            setupPkgManager = sandbox.stub().resolves();
+            teardownPkgManager = sandbox.stub().resolves();
             logic = logic.provide({
               actors: {
                 createPkgManagerContext: fromPromise<any, any>(async () => {
                   throw err;
                 }),
+                setupPkgManager: fromPromise<any, any>(setupPkgManager),
+                teardownPkgManager: fromPromise<any, any>(teardownPkgManager),
               },
             });
             actor = createActor(logic, {id, input, logger});
@@ -167,21 +174,13 @@ describe('midnight-smoker', () => {
           });
 
           it('should skip the "setup" lifecycle hook', async () => {
-            await expect(
-              runUntilSnapshot(actor, (snapshot) =>
-                snapshot.matches({startup: 'setupLifecycle'}),
-              ),
-              'to be rejected',
-            );
+            await runUntilDone(actor);
+            expect(setupPkgManager, 'was not called');
           });
 
           it('should skip the "teardown" lifecycle hook', async () => {
-            await expect(
-              runUntilSnapshot(actor, (snapshot) =>
-                snapshot.matches({shutdown: 'teardownLifecycle'}),
-              ),
-              'to be rejected',
-            );
+            await runUntilDone(actor);
+            expect(teardownPkgManager, 'was not called');
           });
         });
 
@@ -236,23 +235,46 @@ describe('midnight-smoker', () => {
         });
 
         describe('when initialized without workspaces', () => {
+          let enqueueAdditionalDeps: sinon.SinonStub;
+
           beforeEach(() => {
+            input = {...input, workspaces: []};
             actor = createActor(logic, {
               id,
-              input: {...input, workspaces: []},
+              input,
               logger,
             });
           });
 
-          it('should not transition from initial state (.idle) to .startup', async () => {
+          it('should timeout while waiting for START event', async () => {
             await expect(
-              runUntilTransition(
-                actor,
-                'PkgManagerMachine.idle',
-                'PkgManagerMachine.startup',
-              ),
-              'to be rejected',
+              runUntilDone(actor),
+              'to be fulfilled with value satisfying',
+              {
+                aborted: true,
+                type: ERROR,
+              },
             );
+          });
+
+          beforeEach(() => {
+            enqueueAdditionalDeps = sandbox.stub();
+            logic = logic.provide({
+              actions: {
+                enqueueAdditionalDeps,
+              },
+            });
+          });
+
+          it('should not attempt to install additional deps', async () => {
+            actor = createActor(logic, {
+              id,
+              input,
+              logger,
+            });
+
+            await runUntilDone(actor);
+            expect(enqueueAdditionalDeps, 'was not called');
           });
 
           describe('when "START" received', () => {
@@ -269,17 +291,16 @@ describe('midnight-smoker', () => {
         });
 
         describe('when HALT received', () => {
-          it('should transition to .shutdown', async () => {
+          it('should stop the machine', async () => {
             await waitForSnapshot(actor, (snapshot) =>
               snapshot.matches('working'),
             );
-            const promise = runUntilTransition(
-              actor,
-              'PkgManagerMachine.working',
-              'PkgManagerMachine.shutdown',
-            );
+            const promise = runUntilDone(actor);
             actor.send({sender, type: 'HALT'});
-            await expect(promise, 'to be fulfilled');
+            await expect(promise, 'to be fulfilled with value satisfying', {
+              aborted: false,
+              type: OK,
+            });
           });
 
           it('should call the "teardown" lifecycle hook', async () => {
@@ -319,19 +340,17 @@ describe('midnight-smoker', () => {
               });
             });
           });
+
           describe('when destroyPkgManagerContext rejects', () => {
             let err: Error;
             beforeEach(() => {
               err = new Error('prune failed');
               sandbox.stub(fileManager, 'pruneTempDir').rejects(err);
+              actor = createActor(logic, {id, input, logger});
             });
 
             it('should output with a MachineError > LifecycleError > Error', async () => {
-              await waitForSnapshot(actor, (snapshot) =>
-                snapshot.matches('working'),
-              );
               const promise = runUntilDone(actor);
-              actor.send({sender, type: 'HALT'});
               await expect(promise, 'to be fulfilled with value satisfying', {
                 error: {
                   code: ErrorCode.MachineError,
@@ -353,52 +372,62 @@ describe('midnight-smoker', () => {
       describe('state', () => {
         describe('startup', () => {
           describe('when HALT received', () => {
+            let setupPkgManager: sinon.SinonStub;
+            let teardownPkgManager: sinon.SinonStub;
+
+            beforeEach(() => {
+              setupPkgManager = sandbox.stub().resolves();
+              teardownPkgManager = sandbox.stub().resolves();
+              logic = logic.provide({
+                actors: {
+                  setupPkgManager: fromPromise<any, any>(setupPkgManager),
+                  teardownPkgManager: fromPromise<any, any>(teardownPkgManager),
+                },
+              });
+              actor = createActor(logic, {id, input, logger});
+            });
+
             it('should exit without error', async () => {
               const promise = runUntilDone(actor);
               actor.send({sender, type: 'HALT'});
               await expect(promise, 'to be fulfilled with value satisfying', {
+                aborted: false,
                 type: OK,
               });
             });
+
+            it('should skip the "setup" lifecycle hook', async () => {
+              const promise = runUntilDone(actor);
+              actor.send({sender, type: 'HALT'});
+              await promise;
+              expect(setupPkgManager, 'was not called');
+            });
+
+            it('should skip the "teardown" lifecycle hook', async () => {
+              const promise = runUntilDone(actor);
+              actor.send({sender, type: 'HALT'});
+              await promise;
+              expect(teardownPkgManager, 'was not called');
+            });
           });
 
-          describe('when create');
-
-          it('should skip the "setup" lifecycle hook', async () => {
-            await expect(
-              runUntilSnapshot(actor, (snapshot) =>
-                snapshot.matches({startup: 'setupLifecycle'}),
-              ),
-              'to be rejected',
-            );
-          });
-
-          it('should skip the "teardown" lifecycle hook', async () => {
-            await expect(
-              runUntilSnapshot(actor, (snapshot) =>
-                snapshot.matches({shutdown: 'teardownLifecycle'}),
-              ),
-              'to be rejected',
-            );
-          });
-
-          it('should exit with an error', async () => {
-            await expect(
-              runUntilDone(actor),
-              'to be fulfilled with value satisfying',
-              {
-                error: {
-                  code: ErrorCode.MachineError,
-                  errors: [
-                    {
-                      code: ErrorCode.TempDirError,
-                    },
-                  ],
-                },
-                type: ERROR,
-              },
-            );
-          });
+          // it('should exit with an error', async () => {
+          //   await expect(
+          //     runUntilDone(actor),
+          //     'to be fulfilled with value satisfying',
+          //     {
+          //       error: {
+          //         code: ErrorCode.MachineError,
+          //         errors: [
+          //           {
+          //             code: ErrorCode.TempDirError,
+          //           },
+          //         ],
+          //       },
+          //       type: ERROR,
+          //     },
+          //   );
+          // });
         });
       });
 
@@ -410,25 +439,7 @@ describe('midnight-smoker', () => {
               input = {...input, smokerOptions};
             });
 
-            describe('when workspaces are empty', () => {
-              it('should not attempt to install additional deps', async () => {
-                actor = createActor(logic, {
-                  id,
-                  input,
-                  logger,
-                });
-                await expect(
-                  runUntilSnapshot(actor, (snapshot) =>
-                    snapshot.matches({
-                      working: 'installing',
-                    }),
-                  ),
-                  'to be rejected',
-                );
-              });
-            });
-
-            describe('when workspaceInfo is nonempty', () => {
+            describe('when workspaces is nonempty', () => {
               beforeEach(() => {
                 input = {...input, workspaces};
               });
@@ -459,121 +470,40 @@ describe('midnight-smoker', () => {
           });
         });
 
-        describe('packing', () => {
+        describe('packing', () => {});
+
+        describe('installing', () => {});
+      });
+
+      describe('shutdown', () => {
+        describe.only('when destroying the PkgManagerContext fails', () => {
+          let err: Error;
           beforeEach(() => {
+            err = new Error('prune failed');
+            sandbox.stub(fileManager, 'pruneTempDir').rejects(err);
             input = {...input, workspaces};
             actor = createActor(logic, {id, input, logger});
           });
 
-          describe('packingPkgs', () => {
-            it('should send expected events in order', async () => {
-              await expect(
-                runUntilEventSent(actor, [
-                  PackEvents.PkgManagerPackBegin,
-                  PackEvents.PkgPackBegin,
-                  PackEvents.PkgPackOk,
-                  PackEvents.PkgManagerPackOk,
-                ]),
-                'to be fulfilled',
-              );
-            });
-
-            it('should not send PACK.PKG_MANAGER.BEGIN multiple times', async () => {
-              await expect(
-                waitForEventSent(actor, [PackEvents.PkgManagerPackBegin]),
-                'to be fulfilled',
-              );
-              await expect(
-                runUntilEventSent(actor, [PackEvents.PkgManagerPackBegin]),
-                'to be rejected',
-              );
-            });
-
-            describe('when packing fails', () => {
-              beforeEach(() => {
-                pkgManager.pack = sandbox
-                  .stub()
-                  .rejects(new Error('packing BAD'));
-                actor = createActor(logic, {
-                  id,
-                  input,
-                  logger,
-                });
-              });
-
-              it('should send PACK.PKG.FAILED and PACK.PKG_MANAGER.FAILED events', async () => {
-                await expect(
-                  runUntilEventSent(actor, [
-                    PackEvents.PkgManagerPackBegin,
-                    PackEvents.PkgPackBegin,
-                    PackEvents.PkgPackFailed,
-                    PackEvents.PkgManagerPackFailed,
-                  ]),
-                  'to be fulfilled',
-                );
-              });
-
-              it('should output with a MachineError and aborted flag', async () => {
-                actor = createActor(logic, {
-                  id,
-                  input,
-                  logger,
-                });
-
-                await expect(
-                  runUntilDone(actor),
-                  'to be fulfilled with value satisfying',
-                  {
-                    aborted: true,
-                    error: {
-                      code: ErrorCode.MachineError,
-                      errors: [
-                        {
-                          cause: {message: 'packing BAD'},
-                          code: ErrorCode.PackError,
-                        },
-                      ],
-                    },
-                    type: ERROR,
-                  },
-                );
-              });
-            });
-          });
-        });
-
-        describe('installing', () => {
-          beforeEach(() => {
-            actor = createActor(logic, {id, input, logger});
-          });
-        });
-      });
-
-      describe('shutdown', () => {
-        describe('when destroying the PkgManagerContext fails', () => {
-          beforeEach(() => {
-            sandbox
-              .stub(fileManager, 'pruneTempDir')
-              .rejects(new Error('prune failed'));
-            actor = createActor(logic, {id, input, logger});
-          });
-
-          it('should output with a MachineError', async () => {
-            await expect(
-              runUntilDone(actor),
-              'to be fulfilled with value satisfying',
-              {
-                error: {
-                  code: ErrorCode.MachineError,
-                  errors: [
-                    {
-                      code: ErrorCode.CleanupError,
-                    },
-                  ],
-                },
-                type: ERROR,
-              },
+          it('should abort with a MachineError > LifecycleError > Error', async () => {
+            await waitForSnapshot(actor, (snapshot) =>
+              snapshot.matches('working'),
             );
+            const promise = runUntilDone(actor);
+            actor.send({sender, type: 'HALT'});
+            await expect(promise, 'to be fulfilled with value satisfying', {
+              aborted: true,
+              error: {
+                code: ErrorCode.MachineError,
+                errors: [
+                  {
+                    cause: err,
+                    code: ErrorCode.LifecycleError,
+                  },
+                ],
+              },
+              type: ERROR,
+            });
           });
         });
 

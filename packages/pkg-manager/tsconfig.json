@@ -1,6 +1,6 @@
 {
   "extends": ["../../.config/tsconfig.src.json"],
-  "include": ["./src", "./test"],
+  "include": ["./src", "./test", "test/stubs.d.ts"],
   "exclude": ["./test/e2e/fixture/**/*"],
   "compilerOptions": {
     "outDir": "./dist",

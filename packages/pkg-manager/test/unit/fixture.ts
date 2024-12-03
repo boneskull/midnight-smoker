@@ -102,6 +102,7 @@ export const workspaceInstallManifest = constant({
 
 export const testPkgManagerContext = constant({
   executor: nullExecutor.bind(null),
+  linger: false,
   spec: nullPkgManagerSpec.clone(),
   tmpdir: '/tmp',
 }) satisfies Readonly<PkgManagerContext>;

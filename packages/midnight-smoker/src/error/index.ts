@@ -70,6 +70,8 @@ export * from './spawn-error';
 
 export * from './temp-dir-error';
 
+export * from './timeout-error';
+
 export * from './unknown-component-error';
 
 export * from './unknown-error';

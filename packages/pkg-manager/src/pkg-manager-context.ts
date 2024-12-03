@@ -9,7 +9,7 @@ import {
 import {type FileManager} from 'midnight-smoker/util';
 import {fromPromise} from 'xstate';
 
-export interface PkgManagerContextLogicInput {
+export interface CreatePkgManagerContextLogicInput {
   executor: Executor;
   fileManager: FileManager;
   linger?: boolean;
@@ -21,7 +21,7 @@ export interface PkgManagerContextLogicInput {
 
 export const createPkgManagerContextLogic = fromPromise<
   Readonly<PkgManagerContext>,
-  PkgManagerContextLogicInput
+  CreatePkgManagerContextLogicInput
 >(
   async ({
     input: {
