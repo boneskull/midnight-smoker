@@ -19,7 +19,7 @@ jobs:
       - name: Upgrade npm
         run: npm i -g npm
       - name: Install dependencies
-        uses: bahmutov/npm-install@2509f13e8485d88340a789a3f7ca11aaac47c9fc # v1.8.36
+        uses: bahmutov/npm-install@3da6b44b121fcdcb64528100e3dcfaffb39159e5 # v1.8.40
         with:
           install-command: npm ci --foreground-scripts
       - name: Test Suite
@@ -30,7 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       - name: Install dependencies
-        uses: bahmutov/npm-install@2509f13e8485d88340a789a3f7ca11aaac47c9fc # v1.8.36
+        uses: bahmutov/npm-install@3da6b44b121fcdcb64528100e3dcfaffb39159e5 # v1.8.40
         with:
           install-command: npm ci --foreground-scripts
       - name: Lint
