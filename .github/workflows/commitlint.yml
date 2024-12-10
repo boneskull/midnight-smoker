@@ -22,6 +22,6 @@ jobs:
         with:
           install-command: npm ci --foreground-scripts
       - name: Run commitlint
-        uses: wagoid/commitlint-github-action@0d749a1a91d4770e983a7b8f83d4a3f0e7e0874e # v5.4.4
+        uses: wagoid/commitlint-github-action@4973fb2da492818040d483817dd647c73b67eb52 # v5.4.6
         env:
           NODE_PATH: ${{ github.workspace }}/node_modules
