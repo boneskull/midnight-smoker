@@ -85,7 +85,7 @@
     "unexpected-sinon": "11.1.0"
   },
   "overrides": {
-    "debug": "4.3.4",
+    "debug": "4.3.7",
     "type-fest": "4.8.3"
   },
   "prettier": {
