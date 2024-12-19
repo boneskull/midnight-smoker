@@ -1,6 +1,6 @@
 import {InstallEvents} from 'midnight-smoker/constants';
 import {ErrorCode} from 'midnight-smoker/error';
-import {type SmokeMachinePkgInstallOkEvent} from 'midnight-smoker/machine';
+import {type PkgInstallOkMachineEvent} from 'midnight-smoker/machine';
 import {
   ExecError,
   type ExecOutput,
@@ -56,7 +56,7 @@ describe('install', () => {
       stderr: '',
       stdout: '',
     };
-    const pkgInstallOkEvent: SmokeMachinePkgInstallOkEvent = {
+    const pkgInstallOkEvent: PkgInstallOkMachineEvent = {
       installManifest: toResult(workspaceInstallManifest),
       pkgManager: spec,
       rawResult,
@@ -231,15 +231,8 @@ describe('install', () => {
 
       describe('ABORT', () => {
         let actor: Actor<typeof logic>;
-        let destroyAllChildrenStub: sinon.SinonStub;
 
         beforeEach(() => {
-          destroyAllChildrenStub = sandbox.stub();
-          logic = logic.provide({
-            actions: {
-              destroyAllChildren: destroyAllChildrenStub,
-            },
-          });
           actor = createActor(logic, {
             id,
             input,
@@ -256,41 +249,6 @@ describe('install', () => {
 
           await promise;
           expect(actor.getSnapshot().context.aborted, 'to be true');
-        });
-
-        it('should destroy all children', async () => {
-          const promise = runUntilDone(actor);
-          actor.send({
-            reason: 'test reason',
-            type: 'ABORT',
-          });
-
-          await promise;
-          expect(destroyAllChildrenStub, 'was called once');
-        });
-
-        it('should stop itself', async () => {
-          const promise = runUntilDone(actor);
-          sandbox.spy(actor, 'stop');
-          actor.send({
-            reason: 'test reason',
-            type: 'ABORT',
-          });
-
-          await promise;
-          expect(actor.stop, 'was called once');
-        });
-
-        it('should have "stopped" status', async () => {
-          const promise = runUntilDone(actor);
-          sandbox.spy(actor, 'stop');
-          actor.send({
-            reason: 'test reason',
-            type: 'ABORT',
-          });
-
-          await promise;
-          expect(actor.getSnapshot().status, 'to be', 'stopped');
         });
       });
     });

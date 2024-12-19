@@ -7,12 +7,13 @@ import {
 import {type InstallError} from 'midnight-smoker/error';
 import {
   type AbortEvent,
+  type AnyPkgInstallMachineEvent,
   DEFAULT_INIT_ACTION,
   INIT_ACTION,
   type MachineEvent,
-  type SmokeMachinePkgInstallBeginEvent,
-  type SmokeMachinePkgInstallFailedEvent,
-  type SmokeMachinePkgInstallOkEvent,
+  type PkgInstallBeginMachineEvent,
+  type PkgInstallFailedMachineEvent,
+  type PkgInstallOkMachineEvent,
 } from 'midnight-smoker/machine';
 import {type InstallResult, toWorkspaceInfo} from 'midnight-smoker/pkg-manager';
 import {type PkgManagerEnvelope} from 'midnight-smoker/plugin';
@@ -25,10 +26,10 @@ import {
 } from 'midnight-smoker/util';
 import {type Except} from 'type-fest';
 import {
+  type ActorRef,
   type ActorRefFromLogic,
   and,
   type DoneActorEvent,
-  emit,
   type ErrorActorEvent,
   not,
   setup,
@@ -39,10 +40,11 @@ import {installLogic, type InstallLogicOutput} from './install-logic';
 
 export interface InstallMachineInput {
   ctx: Readonly<PkgManagerContext>;
-
   envelope: Readonly<PkgManagerEnvelope>;
 
   manifests?: InstallManifest[];
+
+  parentRef?: ActorRef<any, AnyPkgInstallMachineEvent>;
 }
 
 export interface InstallMachineContext
@@ -71,10 +73,7 @@ export type InstallMachineEvent =
 type InstallLogicDoneEvent = DoneActorEvent<InstallLogicOutput, 'install.*'>;
 type InstallLogicErrorEvent = ErrorActorEvent<InstallError, 'install.*'>;
 
-export type InstallMachineEmitted =
-  | SmokeMachinePkgInstallBeginEvent
-  | SmokeMachinePkgInstallFailedEvent
-  | SmokeMachinePkgInstallOkEvent;
+export type InstallMachineEmitted = AnyPkgInstallMachineEvent;
 
 type InternalInstallMachineEvent =
   | AbortEvent
@@ -137,43 +136,53 @@ export const InstallMachine = setup({
     }),
 
     /**
-     * Emits a {@link SmokeMachinePkgInstallBeginEvent} event.
+     * Emits a {@link PkgInstallBeginMachineEvent} event.
      */
-    emitPkgInstallBegin: emit(
+    emitPkgInstallBegin: enqueueActions(
       (
         {
           context: {
             envelope: {spec: pkgManager},
+            parentRef,
           },
+          enqueue,
           self: {id: sender},
         },
         ctx: PkgManagerInstallContext,
-      ): SmokeMachinePkgInstallBeginEvent => ({
-        installManifest: ctx.installManifest,
-        pkgManager,
-        sender,
-        type: InstallEvents.PkgInstallBegin,
+      ) => {
+        const evt: PkgInstallBeginMachineEvent = {
+          installManifest: ctx.installManifest,
+          pkgManager,
+          sender,
+          type: InstallEvents.PkgInstallBegin,
 
-        workspace: isWorkspaceInstallManifest(ctx.installManifest)
-          ? toResult(toWorkspaceInfo(ctx.installManifest))
-          : undefined,
-      }),
+          workspace: isWorkspaceInstallManifest(ctx.installManifest)
+            ? toResult(toWorkspaceInfo(ctx.installManifest))
+            : undefined,
+        };
+        enqueue.emit(evt);
+        if (parentRef) {
+          enqueue.sendTo(parentRef, evt);
+        }
+      },
     ),
 
     /**
-     * Emits a {@link SmokeMachinePkgInstallFailedEvent} event.
+     * Emits a {@link PkgInstallFailedMachineEvent} event.
      */
-    emitPkgInstallFailed: emit(
+    emitPkgInstallFailed: enqueueActions(
       (
         {
           context: {
             envelope: {spec: pkgManager},
+            parentRef,
           },
+          enqueue,
           self: {id: sender},
         },
         error: InstallError,
-      ): SmokeMachinePkgInstallFailedEvent => {
-        return {
+      ) => {
+        const evt: PkgInstallFailedMachineEvent = {
           error,
           installManifest: error.context.installManifest,
           pkgManager,
@@ -184,20 +193,26 @@ export const InstallMachine = setup({
             ? toResult(toWorkspaceInfo(error.context.installManifest))
             : undefined,
         };
+        enqueue.emit(evt);
+        if (parentRef) {
+          enqueue.sendTo(parentRef, evt);
+        }
       },
     ),
 
-    emitPkgInstallOk: emit(
+    emitPkgInstallOk: enqueueActions(
       (
         {
           context: {
             envelope: {spec: pkgManager},
+            parentRef,
           },
+          enqueue,
           self: {id: sender},
         },
         {installManifest, rawResult}: InstallResult,
       ) => {
-        const evt: SmokeMachinePkgInstallOkEvent = {
+        const evt: PkgInstallOkMachineEvent = {
           installManifest,
           pkgManager,
           rawResult,
@@ -207,7 +222,10 @@ export const InstallMachine = setup({
             ? toResult(toWorkspaceInfo(installManifest))
             : undefined,
         };
-        return evt;
+        enqueue.emit(evt);
+        if (parentRef) {
+          enqueue.sendTo(parentRef, evt);
+        }
       },
     ),
 
@@ -221,13 +239,6 @@ export const InstallMachine = setup({
         ...manifests,
       ],
     }),
-
-    /**
-     * Stops the machine
-     */
-    halt: ({self}) => {
-      self.stop();
-    },
 
     /**
      * For testing
@@ -353,6 +364,7 @@ export const InstallMachine = setup({
         },
         'xstate.done.actor.install.*': {
           actions: [
+            log(({event}) => `Install actor done: ${event.type}`),
             {
               /**
                * Provide {@link InstallLogicOutput} to {@link emitPkgInstallOk}

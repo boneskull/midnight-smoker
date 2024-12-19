@@ -11,9 +11,9 @@ import {
   DEFAULT_INIT_ACTION,
   INIT_ACTION,
   type MachineEvent,
-  type SmokeMachinePkgPackBeginEvent,
-  type SmokeMachinePkgPackFailedEvent,
-  type SmokeMachinePkgPackOkEvent,
+  type PkgPackBeginMachineEvent,
+  type PkgPackFailedMachineEvent,
+  type PkgPackOkMachineEvent,
 } from 'midnight-smoker/machine';
 import {type PkgManagerEnvelope} from 'midnight-smoker/plugin';
 import {toWorkspaceInfo, type WorkspaceInfo} from 'midnight-smoker/schema';
@@ -33,9 +33,9 @@ import 'xstate/guards';
 import {packLogic, type PackLogicOutput} from './pack-logic';
 
 export type PackMachineEmitted =
-  | SmokeMachinePkgPackBeginEvent
-  | SmokeMachinePkgPackFailedEvent
-  | SmokeMachinePkgPackOkEvent;
+  | PkgPackBeginMachineEvent
+  | PkgPackFailedMachineEvent
+  | PkgPackOkMachineEvent;
 
 type PackLogicDoneEvent = DoneActorEvent<PackLogicOutput, 'pack.*'>;
 type PackLogicErrorEvent = ErrorActorEvent<SomePackError, 'pack.*'>;
@@ -80,9 +80,8 @@ const PACK_MACHINE_CONTEXT_DEFAULTS = constant({
 
 /**
  * Stateless machine which listens for {@link PackMachinePackEvent} events,
- * invokes {@link packLogic} actors and emits
- * {@link SmokeMachinePkgPackBeginEvent}, then emits
- * {@link SmokeMachinePkgPackFailedEvent} or {@link SmokeMachinePkgPackOkEvent}
+ * invokes {@link packLogic} actors and emits {@link PkgPackBeginMachineEvent},
+ * then emits {@link PkgPackFailedMachineEvent} or {@link PkgPackOkMachineEvent}
  * events based on the result.
  */
 export const PackMachine = setup({
@@ -140,13 +139,13 @@ export const PackMachine = setup({
     ),
 
     /**
-     * Emits a {@link SmokeMachinePkgPackBeginEvent} event.
+     * Emits a {@link PkgPackBeginMachineEvent} event.
      */
     emitPkgPackBegin: emit(
       (
         {context: {envelope}, self: {id: sender}},
         ctx: PkgManagerPackContext,
-      ): SmokeMachinePkgPackBeginEvent => ({
+      ): PkgPackBeginMachineEvent => ({
         pkgManager: envelope.spec,
         sender,
         type: PackEvents.PkgPackBegin,
@@ -155,7 +154,7 @@ export const PackMachine = setup({
     ),
 
     /**
-     * Emits a {@link SmokeMachinePkgPackFailedEvent} event.
+     * Emits a {@link PkgPackFailedMachineEvent} event.
      */
     emitPkgPackFailed: emit(
       (
@@ -166,7 +165,7 @@ export const PackMachine = setup({
           self: {id: sender},
         },
         error: SomePackError,
-      ): SmokeMachinePkgPackFailedEvent => ({
+      ): PkgPackFailedMachineEvent => ({
         error,
         pkgManager,
         sender,
@@ -176,7 +175,7 @@ export const PackMachine = setup({
     ),
 
     /**
-     * Emits a {@link SmokeMachinePkgPackOkEvent} event.
+     * Emits a {@link PkgPackOkMachineEvent} event.
      *
      * This would normally be an {@link emit}, but we are parsing an object with
      * Zod, which likes to throw exceptions. So in the case that we cannot
@@ -199,7 +198,7 @@ export const PackMachine = setup({
         // this will just strip out fields
         try {
           const workspace = toWorkspaceInfo(installManifest!);
-          const evt: SmokeMachinePkgPackOkEvent = {
+          const evt: PkgPackOkMachineEvent = {
             installManifest: toResult(installManifest!),
             pkgManager,
             sender,

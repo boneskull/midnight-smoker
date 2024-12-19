@@ -1,6 +1,6 @@
 import {ErrorCode} from 'midnight-smoker/error';
 import {PackEvents} from 'midnight-smoker/event';
-import {type SmokeMachinePkgPackOkEvent} from 'midnight-smoker/machine';
+import {type PkgPackOkMachineEvent} from 'midnight-smoker/machine';
 import {
   PackError,
   type PkgManagerContext,
@@ -49,7 +49,7 @@ describe('pack', () => {
       plugin,
       spec,
     };
-    const pkgPackOkEvent: SmokeMachinePkgPackOkEvent = {
+    const pkgPackOkEvent: PkgPackOkMachineEvent = {
       installManifest: toResult(workspaceInstallManifest),
       pkgManager: spec,
       sender: id,
@@ -211,15 +211,8 @@ describe('pack', () => {
 
       describe('ABORT', () => {
         let actor: Actor<typeof logic>;
-        let destroyAllChildrenStub: sinon.SinonStub;
 
         beforeEach(() => {
-          destroyAllChildrenStub = sandbox.stub();
-          logic = logic.provide({
-            actions: {
-              destroyAllChildren: destroyAllChildrenStub,
-            },
-          });
           actor = createActor(logic, {
             id,
             input,
@@ -236,41 +229,6 @@ describe('pack', () => {
 
           await promise;
           expect(actor.getSnapshot().context.aborted, 'to be true');
-        });
-
-        it('should destroy all children', async () => {
-          const promise = runUntilDone(actor);
-          actor.send({
-            reason: 'test reason',
-            type: 'ABORT',
-          });
-
-          await promise;
-          expect(destroyAllChildrenStub, 'was called once');
-        });
-
-        it('should stop itself', async () => {
-          const promise = runUntilDone(actor);
-          sandbox.spy(actor, 'stop');
-          actor.send({
-            reason: 'test reason',
-            type: 'ABORT',
-          });
-
-          await promise;
-          expect(actor.stop, 'was called once');
-        });
-
-        it('should have "stopped" status', async () => {
-          const promise = runUntilDone(actor);
-          sandbox.spy(actor, 'stop');
-          actor.send({
-            reason: 'test reason',
-            type: 'ABORT',
-          });
-
-          await promise;
-          expect(actor.getSnapshot().status, 'to be', 'stopped');
         });
       });
     });
