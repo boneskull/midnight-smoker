@@ -32,7 +32,7 @@ export type MachineEvent<
   T extends object = object,
 > = Merge<
   {
-    sender: string;
+    sender: string | string[];
     type: Name;
   },
   T

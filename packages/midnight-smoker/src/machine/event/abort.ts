@@ -1,4 +1,6 @@
+export type AbortReason = Error | string;
+
 export interface AbortEvent {
-  reason?: Error | string;
+  reason?: AbortReason;
   type: 'ABORT';
 }

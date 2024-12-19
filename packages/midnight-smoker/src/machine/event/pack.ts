@@ -8,7 +8,7 @@
  * `SmokeMachine` does not listen for each event individually; instead it
  * listens for `PACK.*` events
  * @packageDocumentation
- * @see {@link SmokeMachinePackEvent}
+ * @see {@link AnyPackMachineEvent}
  */
 import {
   type PackEvents,
@@ -28,24 +28,40 @@ import {
 } from './common';
 
 /**
+ * Package-specific pack-related events
+ *
+ * @event
+ */
+export type AnyPkgManagerPackMachineEvent =
+  | PkgManagerPackBeginMachineEvent
+  | PkgManagerPackFailedMachineEvent
+  | PkgManagerPackOkMachineEvent;
+
+/**
+ * `PkgManager`-specific pack-related events
+ *
+ * @event
+ */
+export type AnyPkgPackMachineEvent =
+  | PkgPackBeginMachineEvent
+  | PkgPackFailedMachineEvent
+  | PkgPackOkMachineEvent;
+
+/**
  * Pack-related events received by `SmokeMachine`
  *
  * @event
  */
-export type SmokeMachinePackEvent =
-  | SmokeMachinePkgManagerPackBeginEvent
-  | SmokeMachinePkgManagerPackFailedEvent
-  | SmokeMachinePkgManagerPackOkEvent
-  | SmokeMachinePkgPackBeginEvent
-  | SmokeMachinePkgPackFailedEvent
-  | SmokeMachinePkgPackOkEvent;
+export type AnyPackMachineEvent =
+  | AnyPkgManagerPackMachineEvent
+  | AnyPkgPackMachineEvent;
 
 /**
  * Received from `PkgManagerMachine` when packing begins.
  *
  * @event
  */
-export type SmokeMachinePkgManagerPackBeginEvent = MachineEvent<
+export type PkgManagerPackBeginMachineEvent = MachineEvent<
   typeof PackEvents.PkgManagerPackBegin,
   Omit<PkgManagerPackBeginEventData, ComputedPkgManagerEventField>
 >;
@@ -57,7 +73,7 @@ export type SmokeMachinePkgManagerPackBeginEvent = MachineEvent<
  *
  * @event
  */
-export type SmokeMachinePkgManagerPackFailedEvent = MachineEvent<
+export type PkgManagerPackFailedMachineEvent = MachineEvent<
   typeof PackEvents.PkgManagerPackFailed,
   Omit<PkgManagerPackFailedEventData, ComputedPkgManagerEventField>
 >;
@@ -67,7 +83,7 @@ export type SmokeMachinePkgManagerPackFailedEvent = MachineEvent<
  *
  * @event
  */
-export type SmokeMachinePkgManagerPackOkEvent = MachineEvent<
+export type PkgManagerPackOkMachineEvent = MachineEvent<
   typeof PackEvents.PkgManagerPackOk,
   Omit<PkgManagerPackOkEventData, ComputedPkgManagerEventField>
 >;
@@ -77,7 +93,7 @@ export type SmokeMachinePkgManagerPackOkEvent = MachineEvent<
  *
  * @event
  */
-export type SmokeMachinePkgPackBeginEvent = MachineEvent<
+export type PkgPackBeginMachineEvent = MachineEvent<
   typeof PackEvents.PkgPackBegin,
   Except<
     PkgPackBeginEventData,
@@ -91,7 +107,7 @@ export type SmokeMachinePkgPackBeginEvent = MachineEvent<
  *
  * @event
  */
-export type SmokeMachinePkgPackFailedEvent = MachineEvent<
+export type PkgPackFailedMachineEvent = MachineEvent<
   typeof PackEvents.PkgPackFailed,
   Except<
     PkgPackFailedEventData,
@@ -105,7 +121,7 @@ export type SmokeMachinePkgPackFailedEvent = MachineEvent<
  *
  * @event
  */
-export type SmokeMachinePkgPackOkEvent = MachineEvent<
+export type PkgPackOkMachineEvent = MachineEvent<
   typeof PackEvents.PkgPackOk,
   Except<PkgPackOkEventData, ComputedPkgEventField, {requireExactProps: true}>
 >;

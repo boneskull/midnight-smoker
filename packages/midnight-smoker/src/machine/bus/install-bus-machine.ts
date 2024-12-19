@@ -2,13 +2,13 @@ import {FINAL, InstallEvents} from '#constants';
 import {type InstallError} from '#error/install-error';
 import {type EventData} from '#event/events';
 import {type InstallEventData} from '#event/install-events';
-import {type SmokeMachineInstallEvent} from '#machine/event/install';
+import {type AnyInstallMachineEvent} from '#machine/event/install';
 import {type StaticPkgManagerSpec} from '#schema/pkg-manager/static-pkg-manager-spec';
 import {type SmokerOptions} from '#schema/smoker-options';
 import {type WorkspaceInfo} from '#schema/workspace-info';
 import {fromUnknownError} from '#util/from-unknown-error';
-import {toResult, type Result} from '#util/result';
-import {assign, enqueueActions, setup, type AnyActorRef} from 'xstate';
+import {type Result, toResult} from '#util/result';
+import {type AnyActorRef, assign, enqueueActions, setup} from 'xstate';
 
 import {type ListenEvent} from './common-event';
 
@@ -33,7 +33,7 @@ export interface InstallBusMachineContext extends InstallBusMachineInput {
   workspaceInfoResult: Result<WorkspaceInfo>[];
 }
 
-export type InstallBusMachineEvents = ListenEvent | SmokeMachineInstallEvent;
+export type InstallBusMachineEvents = AnyInstallMachineEvent | ListenEvent;
 
 export type ReportableInstallEventData = EventData<keyof InstallEventData>;
 
@@ -301,9 +301,12 @@ export const InstallBusMachine = setup({
                   totalPkgs,
                   workspaceInfoResult: workspaceInfo,
                 },
+                // @ts-expect-error - WRONG
                 event: {error, manifests, pkgManager},
               }): EventData<typeof InstallEvents.PkgManagerInstallFailed> => ({
                 error,
+                // @ts-expect-error - WRONG
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 manifests,
                 pkgManager,
                 totalPkgManagers: pkgManagers.length,

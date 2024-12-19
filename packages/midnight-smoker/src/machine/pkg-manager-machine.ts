@@ -55,7 +55,7 @@ import {
   type CheckResultEvent,
 } from '#machine/event/check';
 import {type SmokeMachineLingeredEvent} from '#machine/event/lingered';
-import {type SmokeMachinePkgManagerEvent} from '#machine/event/pkg-manager';
+import {type AnyPkgManagerMachineEvent} from '#machine/event/pkg-manager';
 import {RuleMachine} from '#machine/rule-machine';
 import {
   type ActorOutputError,
@@ -352,7 +352,7 @@ export interface PkgManagerMachineInput {
    *
    * Most events are sent to it.
    */
-  parentRef: ActorRef<Snapshot<unknown>, SmokeMachinePkgManagerEvent>;
+  parentRef: ActorRef<Snapshot<unknown>, AnyPkgManagerMachineEvent>;
 
   /**
    * Record of rule IDs to rule configs (options, severity)
@@ -599,7 +599,7 @@ export const PkgManagerMachine = setup({
     }),
     createPkgManagerContext: assign({
       ctx: ({
-        context: {executor, opts, spec, tmpdir, useWorkspaces, workspaceInfo},
+        context: {executor, opts, spec, tmpdir, useWorkspaces},
       }): Schema.PkgManagerContext => {
         assert.ok(tmpdir);
         return {
@@ -688,7 +688,7 @@ export const PkgManagerMachine = setup({
           // @ts-expect-error sux
           enqueue({params: error, type: 'assignInstallError'});
           assert.ok(installManifest);
-          const evt: MachineInstallEvents.SmokeMachinePkgInstallFailedEvent = {
+          const evt: MachineInstallEvents.PkgInstallFailedMachineEvent = {
             error,
             installManifest,
             pkgManager,
@@ -760,7 +760,7 @@ export const PkgManagerMachine = setup({
         }
         // @ts-expect-error sux
         enqueue({params: {error}, type: 'assignPackError'});
-        const evt: MachinePackEvents.SmokeMachinePkgPackFailedEvent = {
+        const evt: MachinePackEvents.PkgPackFailedMachineEvent = {
           error,
           pkgManager,
           sender,
@@ -857,7 +857,7 @@ export const PkgManagerMachine = setup({
         const workspace = queue.shift();
         assert.ok(workspace, 'Expected workspace to pack');
         assert.ok(ctx, 'Expected PkgManagerContext to eixst');
-        const evt: MachinePackEvents.SmokeMachinePkgPackBeginEvent = {
+        const evt: MachinePackEvents.PkgPackBeginMachineEvent = {
           pkgManager,
           sender,
           type: PackEvents.PkgPackBegin,
@@ -883,7 +883,7 @@ export const PkgManagerMachine = setup({
       ({
         context: {currentInstallJob: installManifest, spec: pkgManager},
         self: {id: sender},
-      }): MachineInstallEvents.SmokeMachinePkgInstallBeginEvent => {
+      }): MachineInstallEvents.PkgInstallBeginMachineEvent => {
         assert.ok(installManifest);
         return {
           installManifest,
@@ -899,7 +899,7 @@ export const PkgManagerMachine = setup({
       (
         {context: {spec: pkgManager}, self},
         {installManifest, rawResult}: Schema.InstallResult,
-      ): MachineInstallEvents.SmokeMachinePkgInstallOkEvent => ({
+      ): MachineInstallEvents.PkgInstallOkMachineEvent => ({
         installManifest,
         pkgManager,
         rawResult,
@@ -912,7 +912,7 @@ export const PkgManagerMachine = setup({
       ({
         context: {installManifests = [], spec: pkgManager},
         self,
-      }): MachineInstallEvents.SmokeMachinePkgManagerInstallBeginEvent => ({
+      }): MachineInstallEvents.PkgManagerInstallBeginMachineEvent => ({
         manifests: installManifests,
         pkgManager,
         sender: self.id,
@@ -925,8 +925,8 @@ export const PkgManagerMachine = setup({
         context: {installError, installManifests = [], spec: pkgManager},
         self: {id: sender},
       }):
-        | MachineInstallEvents.SmokeMachinePkgManagerInstallFailedEvent
-        | MachineInstallEvents.SmokeMachinePkgManagerInstallOkEvent => {
+        | MachineInstallEvents.PkgManagerInstallFailedMachineEvent
+        | MachineInstallEvents.PkgManagerInstallOkMachineEvent => {
         const baseEventData = {
           manifests: installManifests,
           pkgManager,
@@ -1033,7 +1033,7 @@ export const PkgManagerMachine = setup({
       ({
         context: {spec: pkgManager},
         self,
-      }): MachinePackEvents.SmokeMachinePkgManagerPackBeginEvent => {
+      }): MachinePackEvents.PkgManagerPackBeginMachineEvent => {
         return {
           pkgManager,
           sender: self.id,
@@ -1051,8 +1051,8 @@ export const PkgManagerMachine = setup({
         },
         self: {id},
       }):
-        | MachinePackEvents.SmokeMachinePkgManagerPackFailedEvent
-        | MachinePackEvents.SmokeMachinePkgManagerPackOkEvent => {
+        | MachinePackEvents.PkgManagerPackFailedMachineEvent
+        | MachinePackEvents.PkgManagerPackOkMachineEvent => {
         const baseEventData = {
           pkgManager,
           sender: id,
@@ -1121,7 +1121,7 @@ export const PkgManagerMachine = setup({
       (
         {context: {spec: pkgManager}, self: {id: sender}},
         installManifest: Schema.InstallManifest,
-      ): MachinePackEvents.SmokeMachinePkgPackOkEvent => {
+      ): MachinePackEvents.PkgPackOkMachineEvent => {
         assert.ok(isWorkspaceInstallManifest(installManifest));
         const workspace = {
           localPath: installManifest.localPath,

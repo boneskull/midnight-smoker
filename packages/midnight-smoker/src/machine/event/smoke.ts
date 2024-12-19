@@ -14,7 +14,7 @@ import {type ReporterMachineOutput} from '#machine/reporter-machine';
 import {type AbortEvent} from './abort';
 import {type BusEvent} from './bus';
 import {type SmokeMachineLingeredEvent} from './lingered';
-import {type SmokeMachinePkgManagerEvent} from './pkg-manager';
+import {type AnyPkgManagerMachineEvent} from './pkg-manager';
 
 /**
  * All events which `SmokeMachine` can receive.
@@ -23,10 +23,10 @@ import {type SmokeMachinePkgManagerEvent} from './pkg-manager';
  */
 export type SmokeMachineEvent =
   | AbortEvent
+  | AnyPkgManagerMachineEvent
   | BusEvent
   | SmokeMachineComponentLoaderMachineDoneEvent
   | SmokeMachineLingeredEvent
-  | SmokeMachinePkgManagerEvent
   | SmokeMachinePkgManagerMachineDoneEvent
   | SmokeMachineReporterMachineDoneEvent
   | SmokeMachineShutdownEvent;

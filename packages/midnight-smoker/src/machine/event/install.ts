@@ -8,7 +8,7 @@
  * `SmokeMachine` does not listen for each event individually; instead it
  * listens for `INSTALL.*` events
  * @packageDocumentation
- * @see {@link SmokeMachineInstallEvent}
+ * @see {@link AnyInstallMachineEvent}
  * @todo Might need a `PkgInstallEnd` event
  */
 import {
@@ -29,24 +29,40 @@ import {
 } from './common';
 
 /**
+ * Any package-specific install machine event
+ *
+ * @event
+ */
+export type AnyPkgInstallMachineEvent =
+  | PkgInstallBeginMachineEvent
+  | PkgInstallFailedMachineEvent
+  | PkgInstallOkMachineEvent;
+
+/**
+ * Any `PkgManager`-specific machine event
+ *
+ * @event
+ */
+export type AnyPkgManagerInstallMachineEvent =
+  | PkgManagerInstallBeginMachineEvent
+  | PkgManagerInstallFailedMachineEvent
+  | PkgManagerInstallOkMachineEvent;
+
+/**
  * Install-related events received by `SmokeMachine`
  *
  * @event
  */
-export type SmokeMachineInstallEvent =
-  | SmokeMachinePkgInstallBeginEvent
-  | SmokeMachinePkgInstallFailedEvent
-  | SmokeMachinePkgInstallOkEvent
-  | SmokeMachinePkgManagerInstallBeginEvent
-  | SmokeMachinePkgManagerInstallFailedEvent
-  | SmokeMachinePkgManagerInstallOkEvent;
+export type AnyInstallMachineEvent =
+  | AnyPkgInstallMachineEvent
+  | AnyPkgManagerInstallMachineEvent;
 
 /**
  * Received from `PkgManagerMachine` when a package install begins.
  *
  * @event
  */
-export type SmokeMachinePkgInstallBeginEvent = MachineEvent<
+export type PkgInstallBeginMachineEvent = MachineEvent<
   typeof InstallEvents.PkgInstallBegin,
   Except<
     PkgInstallBeginEventData,
@@ -60,7 +76,7 @@ export type SmokeMachinePkgInstallBeginEvent = MachineEvent<
  *
  * @event
  */
-export type SmokeMachinePkgInstallFailedEvent = MachineEvent<
+export type PkgInstallFailedMachineEvent = MachineEvent<
   typeof InstallEvents.PkgInstallFailed,
   Except<
     PkgInstallFailedEventData,
@@ -74,7 +90,7 @@ export type SmokeMachinePkgInstallFailedEvent = MachineEvent<
  *
  * @event
  */
-export type SmokeMachinePkgInstallOkEvent = MachineEvent<
+export type PkgInstallOkMachineEvent = MachineEvent<
   typeof InstallEvents.PkgInstallOk,
   Except<
     PkgInstallOkEventData,
@@ -88,7 +104,7 @@ export type SmokeMachinePkgInstallOkEvent = MachineEvent<
  *
  * @event
  */
-export type SmokeMachinePkgManagerInstallBeginEvent = MachineEvent<
+export type PkgManagerInstallBeginMachineEvent = MachineEvent<
   typeof InstallEvents.PkgManagerInstallBegin,
   Except<
     PkgManagerInstallBeginEventData,
@@ -104,7 +120,7 @@ export type SmokeMachinePkgManagerInstallBeginEvent = MachineEvent<
  *
  * @event
  */
-export type SmokeMachinePkgManagerInstallFailedEvent = MachineEvent<
+export type PkgManagerInstallFailedMachineEvent = MachineEvent<
   typeof InstallEvents.PkgManagerInstallFailed,
   Except<
     PkgManagerInstallFailedEventData,
@@ -118,7 +134,7 @@ export type SmokeMachinePkgManagerInstallFailedEvent = MachineEvent<
  *
  * @event
  */
-export type SmokeMachinePkgManagerInstallOkEvent = MachineEvent<
+export type PkgManagerInstallOkMachineEvent = MachineEvent<
   typeof InstallEvents.PkgManagerInstallOk,
   Except<
     PkgManagerInstallOkEventData,

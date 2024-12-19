@@ -4,14 +4,14 @@ import {PackError} from '#error/pack-error';
 import {PackParseError} from '#error/pack-parse-error';
 import {type EventData} from '#event/events';
 import {type PackEventData} from '#event/pack-events';
-import {type SmokeMachinePackEvent} from '#machine/event/pack';
+import {type AnyPackMachineEvent} from '#machine/event/pack';
 import {type StaticPkgManagerSpec} from '#schema/pkg-manager/static-pkg-manager-spec';
 import {type SmokerOptions} from '#schema/smoker-options';
 import {type WorkspaceInfo} from '#schema/workspace-info';
 import {fromUnknownError} from '#util/from-unknown-error';
 import {assertSmokerError} from '#util/guard/assert/smoker-error';
-import {toResult, type Result} from '#util/result';
-import {assign, enqueueActions, sendTo, setup, type AnyActorRef} from 'xstate';
+import {type Result, toResult} from '#util/result';
+import {type AnyActorRef, assign, enqueueActions, sendTo, setup} from 'xstate';
 
 import {type ListenEvent} from './common-event';
 
@@ -29,7 +29,7 @@ export interface PackBusMachineContext extends PackBusMachineInput {
   workspaceInfoResult: Result<WorkspaceInfo>[];
 }
 
-export type PackBusMachineEvents = ListenEvent | SmokeMachinePackEvent;
+export type PackBusMachineEvents = AnyPackMachineEvent | ListenEvent;
 
 export type ReportablePackEventData = EventData<keyof PackEventData>;
 

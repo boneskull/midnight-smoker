@@ -81,10 +81,11 @@ export type PkgInstallOkEventData = {
   rawResult: Schema.ExecOutput;
 } & PkgInstallEventDataBase;
 
-export type PkgManagerInstallBeginEventData = PkgManagerInstallEventDataBase;
+export type PkgManagerInstallBeginEventData = {
+  manifests: Schema.InstallManifest[];
+} & PkgManagerInstallEventDataBase;
 
 export type PkgManagerInstallEventDataBase = {
-  manifests: Schema.InstallManifest[];
   totalPkgs: number;
 } & PkgManagerEventBase;
 
@@ -92,7 +93,9 @@ export type PkgManagerInstallFailedEventData = {
   error: InstallError;
 } & PkgManagerInstallEventDataBase;
 
-export type PkgManagerInstallOkEventData = PkgManagerInstallEventDataBase;
+export type PkgManagerInstallOkEventData = {
+  manifests: Schema.InstallManifest[];
+} & PkgManagerInstallEventDataBase;
 
 export type InstallEventDataBase = {
   /**
