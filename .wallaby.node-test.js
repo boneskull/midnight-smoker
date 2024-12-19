@@ -12,6 +12,10 @@ module.exports = {
     'packages/pkg-manager/test/**/*.test.ts',
     'packages/tarball-installer/test/**/*.test.ts',
   ],
-  trace: true,
-  runMode: 'onsave',
+  env: {
+    type: 'node',
+    params: {
+      env: `DEBUG=midnight-smoker:pkg-manager:*`,
+    },
+  },
 };
