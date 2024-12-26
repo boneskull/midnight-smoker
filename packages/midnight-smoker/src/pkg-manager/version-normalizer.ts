@@ -134,9 +134,9 @@ export function normalizeVersionAgainstData(
 
     // load-bearing ||
     const result = parse(version) || undefined;
-    if (result) {
-      debug('Normalized version "%s" to "%s"', value, result);
-    } else {
+    if (result && value !== result.format()) {
+      debug('Normalized version "%s" to "%s"', value, result.format());
+    } else if (!result) {
       debug('Could not normalize version "%s" (version unknown)', value);
     }
     return result;
