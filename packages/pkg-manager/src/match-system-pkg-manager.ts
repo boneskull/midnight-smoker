@@ -39,6 +39,14 @@ export type MatchSystemPkgManagerLogicOutput = {
   envelope?: PkgManagerEnvelope;
 };
 
+/**
+ * @remarks
+ * Instead of maintaining state, this actor returns a
+ * `defaultSystemPkgManagerEnvelope` property in its
+ * {@link MatchSystemPkgManagerLogicOutput output}, which should be provided as
+ * {@link MatchSystemPkgManagerLogicInput input} on subsequent calls. **This
+ * value may change!**
+ */
 export const matchSystemPkgManagerLogic = fromPromise<
   MatchSystemPkgManagerLogicOutput,
   MatchSystemPkgManagerLogicInput,
@@ -214,15 +222,19 @@ export const matchSystemPkgManagerLogic = fromPromise<
                 // nondeterministic, `npm` may not be the first one found; we
                 // overwrite `defaultSystemPkgManagerEnvelope` in that case.
                 // it's also highly unlikely that `npm` won't exist.
-
-                if (
-                  !defaultSystemPkgManagerEnvelope ||
-                  (systemSpec.name === DEFAULT_PKG_MANAGER_NAME &&
-                    defaultSystemPkgManagerEnvelope.spec.name !==
-                      DEFAULT_PKG_MANAGER_NAME)
-                ) {
+                if (!defaultSystemPkgManagerEnvelope) {
                   defaultSystemPkgManagerEnvelope = envelope;
                   log(`Setting default system package manager to "${id}"`);
+                } else if (
+                  systemSpec.name === DEFAULT_PKG_MANAGER_NAME &&
+                  defaultSystemPkgManagerEnvelope.spec.name !==
+                    DEFAULT_PKG_MANAGER_NAME
+                ) {
+                  // I had to repeat something and it might as well be this
+                  defaultSystemPkgManagerEnvelope = envelope;
+                  log(
+                    `Overwriting default system package manager from "${defaultSystemPkgManagerEnvelope.spec.name}" to "${id}"`,
+                  );
                 }
 
                 // it's expected that the caller sends
@@ -241,7 +253,9 @@ export const matchSystemPkgManagerLogic = fromPromise<
             }
           }
         } else {
-          log(`Could not find executable for ${pkgManager.name} named ${bin}`);
+          log(
+            `Could not find executable for "${pkgManager.name}" named ${bin}`,
+          );
         }
       }
     }

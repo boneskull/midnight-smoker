@@ -213,50 +213,71 @@ describe('pkg-manager', () => {
       });
     });
 
-    // describe('when multiple package managers are found', () => {
-    //   beforeEach(() => {
-    //     const npmPlugin = {
-    //       ...testPlugin,
-    //       pkgManagers: [
-    //         {
-    //           ...nullPkgManager,
-    //           bin: 'npm',
-    //           name: 'npm',
-    //         },
-    //       ],
-    //     };
-    //     plugins = [testPlugin, npmPlugin];
-    //   });
-
-    //   it('should return the default package manager if specified', async () => {
-    //     input.plugins = plugins;
-    //     actor = createActor(matchSystemPkgManagerLogic, {input});
-
-    //     const result = await runUntilDone(actor);
-    //     expect(
-    //       result.defaultSystemPkgManagerEnvelope?.spec.name,
-    //       'to be',
-    //       'npm',
-    //     );
-    //   });
-
-    //   it('should return the first found package manager if no default is specified', async () => {
-    //     input.plugins = plugins;
-    //     actor = createActor(matchSystemPkgManagerLogic, {input});
-
-    //     const result = await runUntilDone(actor);
-    //     expect(result.envelope?.spec.name, 'to be', 'nullpm');
-    //   });
-    // });
-
-    describe('when no package managers are found', () => {
-      beforeEach(() => {
-        plugins = [];
+    describe('when multiple package managers are found', () => {
+      beforeEach(async () => {
+        const npmPkgManager = {
+          ...nullPkgManager,
+          bin: 'npm',
+          name: DEFAULT_PKG_MANAGER_NAME,
+        };
+        registry.clear();
+        await registry.registerPlugin(plugin, {
+          plugin(api) {
+            api.definePackageManager(pkgManager);
+            api.definePackageManager(npmPkgManager);
+          },
+        });
+        plugins = [plugin];
+        input = {
+          ...input,
+          componentRegistry: registry.componentRegistry,
+          plugins,
+        };
       });
 
-      it('should return an empty object', async () => {
+      it('should prefer the _default_ default package manager', async () => {
+        actor = createActor(matchSystemPkgManagerLogic, {
+          input,
+          logger,
+        });
+        let result = await runUntilDone(actor);
+        expect(
+          result.defaultSystemPkgManagerEnvelope?.spec.name,
+          'to be',
+          'nullpm',
+        );
+        actor = createActor(matchSystemPkgManagerLogic, {
+          input: {
+            ...input,
+            defaultSystemPkgManagerEnvelope:
+              result.defaultSystemPkgManagerEnvelope,
+            spec: {label: 'npm@1.0.0', name: 'npm', version: '1.0.0'},
+          },
+          logger,
+        });
+        result = await runUntilDone(actor);
+        expect(
+          result.defaultSystemPkgManagerEnvelope?.spec.name,
+          'to be',
+          'npm',
+        );
+      });
+
+      it('should return the first found package manager if no default is specified', async () => {
         input.plugins = plugins;
         actor = createActor(matchSystemPkgManagerLogic, {input});
+
+        const result = await runUntilDone(actor);
+        expect(result.envelope?.spec.name, 'to be', 'nullpm');
+      });
+    });
+
+    describe('when no package managers are found', () => {
+      it('should return an empty object', async () => {
+        actor = createActor(matchSystemPkgManagerLogic, {
+          input: {...input, plugins: []},
+          logger,
+        });
 
         const result = await runUntilDone(actor);
         expect(result, 'to equal', {});

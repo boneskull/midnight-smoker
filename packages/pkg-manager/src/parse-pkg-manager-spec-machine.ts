@@ -230,17 +230,15 @@ export const ParsePkgManagerSpecMachine = setup({
           guard: ({
             context: {defaultSystemPkgManagerEnvelope, spec},
           }): boolean =>
-            Boolean(
-              defaultSystemPkgManagerEnvelope &&
-                spec.version &&
-                caseInsensitiveEquals(
-                  spec.name,
-                  defaultSystemPkgManagerEnvelope.spec.name,
-                ) &&
-                caseInsensitiveEquals(
-                  spec.version,
-                  defaultSystemPkgManagerEnvelope.spec.version,
-                ),
+            !!defaultSystemPkgManagerEnvelope &&
+            !!spec.version &&
+            caseInsensitiveEquals(
+              spec.name,
+              defaultSystemPkgManagerEnvelope.spec.name,
+            ) &&
+            caseInsensitiveEquals(
+              spec.version,
+              defaultSystemPkgManagerEnvelope.spec.version,
             ),
           target: 'done',
         },
