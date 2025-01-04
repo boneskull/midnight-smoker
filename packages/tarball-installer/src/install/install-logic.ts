@@ -8,7 +8,7 @@ import {type ExecOutput, type InstallResult} from 'midnight-smoker/schema';
 import {assertExecOutput, fromUnknownError} from 'midnight-smoker/util';
 import {fromPromise} from 'xstate';
 
-import {type OperationLogicInput} from './logic';
+import {type OperationLogicInput} from '../logic';
 
 /**
  * Input for {@link installLogic}

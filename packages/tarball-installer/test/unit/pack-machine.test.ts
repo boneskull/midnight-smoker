@@ -14,7 +14,7 @@ import unexpectedSinon from 'unexpected-sinon';
 import {type Actor, createActor, fromPromise} from 'xstate';
 import {runUntilDone, runUntilEmitted, runUntilSpawn} from 'xstate-audition';
 
-import {PackMachine, type PackMachineInput} from '../../src/pack-machine';
+import {PackMachine, type PackMachineInput} from '../../src/pack/pack-machine';
 import {createDebug} from '../debug';
 import {
   nullPkgManager,

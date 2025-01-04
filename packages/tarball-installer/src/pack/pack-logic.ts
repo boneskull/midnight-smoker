@@ -19,7 +19,7 @@ import {isSmokerError} from 'midnight-smoker/util';
 import {fromPromise} from 'xstate';
 import 'xstate/guards';
 
-import {type OperationLogicInput} from './logic';
+import {type OperationLogicInput} from '../logic';
 
 /**
  * Input for {@link packLogic}

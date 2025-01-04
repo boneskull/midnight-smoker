@@ -18,7 +18,7 @@ import {runUntilDone, runUntilEmitted, runUntilSpawn} from 'xstate-audition';
 import {
   InstallMachine,
   type InstallMachineInput,
-} from '../../src/install-machine';
+} from '../../src/install/install-machine';
 import {createDebug} from '../debug';
 import {
   nullPkgManager,
