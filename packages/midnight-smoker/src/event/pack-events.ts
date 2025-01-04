@@ -2,7 +2,7 @@ import type * as Schema from '#schema/meta/for-pack-events';
 
 import {PackEvents} from '#constants/event';
 import {type SomePackError} from '#error/some-pack-error';
-import {type Result} from '#util/result';
+import {type Merge} from 'type-fest';
 
 import {type PkgEventBase, type PkgManagerEventBase} from './common';
 
@@ -80,6 +80,10 @@ export type PkgPackFailedEventData = {
   error: SomePackError;
 } & PkgEventBase;
 
-export type PkgPackOkEventData = {
-  installManifest: Result<Schema.InstallManifest>;
-} & PkgEventBase;
+export type PkgPackOkEventData = Merge<
+  PkgEventBase,
+  {
+    installManifest: Schema.InstallManifest;
+    workspace: Schema.WorkspaceInfo;
+  }
+>;

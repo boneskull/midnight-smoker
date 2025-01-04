@@ -1,13 +1,21 @@
-import type {PkgManagerEnvelope, SmokerOptions} from 'midnight-smoker';
+import type {
+  InstallError,
+  PkgManagerEnvelope,
+  SmokerOptions,
+  SomePackError,
+} from 'midnight-smoker';
 import type {Executor} from 'midnight-smoker/defs/executor';
-import type {Except, SetRequired} from 'type-fest';
+import type {SetRequired} from 'type-fest';
 
 import {
   InstallMachine,
+  type InstallMachineHaltEvent,
   type InstallMachineInput,
+  type InstallMachineInstallEvent,
 } from '@midnight-smoker/tarball-installer/install';
 import {
   PackMachine,
+  type PackMachineHaltEvent,
   type PackMachineInput,
 } from '@midnight-smoker/tarball-installer/pack';
 import {
@@ -15,15 +23,11 @@ import {
   FINAL,
   InstallEvents,
   OK,
+  PackEvents,
   PARALLEL,
-  WildcardEvents,
+  PkgManagerEvents,
 } from 'midnight-smoker/constants';
-import {
-  type InstallError,
-  LifecycleError,
-  MachineError,
-  TimeoutError,
-} from 'midnight-smoker/error';
+import {LifecycleError, MachineError} from 'midnight-smoker/error';
 import {
   type AbortEvent,
   type AbortReason,
@@ -36,10 +40,11 @@ import {
   DEFAULT_INIT_ACTION,
   INIT_ACTION,
   type MachineEvent,
-  type PkgInstallFailedMachineEvent,
   type PkgManagerInstallBeginMachineEvent,
   type PkgManagerInstallFailedMachineEvent,
   type PkgManagerInstallOkMachineEvent,
+  type PkgManagerLingeredEvent,
+  type PkgManagerPackFailedMachineEvent,
 } from 'midnight-smoker/machine';
 import {
   type InstallManifest,
@@ -69,6 +74,7 @@ import {
   log,
   not,
   raise,
+  sendTo,
   setup,
 } from 'xstate';
 import 'xstate/guards';
@@ -85,10 +91,155 @@ import {
   teardownPkgManagerLogic,
 } from './pkg-manager-lifecycle';
 
-/**
- * Default time to wait (in ms) before bailing out of `idle`
- */
-const DEFAULT_INITAL_TIMEOUT = 30_000;
+type AnyPkgManagerMachineEvent = AnyInstallMachineEvent | AnyPackMachineEvent;
+
+type PkgManagerAbortEvent = SetRequired<AbortEvent, 'reason'>;
+
+type InternalPkgManagerMachineEvent =
+  | PkgManagerAbortEvent
+  | PkgManagerMachineInstallMachineDoneEvent
+  | PkgManagerMachineInstallMachineErrorEvent
+  | PkgManagerMachinePackMachineDoneEvent
+  | PkgManagerMachinePackMachineErrorEvent;
+
+export type PkgManagerMachineEvent =
+  | AnyPkgManagerMachineEvent
+  | PkgManagerMachineHaltEvent;
+
+export type PkgManagerMachineHaltEvent = MachineEvent<'HALT', {now?: boolean}>;
+type PkgManagerMachineInstallMachineDoneEvent = DoneActorEvent<
+  void,
+  'install-machine.*'
+>;
+type PkgManagerMachineInstallMachineErrorEvent = ErrorActorEvent<
+  Error,
+  'install-machine.*'
+>;
+
+export type PkgManagerMachineOutput =
+  | ActorOutputOk<{aborted: false; noop: boolean}>
+  | PkgManagerMachineOutputError;
+
+export type PkgManagerMachineOutputError = ActorOutputError<
+  MachineError,
+  {aborted?: boolean; noop: boolean}
+>;
+type PkgManagerMachinePackMachineDoneEvent = DoneActorEvent<
+  void,
+  'pack-machine.*'
+>;
+type PkgManagerMachinePackMachineErrorEvent = ErrorActorEvent<
+  Error,
+  'pack-machine.*'
+>;
+
+export interface PkgManagerMachineContext extends PkgManagerMachineInput {
+  /**
+   * The base {@link Schema.PkgManagerContext} object for passing to the
+   * {@link PackageManagerDef}'s operations
+   */
+  ctx?: Readonly<PkgManagerContext>;
+
+  /**
+   * Aggregate error object for any error occuring in this machine
+   */
+  error?: MachineError;
+
+  /**
+   * If `true`, the machine is in the process of gracefully halting
+   */
+  halting?: boolean;
+
+  /**
+   * Reference to {@link InstallMachine} actor
+   */
+  installMachineRef?: ActorRefFromLogic<typeof InstallMachine>;
+
+  /**
+   * Queue of packages to install
+   */
+  installQueue: InstallManifest[];
+
+  /**
+   * List of successfully-installed packages
+   */
+  manifestsInstalled: InstallManifest[];
+
+  /**
+   * Reference to {@link PackMachine} actor
+   */
+  packMachineRef?: ActorRefFromLogic<typeof PackMachine>;
+
+  /**
+   * Queue of workspaces to pack
+   */
+  packQueue: WorkspaceInfo[];
+
+  /**
+   * Options for package manager behavior.
+   *
+   * Props will be included in {@link ctx}.
+   */
+  pkgManagerOpts: PkgManagerOpts;
+
+  /**
+   * A serialized copy of {@link PkgManagerMachineInput.envelope.spec}.
+   *
+   * Just here for convenience, since many events will need this information.
+   */
+  spec: StaticPkgManagerSpec;
+
+  /**
+   * If we should use workspaces, this flag will be assigned to the
+   * {@link PkgManagerContext} object
+   *
+   * @see `createPkgManagerContext` state
+   */
+  useWorkspaces: boolean;
+  workspacesPacked: WorkspaceInfo[];
+}
+
+export interface PkgManagerMachineInput {
+  /**
+   * The envelope describing the package manager
+   */
+  envelope: PkgManagerEnvelope;
+
+  /**
+   * The executor to pass to the package manager's functions
+   */
+  executor: Executor;
+
+  /**
+   * File manager instance for interacting with filesystem
+   */
+  fileManager: FileManager;
+
+  /**
+   * The parent actor reference.
+   *
+   * Most events are sent to it.
+   */
+  parentRef?: ActorRef<any, AnyPkgManagerMachineEvent>;
+
+  /**
+   * Options for the package manager
+   */
+  pkgManagerOpts?: PkgManagerOpts;
+
+  /**
+   * `midnight-smoker` options object
+   */
+  smokerOptions: SmokerOptions;
+
+  /**
+   * Information about one or more workspaces.
+   *
+   * If this contains a single item, then we either have one workspace _or_ are
+   * not in a monorepo.
+   */
+  workspaces: WorkspaceInfo[];
+}
 
 /**
  * Machine which controls how a `PkgManager` performs its operations.
@@ -101,6 +252,18 @@ export const PkgManagerMachine = setup({
         type: 'ABORT',
       }),
     ),
+    appendInstalledManifest: assign({
+      manifestsInstalled: (
+        {context: {manifestsInstalled}},
+        manifest: InstallManifest,
+      ): InstallManifest[] => [...manifestsInstalled, manifest],
+    }),
+    appendPackedWorkspace: assign({
+      workspacesPacked: (
+        {context: {workspacesPacked}},
+        workspace: WorkspaceInfo,
+      ): WorkspaceInfo[] => [...workspacesPacked, workspace],
+    }),
     assignCtx: assign({
       ctx: (
         _,
@@ -108,10 +271,7 @@ export const PkgManagerMachine = setup({
       ): Readonly<PkgManagerContext> | undefined => ctx,
     }),
     assignError: assign({
-      error: (
-        {context, self},
-        {error: err}: {error?: unknown},
-      ): MachineError | undefined => {
+      error: ({context, self}, err?: AbortReason): MachineError | undefined => {
         if (!err) {
           return;
         }
@@ -133,12 +293,33 @@ export const PkgManagerMachine = setup({
         );
       },
     }),
-    assignManifestsInstalled: assign({
-      manifestsInstalled: (
-        {context: {manifestsInstalled}},
-        manifest: InstallManifest,
-      ): InstallManifest[] => [...manifestsInstalled, manifest],
-    }),
+    drainInstallQueue: enqueueActions(
+      ({context: {installMachineRef, installQueue}, enqueue, self}): void => {
+        assert.ok(installMachineRef, 'Expected InstallMachine reference');
+        const evt: InstallMachineInstallEvent = {
+          manifests: installQueue,
+          sender: self.id,
+          type: 'INSTALL',
+        };
+        enqueue.sendTo(installMachineRef, evt);
+        enqueue.assign({
+          installQueue: [],
+        });
+      },
+    ),
+    emitLingered: enqueueActions(
+      ({context: {ctx, parentRef}, enqueue, self: {id: sender}}) => {
+        const evt: PkgManagerLingeredEvent = {
+          directory: ctx!.tmpdir,
+          sender,
+          type: PkgManagerEvents.Lingered,
+        };
+        enqueue.emit(evt);
+        if (parentRef) {
+          enqueue.sendTo(parentRef, evt);
+        }
+      },
+    ),
     emitPkgManagerInstallBegin: enqueueActions(
       ({
         context: {
@@ -161,6 +342,12 @@ export const PkgManagerMachine = setup({
         }
       },
     ),
+
+    /**
+     * Emits the {@link InstallEvents.PkgInstallFailed} event. Sends to parent
+     * actor, if present. **This is a fatal error** and thus it calls the
+     * `abort` action.
+     */
     emitPkgManagerInstallFailed: enqueueActions(
       (
         {
@@ -171,10 +358,11 @@ export const PkgManagerMachine = setup({
           enqueue,
           self: {id: sender},
         },
-        event: PkgInstallFailedMachineEvent,
+        error: InstallError,
       ): void => {
+        assert.ok(error, 'Expected an error');
         const evt: PkgManagerInstallFailedMachineEvent = {
-          error: event.error,
+          error,
           pkgManager,
           sender,
           type: InstallEvents.PkgManagerInstallFailed,
@@ -183,6 +371,8 @@ export const PkgManagerMachine = setup({
         if (parentRef) {
           enqueue.sendTo(parentRef, evt);
         }
+        // @ts-expect-error TS limitation
+        enqueue({params: error, type: 'abort'});
       },
     ),
     emitPkgManagerInstallOk: enqueueActions(
@@ -207,6 +397,38 @@ export const PkgManagerMachine = setup({
         }
       },
     ),
+
+    /**
+     * Emits the {@link PackEvents.PkgPackFailed} event. Sends to parent actor,
+     * if present. **This is a fatal error** and thus it calls the `abort`
+     * action.
+     */
+    emitPkgManagerPackFailed: enqueueActions(
+      (
+        {
+          context: {
+            envelope: {spec: pkgManager},
+            parentRef,
+          },
+          enqueue,
+          self: {id: sender},
+        },
+        error: SomePackError,
+      ): void => {
+        const evt: PkgManagerPackFailedMachineEvent = {
+          error,
+          pkgManager,
+          sender,
+          type: PackEvents.PkgManagerPackFailed,
+        };
+        enqueue.emit(evt);
+        if (parentRef) {
+          enqueue.sendTo(parentRef, evt);
+        }
+        // @ts-expect-error TS limitation
+        enqueue({params: error, type: 'abort'});
+      },
+    ),
     enqueueAdditionalDeps: assign({
       installQueue: ({
         context: {
@@ -216,48 +438,94 @@ export const PkgManagerMachine = setup({
         },
       }): InstallManifest[] => {
         assert.ok(ctx);
-        const manifests: InstallManifest[] = additionalDeps.map((dep) => ({
-          cwd: ctx.tmpdir,
-          isAdditional: true,
-          pkgName: dep,
-          pkgSpec: dep,
-        }));
+        const manifests: InstallManifest[] = additionalDeps.map(
+          (dep): InstallManifest => ({
+            cwd: ctx.tmpdir,
+            isAdditional: true,
+            pkgName: dep,
+            pkgSpec: dep,
+          }),
+        );
         return [...installQueue, ...manifests];
       },
     }),
+    enqueueInstallItem: assign({
+      installQueue: (
+        {context: {installQueue}},
+        manifest: InstallManifest,
+      ): InstallManifest[] => [...installQueue, manifest],
+    }),
+
     enqueuePackItems: assign({
       packQueue: (
         {context: {packQueue}},
         workspaces: WorkspaceInfo[],
       ): WorkspaceInfo[] => [...packQueue, ...workspaces],
     }),
+
+    /**
+     * Frees the reference to the {@link InstallMachine} actor
+     */
     freeInstallMachineRef: assign({
       installMachineRef: undefined,
     }),
+
+    /**
+     * Frees the reference to the {@link PackMachine} actor
+     */
     freePackMachineRef: assign({
       packMachineRef: undefined,
     }),
-    haltChildren: enqueueActions(
+
+    /**
+     * Sends a {@link InstallMachineHaltEvent} to the {@link InstallMachine}
+     * reference for graceful shutdown.
+     *
+     * DANGER: {@link PkgManagerMachineContext.installMachineRef} _must_ be
+     * defined or this will break horribly
+     */
+    gracefullyStopInstallMachine: sendTo(
       ({
-        context: {installMachineRef, packMachineRef},
-        enqueue,
-        self: {id: sender},
-      }): void => {
-        if (packMachineRef) {
-          enqueue.sendTo(packMachineRef, {sender, type: 'HALT'});
-        }
-        if (installMachineRef) {
-          enqueue.sendTo(installMachineRef, {sender, type: 'HALT'});
-        }
-      },
+        context: {installMachineRef},
+      }): ActorRefFromLogic<typeof InstallMachine> => installMachineRef!,
+      ({self}): InstallMachineHaltEvent => ({
+        sender: self.id,
+        type: 'HALT',
+      }),
     ),
+
+    /**
+     * Sends a {@link PackMachineHaltEvent} to the {@link PackMachine} reference
+     * for graceful shutdown.
+     *
+     * DANGER: {@link PkgManagerMachineContext.packMachineRef} _must_ be defined
+     * or this will break horribly
+     */
+    gracefullyStopPackMachine: sendTo(
+      ({context: {packMachineRef}}): ActorRefFromLogic<typeof PackMachine> =>
+        packMachineRef!,
+      ({self}): PackMachineHaltEvent => ({
+        sender: self.id,
+        type: 'HALT',
+      }),
+    ),
+
+    /**
+     * For testing purposes only
+     */
     [INIT_ACTION]: DEFAULT_INIT_ACTION(),
+
+    /**
+     * Re-emits an installation or pack event, and sends it to the parent actor
+     * (if any)
+     */
     resend: enqueueActions(
       (
         {context: {parentRef}, enqueue, self: {id: sender}},
         event: AnyPkgInstallMachineEvent | AnyPkgPackMachineEvent,
       ): void => {
         // breadcrumbs
+        // TODO: make this a proper convention
         const evt = {...event, sender: [sender, ...castArray(event.sender)]};
         enqueue.emit(evt);
         if (parentRef) {
@@ -265,9 +533,17 @@ export const PkgManagerMachine = setup({
         }
       },
     ),
+
+    /**
+     * Sets the `halting` flag to `true`
+     */
     setHaltingTrue: assign({
       halting: true,
     }),
+
+    /**
+     * Spawns the {@link InstallMachine} actor and saves its reference
+     */
     spawnInstallMachine: assign({
       installMachineRef: ({
         context: {ctx, envelope, installMachineRef, installQueue},
@@ -294,11 +570,15 @@ export const PkgManagerMachine = setup({
           input,
         });
       },
-      installQueue: [],
     }),
+
+    /**
+     * Spawns the {@link PackMachine} actor and saves its reference
+     */
     spawnPackMachine: assign({
       packMachineRef: ({
         context: {ctx, envelope, packMachineRef, packQueue},
+        self,
         spawn,
       }): ActorRefFromLogic<typeof PackMachine> => {
         assert.ok(!packMachineRef);
@@ -312,6 +592,7 @@ export const PkgManagerMachine = setup({
         const input: PackMachineInput = {
           ctx,
           envelope,
+          parentRef: self,
           workspaces: packQueue,
         };
 
@@ -320,26 +601,108 @@ export const PkgManagerMachine = setup({
           input,
         });
       },
-      packQueue: [],
     }),
   },
   actors: {
+    /**
+     * Creates a {@link PkgManagerContext} object
+     */
     createPkgManagerContext: createPkgManagerContextLogic,
+
+    /**
+     * Destroys a {@link PkgManagerContext} object
+     */
     destroyPkgManagerContext: destroyPkgManagerContextLogic,
+
+    /**
+     * Installs packages
+     */
     InstallMachine,
+
+    /**
+     * Packs packages
+     */
     PackMachine,
+
+    /**
+     * Package manager setup lifecycle
+     */
     setupPkgManager: setupPkgManagerLogic,
+
+    /**
+     * Package manager teardown lifecycle
+     */
     teardownPkgManager: teardownPkgManagerLogic,
   },
-  delays: {
-    initialTimeout: ({context: {initialTimeout}}): number => initialTimeout,
-  },
   guards: {
+    /**
+     * @remarks
+     * I hope this isn't a hot path
+     */
+    allInstallablesInstalled: ({
+      context: {
+        manifestsInstalled,
+        smokerOptions: {add = []},
+        workspacesPacked,
+      },
+    }): boolean =>
+      workspacesPacked.length + add.length === manifestsInstalled.length &&
+      workspacesPacked
+        .map(({localPath}) => localPath)
+        .every((path): boolean =>
+          manifestsInstalled.some(({localPath}): boolean => localPath === path),
+        ),
+    allWorkspacesPacked: ({context: {workspaces, workspacesPacked}}): boolean =>
+      // TODO better data structure
+
+      workspaces.length === workspacesPacked.length &&
+      workspaces
+        .map(({localPath}) => localPath)
+        .every((path): boolean =>
+          workspacesPacked.some(({localPath}): boolean => localPath === path),
+        ),
+
+    canShutdown: and([not('isHalting'), not('hasError')]),
+
+    /**
+     * Returns `true` if the context has a {@link PkgManagerContext} object
+     */
     hasContext: ({context: {ctx}}): boolean => !!ctx,
+
+    /**
+     * Returns `true` if the context has an error
+     */
     hasError: ({context: {error}}): boolean => !!error,
-    hasPackItems: ({context: {packQueue}}): boolean => !!packQueue.length,
+
+    /**
+     * Returns `true` if the context has any items in the install queue
+     */
+    hasInstallItems: ({context: {installQueue}}): boolean =>
+      !!installQueue.length,
+
+    /**
+     * Returns `true` if the machine is in the process of halting
+     */
     isHalting: ({context: {halting}}): boolean => !!halting,
+
+    /**
+     * Returns `true` if the machine should halt immediately
+     *
+     * @see {@link PkgManagerMachineHaltEvent.now}
+     */
     shouldHaltNow: (_, {now}: PkgManagerMachineHaltEvent): boolean => !!now,
+
+    /**
+     * Returns `true` if the temp dir should be kept around. This will cause the
+     */
+    shouldLinger: ({context: {ctx}}): boolean => !!ctx?.linger,
+
+    shouldStopInstallMachine: and([
+      'allWorkspacesPacked',
+      'allInstallablesInstalled',
+    ]),
+
+    shouldStopPackMachine: and(['allWorkspacesPacked']),
   },
   types: {
     context: {} as PkgManagerMachineContext,
@@ -348,40 +711,36 @@ export const PkgManagerMachine = setup({
     output: {} as PkgManagerMachineOutput,
   },
 }).createMachine({
+  /**
+   * Sets default values for the {@link PkgManagerMachineContext}
+   */
   context: ({
     input: {
       envelope,
-      initialTimeout = DEFAULT_INITAL_TIMEOUT,
-      opts: {loose = false, verbose = false} = {},
+      pkgManagerOpts: {loose = false, verbose = false} = {},
       smokerOptions,
-      workspaces = [],
+      workspaces,
       ...input
     },
   }): PkgManagerMachineContext => {
-    const props = {
-      installFailures: [],
+    const context: PkgManagerMachineContext = {
+      envelope,
+      smokerOptions,
+      ...input,
       installQueue: [],
       manifestsInstalled: [],
-      opts: {loose, verbose},
       packQueue: [...workspaces],
+      pkgManagerOpts: {loose, verbose},
       spec: serialize(envelope.spec),
-    } satisfies Partial<PkgManagerMachineContext>;
-
-    return {
-      ...input,
-      envelope,
-      initialTimeout,
-      smokerOptions,
       useWorkspaces: smokerOptions.all || !!smokerOptions.workspace.length,
-      ...props,
+      workspaces,
+      workspacesPacked: [],
     };
+    return context;
   },
   entry: [
     INIT_ACTION,
-    log(
-      ({context: {initialTimeout, spec}}) =>
-        `💡 PkgManagerMachine ${spec.label} online; idle timeout: ${initialTimeout}`,
-    ),
+    log(({context: {spec}}) => `💡 PkgManagerMachine ${spec.label} online`),
   ],
   exit: [
     log(
@@ -393,7 +752,7 @@ export const PkgManagerMachine = setup({
     ),
   ],
   id: 'PkgManagerMachine',
-  initial: 'idle',
+  initial: 'startup',
   on: {
     ABORT: [
       {
@@ -403,11 +762,11 @@ export const PkgManagerMachine = setup({
               `❌ ERROR: ${isString(reason) ? reason : reason.message}`,
           ),
           {
-            params: ({event: {reason: error}}) => ({error}),
+            params: ({event: {reason}}) => reason,
             type: 'assignError',
           },
         ],
-        guard: and([not('isHalting'), not('hasError')]),
+        guard: 'canShutdown',
         target: '.shutdown',
       },
       {
@@ -417,7 +776,7 @@ export const PkgManagerMachine = setup({
               `❌ ERROR: ${isString(reason) ? reason : reason.message}`,
           ),
           {
-            params: ({event: {reason: error}}) => ({error}),
+            params: ({event: {reason}}) => reason,
             type: 'assignError',
           },
         ],
@@ -433,7 +792,11 @@ export const PkgManagerMachine = setup({
         target: '.shutdown',
       },
       {
-        actions: ['setHaltingTrue', 'haltChildren'],
+        actions: [
+          'setHaltingTrue',
+          'gracefullyStopPackMachine',
+          'gracefullyStopInstallMachine',
+        ],
         description: 'If "now" is falsy, wait until the children have stopped',
       },
     ],
@@ -450,53 +813,16 @@ export const PkgManagerMachine = setup({
     done: {
       type: FINAL,
     },
-    idle: {
-      after: {
-        initialTimeout: {
-          actions: [
-            log(
-              ({context: {initialTimeout}}) =>
-                `⏰ Idle timeout reached (${initialTimeout}ms); aborting`,
-            ),
-            {
-              params: ({context: {initialTimeout}}) =>
-                new TimeoutError(
-                  `PkgManagerMachine idle timeout reached (${initialTimeout}ms)`,
-                  initialTimeout,
-                ),
-              type: 'abort',
-            },
-          ],
-        },
-      },
-      always: [
-        {
-          guard: 'hasPackItems',
-          target: 'startup',
-        },
-      ],
-      on: {
-        START: {
-          actions: [
-            log('👀 Received START'),
-            {
-              params: ({event: {workspaces}}): WorkspaceInfo[] => workspaces,
-              type: 'enqueuePackItems',
-            },
-          ],
-        },
-      },
-    },
     shutdown: {
-      entry: [log('🛑 Shutting down'), 'setHaltingTrue'],
-      initial: 'gate',
+      entry: [log('📴 Shutting down'), 'setHaltingTrue'],
+      initial: 'maybeTeardownLifecycle',
       onDone: {
         target: 'done',
       },
       states: {
         destroyPkgManagerContext: {
           description: 'Destroys the PkgManagerContext',
-          entry: log('🔥 Destroying package manager context'),
+          entry: [log('🔥 Destroying package manager context')],
           invoke: {
             input: ({
               context: {ctx, fileManager},
@@ -504,13 +830,40 @@ export const PkgManagerMachine = setup({
               ctx: ctx!,
               fileManager,
             }),
-            onDone: {
-              actions: {
-                params: (): undefined => undefined,
-                type: 'assignCtx',
+            onDone: [
+              {
+                actions: [
+                  log(
+                    ({context: {ctx}}) =>
+                      `🔥 Letting temp dir ${
+                        ctx!.tmpdir
+                      } linger for further inspection`,
+                  ),
+                  {type: 'emitLingered'},
+                  {
+                    params: (): undefined => undefined,
+                    type: 'assignCtx',
+                  },
+                ],
+                guard: 'shouldLinger',
+                target: 'done',
               },
-              target: 'done',
-            },
+              {
+                actions: [
+                  log(
+                    ({context: {ctx}}) =>
+                      `🔥 Destroyed package manager context with temp dir ${
+                        ctx!.tmpdir
+                      }`,
+                  ),
+                  {
+                    params: (): undefined => undefined,
+                    type: 'assignCtx',
+                  },
+                ],
+                target: 'done',
+              },
+            ],
             onError: {
               actions: [
                 {
@@ -520,7 +873,7 @@ export const PkgManagerMachine = setup({
                       spec: {label: spec},
                     },
                     event: {error},
-                  }) =>
+                  }): LifecycleError =>
                     new LifecycleError(
                       error,
                       'teardown',
@@ -531,7 +884,7 @@ export const PkgManagerMachine = setup({
                   type: 'abort',
                 },
               ],
-              target: 'errored',
+              target: 'done',
             },
             src: 'destroyPkgManagerContext',
           },
@@ -539,23 +892,14 @@ export const PkgManagerMachine = setup({
         done: {
           type: FINAL,
         },
-        errored: {
-          type: FINAL,
-        },
-        gate: {
+        maybeTeardownLifecycle: {
           always: [
-            {
-              guard: 'hasContext',
-              target: 'teardownLifecycle',
-            },
-            {
-              target: 'done',
-            },
+            {guard: 'hasContext', target: 'teardownLifecycle'},
+            {target: 'done'},
           ],
         },
         teardownLifecycle: {
           description: 'Runs teardown() of PkgManager, if any',
-          entry: log(`🔽 Running teardown lifecycle hook`),
           invoke: {
             input: ({
               context: {
@@ -572,6 +916,9 @@ export const PkgManagerMachine = setup({
             onDone: 'destroyPkgManagerContext',
             onError: {
               actions: [
+                log(
+                  '❗ Teardown lifecycle hook errored! Attempting to destroy context...',
+                ),
                 {
                   params: ({
                     context: {
@@ -579,7 +926,7 @@ export const PkgManagerMachine = setup({
                       spec: {label: spec},
                     },
                     event: {error},
-                  }) =>
+                  }): LifecycleError =>
                     new LifecycleError(
                       error,
                       'teardown',
@@ -587,11 +934,12 @@ export const PkgManagerMachine = setup({
                       spec,
                       plugin,
                     ),
-                  type: 'abort',
+                  type: 'assignError',
                 },
-                log('❗ Teardown lifecycle hook errored out! Aborting...'),
               ],
-              target: 'errored',
+              description:
+                'Assign the error, but continue to destroy context anyhow',
+              target: 'destroyPkgManagerContext',
             },
             src: 'teardownPkgManager',
           },
@@ -601,12 +949,14 @@ export const PkgManagerMachine = setup({
     startup: {
       entry: [
         log(
-          ({context: {packQueue}}) =>
-            `🚀 Starting up with ${packQueue.length} workspace(s)`,
+          ({context: {workspaces}}) =>
+            `🚀 Starting up with ${workspaces.length} workspace(s)`,
         ),
       ],
       initial: 'createPkgManagerContext',
-      onDone: [{guard: not('hasError'), target: 'working'}],
+      onDone: {
+        target: 'working',
+      },
       states: {
         createPkgManagerContext: {
           invoke: {
@@ -614,13 +964,15 @@ export const PkgManagerMachine = setup({
               context: {
                 executor,
                 fileManager,
-                opts: options,
+                pkgManagerOpts: options,
+                smokerOptions: {linger},
                 spec,
                 useWorkspaces,
               },
             }): CreatePkgManagerContextLogicInput => ({
               executor,
               fileManager,
+              linger,
               options,
               spec,
               useWorkspaces,
@@ -649,7 +1001,7 @@ export const PkgManagerMachine = setup({
                       spec: {label: spec},
                     },
                     event: {error},
-                  }) =>
+                  }): LifecycleError =>
                     new LifecycleError(
                       error,
                       'setup',
@@ -660,15 +1012,11 @@ export const PkgManagerMachine = setup({
                   type: 'abort',
                 },
               ],
-              target: 'errored',
             },
             src: 'createPkgManagerContext',
           },
         },
         done: {
-          type: FINAL,
-        },
-        errored: {
           type: FINAL,
         },
         setupLifecycle: {
@@ -698,7 +1046,7 @@ export const PkgManagerMachine = setup({
                       spec: {label: spec},
                     },
                     event: {error},
-                  }) =>
+                  }): LifecycleError =>
                     new LifecycleError(
                       error,
                       'setup',
@@ -709,7 +1057,7 @@ export const PkgManagerMachine = setup({
                   type: 'abort',
                 },
               ],
-              target: 'errored',
+              target: 'done',
             },
             src: 'setupPkgManager',
           },
@@ -718,32 +1066,28 @@ export const PkgManagerMachine = setup({
     },
     working: {
       entry: [log('🏃 Working...'), 'enqueueAdditionalDeps'],
+      exit: [log('🟡 Stopping work')],
       // we can start installing additional deps as soon as we have a tmpdir
-      onDone: [
-        {
-          actions: log('⏪ Work complete; returning to idle'),
-          guard: not('isHalting'),
-          target: 'idle',
-        },
-        {
-          actions: log('⏪ Work complete; shutting down'),
-          guard: 'isHalting',
-          target: 'shutdown',
-        },
-      ],
+      onDone: {
+        target: 'shutdown',
+      },
       states: {
-        done: {
-          type: FINAL,
-        },
         installing: {
-          exit: ['freeInstallMachineRef'],
+          entry: [log('Entering "installing" state')],
+          exit: ['freeInstallMachineRef', log('Exiting "installing" state')],
           initial: 'running',
           states: {
             done: {
-              entry: ['emitPkgManagerInstallOk'],
               type: FINAL,
             },
             running: {
+              always: [
+                {
+                  actions: ['gracefullyStopInstallMachine'],
+                  guard: 'shouldStopInstallMachine',
+                },
+                {actions: ['drainInstallQueue'], guard: 'hasInstallItems'},
+              ],
               entry: [
                 'spawnInstallMachine',
                 log('💾 Spawned Install machine'),
@@ -767,12 +1111,8 @@ export const PkgManagerMachine = setup({
                       type: 'resend',
                     },
                     {
-                      params: R.prop('event'),
+                      params: R.piped(R.prop('event'), R.prop('error')),
                       type: 'emitPkgManagerInstallFailed',
-                    },
-                    {
-                      params: ({event: {error}}) => error,
-                      type: 'abort',
                     },
                   ],
                 },
@@ -784,9 +1124,8 @@ export const PkgManagerMachine = setup({
                       type: 'resend',
                     },
                     {
-                      params: ({event: {installManifest}}): InstallManifest =>
-                        installManifest,
-                      type: 'assignManifestsInstalled',
+                      params: ({event: {installManifest}}) => installManifest,
+                      type: 'appendInstalledManifest',
                     },
                   ],
                 },
@@ -816,15 +1155,53 @@ export const PkgManagerMachine = setup({
               type: FINAL,
             },
             running: {
-              entry: ['spawnPackMachine', log('📦 Spawned Pack machine')],
+              always: {
+                actions: ['gracefullyStopPackMachine'],
+                guard: 'shouldStopPackMachine',
+              },
+              entry: [
+                {type: 'spawnPackMachine'},
+                log('📦 Spawned Pack machine'),
+              ],
               on: {
-                [WildcardEvents.AnyPackPkg]: {
+                [PackEvents.PkgPackBegin]: {
                   actions: [
+                    log(({event: {type}}) => `🔁 Forwarding event: ${type}`),
                     {
-                      params: ({event}) => event,
+                      params: ({event}): AnyPkgPackMachineEvent => event,
                       type: 'resend',
                     },
                   ],
+                },
+                [PackEvents.PkgPackFailed]: {
+                  actions: [
+                    log(({event: {type}}) => `🔁 Forwarding event: ${type}`),
+                    {
+                      params: ({event: {error}}) => error,
+                      type: 'emitPkgManagerPackFailed',
+                    },
+                  ],
+                },
+                [PackEvents.PkgPackOk]: {
+                  actions: [
+                    log(({event: {type}}) => `🔁 Forwarding event: ${type}`),
+                    {
+                      params: ({event: {workspace}}): WorkspaceInfo =>
+                        workspace,
+                      type: 'appendPackedWorkspace',
+                    },
+                    {
+                      params: ({event: {installManifest}}): InstallManifest =>
+                        installManifest,
+                      type: 'enqueueInstallItem',
+                    },
+                    log(
+                      ({event: {installManifest}}) =>
+                        `🔁 Enqueued "${installManifest.pkgName}" for install`,
+                    ),
+                  ],
+                  description:
+                    'Marks the workspace as packed and enqueues the InstallManifest for the install machine. Re-emits and optionally forwards the event.',
                 },
                 'xstate.done.actor.pack-machine.*': {
                   actions: [log('📦 Pack machine done')],
@@ -834,10 +1211,11 @@ export const PkgManagerMachine = setup({
                   actions: [
                     log('❗ Pack machine errored'),
                     {
-                      params: ({event: {error}}) => error,
+                      params: ({event: {error}}): Error => error,
                       type: 'abort',
                     },
                   ],
+                  target: 'done',
                 },
               },
             },
@@ -848,143 +1226,3 @@ export const PkgManagerMachine = setup({
     },
   },
 });
-type PkgManagerMachinePackMachineDoneEvent = DoneActorEvent<
-  void,
-  'pack-machine.*'
->;
-type PkgManagerMachineInstallMachineDoneEvent = DoneActorEvent<
-  void,
-  'install-machine.*'
->;
-type PkgManagerMachinePackMachineErrorEvent = ErrorActorEvent<
-  Error,
-  'pack-machine.*'
->;
-type PkgManagerMachineInstallMachineErrorEvent = ErrorActorEvent<
-  Error,
-  'install-machine.*'
->;
-type AnyPkgManagerMachineEvent = AnyInstallMachineEvent | AnyPackMachineEvent;
-type PkgManagerAbortEvent = SetRequired<AbortEvent, 'reason'>;
-
-export type PkgManagerMachineEvent =
-  | AnyPkgManagerMachineEvent
-  | PkgManagerAbortEvent
-  | PkgManagerMachineHaltEvent
-  | PkgManagerMachineStartEvent;
-
-export type PkgManagerMachineHaltEvent = MachineEvent<'HALT', {now?: boolean}>;
-
-export type PkgManagerMachineOutput =
-  | ActorOutputOk<{aborted: false; noop: boolean}>
-  | PkgManagerMachineOutputError;
-
-export type PkgManagerMachineOutputError = ActorOutputError<
-  MachineError,
-  {aborted?: boolean; noop: boolean}
->;
-
-/**
- * @event
- */
-
-export type PkgManagerMachineStartEvent = MachineEvent<
-  'START',
-  {
-    workspaces: WorkspaceInfo[];
-  }
->;
-type InternalPkgManagerMachineEvent =
-  | PkgManagerMachineInstallMachineDoneEvent
-  | PkgManagerMachineInstallMachineErrorEvent
-  | PkgManagerMachinePackMachineDoneEvent
-  | PkgManagerMachinePackMachineErrorEvent;
-
-export interface PkgManagerMachineContext
-  extends Except<
-    PkgManagerMachineInput,
-    'workspaces',
-    {requireExactProps: true}
-  > {
-  /**
-   * The base {@link Schema.PkgManagerContext} object for passing to the
-   * {@link PackageManagerDef}'s operations
-   */
-  ctx?: Readonly<PkgManagerContext>;
-
-  /**
-   * Aggregate error object for any error occuring in this machine
-   */
-  error?: MachineError;
-  halting?: boolean;
-  initialTimeout: number;
-
-  installFailures: InstallError[];
-
-  installMachineRef?: ActorRefFromLogic<typeof InstallMachine>;
-
-  installQueue: InstallManifest[];
-
-  manifestsInstalled: InstallManifest[];
-
-  /**
-   * Options for package manager behavior.
-   *
-   * Props will be included in {@link ctx}.
-   */
-  opts: PkgManagerOpts;
-  packMachineRef?: ActorRefFromLogic<typeof PackMachine>;
-
-  packQueue: WorkspaceInfo[];
-
-  /**
-   * A serialized copy of {@link PkgManagerMachineInput.envelope.spec}.
-   *
-   * Just here for convenience, since many events will need this information.
-   */
-  spec: StaticPkgManagerSpec;
-
-  useWorkspaces: boolean;
-}
-
-export interface PkgManagerMachineInput {
-  envelope: PkgManagerEnvelope;
-
-  /**
-   * The executor to pass to the package manager's functions
-   */
-  executor: Executor;
-
-  /**
-   * File manager instance for interacting with filesystem
-   */
-  fileManager: FileManager;
-
-  /**
-   * Number of ms to sit in the `idle` state and wait for the
-   * {@link PkgManagerMachineStartEvent start event} before timing out.
-   */
-  initialTimeout?: number;
-
-  /**
-   * Options for the package manager
-   */
-  opts?: PkgManagerOpts;
-
-  /**
-   * The parent actor reference.
-   *
-   * Most events are sent to it.
-   */
-  parentRef?: ActorRef<any, AnyPkgManagerMachineEvent>;
-
-  smokerOptions: SmokerOptions;
-
-  /**
-   * Information about one or more workspaces.
-   *
-   * If this contains a single item, then we either have one workspace _or_ are
-   * not in a monorepo.
-   */
-  workspaces?: WorkspaceInfo[];
-}

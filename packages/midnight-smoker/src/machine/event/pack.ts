@@ -26,6 +26,7 @@ import {
   type ComputedPkgManagerEventField,
   type MachineEvent,
 } from './common';
+import {type PkgManagerLingeredEvent} from './lingered';
 
 /**
  * Package-specific pack-related events
@@ -47,12 +48,15 @@ export type AnyPkgPackMachineEvent =
   | PkgPackFailedMachineEvent
   | PkgPackOkMachineEvent;
 
+export type AnyPkgManagerInstanceEvent = PkgManagerLingeredEvent;
+
 /**
  * Pack-related events received by `SmokeMachine`
  *
  * @event
  */
 export type AnyPackMachineEvent =
+  | AnyPkgManagerInstanceEvent
   | AnyPkgManagerPackMachineEvent
   | AnyPkgPackMachineEvent;
 

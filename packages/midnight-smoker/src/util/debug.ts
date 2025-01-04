@@ -60,7 +60,7 @@ export function debugFactory(
       : pathOrName;
 
     if (process.env.WALLABY) {
-      Debug.log = (...args: string[]) => {
+      Debug.log = function debug(...args: string[]) {
         console.log(format(...args));
       };
     }

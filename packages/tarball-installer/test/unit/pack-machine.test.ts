@@ -4,7 +4,7 @@ import {type PkgPackOkMachineEvent} from 'midnight-smoker/machine';
 import {
   PackError,
   type PkgManagerContext,
-  toResult,
+  toWorkspaceInfo,
 } from 'midnight-smoker/pkg-manager';
 import {type PkgManagerEnvelope} from 'midnight-smoker/plugin';
 import {afterEach, beforeEach, describe, it} from 'node:test';
@@ -50,10 +50,11 @@ describe('pack', () => {
       spec,
     };
     const pkgPackOkEvent: PkgPackOkMachineEvent = {
-      installManifest: toResult(workspaceInstallManifest),
+      installManifest: workspaceInstallManifest,
       pkgManager: spec,
       sender: id,
       type: PackEvents.PkgPackOk,
+      workspace: toWorkspaceInfo(workspaceInstallManifest),
     };
 
     let sandbox: sinon.SinonSandbox;

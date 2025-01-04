@@ -8,6 +8,7 @@ import {asValidationError, type SomePackError} from 'midnight-smoker/error';
 import {PackEvents} from 'midnight-smoker/event';
 import {
   type AbortEvent,
+  type AnyPkgPackMachineEvent,
   DEFAULT_INIT_ACTION,
   INIT_ACTION,
   type MachineEvent,
@@ -20,6 +21,7 @@ import {toWorkspaceInfo, type WorkspaceInfo} from 'midnight-smoker/schema';
 import {assert, R, toResult, uniqueId} from 'midnight-smoker/util';
 import {type Except} from 'type-fest';
 import {
+  type ActorRef,
   type ActorRefFromLogic,
   and,
   type DoneActorEvent,
@@ -27,7 +29,7 @@ import {
   not,
   setup,
 } from 'xstate';
-import {assign, emit, enqueueActions, log, raise} from 'xstate/actions';
+import {assign, enqueueActions, log, raise} from 'xstate/actions';
 import 'xstate/guards';
 
 import {packLogic, type PackLogicOutput} from './pack-logic';
@@ -70,6 +72,7 @@ export interface PackMachineContext
 export interface PackMachineInput extends PackMachineOptions {
   ctx: Readonly<PkgManagerContext>;
   envelope: Readonly<PkgManagerEnvelope>;
+  parentRef?: ActorRef<any, AnyPkgPackMachineEvent>;
 
   workspaces?: WorkspaceInfo[];
 }
@@ -113,7 +116,7 @@ export const PackMachine = setup({
      * We do this in one place so we can ensure that the queue is shifted
      * properly.
      */
-    beginPack: enqueueActions(({context: {ctx, queue}, enqueue}) => {
+    beginPack: enqueueActions(({context: {ctx, queue}, enqueue}): void => {
       const [workspace] = queue;
       assert.ok(workspace, 'Expected a WorkspaceInfo object');
 
@@ -141,37 +144,51 @@ export const PackMachine = setup({
     /**
      * Emits a {@link PkgPackBeginMachineEvent} event.
      */
-    emitPkgPackBegin: emit(
+    emitPkgPackBegin: enqueueActions(
       (
-        {context: {envelope}, self: {id: sender}},
+        {context: {envelope, parentRef}, enqueue, self: {id: sender}},
         ctx: PkgManagerPackContext,
-      ): PkgPackBeginMachineEvent => ({
-        pkgManager: envelope.spec,
-        sender,
-        type: PackEvents.PkgPackBegin,
-        workspace: toResult(ctx),
-      }),
+      ): void => {
+        const evt: PkgPackBeginMachineEvent = {
+          pkgManager: envelope.spec,
+          sender,
+          type: PackEvents.PkgPackBegin,
+          workspace: toResult(ctx),
+        };
+        enqueue.emit(evt);
+        if (parentRef) {
+          enqueue.sendTo(parentRef, evt);
+        }
+      },
     ),
 
     /**
      * Emits a {@link PkgPackFailedMachineEvent} event.
      */
-    emitPkgPackFailed: emit(
+    emitPkgPackFailed: enqueueActions(
       (
         {
           context: {
             envelope: {spec: pkgManager},
+            parentRef,
           },
+          enqueue,
           self: {id: sender},
         },
         error: SomePackError,
-      ): PkgPackFailedMachineEvent => ({
-        error,
-        pkgManager,
-        sender,
-        type: PackEvents.PkgPackFailed,
-        workspace: toResult(error.context.workspace),
-      }),
+      ): void => {
+        const evt: PkgPackFailedMachineEvent = {
+          error,
+          pkgManager,
+          sender,
+          type: PackEvents.PkgPackFailed,
+          workspace: toResult(error.context.workspace),
+        };
+        enqueue.emit(evt);
+        if (parentRef) {
+          enqueue.sendTo(parentRef, evt);
+        }
+      },
     ),
 
     /**
@@ -188,6 +205,7 @@ export const PackMachine = setup({
         {
           context: {
             envelope: {spec: pkgManager},
+            parentRef,
           },
           enqueue,
           self: {id: sender},
@@ -196,20 +214,25 @@ export const PackMachine = setup({
       ) => {
         // note: InstallManifest is a superset of WorkspaceInfo;
         // this will just strip out fields
+        let evt: PkgPackOkMachineEvent;
         try {
           const workspace = toWorkspaceInfo(installManifest!);
-          const evt: PkgPackOkMachineEvent = {
-            installManifest: toResult(installManifest!),
+          evt = {
+            installManifest: installManifest!,
             pkgManager,
             sender,
             type: PackEvents.PkgPackOk,
-            workspace: toResult(workspace),
+            workspace,
           };
-          enqueue.emit(evt);
         } catch (err) {
           // this "should never happen"
           // @ts-expect-error - TS limitation
           enqueue({params: asValidationError(err), type: 'abort'});
+          return;
+        }
+        enqueue.emit(evt);
+        if (parentRef) {
+          enqueue.sendTo(parentRef, evt);
         }
       },
     ),
@@ -282,16 +305,27 @@ export const PackMachine = setup({
     ...input,
     queue: workspaces,
   }),
-  entry: [INIT_ACTION, log(({self: {id}}) => `[${id}] PackMachine started`)],
+  entry: [INIT_ACTION, log(({self: {id}}) => `[${id}] PackMachine online`)],
   initial: 'running',
   states: {
     done: {
+      entry: log(({self: {id}}) => `[${id}] PackMachine offline`),
       type: FINAL,
     },
     running: {
       always: [
         {
-          actions: 'beginPack',
+          actions: [
+            log(
+              ({context: {queue}}) =>
+                `${queue.length} workspace(s) queued; processing`,
+            ),
+            'beginPack',
+            log(
+              ({context: {packActorRefs}}) =>
+                `Pack actor(s) spawned: ${Object.keys(packActorRefs)}`,
+            ),
+          ],
           guard: 'hasPackItems',
         },
         {
@@ -321,7 +355,8 @@ export const PackMachine = setup({
             target: 'done',
           },
           {
-            actions: 'assignHalting',
+            actions: ['assignHalting', log('Halting requested')],
+
             description: 'If "now" is falsy, wait until the queue is empty',
           },
         ],
@@ -346,6 +381,10 @@ export const PackMachine = setup({
         'xstate.done.actor.pack.*': [
           {
             actions: [
+              log(
+                ({event: {output}}) =>
+                  `Packed ${output!.localPath} into ${output!.pkgSpec}`,
+              ),
               {
                 /**
                  * Provide {@link PackLogicOutput} to {@link emitPkgPackOk}

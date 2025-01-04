@@ -114,9 +114,7 @@ export const matchSystemPkgManagerLogic = fromPromise<
       try {
         const {stdout} = await someExec(bin, ['--version']);
         return stdout;
-      } catch (err) {
-        err;
-      }
+      } catch {}
     };
 
     /**

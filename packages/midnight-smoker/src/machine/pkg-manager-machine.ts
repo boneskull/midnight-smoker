@@ -1134,6 +1134,7 @@ export const PkgManagerMachine = setup({
           pkgManager,
           sender,
           type: PackEvents.PkgPackOk,
+          // @ts-expect-error annihilate
           workspace: toResult(workspace),
         };
       },

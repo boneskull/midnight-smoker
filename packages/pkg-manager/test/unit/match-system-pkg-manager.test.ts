@@ -60,7 +60,6 @@ describe('pkg-manager', () => {
       registry = PluginRegistry.create({fileManager});
       plugins = [plugin];
       pkgManager = {...nullPkgManager};
-      // componentRegistry = new Map([[pkgManager, ]]);
       await registry.registerPlugin(plugin, {
         plugin(api) {
           api.definePackageManager(pkgManager);
@@ -265,7 +264,7 @@ describe('pkg-manager', () => {
 
       it('should return the first found package manager if no default is specified', async () => {
         input.plugins = plugins;
-        actor = createActor(matchSystemPkgManagerLogic, {input});
+        actor = createActor(matchSystemPkgManagerLogic, {input, logger});
 
         const result = await runUntilDone(actor);
         expect(result.envelope?.spec.name, 'to be', 'nullpm');

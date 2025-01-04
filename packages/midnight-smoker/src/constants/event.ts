@@ -133,3 +133,14 @@ export const WildcardEvents = constant({
   AnyScriptsPkgManager: 'SCRIPTS.PKG_MANAGER.*',
   AnyScriptsResult: 'SCRIPTS.MAIN.*',
 });
+
+/**
+ * Event names specific to package managers
+ *
+ * @enum
+ */
+export const PkgManagerEvents = constant({
+  Lingered: 'PKG_MANAGER.LINGERED',
+  Setup: 'PKG_MANAGER.SETUP',
+  Teardown: 'PKG_MANAGER.TEARDOWN',
+});

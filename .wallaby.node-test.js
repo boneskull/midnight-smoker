@@ -15,7 +15,7 @@ module.exports = {
   env: {
     type: 'node',
     params: {
-      env: `DEBUG=midnight-smoker:pkg-manager:*`,
+      env: `DEBUG=midnight-smoker:pkg-manager:*;WALLABY=1`,
     },
   },
 };

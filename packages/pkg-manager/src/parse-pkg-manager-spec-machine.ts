@@ -125,7 +125,7 @@ export const ParsePkgManagerSpecMachine = setup({
     /**
      * Assigns the result of {@link matchSystemPkgManagerLogic} to the context
      */
-    assignEnvelopes: assign({
+    assignEnvelopesFromSystem: assign({
       defaultSystemPkgManagerEnvelope: (
         {context: {defaultSystemPkgManagerEnvelope}},
         output: MatchSystemPkgManagerLogicOutput,
@@ -137,6 +137,7 @@ export const ParsePkgManagerSpecMachine = setup({
         output: MatchSystemPkgManagerLogicOutput,
       ): PkgManagerEnvelope => envelope ?? output.envelope!,
     }),
+
     assignError: assign({
       error: ({context, self}, {error: err}: {error: unknown}) => {
         const error = fromUnknownError(err);
@@ -152,9 +153,104 @@ export const ParsePkgManagerSpecMachine = setup({
       },
     }),
     [INIT_ACTION]: DEFAULT_INIT_ACTION(),
+
+    /**
+     * Assigns the
+     */
+    maybeAssignEnvelope: assign({
+      envelope: ({
+        context: {componentRegistry, envelope, plugins, spec},
+        self,
+      }) => {
+        if (envelope) {
+          return envelope;
+        }
+        assert.ok(spec.version !== SYSTEM, 'Unexpected SYSTEM desired spec');
+
+        for (const plugin of plugins) {
+          const {pkgManagers} = plugin;
+          // package managers
+          const matchingPkgManagers = filterMatchingPkgManagers(
+            spec,
+            pkgManagers,
+          );
+          self.system._logger(
+            `Matching package managers: ${matchingPkgManagers
+              .map((pkgManager) => pkgManager.name)
+              .join(', ')}`,
+          );
+
+          // try package managers until one accepts the version
+          for (const pkgManager of matchingPkgManagers) {
+            const version = accepts(pkgManager, spec.version);
+
+            const pkgManagerComponent = componentRegistry.get(pkgManager);
+            if (!pkgManagerComponent) {
+              self.system._logger(
+                `No component found for pkgManager ${pkgManager.name}`,
+              );
+              continue;
+            }
+            self.system._logger(`Found version ${version}`);
+            if (version) {
+              return {
+                id: pkgManagerComponent.id,
+                pkgManager,
+                plugin,
+                spec: PkgManagerSpec.create({
+                  ...spec,
+                  version,
+                }),
+              };
+            }
+          }
+        }
+      },
+    }),
   },
   actors: {
     matchSystemPkgManager: matchSystemPkgManagerLogic,
+  },
+  guards: {
+    /**
+     * Returbns `true` if the output of {@link matchSystemPkgManagerLogic} has a
+     * truthy {@link MatchSystemPkgManagerLogicOutput.envelope envelope field}.
+     */
+    hasEnvelope: (_, {envelope}: MatchSystemPkgManagerLogicOutput) =>
+      !!envelope,
+
+    /**
+     * Returns `true` if a default system package manager was found and
+     * {@link ParsePkgManagerSpecMachineContext.spec spec} matches it
+     */
+    isDefaultPkgManagerSpec: ({
+      context: {defaultSystemPkgManagerEnvelope, spec},
+    }): boolean =>
+      !!defaultSystemPkgManagerEnvelope &&
+      !!spec.version &&
+      caseInsensitiveEquals(
+        spec.name,
+        defaultSystemPkgManagerEnvelope.spec.name,
+      ) &&
+      caseInsensitiveEquals(
+        spec.version,
+        defaultSystemPkgManagerEnvelope.spec.version,
+      ),
+
+    /**
+     * Returns `true` if the pkg manager is one of the blessed ones
+     */
+    isKnownStaticPkgManagerSpec: ({context: {spec}}): boolean =>
+      isKnownPkgManagerSpec(spec),
+
+    /**
+     * Returns `true` if the spec is a well-formed `StaticPkgManagerSpec`
+     *
+     * This should be checked _after_ we've checked if it matches the default
+     * system pkg manager spec.
+     */
+    isStaticPkgManagerSpec: ({context: {spec}}): boolean =>
+      isStaticPkgManagerSpec(spec),
   },
   types: {
     context: {} as ParsePkgManagerSpecMachineContext,
@@ -177,10 +273,20 @@ export const ParsePkgManagerSpecMachine = setup({
     INIT_ACTION,
     log(
       ({context: {desiredPkgManager, spec}}) =>
-        `"${desiredPkgManager}" -> ${JSON.stringify(spec)}`,
+        `Parsed desired pkg manager "${desiredPkgManager}" as spec: ${JSON.stringify(
+          spec,
+        )}`,
     ),
   ],
   initial: 'matchDefaultSystemPkgManager',
+
+  /**
+   * This machine can exit with an `undefined`
+   * {@link ParsePkgManagerSpecMachineOutput.envelope envelope} field, which
+   * means the desired package manager could not be matched. It is the
+   * responsibility of the receiver of this output to handle this case (which is
+   * probably an error).
+   */
   output: ({
     context: {
       defaultSystemPkgManagerEnvelope,
@@ -189,7 +295,7 @@ export const ParsePkgManagerSpecMachine = setup({
       error,
     },
     self: {id: actorId},
-  }) =>
+  }): ParsePkgManagerSpecMachineOutput =>
     error
       ? {
           actorId,
@@ -210,124 +316,57 @@ export const ParsePkgManagerSpecMachine = setup({
       type: FINAL,
     },
     errored: {
+      description: 'Final state if an error occurs',
       type: FINAL,
     },
     matchDefaultSystemPkgManager: {
       always: [
         {
           actions: [
-            assign({
-              envelope: ({
-                context: {defaultSystemPkgManagerEnvelope},
-              }): PkgManagerEnvelope | undefined =>
-                defaultSystemPkgManagerEnvelope,
-            }),
             log(
               ({context: {desiredPkgManager}}) =>
-                `${desiredPkgManager}: Matched default system package manager`,
+                `"${desiredPkgManager}": Matched default system package manager`,
             ),
           ],
-          guard: ({
-            context: {defaultSystemPkgManagerEnvelope, spec},
-          }): boolean =>
-            !!defaultSystemPkgManagerEnvelope &&
-            !!spec.version &&
-            caseInsensitiveEquals(
-              spec.name,
-              defaultSystemPkgManagerEnvelope.spec.name,
-            ) &&
-            caseInsensitiveEquals(
-              spec.version,
-              defaultSystemPkgManagerEnvelope.spec.version,
-            ),
+          guard: 'isDefaultPkgManagerSpec',
           target: 'done',
         },
         {
           actions: [
             log(
               ({context: {desiredPkgManager}}) =>
-                `${desiredPkgManager}: not a system package manager`,
+                `"${desiredPkgManager}": matching a non-system package manager`,
             ),
           ],
-          guard: ({context: {spec}}): boolean => isKnownPkgManagerSpec(spec),
+          guard: 'isKnownStaticPkgManagerSpec',
           target: 'matchPkgManager',
         },
         {
           actions: [
             log(
-              ({context: {desiredPkgManager, spec}}) =>
-                `${desiredPkgManager}: Matched partial system package manager: ${JSON.stringify(
-                  spec,
-                )}`,
+              ({context: {desiredPkgManager}}) =>
+                `"${desiredPkgManager}": matching a system package manager`,
             ),
           ],
           target: 'matchSystemPkgManager',
         },
       ],
+      description:
+        'Initial state which determines how to match against the spec',
     },
     matchPkgManager: {
       always: {target: 'done'},
-      entry: [
-        assign({
-          envelope: ({
-            context: {componentRegistry, envelope, plugins, spec},
-            self,
-          }) => {
-            if (envelope) {
-              return envelope;
-            }
-            assert.ok(
-              spec.version !== SYSTEM,
-              'Unexpected SYSTEM desired spec',
-            );
-
-            for (const plugin of plugins) {
-              const {pkgManagers} = plugin;
-              // package managers
-              const matchingPkgManagers = filterMatchingPkgManagers(
-                spec,
-                pkgManagers,
-              );
-              self.system._logger(
-                `Matching package managers: ${matchingPkgManagers
-                  .map((pkgManager) => pkgManager.name)
-                  .join(', ')}`,
-              );
-
-              // try package managers until one accepts the version
-              for (const pkgManager of matchingPkgManagers) {
-                const version = accepts(pkgManager, spec.version);
-
-                const pkgManagerComponent = componentRegistry.get(pkgManager);
-                if (!pkgManagerComponent) {
-                  self.system._logger(
-                    `No component found for pkgManager ${pkgManager.name}`,
-                  );
-                  continue;
-                }
-                self.system._logger(`Found version ${version}`);
-                if (version) {
-                  return {
-                    id: pkgManagerComponent.id,
-                    pkgManager,
-                    plugin,
-                    spec: PkgManagerSpec.create({
-                      ...spec,
-                      version,
-                    }),
-                  };
-                }
-              }
-            }
-          },
-        }),
-      ],
+      description:
+        'Assigns the envelope from a non-system package manager if a plugin supports it. Purely for logical separation',
+      entry: ['maybeAssignEnvelope'],
     },
     matchSystemPkgManager: {
+      description:
+        'We want to match against a system package manager, but either there is no default system package manager or it does not match. Logic is handled by separate actor',
       entry: [
         log(
           ({context: {desiredPkgManager}}) =>
-            `Matching system package manager: "${desiredPkgManager}"`,
+            `Attempting to match system package manager: "${desiredPkgManager}"`,
         ),
       ],
       invoke: {
@@ -347,32 +386,38 @@ export const ParsePkgManagerSpecMachine = setup({
         onDone: [
           {
             actions: [
-              log(({event: {output}}) => {
-                return `Matched system package manager: ${
-                  output.envelope!.spec.label
-                }`;
-              }),
+              log(
+                ({event: {output}}) =>
+                  `Matched system package manager: ${
+                    output.envelope!.spec.label
+                  }`,
+              ),
               {
                 params: ({event: {output}}) => output,
-                type: 'assignEnvelopes',
+                type: 'assignEnvelopesFromSystem',
               },
             ],
-            guard: ({
-              event: {
-                output: {envelope},
-              },
-            }): boolean => !!envelope,
+            guard: {
+              params: ({event: {output}}) => output,
+              type: 'hasEnvelope',
+            },
             target: 'done',
           },
-          {
-            guard: ({context: {spec}}): boolean => isStaticPkgManagerSpec(spec),
-            target: 'matchPkgManager',
-          },
+          // {
+          //   actions: [
+          //     log(
+          //       ({context: {desiredPkgManager}}) =>
+          //         `"${desiredPkgManager}": Attempting to match non-system package manager`,
+          //     ),
+          //   ],
+          //   guard: 'isStaticPkgManagerSpec',
+          //   target: 'matchPkgManager',
+          // },
           {
             actions: [
               log(
                 ({context: {desiredPkgManager}}) =>
-                  `No system package manager found for desired spec ${desiredPkgManager}`,
+                  `"${desiredPkgManager}": No system package manager found`,
               ),
             ],
             target: 'done',

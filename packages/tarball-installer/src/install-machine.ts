@@ -293,6 +293,7 @@ export const InstallMachine = setup({
   initial: 'running',
   states: {
     done: {
+      entry: log(({self: {id}}) => `[${id}] InstallMachine offline`),
       type: FINAL,
     },
     running: {
@@ -316,7 +317,7 @@ export const InstallMachine = setup({
       ],
       entry: [
         INIT_ACTION,
-        log(({self: {id}}) => `[${id}] InstallMachine started`),
+        log(({self: {id}}) => `[${id}] InstallMachine online`),
       ],
       on: {
         ABORT: {
@@ -340,7 +341,8 @@ export const InstallMachine = setup({
             target: 'done',
           },
           {
-            actions: 'assignHalting',
+            actions: ['assignHalting', log('Halting requested')],
+
             description: 'If "now" is falsy, wait until the queue is empty',
           },
         ],

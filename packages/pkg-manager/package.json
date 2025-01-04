@@ -45,10 +45,17 @@
   ],
   "scripts": {
     "test": "run-s test:unit test:smoke",
-    "test:ci": "run-s test:unit test:e2e test:smoke",
+    "test:ci": "run-s test:unit:ci test:smoke",
     "test:e2e": "exit 0",
     "test:smoke": "smoker",
-    "test:unit": "node --env-file=./test/test.env --env-file-if-exists=.test.env --import tsx --test \"test/**/*.test.ts\""
+    "test:unit": "node --env-file ${npm_package_config_env_test} --import tsx --test \"test/**/*.test.ts\"",
+    "test:unit:ci": "node --env-file ${npm_package_config_env_ci} --import tsx --test \"test/**/*.test.ts\""
+  },
+  "config": {
+    "env": {
+      "test": "./test/test.env",
+      "ci": "./test/ci.env"
+    }
   },
   "peerDependencies": {
     "midnight-smoker": "^8.0.0"

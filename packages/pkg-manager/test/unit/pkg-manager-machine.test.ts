@@ -3,7 +3,12 @@
 import {InstallMachine} from '@midnight-smoker/tarball-installer/install';
 import {memfs} from 'memfs';
 import {type Volume} from 'memfs/lib/volume';
-import {ERROR, InstallEvents, OK} from 'midnight-smoker/constants';
+import {
+  ERROR,
+  InstallEvents,
+  OK,
+  PkgManagerEvents,
+} from 'midnight-smoker/constants';
 import {type Executor} from 'midnight-smoker/defs/executor';
 import {
   type InstallManifest,
@@ -19,7 +24,7 @@ import {
 } from 'midnight-smoker/plugin';
 import {type SmokerOptions, type WorkspaceInfo} from 'midnight-smoker/schema';
 import {FileManager, serialize} from 'midnight-smoker/util';
-import {afterEach, beforeEach, describe, it} from 'node:test';
+import {afterEach, before, beforeEach, describe, it} from 'node:test';
 import {createSandbox} from 'sinon';
 import unexpected from 'unexpected';
 import unexpectedSinon from 'unexpected-sinon';
@@ -36,9 +41,9 @@ import {
   type CurryCreateActorWithP1,
   runUntilDone,
   runUntilEmitted,
+  runUntilEventSent,
   runUntilSnapshot,
   runUntilSpawn,
-  runUntilTransition,
   waitForSnapshot,
   waitForTransition,
 } from 'xstate-audition';
@@ -77,7 +82,6 @@ describe('midnight-smoker', () => {
       let workspaces: WorkspaceInfo[];
       let input: PkgManagerMachineInput;
       let logic: ActorLogicFrom<typeof PkgManagerMachine>;
-      const initialTimeout = 100;
 
       const sender = 'test';
       const id = 'PkgManagerMachine';
@@ -114,9 +118,9 @@ describe('midnight-smoker', () => {
           envelope,
           executor,
           fileManager,
-          initialTimeout,
           parentRef,
           smokerOptions,
+          workspaces,
         };
         createActorWithDefaults = createActorWith({id, input, logger});
         actor = createActorWithDefaults(logic);
@@ -130,13 +134,17 @@ describe('midnight-smoker', () => {
       describe('startup', () => {
         let setupPkgManager: sinon.SinonStub;
         let teardownPkgManager: sinon.SinonStub;
-
+        let destroyPkgManagerContext: sinon.SinonStub;
         beforeEach(() => {
           setupPkgManager = sandbox.stub().resolves();
           teardownPkgManager = sandbox.stub().resolves();
+          destroyPkgManagerContext = sandbox.stub().resolves();
           input = {...input, workspaces};
           logic = logic.provide({
             actors: {
+              destroyPkgManagerContext: fromPromise<any, any>(
+                destroyPkgManagerContext,
+              ),
               setupPkgManager: fromPromise<any, any>(setupPkgManager),
               teardownPkgManager: fromPromise<any, any>(teardownPkgManager),
             },
@@ -184,14 +192,23 @@ describe('midnight-smoker', () => {
             );
           });
 
-          it('should skip the "setup" lifecycle hook', async () => {
-            await runUntilDone(actor);
-            expect(setupPkgManager, 'was not called');
-          });
+          describe('invocation', () => {
+            before(async () => {
+              await runUntilDone(actor);
+            });
 
-          it('should skip the "teardown" lifecycle hook', async () => {
-            await runUntilDone(actor);
-            expect(teardownPkgManager, 'was not called');
+            it('should skip the "setup" lifecycle hook', async () => {
+              await runUntilDone(actor);
+              expect(setupPkgManager, 'was not called');
+            });
+
+            it('should execute the "teardown" lifecycle hook', async () => {
+              expect(teardownPkgManager, 'was not called');
+            });
+
+            it('should not invoke "destroyPkgManagerContext"', async () => {
+              expect(destroyPkgManagerContext, 'was not called');
+            });
           });
         });
 
@@ -245,62 +262,6 @@ describe('midnight-smoker', () => {
           });
         });
 
-        describe('when initialized without workspaces', () => {
-          let enqueueAdditionalDeps: sinon.SinonStub;
-
-          beforeEach(() => {
-            input = {...input, workspaces: []};
-            actor = createActor(logic, {
-              id,
-              input,
-              logger,
-            });
-          });
-
-          it('should timeout while waiting for START event', async () => {
-            await expect(
-              runUntilDone(actor),
-              'to be fulfilled with value satisfying',
-              {
-                aborted: true,
-                type: ERROR,
-              },
-            );
-          });
-
-          beforeEach(() => {
-            enqueueAdditionalDeps = sandbox.stub();
-            logic = logic.provide({
-              actions: {
-                enqueueAdditionalDeps,
-              },
-            });
-          });
-
-          it('should not attempt to install additional deps', async () => {
-            actor = createActor(logic, {
-              id,
-              input,
-              logger,
-            });
-
-            await runUntilDone(actor);
-            expect(enqueueAdditionalDeps, 'was not called');
-          });
-
-          describe('when "START" received', () => {
-            it('should transition from initial state (.idle) to .startup', async () => {
-              const promise = runUntilTransition(
-                actor,
-                'PkgManagerMachine.idle',
-                'PkgManagerMachine.startup',
-              );
-              actor.send({sender, type: 'START', workspaces});
-              await expect(promise, 'to be fulfilled');
-            });
-          });
-        });
-
         describe('when HALT received', () => {
           let setupPkgManager: sinon.SinonStub;
           let teardownPkgManager: sinon.SinonStub;
@@ -334,20 +295,9 @@ describe('midnight-smoker', () => {
           });
 
           it('should skip the "setup" lifecycle hook', async () => {
-            // note: we have to empty workspaces because otherwise we won't be
-            // able to get anything into the stack before startup is done
-            input = {...input, workspaces: []};
             actor = createActor(logic, {id, input, logger});
-            const transitionPromise = waitForTransition(
-              actor,
-              'PkgManagerMachine.idle',
-              'PkgManagerMachine.startup',
-            );
-            actor.send({sender, type: 'START', workspaces});
-            await transitionPromise;
             actor.send({now: true, sender, type: 'HALT'});
             await runUntilDone(actor);
-            // await promise;
             expect(setupPkgManager, 'was not called');
           });
 
@@ -362,13 +312,6 @@ describe('midnight-smoker', () => {
 
       describe('working', () => {
         describe('installing', () => {
-          beforeEach(() => {
-            logic = logic.provide({
-              actors: {
-                InstallMachine: InstallMachine.provide({}),
-              },
-            });
-          });
           describe('when additional deps are provided', () => {
             beforeEach(() => {
               smokerOptions = {...smokerOptions, add: ['foo@1.0.0']};
@@ -440,6 +383,7 @@ describe('midnight-smoker', () => {
                   });
                   actor = createActor(logic, {id, input, logger});
                 });
+
                 it('should abort', async () => {
                   await expect(
                     runUntilDone(actor),
@@ -534,7 +478,7 @@ describe('midnight-smoker', () => {
               actor = createActor(logic, {id, input, logger});
             });
 
-            it('should output with a MachineError > LifecycleError > Error', async () => {
+            it('should output with a MachineError » LifecycleError » Error', async () => {
               await waitForSnapshot(actor, (snapshot) =>
                 snapshot.matches('working'),
               );
@@ -575,7 +519,7 @@ describe('midnight-smoker', () => {
             actor = createActor(logic, {id, input, logger});
           });
 
-          it('should output with a MachineError > LifecycleError > Error', async () => {
+          it('should output with a MachineError » LifecycleError » Error', async () => {
             await waitForSnapshot(actor, (snapshot) =>
               snapshot.matches('working'),
             );
@@ -597,22 +541,29 @@ describe('midnight-smoker', () => {
           });
         });
 
-        // describe('when the "linger" flag was provided', () => {
-        //   beforeEach(() => {
-        //     input = {
-        //       ...input,
-        //       smokerOptions: {...smokerOptions, linger: true},
-        //     };
-        //     actor = createActor(logic, {id, input, logger});
-        //   });
+        describe('when the "linger" flag was provided', () => {
+          beforeEach(() => {
+            input = {
+              ...input,
+              smokerOptions: {...smokerOptions, linger: true},
+            };
+            actor = createActor(logic, {id, input, logger});
+          });
 
-        //   it('should send the LINGERED event', async () => {
-        //     await expect(
-        //       runUntilEventSent(actor, ['LINGERED']),
-        //       'to be fulfilled',
-        //     );
-        //   });
-        // });
+          it(`should send the ${PkgManagerEvents.Lingered} event`, async () => {
+            await expect(
+              runUntilEventSent(actor, [PkgManagerEvents.Lingered]),
+              'to be fulfilled',
+            );
+          });
+
+          it(`should emit the ${PkgManagerEvents.Lingered} event`, async () => {
+            await expect(
+              runUntilEmitted(actor, [PkgManagerEvents.Lingered]),
+              'to be fulfilled',
+            );
+          });
+        });
       });
     });
   });

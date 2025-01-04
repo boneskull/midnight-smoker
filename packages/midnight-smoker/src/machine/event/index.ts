@@ -16,6 +16,8 @@ export * from './common';
 
 export * from './install';
 
+export * from './lingered';
+
 export * from './lint';
 
 export * from './pack';
