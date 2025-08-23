@@ -11,7 +11,7 @@ jobs:
         node_version: [18, 20]
         os: [ubuntu-latest, windows-latest]
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
       - name: Use Node.js ${{ matrix.node_version }}
         uses: actions/setup-node@0a44ba7841725637a19e28fa30b79a866c81b0a6 # v4.0.4
         with:
@@ -28,7 +28,7 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
       - name: Install dependencies
         uses: bahmutov/npm-install@3da6b44b121fcdcb64528100e3dcfaffb39159e5 # v1.8.40
         with:
