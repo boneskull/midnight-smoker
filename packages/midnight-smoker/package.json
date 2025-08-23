@@ -57,7 +57,7 @@
     "update-schema": "ts-node ./scripts/generate-schema.ts && prettier --write ./schema/midnight-smoker.schema.json"
   },
   "dependencies": {
-    "@types/semver": "7.5.8",
+    "@types/semver": "7.7.0",
     "chalk": "4.1.2",
     "corepack": "0.23.0",
     "debug": "4.3.7",
