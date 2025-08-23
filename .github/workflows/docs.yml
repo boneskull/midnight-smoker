@@ -34,7 +34,7 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@1f0c5cde4bc74cd7e1254d0cb4de8d49e9068c7d # v4
       - name: Install dependencies
-        uses: bahmutov/npm-install@3da6b44b121fcdcb64528100e3dcfaffb39159e5 # v1.8.40
+        uses: bahmutov/npm-install@3714964fb879ebbbc108e167f0f3a0c81ec075c9 # v1.10.10
         with:
           install-command: npm ci
       - name: Build
