@@ -57,7 +57,7 @@
     "cross-env": "7.0.3",
     "dependency-cruiser": "15.5.0",
     "eslint": "8.55.0",
-    "eslint-config-prettier": "8.10.0",
+    "eslint-config-prettier": "8.10.2",
     "eslint-config-semistandard": "17.0.0",
     "eslint-config-standard": "17.1.0",
     "eslint-plugin-import": "2.29.1",
