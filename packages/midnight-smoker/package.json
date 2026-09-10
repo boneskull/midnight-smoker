@@ -69,7 +69,7 @@
     "log-symbols": "4.1.0",
     "ora": "5.4.1",
     "pluralize": "8.0.0",
-    "read-pkg-up": "7.0.1",
+    "read-package-up": "11.0.0",
     "semver": "7.5.4",
     "source-map-support": "0.5.21",
     "strict-event-emitter-types": "2.0.0",
